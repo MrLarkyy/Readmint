@@ -1,0 +1,15 @@
+{
+  "files": [],
+  "references": [
+    { "path": "packages/format/tsconfig.build.json" },
+    { "path": "packages/expr/tsconfig.build.json" },
+    { "path": "packages/renderer/tsconfig.build.json" },
+    { "path": "packages/fonts/tsconfig.build.json" },
+    { "path": "packages/raster/tsconfig.build.json" },
+    { "path": "packages/data-github/tsconfig.build.json" },
+    { "path": "packages/components/tsconfig.build.json" },
+    { "path": "packages/cli/tsconfig.build.json" },
+    { "path": "packages/action/tsconfig.build.json" },
+    { "path": "packages/editor/tsconfig.build.json" }
+  ]
+}
