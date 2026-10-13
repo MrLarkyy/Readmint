@@ -1,0 +1,6 @@
+packages:
+  - packages/*
+
+# Dependency install scripts never run unless a package is listed here after review.
+onlyBuiltDependencies: []
+strictDepBuilds: true

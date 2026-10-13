@@ -10,3 +10,4 @@ coverage/
 test-results/
 AGENTS.md
 CLAUDE.md
+*.tsbuildinfo
