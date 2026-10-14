@@ -3,16 +3,18 @@ import { RenderFailure } from "./RenderFailure.js";
 import { utf8Length } from "./utf8Length.js";
 
 /** Stands for the document prefix in shared ids until `finish`; U+0001 is not an XML character, so no content has it. */
-const MARK = "";
+const MARK = "\u0001";
 
 /**
  * Collects the SVG in three parts (style rules, definitions, body) and keeps a running UTF-8 size, so a render
  * stops as soon as it passes the output budget instead of building an unbounded string.
  *
  * Definitions shared by reference (gradients, clip paths, images) are written once per distinct markup under an id
- * derived from that markup, not from the order of use, and prefixed with a hash of the whole document (`finish`):
- * two different Readmint SVGs inlined into one page never share an id. Two byte-identical documents do share
- * their ids (a hidden copy of the same design), which is harmless as the definitions are equal.
+ * derived from that markup, not from the order of use, and prefixed with a hash of the document taken before the
+ * prefix is written in (`finish`): two different Readmint SVGs inlined into one page get different ids, barring a
+ * 32-bit hash clash. Two byte-identical documents share their ids, and the renderer cannot change that (the same
+ * input gives the same bytes): an embedder must not hide a copy with `display:none`, which breaks the visible
+ * copy's gradient and clip-path references in Chromium.
  */
 export class SvgWriter {
   private readonly styleParts: string[] = [];
@@ -56,7 +58,9 @@ export class SvgWriter {
   /**
    * The id of a shared definition, written into `<defs>` (and counted) at its first request only. `build(id)` gives
    * the markup with that id; `build("")` is the key, so it must differ only in the id. The id is `letter` + the
-   * hash of the key, behind the document prefix; a different key with the same hash in this document gets `-1`, `-2`, ... in request order.
+   * hash of the key, behind the document prefix; a different key with the same hash in this document gets `-1`,
+   * `-2`, ... in request order.
+   * The returned id contains a placeholder for the document prefix: it is only valid inside this writer's markup.
    */
   share(letter: string, build: (id: string) => string): string {
     const key = build("");

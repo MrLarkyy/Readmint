@@ -9,7 +9,7 @@ function defsOf(writer: SvgWriter): string {
 }
 
 /** The ids `share` hands out carry a placeholder for the document prefix, which `finish` fills in. */
-const placeholder = "";
+const placeholder = "\u0001";
 const documentPrefix = (svg: string) => /id="(d[0-9a-z]{7}-)/u.exec(svg)?.[1] ?? "";
 const withPrefix = (text: string, prefix: string) => text.replaceAll(placeholder, prefix);
 
