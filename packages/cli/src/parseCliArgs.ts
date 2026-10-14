@@ -1,5 +1,5 @@
 import { parseArgs } from "node:util";
-import { supportedLocales } from "@readmint/expr";
+import { isSupportedLocale, supportedLocales } from "@readmint/expr";
 import { CliError } from "./CliError.js";
 import type { CliCommand, DesignArgs } from "./CliCommand.js";
 import { ExitCode } from "./ExitCode.js";
@@ -108,8 +108,7 @@ function checkLocale(locale: string | undefined): string | undefined {
   } catch {
     usage(`--locale ${quoteForLog(locale)} is not a BCP 47 language tag`);
   }
-  // The expression tables match a tag by its language subtag (`cs-CZ` uses `cs`), case-insensitively.
-  if (!supportedLocales.includes(locale.toLowerCase().split("-")[0] ?? "")) {
+  if (!isSupportedLocale(locale)) {
     usage(
       `--locale ${quoteForLog(locale)} is not supported (supported: ${supportedLocales.join(", ")})`,
     );

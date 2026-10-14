@@ -13,5 +13,5 @@ export { createScope } from "./Scope.js";
 export { evaluateCondition } from "./evaluateCondition.js";
 export { expandRepeat } from "./expandRepeat.js";
 export { ExpressionLimits } from "./ExpressionLimits.js";
-export { supportedLocales } from "./locales.js";
+export { isSupportedLocale, supportedLocales } from "./locales.js";
 export { toText } from "./toText.js";

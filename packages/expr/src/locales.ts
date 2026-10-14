@@ -259,3 +259,8 @@ export function resolveLocale(tag: string): LocaleData | undefined {
   const dash = lower.indexOf("-");
   return dash > 0 ? locales.get(lower.slice(0, dash)) : undefined;
 }
+
+/** Whether `resolveLocale` finds a table for `tag`. */
+export function isSupportedLocale(tag: string): boolean {
+  return resolveLocale(tag) !== undefined;
+}

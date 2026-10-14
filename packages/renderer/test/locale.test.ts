@@ -16,7 +16,7 @@ function textDesign(content: string, extra: Partial<Design> = {}): Design {
   };
 }
 
-/** The text the render wrote, read back from the `<text>` element. */
+/** The SVG of a render that must succeed. */
 function rendered(design: Design, options: RenderOptions = {}): string {
   const result = renderSvg(design, { data, ...options });
   if (!result.ok) throw new Error(JSON.stringify(result.issues));
