@@ -34,19 +34,19 @@ ttlSeconds)` stores it.
 
 ### Options
 
-| option                | default    | range         | meaning                                                                     |
-| --------------------- | ---------- | ------------- | --------------------------------------------------------------------------- |
-| `token`               | (required) | visible ASCII | the user's token; sent only in the `Authorization` header                   |
-| `login`               | the viewer | GitHub login  | the user to load; without it the token's owner is resolved first            |
-| `pageSize`            | 100        | 1–100         | repositories per request                                                    |
-| `maxRepositories`     | 300        | 1–1000        | repositories loaded at most                                                 |
-| `requestTimeoutMs`    | 30000      | 1000–120000   | per request, body included                                                  |
-| `maxRetryWaitSeconds` | 60         | 0–900         | the longest secondary rate-limit wait accepted                              |
-| `cacheTtlSeconds`     | 3600       | 1–604800      | lifetime of a cache entry                                                   |
-| `cache`               | none       |               | a `GitHubCache`                                                             |
-| `fetch`               | `fetch`    |               | `(url, init) => Promise<Response>`, injectable for tests                    |
-| `sleep`               | timer      |               | `(milliseconds) => Promise<void>`, used for rate-limit and 5xx retry waits  |
-| `signal`              | none       |               | an `AbortSignal` that cancels the load, retry waits included (as `timeout`) |
+| option                | default    | range         | meaning                                                                      |
+| --------------------- | ---------- | ------------- | ---------------------------------------------------------------------------- |
+| `token`               | (required) | visible ASCII | the user's token; sent only in the `Authorization` header                    |
+| `login`               | the viewer | GitHub login  | the user to load; without it the token's owner is resolved first             |
+| `pageSize`            | 100        | 1–100         | repositories per request                                                     |
+| `maxRepositories`     | 300        | 1–1000        | repositories loaded at most                                                  |
+| `requestTimeoutMs`    | 30000      | 1000–120000   | per request, body included                                                   |
+| `maxRetryWaitSeconds` | 60         | 0–900         | the longest secondary rate-limit wait accepted                               |
+| `cacheTtlSeconds`     | 3600       | 1–604800      | lifetime of a cache entry                                                    |
+| `cache`               | none       |               | a `GitHubCache`                                                              |
+| `fetch`               | `fetch`    |               | `(url, init) => Promise<Response>`, injectable for tests                     |
+| `sleep`               | timer      |               | `(milliseconds) => Promise<void>` for retry waits; the default ends on abort |
+| `signal`              | none       |               | an `AbortSignal` that cancels the load, retry waits included (as `timeout`)  |
 
 A value outside its range fails with `invalid-option` before any request.
 
@@ -218,8 +218,14 @@ even when `login` is given, and a load with another user's token never reads the
 SHA-256 hex digest of the data version, a hash of the query text, the viewer and the login (both lowercased),
 `pageSize` and `maxRepositories`. It never covers the token, so two tokens of the same owner share an entry.
 
-The cache is best effort: a cache that fails to read counts as a miss and a failed write is ignored, so a read-only or
-full cache directory never fails a load whose data was loaded.
+The owner may be an app: the Actions `GITHUB_TOKEN` and other app installation tokens belong to a bot such as
+`github-actions[bot]`, which works as a cache owner. Such a token needs `login`; in viewer mode a bot owner fails with
+`invalid-option`, and `login` itself never takes a `[bot]` name.
+
+The cache is best effort. When `login` is given and the owner request fails with `graphql`, `forbidden`,
+`invalid-response` or `not-found`, the load runs without the cache (no lookup, no write); `unauthorized`, rate limits,
+`network` and `timeout` still fail the load, as the profile request would. A cache that fails to read counts as a miss
+and a failed write is ignored, so a read-only or full cache directory never fails a load whose data was loaded.
 
 `FileCache` writes one `<key>.json` file per entry, `{ storedAt, ttlSeconds, value }`: the directory with mode
 `0o700` when it creates it, files with mode `0o600`, through a temporary file and a rename. A file over 16 MiB, a

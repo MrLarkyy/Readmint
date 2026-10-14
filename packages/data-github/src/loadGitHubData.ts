@@ -3,11 +3,12 @@ import { cacheKey } from "./cacheKey.js";
 import { checkPageChain, nextPageCursor } from "./checkPageChain.js";
 import type { GitHubCache } from "./GitHubCache.js";
 import type { GitHubData } from "./GitHubData.js";
-import { GitHubDataError } from "./GitHubDataError.js";
+import { GitHubDataError, type GitHubDataErrorCode } from "./GitHubDataError.js";
 import type { GitHubLoadMeta, GitHubLoadResult } from "./GitHubLoadResult.js";
 import { profileQuery, repositoriesQuery, viewerQuery } from "./githubQueries.js";
 import type { RateLimitRecord, RepositoriesPageRecord } from "./GitHubRecords.js";
 import type { GitHubSourceOptions } from "./GitHubSourceOptions.js";
+import { isGitHubLogin } from "./isGitHubLogin.js";
 import { isJsonRecord, ownField, type JsonRecord } from "./jsonRecord.js";
 import { parseProfileResponse } from "./parseProfileResponse.js";
 import { parseRepositoriesPage } from "./parseRepositoriesPage.js";
@@ -17,7 +18,7 @@ import { resolveSourceOptions, type ResolvedSourceOptions } from "./resolveSourc
 
 /**
  * Loads one user's profile, public repositories, languages and contribution calendar.
- * Requests run one after another: the viewer (without `login`, or with a cache), the profile,
+ * Requests run one after another: the token owner (without `login`, or with a cache), the profile,
  * then the repository pages up to `maxRepositories`. Every response is validated before use, any
  * GraphQL error fails the whole load, and the token is sent only in the `Authorization`
  * header: no error, result or cache entry contains it.
@@ -28,13 +29,22 @@ export async function loadGitHubData(options: GitHubSourceOptions): Promise<GitH
   const rateLimits: (RateLimitRecord | null)[] = [];
 
   const cache = resolved.cache;
-  // With a cache the viewer is needed for the key even when the login is given: GitHub's answer
-  // about contributions depends on who asks.
   let viewer: string | null = null;
-  if (resolved.login === null || cache !== null) {
-    const record = parseViewerResponse(await postGraphQL(viewerQuery, {}, resolved, stats));
-    rateLimits.push(record.rateLimit);
-    viewer = record.login;
+  if (resolved.login === null) {
+    viewer = await lookUpOwner(resolved, stats, rateLimits);
+    if (!isGitHubLogin(viewer)) {
+      throw new GitHubDataError(
+        "invalid-option",
+        "The token belongs to an app, not a user; pass the login to load.",
+      );
+    }
+  } else if (cache !== null) {
+    // The cache key needs the owner even when the login is given: GitHub's answer about
+    // contributions depends on who asks. Without a usable owner the load runs uncached.
+    viewer = await lookUpOwner(resolved, stats, rateLimits).catch((error: unknown) => {
+      if (isOwnerLookupMiss(error)) return null;
+      throw error;
+    });
   }
   const login = resolved.login ?? viewer;
   if (login === null) {
@@ -84,6 +94,29 @@ export async function loadGitHubData(options: GitHubSourceOptions): Promise<GitH
     await writeCache(cache, key, stored, resolved.cacheTtlSeconds);
   }
   return { data, meta: loadMeta(stats, rateLimits, false) };
+}
+
+async function lookUpOwner(
+  options: ResolvedSourceOptions,
+  stats: RequestStats,
+  rateLimits: (RateLimitRecord | null)[],
+): Promise<string> {
+  const record = parseViewerResponse(await postGraphQL(viewerQuery, {}, options, stats));
+  rateLimits.push(record.rateLimit);
+  return record.login;
+}
+
+// Answers about this one query; a token, rate-limit, network or abort failure would fail the
+// profile request just the same, so those still end the load.
+const OWNER_LOOKUP_MISSES: ReadonlySet<GitHubDataErrorCode> = new Set([
+  "graphql",
+  "forbidden",
+  "invalid-response",
+  "not-found",
+]);
+
+function isOwnerLookupMiss(error: unknown): boolean {
+  return error instanceof GitHubDataError && OWNER_LOOKUP_MISSES.has(error.code);
 }
 
 // The cache is best effort: the loaded data is valid either way, so a failing store (read-only

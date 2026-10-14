@@ -7,8 +7,14 @@ import { cacheKey } from "../src/cacheKey.js";
 import { allQueries, profileQuery } from "../src/githubQueries.js";
 import { loadGitHubData, MemoryCache, type GitHubCache } from "../src/index.js";
 import { FILE_CACHE_MAX_ENTRY_BYTES, FileCache } from "../src/node/index.js";
-import { item, withViewer } from "./fixtureBodies.js";
-import { exchange, FIXTURE_LOGIN, replayFetch, successExchanges } from "./replayFetch.js";
+import { item, withBody, withViewer } from "./fixtureBodies.js";
+import {
+  exchange,
+  FIXTURE_LOGIN,
+  replayFetch,
+  successExchanges,
+  type Exchange,
+} from "./replayFetch.js";
 
 const expectedText = JSON.stringify(
   JSON.parse(
@@ -32,6 +38,11 @@ function operations(requests: readonly { body: string }[]): unknown[] {
   return requests.map(
     (request) => (JSON.parse(request.body) as { operationName: unknown }).operationName,
   );
+}
+
+/** A recorded error answer, as the reply to the token-owner request. */
+function asViewerExchange(source: Exchange): Exchange {
+  return { ...source, request: { operation: "ReadmintViewer", variables: {} } };
 }
 
 const base = { viewer: FIXTURE_LOGIN, login: FIXTURE_LOGIN, pageSize: 2, maxRepositories: 300 };
@@ -124,6 +135,68 @@ describe("loading through a cache", () => {
     expect(replay.pending()).toBe(0);
     expect(result.meta.fromCache).toBe(false);
     expect(JSON.stringify(result.data)).toBe(expectedText);
+  });
+
+  test("an app token owned by a bot is cached and hits on the second load", async () => {
+    const cache = new MemoryCache();
+    const first = await load(cache, "github-actions[bot]");
+    expect(first.replay.failures).toEqual([]);
+    expect(first.result.meta.fromCache).toBe(false);
+    const second = await load(cache, "github-actions[bot]", []);
+    expect(second.replay.failures).toEqual([]);
+    expect(second.result.meta.fromCache).toBe(true);
+    expect(JSON.stringify(second.result.data)).toBe(expectedText);
+  });
+
+  test.each([
+    [
+      "a graphql error",
+      withBody(exchange("viewer"), (body) => {
+        body.data = null;
+        body.errors = [{ type: "INTERNAL", message: "Something went wrong" }];
+      }),
+    ],
+    ["a 403", asViewerExchange(exchange("forbidden"))],
+    ["an invalid owner", withViewer(exchange("viewer"), "not a login")],
+  ])("an owner lookup failing with %s loads uncached", async (_name, ownerAnswer) => {
+    let writes = 0;
+    const inner = new MemoryCache();
+    const cache: GitHubCache = {
+      get: (key) => inner.get(key),
+      set: (key, value, ttlSeconds) => {
+        writes += 1;
+        return inner.set(key, value, ttlSeconds);
+      },
+    };
+    const replay = replayFetch([ownerAnswer, ...successExchanges()]);
+    const result = await loadGitHubData({
+      token: "test-token",
+      login: FIXTURE_LOGIN,
+      pageSize: 2,
+      cache,
+      fetch: replay.fetch,
+    });
+    expect(replay.failures).toEqual([]);
+    expect(replay.pending()).toBe(0);
+    expect(result.meta).toMatchObject({ requests: 5, fromCache: false });
+    expect(JSON.stringify(result.data)).toBe(expectedText);
+    expect(writes).toBe(0);
+  });
+
+  test.each([
+    ["unauthorized", exchange("unauthorized")],
+    ["rate-limited", exchange("rate-limit-primary-403")],
+  ])("an owner lookup failing as %s still fails the load", async (code, answer) => {
+    const replay = replayFetch([asViewerExchange(answer)]);
+    await expect(
+      loadGitHubData({
+        token: "test-token",
+        login: FIXTURE_LOGIN,
+        pageSize: 2,
+        cache: new MemoryCache(),
+        fetch: replay.fetch,
+      }),
+    ).rejects.toMatchObject({ code });
   });
 
   test("the memory cache drops its oldest entries past maxEntries", async () => {

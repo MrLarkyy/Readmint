@@ -230,3 +230,23 @@ describe("Enterprise Managed User logins", () => {
     expect(data.login).toBe(EMU_LOGIN);
   });
 });
+
+describe("tokens owned by an app", () => {
+  test("viewer mode refuses a bot owner and asks for a login", async () => {
+    const replay = replayFetch([withViewer(exchange("viewer"), "github-actions[bot]")]);
+    const error: unknown = await loadGitHubData({
+      token: "test-token",
+      fetch: replay.fetch,
+    }).catch((reason: unknown) => reason);
+    expect(error).toBeInstanceOf(GitHubDataError);
+    expect((error as GitHubDataError).code).toBe("invalid-option");
+    expect(replay.requests).toHaveLength(1);
+  });
+
+  test("a bot login is not accepted as the login option", async () => {
+    const replay = replayFetch([]);
+    await expect(load(replay, { login: "github-actions[bot]" })).rejects.toMatchObject({
+      code: "invalid-option",
+    });
+  });
+});

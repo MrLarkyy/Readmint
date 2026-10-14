@@ -122,8 +122,8 @@ export async function postGraphQL(
 }
 
 /**
- * A retry wait that ends early when the caller aborts: the injected sleep cannot take the signal,
- * so the wait is raced against it.
+ * A retry wait that ends early when the caller aborts. The wait is raced against the signal, since
+ * an injected sleep may ignore it; the default sleep also gets it to clear its timer.
  */
 async function pause(context: GraphQLContext, milliseconds: number): Promise<void> {
   const signal = context.signal;
@@ -138,7 +138,7 @@ async function pause(context: GraphQLContext, milliseconds: number): Promise<voi
     signal.addEventListener("abort", listener, { once: true });
   });
   try {
-    await Promise.race([context.sleep(milliseconds), aborted]);
+    await Promise.race([context.sleep(milliseconds, signal), aborted]);
   } finally {
     for (const listener of listeners) signal.removeEventListener("abort", listener);
   }

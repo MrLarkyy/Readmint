@@ -13,7 +13,8 @@ export interface ResolvedSourceOptions {
   readonly cacheTtlSeconds: number;
   readonly cache: GitHubCache | null;
   readonly fetch: GitHubFetch;
-  readonly sleep: (milliseconds: number) => Promise<void>;
+  /** The public option type takes no signal; a one-argument sleep simply ignores it. */
+  readonly sleep: (milliseconds: number, signal?: AbortSignal) => Promise<void>;
   readonly signal: AbortSignal | null;
 }
 
@@ -102,6 +103,18 @@ function integerOption(
   return value;
 }
 
-function defaultSleep(milliseconds: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, milliseconds));
+// Clears its timer on abort: a pending timer would keep a cancelled CLI or Action process alive
+// for the rest of the wait (up to 15 minutes).
+function defaultSleep(milliseconds: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve) => {
+    const stop = () => {
+      clearTimeout(timer);
+      resolve();
+    };
+    const timer = setTimeout(() => {
+      signal?.removeEventListener("abort", stop);
+      resolve();
+    }, milliseconds);
+    signal?.addEventListener("abort", stop, { once: true });
+  });
 }
