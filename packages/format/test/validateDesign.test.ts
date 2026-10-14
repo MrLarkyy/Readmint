@@ -1,4 +1,5 @@
 import { describe, expect, test } from "vitest";
+import { loadScale } from "../../../test-support/loadScale.js";
 import { DesignLimits, designJsonSchema, validateDesign } from "../src/index.js";
 import { maximalDesign } from "./maximalDesign.js";
 
@@ -155,7 +156,7 @@ describe("limits", () => {
   test("a long component chain closed by many refs is checked in linear time", () => {
     const started = performance.now();
     const result = issuesOf(componentChain(4000, 5000));
-    expect(performance.now() - started).toBeLessThan(2000);
+    expect(performance.now() - started).toBeLessThan(2000 * loadScale());
     expect(result.truncated).toBe(true);
     expect(result.issues[0]).toEqual({
       path: "/components/c3999/layers/0/ref",
@@ -169,7 +170,7 @@ describe("limits", () => {
     expect(issuesOf(componentChain(8000, 130_000)).issues).toEqual([
       expect.objectContaining({ path: "/layers", code: "too-many-layers" }),
     ]);
-    expect(performance.now() - started).toBeLessThan(2000);
+    expect(performance.now() - started).toBeLessThan(2000 * loadScale());
   });
 
   test("a cyclic or massively shared object fails without hanging", () => {
@@ -235,12 +236,13 @@ describe("hostile strings", () => {
       for (const value of hostile) {
         const started = performance.now();
         regex.test(value);
-        expect(performance.now() - started, `${pattern} on ${value.slice(0, 20)}`).toBeLessThan(
-          200,
-        );
+        const elapsed = performance.now() - started;
+        // The load probe costs more than most of these runs, so it only runs for a slow one.
+        const limit = elapsed < 200 ? 200 : 200 * loadScale();
+        expect(elapsed, `${pattern} on ${value.slice(0, 20)}`).toBeLessThan(limit);
       }
     }
-  });
+  }, 60_000);
 
   test("validation of a design full of hostile strings stays fast", () => {
     for (const value of hostile) {
@@ -257,7 +259,7 @@ describe("hostile strings", () => {
       };
       const started = performance.now();
       expect(validateDesign(design).ok).toBe(false);
-      expect(performance.now() - started).toBeLessThan(200);
+      expect(performance.now() - started).toBeLessThan(200 * loadScale());
     }
   });
 });

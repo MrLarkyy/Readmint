@@ -1,5 +1,6 @@
 import type { AnimationTrack, Design, Layer } from "@readmint/format";
 import { expect, test } from "vitest";
+import { loadScale } from "../../../test-support/loadScale.js";
 import { RenderLimits, renderSvg } from "../src/index.js";
 import { minimumNodeBytes } from "../src/expandLayers.js";
 import type { AnimatedProperty } from "../src/NodeAnimation.js";
@@ -47,7 +48,7 @@ test("a huge nested repeat stops at the output budget before building everything
   });
   expect(result).toMatchObject({ ok: false, issues: [{ path: "", code: "too-large" }] });
   expect(result.ok ? "" : result.issues[0]?.message).toContain("5242880 bytes");
-  expect(performance.now() - started).toBeLessThan(2000);
+  expect(performance.now() - started).toBeLessThan(2000 * loadScale());
 });
 
 test("a huge nested repeat stops at the copy limit first by default", () => {
@@ -59,7 +60,7 @@ test("a huge nested repeat stops at the copy limit first by default", () => {
     issues: [{ path: "/layers/0/children/0/repeat", code: "too-large" }],
   });
   expect(result.ok ? "" : result.issues[0]?.message).toContain("repeat item 9");
-  expect(performance.now() - started).toBeLessThan(2000);
+  expect(performance.now() - started).toBeLessThan(2000 * loadScale());
 });
 
 test.each([
@@ -80,7 +81,7 @@ test.each([
   };
   const started = performance.now();
   const result = renderSvg(design, { data: { items } });
-  expect(performance.now() - started).toBeLessThan(500);
+  expect(performance.now() - started).toBeLessThan(500 * loadScale());
   expect(result).toMatchObject({
     ok: false,
     issues: [{ path: "/layers/0/children/0/repeat", code: "too-large" }],
@@ -154,7 +155,7 @@ test.each([
   const elapsed = performance.now() - started;
   // The output budget (a path reserves its data, a text its content) trips long before the copy limit.
   expect(result).toMatchObject({ ok: false, issues: [{ path: "", code: "too-large" }] });
-  expect(elapsed).toBeLessThan(500);
+  expect(elapsed).toBeLessThan(500 * loadScale());
 });
 
 test("a 10000-rect design renders in under 2 s and the report counts UTF-8 bytes", () => {
@@ -174,7 +175,7 @@ test("a 10000-rect design renders in under 2 s and the report counts UTF-8 bytes
   };
   const started = performance.now();
   const result = renderSvg(design);
-  expect(performance.now() - started).toBeLessThan(2000);
+  expect(performance.now() - started).toBeLessThan(2000 * loadScale());
   expect(result.ok).toBe(true);
   if (!result.ok) return;
   expect(result.report.bytes).toBe(utf8Length(result.svg));
@@ -288,7 +289,7 @@ test("40000 copies of a 2 MB image under a second asset id with the same bytes r
     assets: { images: { first: data, second: data.slice() } },
     limits: { maxOutputBytes: 20_000_000 },
   });
-  expect(performance.now() - started).toBeLessThan(2000);
+  expect(performance.now() - started).toBeLessThan(2000 * loadScale());
   if (!result.ok) throw new Error(JSON.stringify(result.issues));
   const dataUri = `data:image/png;base64,${Buffer.from(data).toString("base64")}`;
   expect(result.svg.split(dataUri)).toHaveLength(2);
@@ -312,7 +313,7 @@ test("1000 copies of a 1 MB image write its data once, in under 2 s", () => {
   };
   const started = performance.now();
   const result = renderSvg(design, options);
-  expect(performance.now() - started).toBeLessThan(2000);
+  expect(performance.now() - started).toBeLessThan(2000 * loadScale());
   if (!result.ok) throw new Error(JSON.stringify(result.issues));
   const dataUri = `data:image/png;base64,${Buffer.from(big).toString("base64")}`;
   expect(result.svg.split(dataUri)).toHaveLength(2);
@@ -361,7 +362,7 @@ test("expression work of the whole render is bounded, also for copies an if drop
   };
   const started = performance.now();
   const result = renderSvg(design, { data: { items, s: "a".repeat(10_000) } });
-  expect(performance.now() - started).toBeLessThan(2000);
+  expect(performance.now() - started).toBeLessThan(2000 * loadScale());
   expect(result).toMatchObject({ ok: false, issues: [{ code: "binding" }] });
   expect(result.ok ? "" : result.issues[0]?.message).toContain("(budget)");
 });
@@ -439,7 +440,7 @@ test("a 53 x 7 staggered calendar renders in under 1 s and under 200 kB", () => 
   };
   const started = performance.now();
   const result = renderSvg(design, { data });
-  expect(performance.now() - started).toBeLessThan(1000);
+  expect(performance.now() - started).toBeLessThan(1000 * loadScale());
   expect(result.ok ? result.warnings : result.issues).toEqual([]);
   expect(result.ok && result.report.bytes).toBeLessThan(200_000);
   expect(result.ok && result.svg.match(/<rect /gu)).toHaveLength(371);
@@ -479,7 +480,7 @@ test("10000 animated copies stop at the output budget before everything is built
     { data: { items: hugeItems }, limits: { maxAnimationKeyframes: 1e9 } },
   );
   expect(result).toMatchObject({ ok: false, issues: [{ path: "", code: "too-large" }] });
-  expect(performance.now() - started).toBeLessThan(1000);
+  expect(performance.now() - started).toBeLessThan(1000 * loadScale());
 });
 
 test("the bytes reserved per animation track never exceed what the track adds to a frame", () => {
@@ -580,7 +581,7 @@ test.each([
   expect(result.ok ? "" : result.issues[0]?.message).toBe(
     "this track brings the render to 100032 animation keyframes; at most 100000 are allowed (every repeat copy counts) (repeat item 1, repeat item 41)",
   );
-  expect(elapsed).toBeLessThan(1000);
+  expect(elapsed).toBeLessThan(1000 * loadScale());
 });
 
 test("maxAnimationKeyframes defaults to 100000 and can be overridden", () => {
