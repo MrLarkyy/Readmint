@@ -26,7 +26,10 @@ export function renderEllipse(writer: SvgWriter, node: EllipseNode): void {
   );
 }
 
-/** The path data is emitted as written (the format restricts its characters; it is escaped all the same). */
+/**
+ * The resolved path data (`resolvePath` turns whitespace SVG does not know into spaces), escaped like every string,
+ * which also drops characters XML does not allow.
+ */
 export function renderPath(writer: SvgWriter, node: PathNode): void {
   const translate =
     node.x === 0 && node.y === 0

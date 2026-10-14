@@ -8,6 +8,7 @@ import type { RenderContext } from "./RenderContext.js";
 import type { TextNode } from "./RenderNode.js";
 import { resolveBase } from "./resolveBase.js";
 import { resolveStyle } from "./resolveStyle.js";
+import { stripXmlInvalid } from "./stripXmlInvalid.js";
 import { evaluateText } from "./expressions.js";
 import { resolveOptionalNumber } from "./resolveValue.js";
 import { wrapText } from "./wrapText.js";
@@ -100,5 +101,6 @@ function interpolate(context: RenderContext, content: string, path: string, scop
       `the text is ${String(text.length)} characters long after filling placeholders; at most ${String(max)} are allowed`,
     );
   }
-  return text;
+  // Removed before reserving, wrapping and measuring, so what is laid out is exactly what is written.
+  return stripXmlInvalid(text);
 }

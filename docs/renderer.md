@@ -55,7 +55,10 @@ expression error ends the render with a `binding` issue whose message carries ex
 
 Drawn in document order, first at the back. Layer `id` and `name` are not emitted.
 
-- **repeat** gives one copy per item of `each`; then, per copy, `visible: false` or a falsy `if` drops it. A dropped layer takes no slot in a stack or grid.
+- **repeat** gives one copy per item of `each` (at most 10000 items per repeat); then, per copy, `visible: false` or a
+  falsy `if` drops it. A dropped layer takes no slot in a stack or grid. The copies of every repeat of a render count
+  toward `maxRepeatCopies` before any is dropped, so nested repeats that `if` empties still stop with `too-large` at
+  the repeat that passes the limit.
 - **Position**: every layer has a box from its `x`/`y` (default 0) of its width and height. A `rect`, `ellipse` and
   `image` box is its `width` by `height`; a `path` box runs from its origin to the furthest point of its data (control
   points and a bound around arcs included, never smaller than the drawn path); a `text` box is described below; a
@@ -87,6 +90,8 @@ Drawn in document order, first at the back. Layer `id` and `name` are not emitte
 - The box is the `width` (or the widest line) by `lines x lineHeight x fontSize` (`lineHeight` default 1.2). The
   first baseline sits half the leading plus the ascender below the box top (the ascender and descender of `hhea`, or of
   `OS/2` when the font sets USE_TYPO_METRICS).
+- Characters XML does not allow (see Output) are removed from the filled-in content before it is measured and
+  wrapped, so such a text lays out and renders byte-identical to the same text without them.
 - `align` (`start`, `middle`, `end`) anchors each line at the start, centre or end of the box with `text-anchor`, so the
   drawer aligns what it actually draws.
 
@@ -128,7 +133,10 @@ order), then the canvas background and the layers.
 
 - No `<script>`, no event attributes, no `foreignObject`, no external reference: every `href` is a `data:image/...`
   URI, every `url()` a `#fragment` or (in the style) a `data:font/...` URI. Every string from the design or the data
-  is XML-escaped.
+  is XML-escaped, after removing the code points XML 1.0 does not allow: the C0 controls except tab, line feed and
+  carriage return, lone surrogates, U+FFFE and U+FFFF (GitHub free texts such as a bio may hold them).
+- Path data whitespace SVG does not know (vertical tab, form feed, no-break space, line separator, ...) is written as
+  a space; the path keeps its meaning and its box.
 - Numbers are rounded to 3 decimals (`-0` printed as `0`), computed only with exactly specified arithmetic (no
   trigonometry: rotation is a `rotate()` transform for the drawer), so Node and browsers print the same digits.
 
@@ -145,11 +153,12 @@ order), then the canvas background and the layers.
 | `maxAnimationFrames` | 1000    | frames of an animated image                                                                                          | `asset-too-large`    |
 | `maxTextLength`      | 10000   | characters of a text after its placeholders are filled                                                               | `too-large`          |
 | `maxExpressionSteps` | 5000000 | expression work of the whole render (under a second of the costliest string filters), including copies an `if` drops | `binding` (`budget`) |
+| `maxRepeatCopies`    | 100000  | copies made by every `repeat` of the render together, including copies an `if` or `visible: false` drops             | `too-large`          |
 
 The output size is counted while the SVG is written, and every layer reserves the least markup of its kind before it
 is built (a path also its data, a text its filled-in content, before either is measured), so a huge or nested `repeat`
-stops early instead of building everything. A bound on the number of repeat copies and
-stripping of characters XML does not allow arrive with RM-25.
+stops early instead of building everything. Fixed limits: 10000 items per `repeat` (expr, `binding` at
+`repeat/each`) and 64 levels of nested component instances (`too-large`).
 
 ## Issues
 
@@ -163,7 +172,7 @@ stripping of characters XML does not allow arrive with RM-25.
 | `asset-too-large`      | over a byte, side or frame limit                                                                                                                                                                                          |
 | `unsupported-font`     | WOFF, WOFF2 or a font collection                                                                                                                                                                                          |
 | `font-not-embeddable`  | the licence or the fsType forbids embedding                                                                                                                                                                               |
-| `too-large`            | the SVG passes `maxOutputBytes`, a text passes `maxTextLength`, components nest deeper than 64 levels                                                                                                                     |
+| `too-large`            | the SVG passes `maxOutputBytes`, a text passes `maxTextLength`, the repeats pass `maxRepeatCopies` (at the `repeat` that crossed it), components nest deeper than 64 levels                                               |
 | `font-family-mismatch` | warning: the asset family differs from the family inside the font                                                                                                                                                         |
 
 ## Report

@@ -27,6 +27,7 @@ export class RenderContext {
   readonly pathBounds = new Map<string, Bounds | undefined>();
   private readonly trail: string[] = [];
   private depth = 0;
+  private repeatCopies = 0;
 
   constructor(
     readonly design: Design,
@@ -45,6 +46,19 @@ export class RenderContext {
 
   warn(path: string, code: RenderIssueCode, message: string): void {
     this.warnings.push({ path, code, message });
+  }
+
+  /** Charges the copies of one repeat against `maxRepeatCopies`, before any of them is expanded. */
+  countRepeatCopies(path: string, count: number): void {
+    this.repeatCopies += count;
+    const max = this.limits.maxRepeatCopies;
+    if (this.repeatCopies > max) {
+      this.fail(
+        path,
+        "too-large",
+        `this repeat brings the render to ${String(this.repeatCopies)} copies; at most ${String(max)} are allowed (copies an if or visible drops count too)`,
+      );
+    }
   }
 
   /** Component instances currently being expanded around the layer at hand. */

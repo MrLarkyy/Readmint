@@ -14,6 +14,8 @@ export interface RenderLimits {
   readonly maxTextLength: number;
   /** Expression steps of the whole render (`@readmint/expr` budget, shared by every evaluation). */
   readonly maxExpressionSteps: number;
+  /** Copies made by every `repeat` of the render together, counted before `if` or `visible` drops any. */
+  readonly maxRepeatCopies: number;
 }
 
 export const RenderLimits: RenderLimits = Object.freeze({
@@ -27,4 +29,6 @@ export const RenderLimits: RenderLimits = Object.freeze({
   maxTextLength: 10_000,
   /** Under a second of the most expensive string work (upper/lower over long text); copies dropped by `if` write nothing, so output cannot bound it. */
   maxExpressionSteps: 5_000_000,
+  /** Ten times the most items one repeat takes; copies an `if` drops cost work but write nothing, so output cannot bound them. */
+  maxRepeatCopies: 100_000,
 });

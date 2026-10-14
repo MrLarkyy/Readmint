@@ -3,6 +3,7 @@ import type { FontAsset } from "@readmint/format";
 import { encodeBase64 } from "./base64.js";
 import { decodeDataUri } from "./decodeDataUri.js";
 import { escapeCssString } from "./escapeCssString.js";
+import { escapeCssToken } from "./escapeCssToken.js";
 import { escapeText } from "./escapeXml.js";
 import { ownEntry } from "./ownEntry.js";
 import { pointer } from "./pointer.js";
@@ -130,7 +131,7 @@ export function loadFont(context: RenderContext, assetId: string, asset: FontAss
   context.fonts.set(assetId, loaded);
   context.writer.style(
     escapeText(
-      `@font-face{font-family:"${escapeCssString(loaded.family)}";src:url(${loaded.dataUri});font-weight:${String(loaded.weight)};font-style:${loaded.style}}`,
+      `@font-face{font-family:"${escapeCssString(loaded.family)}";src:url(${loaded.dataUri});font-weight:${escapeCssToken(String(loaded.weight))};font-style:${escapeCssToken(loaded.style)}}`,
     ),
   );
   return loaded;
