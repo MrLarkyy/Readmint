@@ -160,7 +160,10 @@ function manualPolls(): ManualPolls {
           due = undefined;
           reject(new Error("closed"));
         };
-        if (signal.aborted) return stop();
+        if (signal.aborted) {
+          stop();
+          return;
+        }
         signal.addEventListener("abort", stop, { once: true });
         due = resolve;
         const waiter = onWait;
