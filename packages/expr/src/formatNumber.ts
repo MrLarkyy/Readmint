@@ -23,14 +23,14 @@ export function formatPercent(value: number, decimals: number, locale: LocaleDat
   return digits + locale.percentSuffix;
 }
 
+/** 1000 to the power of the unit, written out: `**` is only approximated by the ECMAScript spec. */
+const unitSizes: readonly number[] = [1, 1e3, 1e6, 1e9, 1e12];
+
 /**
  * A short form: thousands, millions, billions and trillions with the locale's suffix, at most
  * `decimals` fraction digits and no trailing zeros. A value that rounds up to 1000 of a unit moves
  * to the next unit (999950 is `1M`, not `1000K`).
  */
-/** 1000 to the power of the unit, written out: `**` is only approximated by the ECMAScript spec. */
-const unitSizes: readonly number[] = [1, 1e3, 1e6, 1e9, 1e12];
-
 export function formatCompact(value: number, decimals: number, locale: LocaleData): string {
   if (Math.abs(value) >= exponentThreshold) return String(value);
   const magnitude = Math.abs(value);
