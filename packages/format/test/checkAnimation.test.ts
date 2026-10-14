@@ -25,10 +25,14 @@ const rect = (animate: unknown) => ({ type: "rect", width: 1, height: 1, animate
 
 describe("the timeline", () => {
   test("animate without a root animation is reported once at /animation", () => {
-    const { animation: _dropped, ...withoutTimeline } = design([
-      rect({ opacity: { keyframes: keyframes(0, 1) } }),
-      rect({ x: { keyframes: keyframes(0, 1) } }),
-    ]);
+    const withoutTimeline = {
+      version: 0,
+      canvas: { width: 10, height: 10 },
+      layers: [
+        rect({ opacity: { keyframes: keyframes(0, 1) } }),
+        rect({ x: { keyframes: keyframes(0, 1) } }),
+      ],
+    };
     expect(issues(withoutTimeline)).toEqual([{ path: "/animation", code: "missing-property" }]);
   });
 
