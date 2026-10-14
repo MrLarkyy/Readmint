@@ -1,3 +1,4 @@
+import { checkAnimation } from "./checkAnimation.js";
 import { checkReferences } from "./checkReferences.js";
 import type { Design } from "./Design.js";
 import type { DesignResult } from "./DesignResult.js";
@@ -9,7 +10,7 @@ import { validateNode } from "./schema/validateNode.js";
 
 /**
  * Checks an already parsed design (the editor path): bounds, migration to the current version,
- * structure, then references. The returned value is the input itself unless a migration ran.
+ * structure, then references and animation. The returned value is the input itself unless a migration ran.
  */
 export function validateDesign(value: unknown): DesignResult<Design> {
   const bounds = measureValue(value);
@@ -19,7 +20,10 @@ export function validateDesign(value: unknown): DesignResult<Design> {
 
   const issues = new IssueCollector();
   validateNode(designSchemaV0, designSchemaV0.root, migrated.value, "", issues);
-  if (issues.isEmpty) checkReferences(migrated.value as unknown as Design, issues);
+  if (issues.isEmpty) {
+    checkReferences(migrated.value as unknown as Design, issues);
+    checkAnimation(migrated.value as unknown as Design, issues);
+  }
   if (!issues.isEmpty) return { ok: false, issues: issues.issues, truncated: issues.truncated };
   const design = migrated.value as unknown as Design;
   return migrated.migratedFrom === undefined

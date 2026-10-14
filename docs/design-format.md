@@ -63,8 +63,9 @@ Validation runs in this order and stops at the first stage with issues: source l
 | unit     | a number in [0, 1]                                                                                        |
 | `B<x>`   | bindable: the literal `x` or a binding                                                                    |
 
-Every numeric, colour and boolean property of the canvas, layers, styles, layouts and gradients is bindable; asset
-and component-definition metadata takes literals only. Numbers must be finite: YAML `.inf` and `.nan` are rejected. Bindings are opaque here; the expression language
+Every numeric, colour and boolean property of the canvas, layers, styles, layouts and gradients is bindable, and so are
+keyframe values and track timing (`duration`, `delay`, `stagger`); asset and component-definition metadata, the
+timeline (`animation`), keyframe `offset`s and easings take literals only. Numbers must be finite: YAML `.inf` and `.nan` are rejected. Bindings are opaque here; the expression language
 (`@readmint/expr`, [docs/expressions.md](expressions.md)) evaluates them, and the renderer checks the evaluated values
 against the same ranges (`ValueRanges` from `@readmint/format`, which the schema is built from). A binding that is exactly
 one `{{ }}` placeholder keeps the type of its value (`"{{ count }}"` is a number); any other string, such as
@@ -73,17 +74,18 @@ one placeholder.
 
 ## Document
 
-| property      | required | type                                           | notes                                |
-| ------------- | -------- | ---------------------------------------------- | ------------------------------------ |
-| `$schema`     |          | string, at most 512                            | editor hint, ignored                 |
-| `version`     | yes      | the integer `0`                                | see [Versioning](#versioning)        |
-| `title`       |          | string, at most 200                            | accessible title of the output       |
-| `description` |          | string, at most 2000                           | accessible description of the output |
-| `canvas`      | yes      | canvas                                         |                                      |
-| `layers`      | yes      | array of layers                                | drawn in order, first at the back    |
-| `styles`      |          | object: id -> style                            | shared by layers through `style`     |
-| `assets`      |          | `{ fonts?: id -> font, images?: id -> image }` |                                      |
-| `components`  |          | object: id -> component definition             | reusable layer groups                |
+| property      | required | type                                           | notes                                     |
+| ------------- | -------- | ---------------------------------------------- | ----------------------------------------- |
+| `$schema`     |          | string, at most 512                            | editor hint, ignored                      |
+| `version`     | yes      | the integer `0`                                | see [Versioning](#versioning)             |
+| `title`       |          | string, at most 200                            | accessible title of the output            |
+| `description` |          | string, at most 2000                           | accessible description of the output      |
+| `canvas`      | yes      | canvas                                         |                                           |
+| `layers`      | yes      | array of layers                                | drawn in order, first at the back         |
+| `styles`      |          | object: id -> style                            | shared by layers through `style`          |
+| `assets`      |          | `{ fonts?: id -> font, images?: id -> image }` |                                           |
+| `components`  |          | object: id -> component definition             | reusable layer groups                     |
+| `animation`   |          | `{ duration, loop? }`                          | the timeline, see [Animation](#animation) |
 
 **canvas**: `width`, `height` (required, `B<integer 1..4096>`; 4096 is the PNG cap of the raster path),
 `background` (paint).
@@ -110,6 +112,7 @@ Every layer has `type` (required) and these optional properties:
 | `style`    | id of a style                            | own properties win over the style                        |
 | `if`       | binding                                  | the layer is drawn only when it evaluates to true        |
 | `repeat`   | `{ each: binding, as?: id, index?: id }` | one copy per item of `each`, exposed as `as` and `index` |
+| `animate`  | property -> track                        | see [Animation](#animation); needs `animation`           |
 
 | `type`      | required                                    | optional                                                                                                     |
 | ----------- | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
@@ -164,6 +167,85 @@ Component layers read their props as bindings (`{{props.label}}`).
 A `component` layer must reference an existing component, may set only declared props, must set every required one,
 and each value must match the declared type (a `color` is a colour) unless it is a binding. Components may use other
 components but never themselves, directly or through others.
+
+## Animation
+
+A design has at most one timeline; layers animate on it through `animate`.
+
+```json
+{
+  "animation": { "duration": 1500 },
+  "layers": [
+    {
+      "type": "rect",
+      "width": 12,
+      "height": 12,
+      "fill": "{{item}}",
+      "repeat": { "each": "{{cells}}" },
+      "animate": {
+        "opacity": {
+          "keyframes": [
+            { "offset": 0, "value": 0 },
+            { "offset": 1, "value": 1 }
+          ],
+          "duration": 300,
+          "stagger": 40
+        },
+        "scale": {
+          "keyframes": [
+            { "offset": 0, "value": 0.3, "easing": "ease-out" },
+            { "offset": 1, "value": 1 }
+          ],
+          "duration": 300,
+          "stagger": 40
+        }
+      }
+    }
+  ]
+}
+```
+
+**animation** (root): `duration` (required, an integer number of milliseconds in 1..60000), `loop` (boolean, default
+`true`). Both are literals.
+
+**animate** (any layer): an object from property to track. Every layer kind takes `opacity`, `x`, `y`, `scale` and
+`rotation`; `rect`, `ellipse` and `path` also `fill` and `stroke`; `text` also `fill`; `path` also `draw`. Any other key
+is `unknown-property`; a key twice is `duplicate-key`. A layer with `animate` in a design without `animation` fails with
+`missing-property` at `/animation`.
+
+| property   | keyframe value          | meaning                                                                    |
+| ---------- | ----------------------- | -------------------------------------------------------------------------- |
+| `opacity`  | `B<unit>`               | replaces the layer's opacity                                               |
+| `fill`     | `B<colour>`             | replaces the fill (a gradient too); alpha animates `fill-opacity`          |
+| `stroke`   | `B<colour>`             | replaces the stroke, like `fill`                                           |
+| `draw`     | `B<unit>`               | the drawn share of the stroke; the path data has no arcs (see below)       |
+| `x`, `y`   | `B<position>`           | moves the layer by this much on top of its layout                          |
+| `scale`    | `B<-100..100>`          | scales the layer around the centre of its box                              |
+| `rotation` | `B<-360..360>`, degrees | turns the layer around the centre of its box, on top of its own `rotation` |
+
+Animation never changes the layout: a stack or grid places the layer as if it did not move.
+
+**track**: `keyframes` (required, 2 to 32 `{ offset, value, easing? }`), `duration` (`B<integer 1..60000>` ms, default
+the timeline's), `delay` and `stagger` (`B<integer 0..60000>` ms, default 0), `easing` (default `linear`).
+
+- `offset` is a literal unit: the share of the track's `duration` at which the keyframe's value is reached. Offsets
+  never decrease (a decreasing one is `range` at that offset); two equal offsets make a jump. Before its first keyframe
+  a track holds the first value, after its last one the last value.
+- A track starts at `delay + stagger x index`, where `index` is the copy's position in the layer's own `repeat` (0
+  without one). Nested repeats, such as weeks and days of a calendar, bind the delay instead:
+  `"delay": "{{ (week * 7 + day) * 8 }}"` with `index: "week"` and `index: "day"` on the two repeats.
+- A track that runs past the end of the timeline is cut there: its last keyframe becomes the value it has at that
+  moment, and the render warns `animation-cut` once per track. Copy counts come from data, so this is a warning, not a
+  failure. The segment before the cut keeps its easing, played over the shorter span up to the end.
+- `draw` with several subpaths (each `M`, and the segment after a `Z`): every subpath draws from its own start, all at
+  the pace of the longest one, which is complete at `1`; shorter subpaths are complete earlier.
+- `easing` from one keyframe to the next: the keyframe's own `easing`, else the track's. It is `linear`, `ease`,
+  `ease-in`, `ease-out`, `ease-in-out` (the CSS curves) or `{ x1, y1, x2, y2 }`, a CSS `cubic-bezier` with `x1`, `x2` in
+  [0, 1] and `y1`, `y2` in [-10, 10]; outside [0, 1] the value overshoots its keyframes (opacity and colours are clamped).
+- `draw` needs path data without `A`/`a` commands (`pattern` at `.../animate/draw`): an arc's exact length needs
+  trigonometry, which the renderer never uses ([renderer.md](renderer.md#animation)).
+
+How the timeline becomes CSS animation and static frames: [renderer.md](renderer.md#animation).
 
 ## Limits
 
@@ -221,27 +303,27 @@ interface DesignIssue {
 - A message quotes at most 64 characters of an input value, JSON-escaped. A property name longer than 64 characters or
   holding control, bidi or line-separator characters is never put into a path: the issue is reported at its parent.
 
-| code                  | meaning                                                                         |
-| --------------------- | ------------------------------------------------------------------------------- |
-| `parse`               | invalid JSON or YAML syntax, an unknown YAML tag, several YAML documents        |
-| `duplicate-key`       | the same key twice in one object                                                |
-| `too-large`           | source too long, too many values or YAML aliases                                |
-| `too-deep`            | nesting over the limit (also a reference cycle in an editor object)             |
-| `unsupported-version` | `version` newer than this reader, or negative                                   |
-| `migration-missing`   | no migration step from the document's version                                   |
-| `missing-property`    | a required property is absent                                                   |
-| `unknown-property`    | a property the format does not define, or a prop the component does not declare |
-| `type`                | wrong kind of value (string instead of number, not finite, not an integer)      |
-| `enum`                | not one of the allowed words, including an unknown layer `type`                 |
-| `pattern`             | a string in the wrong shape (colour, id, asset source, path data)               |
-| `range`               | a number outside its range                                                      |
-| `length`              | a string too long or empty                                                      |
-| `count`               | an array with too few or too many items                                         |
-| `duplicate-id`        | a layer id used twice in one scope                                              |
-| `unknown-reference`   | `style`, `font`, `asset` or `ref` names nothing in the document                 |
-| `component-cycle`     | components that contain themselves; reported at the `ref` closing the loop      |
-| `missing-font`        | a text with neither `font` nor a style with a font                              |
-| `too-many-layers`     | the document expands to more than 10000 layers                                  |
+| code                  | meaning                                                                           |
+| --------------------- | --------------------------------------------------------------------------------- |
+| `parse`               | invalid JSON or YAML syntax, an unknown YAML tag, several YAML documents          |
+| `duplicate-key`       | the same key twice in one object                                                  |
+| `too-large`           | source too long, too many values or YAML aliases                                  |
+| `too-deep`            | nesting over the limit (also a reference cycle in an editor object)               |
+| `unsupported-version` | `version` newer than this reader, or negative                                     |
+| `migration-missing`   | no migration step from the document's version                                     |
+| `missing-property`    | a required property is absent (`animation` when a layer has `animate`)            |
+| `unknown-property`    | a property the format does not define, or a prop the component does not declare   |
+| `type`                | wrong kind of value (string instead of number, not finite, not an integer)        |
+| `enum`                | not one of the allowed words, including an unknown layer `type`                   |
+| `pattern`             | a string in the wrong shape (colour, id, asset source, path data, arcs in `draw`) |
+| `range`               | a number outside its range, or a keyframe offset below the one before it          |
+| `length`              | a string too long or empty                                                        |
+| `count`               | an array with too few or too many items                                           |
+| `duplicate-id`        | a layer id used twice in one scope                                                |
+| `unknown-reference`   | `style`, `font`, `asset` or `ref` names nothing in the document                   |
+| `component-cycle`     | components that contain themselves; reported at the `ref` closing the loop        |
+| `missing-font`        | a text with neither `font` nor a style with a font                                |
+| `too-many-layers`     | the document expands to more than 10000 layers                                    |
 
 ## YAML
 
@@ -278,5 +360,5 @@ committed file differs from the emitted schema, and the file is excluded from Pr
 - A document newer than the reader fails with `unsupported-version`; it is never partially rendered.
 - Each released version keeps its schema file (`design-v<N>.schema.json`).
 
-Not in v0: animation (a later, additive section). The grammar inside bindings is the expression language v0 of
-`@readmint/expr`, described in [docs/expressions.md](expressions.md).
+The animation section (`animation`, `animate`) was added to v0 as optional properties. The grammar inside bindings is
+the expression language v0 of `@readmint/expr`, described in [docs/expressions.md](expressions.md).

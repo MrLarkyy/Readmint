@@ -12,6 +12,56 @@ const common = {
   repeat: { each: "{{items}}", as: "item", index: "n" },
 } as const;
 
+const fade = {
+  keyframes: [
+    { offset: 0, value: 0, easing: "ease-in" },
+    { offset: 0.5, value: "{{peak}}", easing: { x1: 0.3, y1: -0.5, x2: 0.7, y2: 1.5 } },
+    { offset: 1, value: 1 },
+  ],
+  duration: 500,
+  delay: "{{index * 10}}",
+  stagger: 40,
+  easing: "ease-out",
+} as const;
+
+const tint = {
+  keyframes: [
+    { offset: 0, value: "#fff" },
+    { offset: 1, value: "{{theme.tint}}" },
+  ],
+} as const;
+
+const transforms = {
+  opacity: fade,
+  x: {
+    keyframes: [
+      { offset: 0, value: -10 },
+      { offset: 1, value: "{{dx}}" },
+    ],
+  },
+  y: {
+    keyframes: [
+      { offset: 0, value: 0 },
+      { offset: 1, value: 5 },
+    ],
+    easing: "linear",
+  },
+  scale: {
+    keyframes: [
+      { offset: 0, value: -1 },
+      { offset: 1, value: 2 },
+    ],
+    easing: "ease",
+  },
+  rotation: {
+    keyframes: [
+      { offset: 0, value: 0 },
+      { offset: 1, value: 360 },
+    ],
+    easing: "ease-in-out",
+  },
+} as const;
+
 /** Every optional property of the format set at least once; must stay valid. */
 export const maximalDesign = {
   $schema:
@@ -83,11 +133,13 @@ export const maximalDesign = {
       layers: [{ type: "rect", width: 40, height: 16, fill: "{{props.tint}}" }],
     },
   },
+  animation: { duration: 2000, loop: false },
   layers: [
     {
       type: "group",
       id: "group",
       ...common,
+      animate: transforms,
       width: 100,
       height: 100,
       clip: false,
@@ -103,6 +155,7 @@ export const maximalDesign = {
           fill: "#fff",
           stroke: "#000",
           strokeWidth: 1,
+          animate: { ...transforms, fill: tint, stroke: tint },
         },
         {
           type: "ellipse",
@@ -113,6 +166,7 @@ export const maximalDesign = {
           fill: "#fff",
           stroke: "#000",
           strokeWidth: 1,
+          animate: { fill: tint },
         },
         {
           type: "path",
@@ -122,6 +176,7 @@ export const maximalDesign = {
           fill: "none",
           stroke: "#000",
           strokeWidth: 1,
+          animate: { draw: fade, stroke: tint },
         },
         {
           type: "text",
@@ -136,6 +191,7 @@ export const maximalDesign = {
           lineHeight: 1,
           letterSpacing: 0,
           align: "end",
+          animate: { fill: tint, x: transforms.x },
         },
         {
           type: "image",
@@ -146,6 +202,7 @@ export const maximalDesign = {
           height: 8,
           fit: "cover",
           alt: "A photo",
+          animate: { rotation: transforms.rotation },
         },
         {
           type: "component",
@@ -155,6 +212,7 @@ export const maximalDesign = {
           width: 40,
           height: 16,
           props: { label: "Hi", size: 2, on: true, tint: "{{theme.tint}}" },
+          animate: { scale: transforms.scale },
         },
       ],
     },

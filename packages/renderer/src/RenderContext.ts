@@ -1,5 +1,6 @@
 import type { Design } from "@readmint/format";
 import type { ExprResult, Template } from "@readmint/expr";
+import { AnimationCss } from "./AnimationCss.js";
 import type { LoadedFont } from "./loadFont.js";
 import type { LoadedImage } from "./loadImage.js";
 import type { Bounds } from "./pathBounds.js";
@@ -25,9 +26,17 @@ export class RenderContext {
   readonly imageBytes = new Map<string, number>();
   /** Bounds of path data by layer pointer: `d` is never bound, so every repeat copy of a layer shares them. */
   readonly pathBounds = new Map<string, Bounds | undefined>();
+  /** Lengths of path data drawn on by a `draw` track, by layer pointer, like `pathBounds`. */
+  readonly pathLengths = new Map<string, number>();
+  /** Track pointers that already warned `animation-cut`: one warning per track, however many copies. */
+  readonly cutTracks = new Set<string>();
+  /** The milliseconds of the frame to draw; undefined draws the animated SVG (static attributes at frame 0). */
+  readonly time: number | undefined;
+  readonly animationCss: AnimationCss;
   private readonly trail: string[] = [];
   private depth = 0;
   private repeatCopies = 0;
+  private animationKeyframes = 0;
 
   constructor(
     readonly design: Design,
@@ -36,6 +45,8 @@ export class RenderContext {
     this.limits = mergeLimits(options.limits);
     this.assets = options.assets ?? {};
     this.writer = new SvgWriter(this.limits.maxOutputBytes);
+    this.time = options.time;
+    this.animationCss = new AnimationCss(this.writer);
   }
 
   /** Stops the render with an issue; the message names the component instances and repeat items around it. */
@@ -57,6 +68,19 @@ export class RenderContext {
         path,
         "too-large",
         `this repeat brings the render to ${String(this.repeatCopies)} copies; at most ${String(max)} are allowed (copies an if or visible drops count too)`,
+      );
+    }
+  }
+
+  /** Charges the keyframes of one track against `maxAnimationKeyframes`, before any of them is resolved. */
+  countAnimationKeyframes(path: string, count: number): void {
+    this.animationKeyframes += count;
+    const max = this.limits.maxAnimationKeyframes;
+    if (this.animationKeyframes > max) {
+      this.fail(
+        path,
+        "too-large",
+        `this track brings the render to ${String(this.animationKeyframes)} animation keyframes; at most ${String(max)} are allowed (every repeat copy counts)`,
       );
     }
   }

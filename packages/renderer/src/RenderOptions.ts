@@ -16,4 +16,10 @@ export interface RenderOptions {
   readonly locale?: string;
   readonly assets?: RenderAssets;
   readonly limits?: Partial<RenderLimits>;
+  /**
+   * Milliseconds on the design's timeline: renders that frame as a static SVG (no CSS animation), for raster export.
+   * A looping timeline starts over at its duration, one that does not loop holds its end. Finite, in 0..86400000;
+   * a design without `animation` ignores it.
+   */
+  readonly time?: number;
 }

@@ -112,6 +112,9 @@
       "additionalProperties": {
         "$ref": "#/$defs/ComponentDefinition"
       }
+    },
+    "animation": {
+      "$ref": "#/$defs/Animation"
     }
   },
   "required": [
@@ -612,6 +615,9 @@
             "repeat": {
               "$ref": "#/$defs/Repeat"
             },
+            "animate": {
+              "$ref": "#/$defs/LayerAnimation"
+            },
             "children": {
               "type": "array",
               "items": {
@@ -742,6 +748,9 @@
             },
             "repeat": {
               "$ref": "#/$defs/Repeat"
+            },
+            "animate": {
+              "$ref": "#/$defs/ShapeAnimation"
             },
             "width": {
               "anyOf": [
@@ -886,6 +895,9 @@
             "repeat": {
               "$ref": "#/$defs/Repeat"
             },
+            "animate": {
+              "$ref": "#/$defs/ShapeAnimation"
+            },
             "width": {
               "anyOf": [
                 {
@@ -1017,6 +1029,9 @@
             "repeat": {
               "$ref": "#/$defs/Repeat"
             },
+            "animate": {
+              "$ref": "#/$defs/PathAnimation"
+            },
             "d": {
               "type": "string",
               "minLength": 1,
@@ -1128,6 +1143,9 @@
             },
             "repeat": {
               "$ref": "#/$defs/Repeat"
+            },
+            "animate": {
+              "$ref": "#/$defs/TextAnimation"
             },
             "content": {
               "type": "string",
@@ -1295,6 +1313,9 @@
             "repeat": {
               "$ref": "#/$defs/Repeat"
             },
+            "animate": {
+              "$ref": "#/$defs/LayerAnimation"
+            },
             "asset": {
               "$ref": "#/$defs/Id"
             },
@@ -1424,6 +1445,9 @@
             "repeat": {
               "$ref": "#/$defs/Repeat"
             },
+            "animate": {
+              "$ref": "#/$defs/LayerAnimation"
+            },
             "ref": {
               "$ref": "#/$defs/Id"
             },
@@ -1481,6 +1505,584 @@
           "additionalProperties": false
         }
       ]
+    },
+    "Easing": {
+      "anyOf": [
+        {
+          "type": "string",
+          "enum": [
+            "linear",
+            "ease",
+            "ease-in",
+            "ease-out",
+            "ease-in-out"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "x1": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "y1": {
+              "type": "number",
+              "minimum": -10,
+              "maximum": 10
+            },
+            "x2": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "y2": {
+              "type": "number",
+              "minimum": -10,
+              "maximum": 10
+            }
+          },
+          "required": [
+            "x1",
+            "y1",
+            "x2",
+            "y2"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "UnitTrack": {
+      "type": "object",
+      "properties": {
+        "keyframes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "offset": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "value": {
+                "anyOf": [
+                  {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  {
+                    "$ref": "#/$defs/Binding"
+                  }
+                ]
+              },
+              "easing": {
+                "$ref": "#/$defs/Easing"
+              }
+            },
+            "required": [
+              "offset",
+              "value"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 2,
+          "maxItems": 32
+        },
+        "duration": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 60000
+            },
+            {
+              "$ref": "#/$defs/Binding"
+            }
+          ]
+        },
+        "delay": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 60000
+            },
+            {
+              "$ref": "#/$defs/Binding"
+            }
+          ]
+        },
+        "stagger": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 60000
+            },
+            {
+              "$ref": "#/$defs/Binding"
+            }
+          ]
+        },
+        "easing": {
+          "$ref": "#/$defs/Easing"
+        }
+      },
+      "required": [
+        "keyframes"
+      ],
+      "additionalProperties": false
+    },
+    "PositionTrack": {
+      "type": "object",
+      "properties": {
+        "keyframes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "offset": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "value": {
+                "anyOf": [
+                  {
+                    "type": "number",
+                    "minimum": -100000,
+                    "maximum": 100000
+                  },
+                  {
+                    "$ref": "#/$defs/Binding"
+                  }
+                ]
+              },
+              "easing": {
+                "$ref": "#/$defs/Easing"
+              }
+            },
+            "required": [
+              "offset",
+              "value"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 2,
+          "maxItems": 32
+        },
+        "duration": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 60000
+            },
+            {
+              "$ref": "#/$defs/Binding"
+            }
+          ]
+        },
+        "delay": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 60000
+            },
+            {
+              "$ref": "#/$defs/Binding"
+            }
+          ]
+        },
+        "stagger": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 60000
+            },
+            {
+              "$ref": "#/$defs/Binding"
+            }
+          ]
+        },
+        "easing": {
+          "$ref": "#/$defs/Easing"
+        }
+      },
+      "required": [
+        "keyframes"
+      ],
+      "additionalProperties": false
+    },
+    "ScaleTrack": {
+      "type": "object",
+      "properties": {
+        "keyframes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "offset": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "value": {
+                "anyOf": [
+                  {
+                    "type": "number",
+                    "minimum": -100,
+                    "maximum": 100
+                  },
+                  {
+                    "$ref": "#/$defs/Binding"
+                  }
+                ]
+              },
+              "easing": {
+                "$ref": "#/$defs/Easing"
+              }
+            },
+            "required": [
+              "offset",
+              "value"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 2,
+          "maxItems": 32
+        },
+        "duration": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 60000
+            },
+            {
+              "$ref": "#/$defs/Binding"
+            }
+          ]
+        },
+        "delay": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 60000
+            },
+            {
+              "$ref": "#/$defs/Binding"
+            }
+          ]
+        },
+        "stagger": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 60000
+            },
+            {
+              "$ref": "#/$defs/Binding"
+            }
+          ]
+        },
+        "easing": {
+          "$ref": "#/$defs/Easing"
+        }
+      },
+      "required": [
+        "keyframes"
+      ],
+      "additionalProperties": false
+    },
+    "RotationTrack": {
+      "type": "object",
+      "properties": {
+        "keyframes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "offset": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "value": {
+                "anyOf": [
+                  {
+                    "type": "number",
+                    "minimum": -360,
+                    "maximum": 360
+                  },
+                  {
+                    "$ref": "#/$defs/Binding"
+                  }
+                ]
+              },
+              "easing": {
+                "$ref": "#/$defs/Easing"
+              }
+            },
+            "required": [
+              "offset",
+              "value"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 2,
+          "maxItems": 32
+        },
+        "duration": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 60000
+            },
+            {
+              "$ref": "#/$defs/Binding"
+            }
+          ]
+        },
+        "delay": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 60000
+            },
+            {
+              "$ref": "#/$defs/Binding"
+            }
+          ]
+        },
+        "stagger": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 60000
+            },
+            {
+              "$ref": "#/$defs/Binding"
+            }
+          ]
+        },
+        "easing": {
+          "$ref": "#/$defs/Easing"
+        }
+      },
+      "required": [
+        "keyframes"
+      ],
+      "additionalProperties": false
+    },
+    "ColourTrack": {
+      "type": "object",
+      "properties": {
+        "keyframes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "offset": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "value": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/Colour"
+                  },
+                  {
+                    "$ref": "#/$defs/Binding"
+                  }
+                ]
+              },
+              "easing": {
+                "$ref": "#/$defs/Easing"
+              }
+            },
+            "required": [
+              "offset",
+              "value"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 2,
+          "maxItems": 32
+        },
+        "duration": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 60000
+            },
+            {
+              "$ref": "#/$defs/Binding"
+            }
+          ]
+        },
+        "delay": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 60000
+            },
+            {
+              "$ref": "#/$defs/Binding"
+            }
+          ]
+        },
+        "stagger": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 60000
+            },
+            {
+              "$ref": "#/$defs/Binding"
+            }
+          ]
+        },
+        "easing": {
+          "$ref": "#/$defs/Easing"
+        }
+      },
+      "required": [
+        "keyframes"
+      ],
+      "additionalProperties": false
+    },
+    "LayerAnimation": {
+      "type": "object",
+      "properties": {
+        "opacity": {
+          "$ref": "#/$defs/UnitTrack"
+        },
+        "x": {
+          "$ref": "#/$defs/PositionTrack"
+        },
+        "y": {
+          "$ref": "#/$defs/PositionTrack"
+        },
+        "scale": {
+          "$ref": "#/$defs/ScaleTrack"
+        },
+        "rotation": {
+          "$ref": "#/$defs/RotationTrack"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ShapeAnimation": {
+      "type": "object",
+      "properties": {
+        "opacity": {
+          "$ref": "#/$defs/UnitTrack"
+        },
+        "x": {
+          "$ref": "#/$defs/PositionTrack"
+        },
+        "y": {
+          "$ref": "#/$defs/PositionTrack"
+        },
+        "scale": {
+          "$ref": "#/$defs/ScaleTrack"
+        },
+        "rotation": {
+          "$ref": "#/$defs/RotationTrack"
+        },
+        "fill": {
+          "$ref": "#/$defs/ColourTrack"
+        },
+        "stroke": {
+          "$ref": "#/$defs/ColourTrack"
+        }
+      },
+      "additionalProperties": false
+    },
+    "PathAnimation": {
+      "type": "object",
+      "properties": {
+        "opacity": {
+          "$ref": "#/$defs/UnitTrack"
+        },
+        "x": {
+          "$ref": "#/$defs/PositionTrack"
+        },
+        "y": {
+          "$ref": "#/$defs/PositionTrack"
+        },
+        "scale": {
+          "$ref": "#/$defs/ScaleTrack"
+        },
+        "rotation": {
+          "$ref": "#/$defs/RotationTrack"
+        },
+        "fill": {
+          "$ref": "#/$defs/ColourTrack"
+        },
+        "stroke": {
+          "$ref": "#/$defs/ColourTrack"
+        },
+        "draw": {
+          "$ref": "#/$defs/UnitTrack"
+        }
+      },
+      "additionalProperties": false
+    },
+    "TextAnimation": {
+      "type": "object",
+      "properties": {
+        "opacity": {
+          "$ref": "#/$defs/UnitTrack"
+        },
+        "x": {
+          "$ref": "#/$defs/PositionTrack"
+        },
+        "y": {
+          "$ref": "#/$defs/PositionTrack"
+        },
+        "scale": {
+          "$ref": "#/$defs/ScaleTrack"
+        },
+        "rotation": {
+          "$ref": "#/$defs/RotationTrack"
+        },
+        "fill": {
+          "$ref": "#/$defs/ColourTrack"
+        }
+      },
+      "additionalProperties": false
+    },
+    "Animation": {
+      "type": "object",
+      "properties": {
+        "duration": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 60000
+        },
+        "loop": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "duration"
+      ],
+      "additionalProperties": false
     },
     "FontAsset": {
       "type": "object",

@@ -67,7 +67,37 @@ const fontText = {
   "align?": enumOf(["start", "middle", "end"]),
 };
 
-function layer(type: string, properties: Record<string, SchemaNode>): ObjectNode {
+const easing = ref("Easing");
+
+/** Keyframes with `value` (literal or bound) and the literal offsets and easings the format can check statically. */
+function track(label: string, value: SchemaNode): ObjectNode {
+  return object(`${label} track`, {
+    keyframes: array(
+      "a list of keyframes",
+      object("a keyframe", { offset: numberIn(ValueRanges.unit), value, "easing?": easing }),
+      { minItems: 2, maxItems: 32 },
+    ),
+    "duration?": bindable(numberIn(ValueRanges.animationDuration)),
+    "delay?": bindable(numberIn(ValueRanges.animationTime)),
+    "stagger?": bindable(numberIn(ValueRanges.animationTime)),
+    "easing?": easing,
+  });
+}
+
+const layerTracks = {
+  "opacity?": ref("UnitTrack"),
+  "x?": ref("PositionTrack"),
+  "y?": ref("PositionTrack"),
+  "scale?": ref("ScaleTrack"),
+  "rotation?": ref("RotationTrack"),
+};
+const shapeTracks = { ...layerTracks, "fill?": ref("ColourTrack"), "stroke?": ref("ColourTrack") };
+
+function layer(
+  type: string,
+  animation: string,
+  properties: Record<string, SchemaNode>,
+): ObjectNode {
   return object(`a ${type} layer`, {
     type: literal(type),
     "id?": id,
@@ -80,6 +110,7 @@ function layer(type: string, properties: Record<string, SchemaNode>): ObjectNode
     "style?": id,
     "if?": ref(bindingDef),
     "repeat?": ref("Repeat"),
+    "animate?": ref(animation),
     ...properties,
   });
 }
@@ -146,16 +177,16 @@ const defs = new Map<string, SchemaNode>([
   [
     "Layer",
     union("a layer", [
-      layer("group", {
+      layer("group", "LayerAnimation", {
         children: layers,
         "width?": size,
         "height?": size,
         "clip?": bindable(boolean()),
         "layout?": ref("Layout"),
       }),
-      layer("rect", { width: size, height: size, "radius?": length, ...shape }),
-      layer("ellipse", { width: size, height: size, ...shape }),
-      layer("path", {
+      layer("rect", "ShapeAnimation", { width: size, height: size, "radius?": length, ...shape }),
+      layer("ellipse", "ShapeAnimation", { width: size, height: size, ...shape }),
+      layer("path", "PathAnimation", {
         d: string("SVG path data (commands, numbers, separators)", {
           minLength: 1,
           maxLength: 100_000,
@@ -163,26 +194,54 @@ const defs = new Map<string, SchemaNode>([
         }),
         ...shape,
       }),
-      layer("text", {
+      layer("text", "TextAnimation", {
         content: string("text", { maxLength: 10_000 }),
         "width?": size,
         "fill?": paint,
         ...fontText,
       }),
-      layer("image", {
+      layer("image", "LayerAnimation", {
         asset: id,
         width: size,
         height: size,
         "fit?": enumOf(["contain", "cover", "fill"]),
         "alt?": string("alternative text", { maxLength: 500 }),
       }),
-      layer("component", {
+      layer("component", "LayerAnimation", {
         ref: id,
         "width?": size,
         "height?": size,
         "props?": record("component props", idKey, scalar),
       }),
     ]),
+  ],
+  [
+    "Easing",
+    choice(
+      enumOf(["linear", "ease", "ease-in", "ease-out", "ease-in-out"]),
+      object("a cubic-bezier easing", {
+        x1: numberIn(ValueRanges.unit),
+        y1: numberIn(ValueRanges.easingY),
+        x2: numberIn(ValueRanges.unit),
+        y2: numberIn(ValueRanges.easingY),
+      }),
+    ),
+  ],
+  ["UnitTrack", track("a unit", unit)],
+  ["PositionTrack", track("a position", coordinate)],
+  ["ScaleTrack", track("a scale", bindable(numberIn(ValueRanges.scale)))],
+  ["RotationTrack", track("a rotation", bindable(numberIn(ValueRanges.rotation)))],
+  ["ColourTrack", track("a colour", bindable(ref("Colour")))],
+  ["LayerAnimation", object("a layer animation", layerTracks)],
+  ["ShapeAnimation", object("a shape animation", shapeTracks)],
+  ["PathAnimation", object("a path animation", { ...shapeTracks, "draw?": ref("UnitTrack") })],
+  ["TextAnimation", object("a text animation", { ...layerTracks, "fill?": ref("ColourTrack") })],
+  [
+    "Animation",
+    object("an animation timeline", {
+      duration: numberIn(ValueRanges.animationDuration),
+      "loop?": boolean(),
+    }),
   ],
   [
     "FontAsset",
@@ -270,5 +329,6 @@ export const designSchemaV0: SchemaDocument = {
       "images?": record("image assets", idKey, ref("ImageAsset")),
     }),
     "components?": record("components", idKey, ref("ComponentDefinition")),
+    "animation?": ref("Animation"),
   }),
 };

@@ -1,0 +1,41 @@
+{
+  "version": 0,
+  "canvas": {
+    "width": 10,
+    "height": 10
+  },
+  "animation": {
+    "duration": 1000
+  },
+  "components": {
+    "ring": {
+      "layers": [
+        {
+          "type": "path",
+          "d": "M0 5 A5 5 0 1 1 10 5",
+          "stroke": "#000",
+          "animate": {
+            "draw": {
+              "keyframes": [
+                {
+                  "offset": 0,
+                  "value": 0
+                },
+                {
+                  "offset": 1,
+                  "value": 1
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  },
+  "layers": [
+    {
+      "type": "component",
+      "ref": "ring"
+    }
+  ]
+}

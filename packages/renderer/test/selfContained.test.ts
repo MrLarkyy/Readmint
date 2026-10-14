@@ -1,7 +1,9 @@
 import { describe, expect, test } from "vitest";
 import { renderSvg } from "../src/index.js";
 import { hostileFixtures, unvalidatedDesign } from "./hostileDesigns.js";
+import { animationDesigns } from "./animationDesigns.js";
 import { renderFixture } from "./renderFixture.js";
+import animation from "./renderer-animation.golden.js";
 import components from "./renderer-components.golden.js";
 import images from "./renderer-images.golden.js";
 import layout from "./renderer-layout.golden.js";
@@ -9,7 +11,7 @@ import shapes from "./renderer-shapes.golden.js";
 import text from "./renderer-text.golden.js";
 import { svgSafetyProblems } from "./svgSafety.js";
 
-const suites = [shapes, layout, text, images, components];
+const suites = [shapes, layout, text, images, components, animation];
 
 describe("every golden fixture is self-contained", () => {
   for (const suite of suites) {
@@ -21,6 +23,13 @@ describe("every golden fixture is self-contained", () => {
     );
   }
 });
+
+test.each(animationDesigns.map(({ name, input }) => [name, input] as const))(
+  "the animated SVG of %s is self-contained",
+  (_name, input) => {
+    expect(svgSafetyProblems(renderFixture(input))).toEqual([]);
+  },
+);
 
 describe("hostile designs stay inert", () => {
   test.each(hostileFixtures.map((fixture) => [fixture.name, fixture.input] as const))(

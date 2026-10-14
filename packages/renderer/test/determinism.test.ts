@@ -1,6 +1,7 @@
 import type { Design } from "@readmint/format";
 import { expect, test } from "vitest";
 import { renderSvg } from "../src/index.js";
+import { animationDesigns } from "./animationDesigns.js";
 import { renderFixture } from "./renderFixture.js";
 import layout from "./renderer-layout.golden.js";
 import shapes from "./renderer-shapes.golden.js";
@@ -24,6 +25,17 @@ test("rendering A, B, A in one process gives the same bytes for both A renders",
   renderFixture(input(text, "text-gradient-fill"));
   expect(renderFixture(a)).toBe(first);
 });
+
+test.each(animationDesigns.map(({ name, input }) => [name, input] as const))(
+  "the animated SVG and a frame of %s are the same bytes on every render",
+  (_name, input) => {
+    const first = renderFixture(input);
+    const frame = renderFixture({ ...input, time: 333.3 });
+    renderFixture(input);
+    expect(renderFixture(input)).toBe(first);
+    expect(renderFixture({ ...input, time: 333.3 })).toBe(frame);
+  },
+);
 
 test("ids restart with every render", () => {
   const svg = renderFixture(input(shapes, "rect-linear-gradient"));

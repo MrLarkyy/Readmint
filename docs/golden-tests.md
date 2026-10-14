@@ -44,6 +44,16 @@ committed to the repository must be redistributable and its licence file must si
 resvg-js 2.6.2 does not decode WebP images: a WebP draws nothing in the Node PNG while Chromium draws it, so a fixture
 with a WebP image fails the browser leg. Cover WebP with unit tests instead.
 
+## Animated designs
+
+The PNG goldens are static: a suite of an animated design pins frames, fixtures rendered with `time` (for example
+`packages/renderer/test/renderer-animation.golden.ts`, frames named `<design>-t<ms>`), which resvg and Chromium draw like
+any other SVG. The animated SVG itself (CSS animation, no `time`) is pinned by a file snapshot,
+`toMatchFileSnapshot("golden/<suite>-svg/<design>.svg")` in a folder of its own, so the suite's orphan clean-up never
+touches it; plain `pnpm test` writes a missing snapshot (not under `CI`), `vitest -u` updates a changed one. A browser
+test plays the animated SVG in Chromium, pauses every animation at each frame time and compares the computed styles
+with the attributes of the frame at that time.
+
 ## Normalized SVG
 
 Ids are renamed `id0`, `id1`, ... by definition order (references in `url(#x)`, `href`, `aria-labelledby`/`aria-describedby`, SMIL `begin`/`end`

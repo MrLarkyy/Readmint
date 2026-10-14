@@ -1,24 +1,11 @@
+import { walkPathData } from "./walkPathData.js";
+
 export interface Bounds {
   readonly minX: number;
   readonly minY: number;
   readonly maxX: number;
   readonly maxY: number;
 }
-
-const parameterCounts: Readonly<Record<string, number>> = {
-  m: 2,
-  l: 2,
-  h: 1,
-  v: 1,
-  c: 6,
-  s: 4,
-  q: 4,
-  t: 2,
-  a: 7,
-  z: 0,
-};
-
-const numberPattern = /[+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?/y;
 
 /**
  * A box containing the path, for layout only: the hull of every end and control point; an arc adds a box that
@@ -33,133 +20,25 @@ export function pathBounds(d: string): Bounds | undefined {
     if (y < box.minY) box.minY = y;
     if (y > box.maxY) box.maxY = y;
   };
-  let index = 0;
-  let command = "";
-  let x = 0;
-  let y = 0;
-  let startX = 0;
-  let startY = 0;
-  let controlX = 0;
-  let controlY = 0;
-  let previous = "";
-  const skip = () => {
-    while (index < d.length && /[\s,]/u.test(d.charAt(index))) index++;
-  };
-  const readNumber = (): number | undefined => {
-    skip();
-    numberPattern.lastIndex = index;
-    const match = numberPattern.exec(d);
-    if (match === null) return undefined;
-    index += match[0].length;
-    return Number(match[0]);
-  };
-  const readFlag = (): number | undefined => {
-    skip();
-    const char = d.charAt(index);
-    if (char !== "0" && char !== "1") return undefined;
-    index++;
-    return char === "1" ? 1 : 0;
-  };
-
-  for (;;) {
-    skip();
-    if (index >= d.length) break;
-    const char = d.charAt(index);
-    if (/[A-Za-z]/u.test(char)) {
-      if (parameterCounts[char.toLowerCase()] === undefined) break;
-      command = char;
-      index++;
-    } else if (command === "" || command === "z" || command === "Z") {
-      break;
-    }
-    const lower = command.toLowerCase();
-    const relative = command === lower;
-    const count = parameterCounts[lower] ?? 0;
-    const values: number[] = [];
-    for (let parameter = 0; parameter < count; parameter++) {
-      const value =
-        lower === "a" && (parameter === 3 || parameter === 4) ? readFlag() : readNumber();
-      if (value === undefined) return finish(box);
-      values.push(value);
-    }
-    const [a = 0, b = 0, c = 0, e = 0, f = 0, g = 0, h = 0] = values;
-    const baseX = relative ? x : 0;
-    const baseY = relative ? y : 0;
-    switch (lower) {
-      case "m":
-        x = baseX + a;
-        y = baseY + b;
-        startX = x;
-        startY = y;
-        include(x, y);
-        // Further pairs after a moveto are linetos.
-        command = relative ? "l" : "L";
-        break;
-      case "l":
-      case "t": {
-        if (lower === "t") {
-          const reflected = previous === "q" || previous === "t";
-          controlX = reflected ? 2 * x - controlX : x;
-          controlY = reflected ? 2 * y - controlY : y;
-          include(controlX, controlY);
-        }
-        x = baseX + a;
-        y = baseY + b;
-        include(x, y);
-        break;
-      }
-      case "h":
-        x = baseX + a;
-        include(x, y);
-        break;
-      case "v":
-        y = (relative ? y : 0) + a;
-        include(x, y);
-        break;
-      case "c":
-        include(baseX + a, baseY + b);
-        controlX = baseX + c;
-        controlY = baseY + e;
-        include(controlX, controlY);
-        x = baseX + f;
-        y = baseY + g;
-        include(x, y);
-        break;
-      case "s": {
-        const reflected = previous === "c" || previous === "s";
-        include(reflected ? 2 * x - controlX : x, reflected ? 2 * y - controlY : y);
-        controlX = baseX + a;
-        controlY = baseY + b;
-        include(controlX, controlY);
-        x = baseX + c;
-        y = baseY + e;
-        include(x, y);
-        break;
-      }
-      case "q":
-        controlX = baseX + a;
-        controlY = baseY + b;
-        include(controlX, controlY);
-        x = baseX + c;
-        y = baseY + e;
-        include(x, y);
-        break;
-      case "a": {
-        const endX = baseX + g;
-        const endY = baseY + h;
-        includeArc(include, x, y, endX, endY, Math.abs(a), Math.abs(b));
-        x = endX;
-        y = endY;
-        break;
-      }
-      case "z":
-        x = startX;
-        y = startY;
-        break;
-    }
-    previous = lower;
-    if (lower === "z") command = "";
-  }
+  walkPathData(d, {
+    move: include,
+    line: (_fromX, _fromY, x, y) => {
+      include(x, y);
+    },
+    quadratic: (_fromX, _fromY, cx, cy, x, y) => {
+      include(cx, cy);
+      include(x, y);
+    },
+    cubic: (_fromX, _fromY, c1x, c1y, c2x, c2y, x, y) => {
+      include(c1x, c1y);
+      include(c2x, c2y);
+      include(x, y);
+    },
+    arc: (fromX, fromY, rx, ry, x, y) => {
+      includeArc(include, fromX, fromY, x, y, rx, ry);
+    },
+    close: () => undefined,
+  });
   return finish(box);
 }
 

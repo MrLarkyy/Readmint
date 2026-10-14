@@ -51,6 +51,73 @@ export interface Repeat {
   readonly index?: string;
 }
 
+/** Named CSS easings; `linear` is the default. */
+export type EasingKeyword = "linear" | "ease" | "ease-in" | "ease-out" | "ease-in-out";
+
+/** A CSS `cubic-bezier(x1, y1, x2, y2)`: x in [0, 1], y in [-10, 10] (outside [0, 1] overshoots). */
+export interface CubicBezier {
+  readonly x1: number;
+  readonly y1: number;
+  readonly x2: number;
+  readonly y2: number;
+}
+
+export type Easing = EasingKeyword | CubicBezier;
+
+export interface Keyframe<T> {
+  /** Fraction of the track's duration, in [0, 1]; offsets of a track never decrease. */
+  readonly offset: number;
+  readonly value: Bindable<T>;
+  /** Easing from this keyframe to the next; the track's easing when absent. */
+  readonly easing?: Easing;
+}
+
+/** Keyframes of one property; times in milliseconds on the design's timeline. */
+export interface AnimationTrack<T> {
+  /** 2 to 32 keyframes. */
+  readonly keyframes: readonly Keyframe<T>[];
+  /** Default: the timeline's duration. */
+  readonly duration?: Bindable<number>;
+  readonly delay?: Bindable<number>;
+  /** Added to `delay` once per index of the layer's own `repeat`. */
+  readonly stagger?: Bindable<number>;
+  readonly easing?: Easing;
+}
+
+/** Tracks every layer kind takes; `x`, `y`, `scale` and `rotation` add to the layout around the box centre. */
+export interface LayerAnimation {
+  readonly opacity?: AnimationTrack<number>;
+  readonly x?: AnimationTrack<number>;
+  readonly y?: AnimationTrack<number>;
+  readonly scale?: AnimationTrack<number>;
+  readonly rotation?: AnimationTrack<number>;
+}
+
+export interface ShapeAnimation extends LayerAnimation {
+  readonly fill?: AnimationTrack<Colour>;
+  readonly stroke?: AnimationTrack<Colour>;
+}
+
+export interface PathAnimation extends ShapeAnimation {
+  /**
+   * The drawn fraction of the stroke, in [0, 1]: every subpath draws from its own start at the pace of the longest
+   * one, so shorter subpaths finish earlier. The path data must hold no arc.
+   */
+  readonly draw?: AnimationTrack<number>;
+}
+
+export interface TextAnimation extends LayerAnimation {
+  readonly fill?: AnimationTrack<Colour>;
+}
+
+/** The one timeline of a design. */
+export interface Animation {
+  /** Milliseconds, an integer in 1..60000. */
+  readonly duration: number;
+  /** Default true. */
+  readonly loop?: boolean;
+}
+
 export interface LayerBase {
   readonly id?: string;
   readonly name?: string;
@@ -62,6 +129,8 @@ export interface LayerBase {
   readonly style?: string;
   readonly if?: Binding;
   readonly repeat?: Repeat;
+  /** Needs the design's `animation`. */
+  readonly animate?: LayerAnimation;
 }
 
 export type Layout =
@@ -94,18 +163,21 @@ export interface RectLayer extends LayerBase, ShapeProps {
   readonly width: Bindable<number>;
   readonly height: Bindable<number>;
   readonly radius?: Bindable<number>;
+  readonly animate?: ShapeAnimation;
 }
 
 export interface EllipseLayer extends LayerBase, ShapeProps {
   readonly type: "ellipse";
   readonly width: Bindable<number>;
   readonly height: Bindable<number>;
+  readonly animate?: ShapeAnimation;
 }
 
 export interface PathLayer extends LayerBase, ShapeProps {
   readonly type: "path";
   /** SVG path data; only commands, numbers, separators and whitespace. */
   readonly d: string;
+  readonly animate?: PathAnimation;
 }
 
 export interface TextLayer extends LayerBase {
@@ -120,6 +192,7 @@ export interface TextLayer extends LayerBase {
   readonly lineHeight?: Bindable<number>;
   readonly letterSpacing?: Bindable<number>;
   readonly align?: TextAlign;
+  readonly animate?: TextAnimation;
 }
 
 export interface ImageLayer extends LayerBase {
@@ -204,4 +277,6 @@ export interface Design {
     readonly images?: Readonly<Record<string, ImageAsset>>;
   };
   readonly components?: Readonly<Record<string, ComponentDefinition>>;
+  /** The timeline every layer's `animate` runs on. */
+  readonly animation?: Animation;
 }

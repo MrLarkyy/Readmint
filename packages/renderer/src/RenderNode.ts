@@ -1,5 +1,6 @@
 import type { LoadedFont } from "./loadFont.js";
 import type { LoadedImage } from "./loadImage.js";
+import type { NodeAnimation } from "./NodeAnimation.js";
 import type { Paint } from "./paint.js";
 
 /**
@@ -14,6 +15,8 @@ export interface NodeBase {
   readonly height: number;
   readonly opacity: number | undefined;
   readonly rotation: number | undefined;
+  /** Tracks on the design's timeline; never changes the layout. */
+  readonly animation?: NodeAnimation;
 }
 
 export interface ShapeStyle {

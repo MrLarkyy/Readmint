@@ -1,0 +1,44 @@
+{
+  "version": 0,
+  "canvas": {
+    "width": 10,
+    "height": 10
+  },
+  "animation": {
+    "duration": 1000
+  },
+  "layers": [
+    {
+      "type": "group",
+      "children": [
+        {
+          "type": "ellipse",
+          "width": 1,
+          "height": 1,
+          "animate": {
+            "fill": {
+              "keyframes": [
+                {
+                  "offset": 0,
+                  "value": "#000"
+                },
+                {
+                  "offset": 0.6,
+                  "value": "#fff"
+                },
+                {
+                  "offset": 0.4,
+                  "value": "#000"
+                },
+                {
+                  "offset": 1,
+                  "value": "#fff"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

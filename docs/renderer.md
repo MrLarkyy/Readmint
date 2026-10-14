@@ -6,13 +6,14 @@ runs in Node (CLI, Action) and in the browser (editor preview): same design, dat
 ## API
 
 ```ts
-import { renderSvg, RenderLimits } from "@readmint/renderer";
+import { frameTimes, renderSvg, RenderLimits } from "@readmint/renderer";
 
 const result = renderSvg(design, {
   data, // a plain JSON object the expressions read; its own top-level keys are the root names
   locale: "de", // optional: the locale of the number and date filters, default "en"
   assets: { fonts: { inter: bytes }, images: { logo: bytes } }, // bytes for assets whose src is a path
   limits: { maxOutputBytes: 1_000_000 }, // optional overrides of RenderLimits
+  time: 400, // optional: the static frame at 400 ms of the design's timeline (see Animation)
 });
 
 type RenderResult =
@@ -27,6 +28,8 @@ type RenderResult =
   `options.assets` wins over its `src`; a `data:` URI `src` is decoded by the renderer; a path without bytes is
   `missing-asset`.
 - The render stops at the first issue, in document order. Issues and warnings carry a JSON Pointer into the design.
+- `time` must be a number of milliseconds in [0, 86400000] (else `range` at `""`); a design without `animation` ignores
+  it and renders the same bytes at any time.
 
 ### Expressions
 
@@ -125,11 +128,65 @@ Drawn in document order, first at the back. Layer `id` and `name` are not emitte
 - An animated GIF, APNG or WebP is inlined as is; browsers play it, rasterizers draw the first frame. The Node golden
   rasterizer (resvg-js 2.6.2) cannot decode WebP, so WebP has unit tests but no golden image.
 
+## Animation
+
+A design with an `animation` timeline ([design-format.md](design-format.md#animation)) renders two ways from one list of
+keyframes per track, so the browser and the frames cannot drift:
+
+- **The animated SVG** (no `time`): CSS animation for browsers (GitHub shows SVG through `<img>`, where CSS animation
+  plays and scripts never run). Every static attribute is the frame at time 0, so a viewer that ignores the CSS
+  (resvg, an editor thumbnail, a reader asking for reduced motion) shows the first frame.
+- **A frame** (`time: t`): the same elements with the attributes sampled at `t`, no class and no animation CSS: a
+  static SVG for raster export (RM-15) and the golden frames. A looping timeline draws `t mod duration`, one that does
+  not loop draws `min(t, duration)` (it holds its end).
+
+Each track is mapped onto the timeline: it holds its first value until it starts (`delay + stagger x index`), runs its
+keyframes over its `duration`, and holds its last value to the end of the timeline; a track running past the end is cut
+there (the warning `animation-cut`, once per track), the segment before the cut keeping its easing over the shorter
+span. Keyframe positions are percentages of the timeline rounded to 3
+decimals; keyframes landing on the same rounded position keep their order one step (0.001 %) apart. Values are rounded
+as written (numbers to 3 decimals, colour channels to integers), and the frames sample these rounded keyframes with the
+same curves CSS uses: `easing` from a keyframe to the next is written as that keyframe's `animation-timing-function`,
+and the frames solve the cubic-bezier with a fixed number of bisection steps using `+ - * /` only. Opacity, colours and
+paint opacities are clamped like CSS clamps them when an easing overshoots; transforms and the dash offset are not.
+
+Output:
+
+- Every animation of the render is known before anything is drawn, so the rules get a document prefix `r<hash>`:
+  `r` and 7 base-36 digits of the 32-bit FNV-1a hash of the rule text. `<style>` holds `@keyframes r<hash>k0, k1, ...`
+  (one per distinct track; tracks of one element with the same positions and easings share one) and classes
+  `.r<hash>a0, a1, ...` (`animation: <keyframes> <duration>ms linear infinite`, or `linear both` when the timeline
+  plays once), deduplicated by their text, so identical copies of a repeat share their rules. The root `<svg>` carries
+  `class="r<hash>"`. An SVG inlined into a page (the editor) shares the page's style: the prefix keeps two different
+  Readmint SVGs apart, while the same design still gives the same bytes. Only numbers, `#rrggbb` colours and fixed
+  words are written there; nothing from the design or the data. One rule
+  `@media (prefers-reduced-motion:reduce){.r<hash> [class]{animation:none!important}}` stops this document's
+  animations, and nothing of the host page, for readers who ask for less motion. No SMIL, no script. A frame and a
+  design without animation have no root class.
+- `opacity`, `fill` and `stroke` are animated on the element itself (`fill` with `fill-opacity` when a keyframe colour
+  has alpha). `draw` sets `stroke-dasharray="D D"` and animates `stroke-dashoffset` from `D` (nothing drawn) to 0 (all
+  drawn), `D` being the length of the longest subpath times 1.01 plus 1, rounded up to 3 decimals. Engines start the
+  dash pattern again at every subpath (each `M`, and the segment after a `Z`), so every subpath draws from its own start
+  at the pace of the longest one, and shorter subpaths are complete earlier. The length is computed (lines exactly,
+  curves as 32 chords each, `+ - * /` and `Math.sqrt` only), because resvg ignores `pathLength`. Paths with arcs cannot
+  `draw` (their length needs trigonometry).
+- `x`, `y`, `rotation` and `scale` each get a `<g>` of their own around the element, outermost first in that order,
+  whose CSS animates only that group's `transform` (the element keeps its own `transform` for its static `rotation`).
+  With a rotation or scale the groups sit in `<g transform="translate(cx cy)">` and the element is drawn moved by
+  `-cx -cy`, so both turn around the centre of the laid-out box. Layout never sees the animation.
+- resvg-js ignores `@keyframes`, `animation` and `@media`, which is why the static attributes carry frame 0.
+
+`frameTimes(animation, frameRate)` gives the frame times of a timeline (`report.animation` or the design's
+`animation`) at 1..60 frames per second: `i * 1000 / frameRate` below the duration, plus the duration itself when the
+timeline does not loop (a looping timeline's end equals time 0). A duration outside 1..60000 or a rate outside 1..60
+throws a `RangeError`.
+
 ## Output
 
-`<svg xmlns width height viewBox role="img">`, then `<title>` / `<desc>` from the design's `title` / `description`, then
-`<defs>` (the font style, gradients `g0, g1, ...`, clip paths `c0, c1, ...`, ids allocated per render in creation
-order), then the canvas background and the layers.
+`<svg xmlns width height viewBox role="img">` (an animated SVG adds `class="r<hash>"`, the prefix of its animation
+names), then `<title>` / `<desc>` from the design's `title` / `description`, then
+`<defs>` (the style with fonts and animation rules, gradients `g0, g1, ...`, clip paths `c0, c1, ...`, ids and
+animation names allocated per render in creation order), then the canvas background and the layers.
 
 - No `<script>`, no event attributes, no `foreignObject`, no external reference: every `href` is a `data:image/...`
   URI, every `url()` a `#fragment` or (in the style) a `data:font/...` URI. Every string from the design or the data
@@ -144,39 +201,44 @@ order), then the canvas background and the layers.
 
 `RenderLimits` (override per call with `limits`):
 
-| limit                | default | why                                                                                                                  | issue                |
-| -------------------- | ------- | -------------------------------------------------------------------------------------------------------------------- | -------------------- |
-| `maxOutputBytes`     | 5242880 | GitHub's camo proxy refuses larger images                                                                            | `too-large`          |
-| `maxImageBytes`      | 4194304 | one image, decoded size, checked before decoding                                                                     | `asset-too-large`    |
-| `maxFontBytes`       | 4194304 | one font, decoded size, checked before decoding                                                                      | `asset-too-large`    |
-| `maxImageSide`       | 8192    | pixels per side; keeps the raster path within memory                                                                 | `asset-too-large`    |
-| `maxAnimationFrames` | 1000    | frames of an animated image                                                                                          | `asset-too-large`    |
-| `maxTextLength`      | 10000   | characters of a text after its placeholders are filled                                                               | `too-large`          |
-| `maxExpressionSteps` | 5000000 | expression work of the whole render (under a second of the costliest string filters), including copies an `if` drops | `binding` (`budget`) |
-| `maxRepeatCopies`    | 100000  | copies made by every `repeat` of the render together, including copies an `if` or `visible: false` drops             | `too-large`          |
+| limit                   | default | why                                                                                                                  | issue                |
+| ----------------------- | ------- | -------------------------------------------------------------------------------------------------------------------- | -------------------- |
+| `maxOutputBytes`        | 5242880 | GitHub's camo proxy refuses larger images                                                                            | `too-large`          |
+| `maxImageBytes`         | 4194304 | one image, decoded size, checked before decoding                                                                     | `asset-too-large`    |
+| `maxFontBytes`          | 4194304 | one font, decoded size, checked before decoding                                                                      | `asset-too-large`    |
+| `maxImageSide`          | 8192    | pixels per side; keeps the raster path within memory                                                                 | `asset-too-large`    |
+| `maxAnimationFrames`    | 1000    | frames of an animated image                                                                                          | `asset-too-large`    |
+| `maxTextLength`         | 10000   | characters of a text after its placeholders are filled                                                               | `too-large`          |
+| `maxExpressionSteps`    | 5000000 | expression work of the whole render (under a second of the costliest string filters), including copies an `if` drops | `binding` (`budget`) |
+| `maxRepeatCopies`       | 100000  | copies made by every `repeat` of the render together, including copies an `if` or `visible: false` drops             | `too-large`          |
+| `maxAnimationKeyframes` | 100000  | keyframes of every animation track of the render together, every repeat copy counted, in a frame too                 | `too-large`          |
 
 The output size is counted while the SVG is written, and every layer reserves the least markup of its kind before it
 is built (a path also its data, a text its filled-in content, before either is measured), so a huge or nested `repeat`
-stops early instead of building everything. Fixed limits: 10000 items per `repeat` (expr, `binding` at
+stops early instead of building everything. Animation CSS counts toward `maxOutputBytes` like any markup, and every
+animated transform reserves its group (a `draw` its dash attributes) before the layer is built. Opacity and colour
+tracks write nothing of their own and the CSS is written only once every track is built, so `maxAnimationKeyframes`
+bounds that work: each track charges its keyframes before any is resolved. Fixed limits: 10000 items per `repeat` (expr, `binding` at
 `repeat/each`) and 64 levels of nested component instances (`too-large`).
 
 ## Issues
 
-| code                   | meaning                                                                                                                                                                                                                   |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `binding`              | an expression failed to compile or evaluate, the step budget ran out, a repeat `each` is not a list or has more than 10000 items, or its `as`/`index` names are unreadable or equal (the message names expr's error code) |
-| `type`                 | a value of the wrong kind (also a prop of the wrong type, a list or object written into text)                                                                                                                             |
-| `range`                | a number outside the format's range                                                                                                                                                                                       |
-| `missing-asset`        | an asset path without supplied bytes, or a reference to no asset                                                                                                                                                          |
-| `asset-format`         | not an accepted image or a malformed font; a data URI type that does not match                                                                                                                                            |
-| `asset-too-large`      | over a byte, side or frame limit                                                                                                                                                                                          |
-| `unsupported-font`     | WOFF, WOFF2 or a font collection                                                                                                                                                                                          |
-| `font-not-embeddable`  | the licence or the fsType forbids embedding                                                                                                                                                                               |
-| `too-large`            | the SVG passes `maxOutputBytes`, a text passes `maxTextLength`, the repeats pass `maxRepeatCopies` (at the `repeat` that crossed it), components nest deeper than 64 levels                                               |
-| `font-family-mismatch` | warning: the asset family differs from the family inside the font                                                                                                                                                         |
+| code                   | meaning                                                                                                                                                                                                                                             |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `binding`              | an expression failed to compile or evaluate, the step budget ran out, a repeat `each` is not a list or has more than 10000 items, or its `as`/`index` names are unreadable or equal (the message names expr's error code)                           |
+| `type`                 | a value of the wrong kind (also a prop of the wrong type, a list or object written into text)                                                                                                                                                       |
+| `range`                | a number outside the format's range, a keyframe offset below the one before it, a `time` outside [0, 86400000]                                                                                                                                      |
+| `missing-asset`        | an asset path without supplied bytes, or a reference to no asset                                                                                                                                                                                    |
+| `asset-format`         | not an accepted image or a malformed font; a data URI type that does not match                                                                                                                                                                      |
+| `asset-too-large`      | over a byte, side or frame limit                                                                                                                                                                                                                    |
+| `unsupported-font`     | WOFF, WOFF2 or a font collection                                                                                                                                                                                                                    |
+| `font-not-embeddable`  | the licence or the fsType forbids embedding                                                                                                                                                                                                         |
+| `too-large`            | the SVG passes `maxOutputBytes`, a text passes `maxTextLength`, the repeats pass `maxRepeatCopies` (at the `repeat` that crossed it), the tracks pass `maxAnimationKeyframes` (at the track that crossed it), components nest deeper than 64 levels |
+| `font-family-mismatch` | warning: the asset family differs from the family inside the font                                                                                                                                                                                   |
+| `animation-cut`        | warning: a track runs past the end of the timeline and is cut there (once per track, however many copies)                                                                                                                                           |
 
 ## Report
 
 A successful render reports `bytes` (UTF-8 size of the SVG), `limit` (the `maxOutputBytes` used) and, in first-use
 order, `fonts` and `images` as `{ asset, bytes }`: the bytes each asset adds to the SVG (an image used twice counts
-twice).
+twice). A design with a timeline also reports `animation: { duration, loop }`, what `frameTimes` takes.

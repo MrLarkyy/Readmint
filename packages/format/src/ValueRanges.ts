@@ -27,6 +27,13 @@ export const ValueRanges = Object.freeze({
   letterSpacing: range({ minimum: -100, maximum: 100 }),
   canvasSide: range({ minimum: 1, maximum: 4096 }, true),
   columns: range({ minimum: 1, maximum: 1000 }, true),
+  /** Delays and staggers in milliseconds. */
+  animationTime: range({ minimum: 0, maximum: 60_000 }, true),
+  /** The timeline and track durations in milliseconds. */
+  animationDuration: range({ minimum: 1, maximum: 60_000 }, true),
+  scale: range({ minimum: -100, maximum: 100 }),
+  /** The y coordinates of a cubic-bezier easing; above 1 or below 0 overshoots. */
+  easingY: range({ minimum: -10, maximum: 10 }),
 });
 
 export type ValueRangeName = keyof typeof ValueRanges;

@@ -16,6 +16,8 @@ export interface RenderLimits {
   readonly maxExpressionSteps: number;
   /** Copies made by every `repeat` of the render together, counted before `if` or `visible` drops any. */
   readonly maxRepeatCopies: number;
+  /** Keyframes of every animation track of the render together, every repeat copy counted, frames as well. */
+  readonly maxAnimationKeyframes: number;
 }
 
 export const RenderLimits: RenderLimits = Object.freeze({
@@ -31,4 +33,9 @@ export const RenderLimits: RenderLimits = Object.freeze({
   maxExpressionSteps: 5_000_000,
   /** Ten times the most items one repeat takes; copies an `if` drops cost work but write nothing, so output cannot bound them. */
   maxRepeatCopies: 100_000,
+  /**
+   * Some 45 times what a 53 x 7 calendar with three tracks a cell uses; opacity and colour tracks write no markup of
+   * their own and their CSS is built before it is written, so output cannot bound them.
+   */
+  maxAnimationKeyframes: 100_000,
 });
