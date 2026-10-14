@@ -1,9 +1,12 @@
 import type { ComponentDefinition, Design, Layer } from "@readmint/format";
 import { describe, expect, test } from "vitest";
 import { renderSvg, type RenderResult } from "../src/index.js";
-import { testEvaluator } from "./testEvaluator.js";
 
-function render(layers: Layer[], data?: unknown, components?: Design["components"]): RenderResult {
+function render(
+  layers: Layer[],
+  data?: Readonly<Record<string, unknown>>,
+  components?: Design["components"],
+): RenderResult {
   return renderSvg(
     {
       version: 0,
@@ -11,7 +14,7 @@ function render(layers: Layer[], data?: unknown, components?: Design["components
       layers,
       ...(components ? { components } : {}),
     },
-    { data, expressions: testEvaluator },
+    { data: data ?? {} },
   );
 }
 
@@ -67,12 +70,41 @@ describe("repeat", () => {
     ]);
   });
 
-  test("each must give a list", () => {
+  test("each must give a list; null (missing data) repeats nothing", () => {
     expect(
       render([{ type: "rect", width: 1, height: 1, repeat: { each: "{{n}}" } }], { n: 3 }),
     ).toMatchObject({
       ok: false,
-      issues: [{ path: "/layers/0/repeat/each", code: "type" }],
+      issues: [{ path: "/layers/0/repeat/each", code: "binding" }],
+    });
+    const none = render(
+      [
+        { type: "rect", width: 1, height: 1, repeat: { each: "{{user.repos}}" } },
+        { type: "rect", width: 2, height: 1 },
+      ],
+      { user: null },
+    );
+    expect(rects(none)).toEqual(['<rect x="0" y="0" width="2" height="1"/>']);
+  });
+
+  test("more than 10000 items is refused before any copy is built", () => {
+    const result = render([{ type: "rect", width: 1, height: 1, repeat: { each: "{{list}}" } }], {
+      list: new Array<number>(10_001).fill(1),
+    });
+    expect(result).toMatchObject({
+      ok: false,
+      issues: [{ path: "/layers/0/repeat/each", code: "binding" }],
+    });
+    expect(result.ok ? "" : result.issues[0]?.message).toContain("(too-large)");
+  });
+
+  test.each([
+    ["a name an expression cannot read", { each: "{{list}}", as: "repo-1" }],
+    ["the same name twice", { each: "{{list}}", as: "a", index: "a" }],
+  ] as const)("%s is an issue at the repeat", (_name, repeat) => {
+    expect(render([{ type: "rect", width: 1, height: 1, repeat }], { list: [1] })).toMatchObject({
+      ok: false,
+      issues: [{ path: "/layers/0/repeat", code: "binding" }],
     });
   });
 
@@ -91,12 +123,12 @@ describe("repeat", () => {
   test("data keys named like prototype members are plain values", () => {
     const result = render(
       [{ type: "rect", width: "{{constructor}}", height: 1 }],
-      JSON.parse('{"constructor": 9}'),
+      JSON.parse('{"constructor": 9}') as Record<string, unknown>,
     );
     expect(rects(result)).toEqual(['<rect x="0" y="0" width="9" height="1"/>']);
     expect(render([{ type: "rect", width: "{{toString}}", height: 1 }], {})).toMatchObject({
       ok: false,
-      issues: [{ code: "type" }],
+      issues: [{ code: "binding" }],
     });
   });
 });
@@ -174,9 +206,10 @@ describe("visibility", () => {
         { type: "rect", id: "keep", name: "Kept", width: 1, height: 1 },
         { type: "rect", width: 2, height: 1, visible: false },
         { type: "rect", width: 3, height: 1, if: "{{missing}}" },
+        { type: "rect", width: 5, height: 1, if: "{{empty}}" },
         { type: "rect", width: 4, height: 1, if: "{{yes}}" },
       ],
-      { yes: 1 },
+      { yes: 1, missing: null, empty: [] },
     );
     expect(rects(result)).toEqual([
       '<rect x="0" y="0" width="1" height="1"/>',

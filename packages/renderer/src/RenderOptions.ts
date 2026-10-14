@@ -1,4 +1,3 @@
-import type { ExpressionEvaluator } from "./ExpressionEvaluator.js";
 import type { RenderLimits } from "./RenderLimits.js";
 
 /**
@@ -11,10 +10,10 @@ export interface RenderAssets {
 }
 
 export interface RenderOptions {
-  /** Data the bindings read; its own keys become the root scope. */
-  readonly data?: unknown;
+  /** JSON data the expressions read (`@readmint/expr`): its own top-level keys are the root names. */
+  readonly data?: Readonly<Record<string, unknown>>;
+  /** BCP 47 tag the `number`, `compact`, `percent` and `date` filters format for; default `en`. */
+  readonly locale?: string;
   readonly assets?: RenderAssets;
-  /** Needed as soon as the design holds a binding or a `{{` in a text. */
-  readonly expressions?: ExpressionEvaluator;
   readonly limits?: Partial<RenderLimits>;
 }

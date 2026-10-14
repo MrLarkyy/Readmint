@@ -1,10 +1,11 @@
 import { ValueRanges, type GradientStop } from "@readmint/format";
-import type { RenderScope } from "./ExpressionEvaluator.js";
+import type { Scope } from "@readmint/expr";
 import { formatNumber } from "./formatNumber.js";
 import { parseColour, type PaintColour } from "./parseColour.js";
 import { pointer } from "./pointer.js";
 import type { RenderContext } from "./RenderContext.js";
-import { echo, evaluateBinding, isBinding, resolveColour, resolveNumber } from "./resolveValue.js";
+import { evaluateBinding } from "./expressions.js";
+import { echo, isBinding, resolveColour, resolveNumber } from "./resolveValue.js";
 import type { SvgWriter } from "./SvgWriter.js";
 
 export interface PaintStop {
@@ -32,7 +33,7 @@ export function resolvePaint(
   context: RenderContext,
   value: unknown,
   path: string,
-  scope: RenderScope,
+  scope: Scope,
 ): Paint | undefined {
   if (value === undefined) return undefined;
   const actual = isBinding(value) ? evaluateBinding(context, value, path, scope) : value;
@@ -59,7 +60,7 @@ function resolveGradient(
   context: RenderContext,
   gradient: Readonly<Record<string, unknown>>,
   path: string,
-  scope: RenderScope,
+  scope: Scope,
 ): Paint {
   const coordinate = (key: string, fallback: number) => {
     const value = gradient[key];

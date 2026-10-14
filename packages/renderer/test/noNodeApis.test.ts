@@ -4,7 +4,8 @@ import ts from "typescript";
 import { describe, expect, test } from "vitest";
 
 const packagesDir = join(import.meta.dirname, "..", "..");
-const shared = ["renderer", "fonts"];
+// expr is part of the render path: the renderer evaluates every binding with it.
+const shared = ["renderer", "fonts", "expr"];
 
 function sources(name: string): { file: string; code: string }[] {
   const dir = join(packagesDir, name, "src");
@@ -50,7 +51,8 @@ describe("shared renderer code uses only ECMAScript", () => {
           expect(
             specifier.startsWith("./") ||
               specifier === "@readmint/format" ||
-              specifier === "@readmint/fonts",
+              specifier === "@readmint/fonts" ||
+              specifier === "@readmint/expr",
             `${file} imports ${specifier}`,
           ).toBe(true);
         }
@@ -59,7 +61,7 @@ describe("shared renderer code uses only ECMAScript", () => {
   }
 });
 
-test("renderer, fonts and format compile with the ES2023 library and no ambient types", () => {
+test("renderer, fonts, expr and format compile with the ES2023 library and no ambient types", () => {
   const options: ts.CompilerOptions = {
     target: ts.ScriptTarget.ES2023,
     lib: ["lib.es2023.d.ts"],
@@ -76,9 +78,10 @@ test("renderer, fonts and format compile with the ES2023 library and no ambient 
     paths: {
       "@readmint/format": ["format/src/index.ts"],
       "@readmint/fonts": ["fonts/src/index.ts"],
+      "@readmint/expr": ["expr/src/index.ts"],
     },
   };
-  const roots = ["renderer", "fonts", "format"].map((name) =>
+  const roots = ["renderer", "fonts", "expr", "format"].map((name) =>
     join(packagesDir, name, "src", "index.ts"),
   );
   const program = ts.createProgram(roots, options);

@@ -1,5 +1,5 @@
 import { ValueRanges, type Layer } from "@readmint/format";
-import type { RenderScope } from "./ExpressionEvaluator.js";
+import type { Scope } from "@readmint/expr";
 import { pointer } from "./pointer.js";
 import type { RenderContext } from "./RenderContext.js";
 import type { NodeBase } from "./RenderNode.js";
@@ -11,7 +11,7 @@ export function resolveBase(
   context: RenderContext,
   layer: Layer,
   path: string,
-  scope: RenderScope,
+  scope: Scope,
 ): Omit<NodeBase, "width" | "height"> {
   const opacity = resolveStyle(context, layer, path, "opacity");
   return {

@@ -2,10 +2,10 @@ import { defineGoldenSuite } from "@readmint/golden";
 import type { Layer } from "@readmint/format";
 import { renderFixture, type RenderFixture } from "./renderFixture.js";
 
-function design(layers: Layer[], data?: unknown): RenderFixture {
+function design(layers: Layer[], data?: Readonly<Record<string, unknown>>): RenderFixture {
   return {
     design: { version: 0, canvas: { width: 160, height: 100, background: "#ffffff" }, layers },
-    data,
+    ...(data === undefined ? {} : { data }),
   };
 }
 

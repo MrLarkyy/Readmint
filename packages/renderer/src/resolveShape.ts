@@ -5,7 +5,7 @@ import {
   type PathLayer,
   type RectLayer,
 } from "@readmint/format";
-import type { RenderScope } from "./ExpressionEvaluator.js";
+import type { Scope } from "@readmint/expr";
 import { resolvePaint } from "./paint.js";
 import { pathBounds } from "./pathBounds.js";
 import { pointer } from "./pointer.js";
@@ -19,7 +19,7 @@ export function resolveShapeStyle(
   context: RenderContext,
   layer: Layer,
   path: string,
-  scope: RenderScope,
+  scope: Scope,
 ): ShapeStyle {
   const fill = resolveStyle(context, layer, path, "fill");
   const stroke = resolveStyle(context, layer, path, "stroke");
@@ -41,7 +41,7 @@ function size(
   context: RenderContext,
   layer: RectLayer | EllipseLayer,
   path: string,
-  scope: RenderScope,
+  scope: Scope,
 ): { width: number; height: number } {
   return {
     width: resolveNumber(context, layer.width, pointer(path, "width"), ValueRanges.size, scope),
@@ -53,7 +53,7 @@ export function resolveRect(
   context: RenderContext,
   layer: RectLayer,
   path: string,
-  scope: RenderScope,
+  scope: Scope,
 ): RectNode {
   return {
     kind: "rect",
@@ -74,7 +74,7 @@ export function resolveEllipse(
   context: RenderContext,
   layer: EllipseLayer,
   path: string,
-  scope: RenderScope,
+  scope: Scope,
 ): EllipseNode {
   return {
     kind: "ellipse",
@@ -89,7 +89,7 @@ export function resolvePath(
   context: RenderContext,
   layer: PathLayer,
   path: string,
-  scope: RenderScope,
+  scope: Scope,
 ): PathNode {
   let bounds = context.pathBounds.get(path);
   if (!context.pathBounds.has(path)) {

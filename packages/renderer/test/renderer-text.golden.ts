@@ -3,7 +3,11 @@ import type { Layer } from "@readmint/format";
 import { renderFixture, type RenderFixture } from "./renderFixture.js";
 import { fontAssets, goldenFonts } from "./testAssets.js";
 
-function design(layers: Layer[], data?: unknown, height = 80): RenderFixture {
+function design(
+  layers: Layer[],
+  data?: Readonly<Record<string, unknown>>,
+  height = 80,
+): RenderFixture {
   return {
     design: {
       version: 0,
@@ -11,7 +15,7 @@ function design(layers: Layer[], data?: unknown, height = 80): RenderFixture {
       assets: { fonts: fontAssets },
       layers,
     },
-    data,
+    ...(data === undefined ? {} : { data }),
   };
 }
 

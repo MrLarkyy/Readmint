@@ -26,7 +26,7 @@ const badge: ComponentDefinition = {
   ],
 };
 
-function design(layers: Layer[], data?: unknown): RenderFixture {
+function design(layers: Layer[], data?: Readonly<Record<string, unknown>>): RenderFixture {
   return {
     design: {
       version: 0,
@@ -35,7 +35,7 @@ function design(layers: Layer[], data?: unknown): RenderFixture {
       components: { badge },
       layers,
     },
-    data,
+    ...(data === undefined ? {} : { data }),
   };
 }
 

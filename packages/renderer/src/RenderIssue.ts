@@ -1,6 +1,5 @@
 export type RenderIssueCode =
   | "binding"
-  | "no-evaluator"
   | "type"
   | "range"
   | "missing-asset"

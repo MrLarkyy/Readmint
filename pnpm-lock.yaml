@@ -80,6 +80,9 @@ importers:
 
   packages/renderer:
     dependencies:
+      '@readmint/expr':
+        specifier: workspace:*
+        version: link:../expr
       '@readmint/fonts':
         specifier: workspace:*
         version: link:../fonts

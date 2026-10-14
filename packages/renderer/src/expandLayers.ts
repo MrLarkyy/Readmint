@@ -7,25 +7,19 @@ import {
   type LayerType,
   type Layout,
 } from "@readmint/format";
-import type { RenderScope } from "./ExpressionEvaluator.js";
+import type { Scope } from "@readmint/expr";
+import { evaluateBinding, evaluateIf, repeatScopes } from "./expressions.js";
 import { placeChildren, type ResolvedLayout } from "./layout.js";
 import { ownEntry } from "./ownEntry.js";
 import { parseColour } from "./parseColour.js";
 import { pointer } from "./pointer.js";
 import type { RenderContext } from "./RenderContext.js";
 import type { GroupNode, RenderNode } from "./RenderNode.js";
-import { childScope } from "./renderScope.js";
 import { resolveBase } from "./resolveBase.js";
 import { resolveImage } from "./resolveImage.js";
 import { resolveEllipse, resolvePath, resolveRect } from "./resolveShape.js";
 import { resolveText } from "./resolveText.js";
-import {
-  echo,
-  evaluateBinding,
-  isBinding,
-  resolveBoolean,
-  resolveOptionalNumber,
-} from "./resolveValue.js";
+import { echo, isBinding, resolveBoolean, resolveOptionalNumber } from "./resolveValue.js";
 
 /**
  * The least markup each kind of node produces without its variable parts (`<g></g>`, a `<rect>` with its four
@@ -54,7 +48,7 @@ export function expandLayers(
   context: RenderContext,
   layers: readonly Layer[],
   basePath: string,
-  scope: RenderScope,
+  scope: Scope,
 ): RenderNode[] {
   const nodes: RenderNode[] = [];
   layers.forEach((layer, index) => {
@@ -67,7 +61,7 @@ function expandLayer(
   context: RenderContext,
   layer: Layer,
   path: string,
-  scope: RenderScope,
+  scope: Scope,
   out: RenderNode[],
 ): void {
   const repeat = layer.repeat;
@@ -75,26 +69,18 @@ function expandLayer(
     addLayer(context, layer, path, scope, out);
     return;
   }
-  const eachPath = pointer(pointer(path, "repeat"), "each");
-  const items = evaluateBinding(context, repeat.each, eachPath, scope);
-  if (!Array.isArray(items)) {
-    context.fail(eachPath, "type", `repeat needs a list, got ${echo(items)}`);
-  }
-  const itemName = repeat.as ?? "item";
-  const indexName = repeat.index ?? "index";
-  for (let index = 0; index < items.length; index++) {
-    const locals = { [itemName]: items[index] as unknown, [indexName]: index };
+  repeatScopes(context, repeat, path, scope).forEach((copy, index) => {
     context.within(`repeat item ${String(index)}`, () => {
-      addLayer(context, layer, path, childScope(scope, locals), out);
+      addLayer(context, layer, path, copy, out);
     });
-  }
+  });
 }
 
 function addLayer(
   context: RenderContext,
   layer: Layer,
   path: string,
-  scope: RenderScope,
+  scope: Scope,
   out: RenderNode[],
 ): void {
   if (
@@ -103,7 +89,7 @@ function addLayer(
   ) {
     return;
   }
-  if (layer.if !== undefined && !evaluateBinding(context, layer.if, pointer(path, "if"), scope)) {
+  if (layer.if !== undefined && !evaluateIf(context, layer.if, pointer(path, "if"), scope)) {
     return;
   }
   context.writer.reserve(minimumNodeBytes[layer.type]);
@@ -116,7 +102,7 @@ function resolveLayer(
   context: RenderContext,
   layer: Layer,
   path: string,
-  scope: RenderScope,
+  scope: Scope,
 ): RenderNode {
   switch (layer.type) {
     case "group":
@@ -140,7 +126,7 @@ function resolveGroup(
   context: RenderContext,
   layer: GroupLayer,
   path: string,
-  scope: RenderScope,
+  scope: Scope,
 ): GroupNode {
   const base = resolveBase(context, layer, path, scope);
   const width = resolveOptionalNumber(
@@ -178,7 +164,7 @@ function resolveLayout(
   context: RenderContext,
   layout: Layout | undefined,
   path: string,
-  scope: RenderScope,
+  scope: Scope,
 ): ResolvedLayout {
   if (layout === undefined || layout.type === "absolute") return { type: "absolute" };
   const gap =
@@ -201,7 +187,7 @@ function resolveComponent(
   context: RenderContext,
   layer: ComponentLayer,
   path: string,
-  scope: RenderScope,
+  scope: Scope,
 ): GroupNode {
   const base = resolveBase(context, layer, path, scope);
   const definition = ownEntry(context.design.components, layer.ref);
@@ -233,7 +219,7 @@ function resolveComponent(
   const definitionPath = pointer(pointer("/components", layer.ref), "layers");
   const children = context.within(`in component instance ${path}`, () =>
     context.nested(() =>
-      expandLayers(context, definition.layers, definitionPath, childScope(scope, { props })),
+      expandLayers(context, definition.layers, definitionPath, scope.with({ props })),
     ),
   );
   const content = placeChildren({ type: "absolute" }, children, { width, height });
@@ -253,7 +239,7 @@ function resolveProps(
   layer: ComponentLayer,
   definitions: Readonly<Record<string, ComponentPropDefinition>>,
   path: string,
-  scope: RenderScope,
+  scope: Scope,
 ): Readonly<Record<string, unknown>> {
   const props = Object.create(null) as Record<string, unknown>;
   for (const name of Object.keys(definitions)) {

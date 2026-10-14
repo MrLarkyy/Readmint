@@ -1,5 +1,5 @@
 import type { Design } from "@readmint/format";
-import type { ExpressionEvaluator } from "./ExpressionEvaluator.js";
+import type { ExprResult, Template } from "@readmint/expr";
 import type { LoadedFont } from "./loadFont.js";
 import type { LoadedImage } from "./loadImage.js";
 import type { Bounds } from "./pathBounds.js";
@@ -12,7 +12,6 @@ import { SvgWriter } from "./SvgWriter.js";
 /** Everything one render owns. Created per call, so nothing survives into the next render. */
 export class RenderContext {
   readonly limits: RenderLimits;
-  readonly evaluator: ExpressionEvaluator | undefined;
   readonly assets: RenderAssets;
   readonly writer: SvgWriter;
   readonly warnings: RenderIssue[] = [];
@@ -20,6 +19,8 @@ export class RenderContext {
   readonly fonts = new Map<string, LoadedFont>();
   /** Loaded images by asset id, in first-use order. */
   readonly images = new Map<string, LoadedImage>();
+  /** Compiled expressions by source text; a design string is compiled once per render. */
+  readonly templates = new Map<string, ExprResult<Template>>();
   /** Bytes each image adds to the output, every use counted. */
   readonly imageBytes = new Map<string, number>();
   /** Bounds of path data by layer pointer: `d` is never bound, so every repeat copy of a layer shares them. */
@@ -32,7 +33,6 @@ export class RenderContext {
     options: RenderOptions,
   ) {
     this.limits = mergeLimits(options.limits);
-    this.evaluator = options.expressions;
     this.assets = options.assets ?? {};
     this.writer = new SvgWriter(this.limits.maxOutputBytes);
   }

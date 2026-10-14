@@ -1,6 +1,5 @@
 export const packageName = "@readmint/renderer";
 
-export type { ExpressionEvaluator, RenderScope } from "./ExpressionEvaluator.js";
 export type { RenderIssue, RenderIssueCode } from "./RenderIssue.js";
 export type { RenderAssets, RenderOptions } from "./RenderOptions.js";
 export type { RenderAssetUsage, RenderReport } from "./RenderReport.js";

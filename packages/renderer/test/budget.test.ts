@@ -4,7 +4,6 @@ import { RenderLimits, renderSvg } from "../src/index.js";
 import { minimumNodeBytes } from "../src/expandLayers.js";
 import { utf8Length } from "../src/utf8Length.js";
 import { fontAssets } from "./testAssets.js";
-import { testEvaluator } from "./testEvaluator.js";
 
 test("the default output budget is the camo content length limit", () => {
   expect(RenderLimits.maxOutputBytes).toBe(5_242_880);
@@ -23,15 +22,22 @@ test("output over the budget fails with too-large naming the limit", () => {
   expect(result.ok ? "" : result.issues[0]?.message).toContain("100000 bytes");
 });
 
-test("a huge repeat from data stops early instead of building everything", () => {
-  const items = new Array<number>(5_000_000).fill(1);
+test("a huge nested repeat from data stops early instead of building everything", () => {
+  // 10000 is the most items one repeat takes (expr); nested, that is 10^8 possible rects.
+  const items = new Array<number>(10_000).fill(1);
   const design: Design = {
     version: 0,
     canvas: { width: 100, height: 100 },
-    layers: [{ type: "rect", width: 1, height: 1, repeat: { each: "{{items}}" } }],
+    layers: [
+      {
+        type: "group",
+        repeat: { each: "{{items}}", as: "row" },
+        children: [{ type: "rect", width: 1, height: 1, repeat: { each: "{{items}}" } }],
+      },
+    ],
   };
   const started = performance.now();
-  const result = renderSvg(design, { data: { items }, expressions: testEvaluator });
+  const result = renderSvg(design, { data: { items } });
   expect(result).toMatchObject({ ok: false, issues: [{ code: "too-large" }] });
   expect(performance.now() - started).toBeLessThan(2000);
 });
@@ -55,7 +61,7 @@ test.each([
   };
   const long = "word ".repeat(2000);
   const started = performance.now();
-  const result = renderSvg(design, { data: { items, long }, expressions: testEvaluator });
+  const result = renderSvg(design, { data: { items, long } });
   const elapsed = performance.now() - started;
   expect(result).toMatchObject({ ok: false, issues: [{ code: "too-large" }] });
   expect(elapsed).toBeLessThan(500);

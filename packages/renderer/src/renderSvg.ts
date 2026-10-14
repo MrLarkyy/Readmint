@@ -1,3 +1,4 @@
+import { createScope } from "@readmint/expr";
 import { ValueRanges, type Design } from "@readmint/format";
 import { escapeText } from "./escapeXml.js";
 import { expandLayers } from "./expandLayers.js";
@@ -9,7 +10,6 @@ import { renderLayer } from "./renderLayer.js";
 import type { RenderOptions } from "./RenderOptions.js";
 import type { RenderReport } from "./RenderReport.js";
 import type { RenderResult } from "./RenderResult.js";
-import { rootScope } from "./renderScope.js";
 import { resolveNumber } from "./resolveValue.js";
 
 /**
@@ -29,7 +29,10 @@ export function renderSvg(design: Design, options: RenderOptions = {}): RenderRe
 
 function render(context: RenderContext, options: RenderOptions): RenderResult {
   const { design, writer } = context;
-  const scope = rootScope(options.data);
+  const scope = createScope(
+    options.data ?? {},
+    options.locale === undefined ? {} : { locale: options.locale },
+  );
   const canvas = design.canvas;
   const width = resolveNumber(
     context,

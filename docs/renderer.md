@@ -9,9 +9,9 @@ runs in Node (CLI, Action) and in the browser (editor preview): same design, dat
 import { renderSvg, RenderLimits } from "@readmint/renderer";
 
 const result = renderSvg(design, {
-  data, // what bindings read; its own keys are the root scope
+  data, // a plain JSON object the expressions read; its own top-level keys are the root names
+  locale: "de", // optional: the locale of the number and date filters, default "en"
   assets: { fonts: { inter: bytes }, images: { logo: bytes } }, // bytes for assets whose src is a path
-  expressions, // ExpressionEvaluator, needed as soon as the design holds a binding or a {{ in a text
   limits: { maxOutputBytes: 1_000_000 }, // optional overrides of RenderLimits
 });
 
@@ -22,7 +22,7 @@ type RenderResult =
 
 - `design` must have passed `parseDesign` / `validateDesign` (`@readmint/format`). The renderer re-checks every value a
   binding gives against the ranges of the format (`ValueRanges`, shared with the schema), not the structure.
-- The render is pure and synchronous: it reads no file, no clock, no randomness and no locale. Asset bytes are keyed
+- The render is pure and synchronous: it reads no file, no clock, no randomness and no host locale. Asset bytes are keyed
   by asset id; the caller resolves paths (and keeps them inside the design's folder). An asset given in
   `options.assets` wins over its `src`; a `data:` URI `src` is decoded by the renderer; a path without bytes is
   `missing-asset`.
@@ -30,31 +30,31 @@ type RenderResult =
 
 ### Expressions
 
-The renderer does not parse expressions. The caller passes an `ExpressionEvaluator`:
+Bindings, `if`, `repeat` and text placeholders are evaluated by `@readmint/expr` ([expressions.md](expressions.md)),
+the one implementation the CLI, the Action and the editor all render with, so the preview equals the output. Its rules
+apply unchanged:
 
-```ts
-interface ExpressionEvaluator {
-  evaluate(binding: `{{${string}}}`, scope: RenderScope): unknown; // a bindable property
-  interpolate(template: string, scope: RenderScope): string; // a text content with placeholders
-}
-```
+- A bindable property that is exactly one placeholder keeps the value's type; it is then checked against the
+  property's type and the format's range.
+- `if` is false for `false`, `null`, `0`, `""` and `[]`, true for anything else (`evaluateCondition`).
+- `repeat.each` must give an array; `null` (missing data) repeats nothing; more than 10000 items, or `as` / `index`
+  that an expression could not read back or that are equal, fail the render (`expandRepeat`).
+- A text content is written as text: `null` as nothing, numbers as `String(n)`, booleans as `true` / `false` (`toText`,
+  also when the content is a single placeholder); an array or object has no text form and is a `type` issue.
+- Names are looked up in the locals first, then in the own top-level keys of `data`: in a `repeat` the item under `as`
+  (default `item`) and its position under `index` (default `index`); inside a component `props`, the definition's
+  defaults overlaid by the instance's props (a prop given as a binding is evaluated in the instance's scope, then
+  checked against the declared type).
 
-The CLI, the Action and the editor pass the same implementation (`@readmint/expr`), so the preview equals the output.
-The scope is a null-prototype object: the own keys of `data`, plus
-
-- in a `repeat`: the item under `as` (default `item`) and its position under `index` (default `index`);
-- inside a component: `props`, the definition's defaults overlaid by the instance's props (a prop given as a binding is
-  evaluated in the instance's scope, then checked against the declared type).
-
-Locals win over data keys. A thrown evaluator error becomes a `binding` issue carrying at most 200 characters of its
-message; keeping secrets out of messages is the evaluator's job.
+Each design string is compiled once per render. Every evaluation has expr's own step budget (100000 steps). An
+expression error ends the render with a `binding` issue whose message carries expr's message and code (for example
+`"{{ w / 0 }}": ... (not-finite)`); expr never puts a value read from the data into a message.
 
 ## Layers
 
 Drawn in document order, first at the back. Layer `id` and `name` are not emitted.
 
-- **repeat** gives one copy per item of `each` (which must evaluate to a list); then, per copy, `visible: false` or an
-  `if` that evaluates to a falsy value drops it. A dropped layer takes no slot in a stack or grid.
+- **repeat** gives one copy per item of `each`; then, per copy, `visible: false` or a falsy `if` drops it. A dropped layer takes no slot in a stack or grid.
 - **Position**: every layer has a box from its `x`/`y` (default 0) of its width and height. A `rect`, `ellipse` and
   `image` box is its `width` by `height`; a `path` box runs from its origin to the furthest point of its data (control
   points and a bound around arcs included, never smaller than the drawn path); a `text` box is described below; a
@@ -153,8 +153,7 @@ stripping of characters XML does not allow arrive with RM-25.
 
 | code                   | meaning                                                                                               |
 | ---------------------- | ----------------------------------------------------------------------------------------------------- |
-| `binding`              | the evaluator threw for a binding or a text                                                           |
-| `no-evaluator`         | the design holds a binding or a `{{` in a text but no evaluator was given                             |
+| `binding`              | an expression failed to compile or evaluate (the message names expr's error code)                     |
 | `type`                 | a value of the wrong kind (also a repeat `each` that is not a list, a bad prop)                       |
 | `range`                | a number outside the format's range                                                                   |
 | `missing-asset`        | an asset path without supplied bytes, or a reference to no asset                                      |

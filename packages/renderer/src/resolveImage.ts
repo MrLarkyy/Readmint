@@ -1,5 +1,5 @@
 import { ValueRanges, type ImageLayer } from "@readmint/format";
-import type { RenderScope } from "./ExpressionEvaluator.js";
+import type { Scope } from "@readmint/expr";
 import { loadImage } from "./loadImage.js";
 import { pointer } from "./pointer.js";
 import type { RenderContext } from "./RenderContext.js";
@@ -11,7 +11,7 @@ export function resolveImage(
   context: RenderContext,
   layer: ImageLayer,
   path: string,
-  scope: RenderScope,
+  scope: Scope,
 ): ImageNode {
   const base = resolveBase(context, layer, path, scope);
   return {

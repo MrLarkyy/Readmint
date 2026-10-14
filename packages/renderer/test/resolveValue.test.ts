@@ -1,16 +1,16 @@
 import type { Design, Layer } from "@readmint/format";
 import { describe, expect, test } from "vitest";
-import { renderSvg, type ExpressionEvaluator, type RenderIssue } from "../src/index.js";
-import { testEvaluator } from "./testEvaluator.js";
+import { renderSvg, type RenderIssue } from "../src/index.js";
+import { fontAssets } from "./testAssets.js";
 
 function issueOf(
   layer: Layer,
-  data: unknown,
+  data: Readonly<Record<string, unknown>>,
   extra: Partial<Design> = {},
 ): RenderIssue | undefined {
   const result = renderSvg(
     { version: 0, canvas: { width: 100, height: 100 }, layers: [layer], ...extra },
-    { data, expressions: testEvaluator },
+    { data },
   );
   return result.ok ? undefined : result.issues[0];
 }
@@ -25,13 +25,20 @@ describe("bound values are checked against the format ranges", () => {
       "range",
     ],
     ["zero size", { type: "rect", width: "{{v}}", height: 1 }, 0, "/layers/0/width", "range"],
-    ["NaN", { type: "rect", x: "{{v}}", width: 1, height: 1 }, Number.NaN, "/layers/0/x", "type"],
+    // NaN and Infinity are not JSON: expr refuses them where they are read (invalid-data).
+    [
+      "NaN",
+      { type: "rect", x: "{{v}}", width: 1, height: 1 },
+      Number.NaN,
+      "/layers/0/x",
+      "binding",
+    ],
     [
       "infinite",
       { type: "rect", y: "{{v}}", width: 1, height: 1 },
       Infinity,
       "/layers/0/y",
-      "type",
+      "binding",
     ],
     ["string", { type: "rect", width: 1, height: "{{v}}" }, "12", "/layers/0/height", "type"],
     [
@@ -124,7 +131,7 @@ describe("bound values are checked against the format ranges", () => {
   test("the canvas size is an integer up to 4096", () => {
     const result = renderSvg(
       { version: 0, canvas: { width: "{{w}}", height: 10 }, layers: [] },
-      { data: { w: 4097 }, expressions: testEvaluator },
+      { data: { w: 4097 } },
     );
     expect(result).toMatchObject({ ok: false, issues: [{ path: "/canvas/width", code: "range" }] });
   });
@@ -136,7 +143,7 @@ describe("bound values are checked against the format ranges", () => {
         canvas: { width: "{{w}}", height: 10, background: "{{bg}}" },
         layers: [{ type: "rect", width: "{{w}}", height: 5, fill: "{{c}}", visible: "{{on}}" }],
       },
-      { data: { w: 40, bg: "none", c: "#12345678", on: true }, expressions: testEvaluator },
+      { data: { w: 40, bg: "none", c: "#12345678", on: true } },
     );
     expect(result.ok && result.svg).toContain(
       '<rect x="0" y="0" width="40" height="5" fill="#123456" fill-opacity="0.471"/>',
@@ -144,75 +151,82 @@ describe("bound values are checked against the format ranges", () => {
   });
 });
 
-describe("evaluator problems", () => {
-  test("a throwing evaluator gives a binding issue with a capped message", () => {
-    const throwing: ExpressionEvaluator = {
-      evaluate: () => {
-        throw new Error(`bad ${"x".repeat(500)}`);
-      },
-      interpolate: () => "",
-    };
-    const result = renderSvg(
-      {
-        version: 0,
-        canvas: { width: 10, height: 10 },
-        layers: [{ type: "rect", width: "{{w}}", height: 1 }],
-      },
-      { expressions: throwing },
+describe("expressions (@readmint/expr)", () => {
+  const font = { f: fontAssets.medium };
+  const render = (layers: Layer[], data: Readonly<Record<string, unknown>> = {}) =>
+    renderSvg(
+      { version: 0, canvas: { width: 100, height: 40 }, assets: { fonts: font }, layers },
+      { data },
     );
+
+  test.each([
+    ["syntax", "{{ 1 + }}", {}, "syntax"],
+    ["unknown name", "{{ nope }}", {}, "unknown-name"],
+    ["not finite", "{{ w / 0 }}", { w: 5 }, "not-finite"],
+    ["data that is not JSON", "{{ w }}", { w: Number.NaN }, "invalid-data"],
+  ])("%s is a binding issue at the property", (_name, binding, data, code) => {
+    const result = render([{ type: "rect", width: binding as `{{${string}}}`, height: 1 }], data);
     expect(result).toMatchObject({
       ok: false,
       issues: [{ path: "/layers/0/width", code: "binding" }],
     });
-    const message = result.ok ? "" : (result.issues[0]?.message ?? "");
-    expect(message).toContain('"{{w}}" failed: bad xxx');
-    expect(message.length).toBeLessThan(300);
+    expect(result.ok ? "" : result.issues[0]?.message).toContain(`(${code})`);
   });
 
-  test("a throwing interpolation is a binding issue at the content", () => {
-    const throwing: ExpressionEvaluator = {
-      evaluate: () => 1,
-      interpolate: () => {
-        throw new Error("no such value");
-      },
-    };
-    const result = renderSvg(
-      {
-        version: 0,
-        canvas: { width: 10, height: 10 },
-        assets: { fonts: { f: { family: "F", src: "f.ttf", licence: { embedding: "allowed" } } } },
-        layers: [{ type: "text", content: "{{x}}", font: "f" }],
-      },
-      { expressions: throwing },
-    );
-    expect(result).toMatchObject({
-      ok: false,
-      issues: [
-        { path: "/layers/0/content", code: "binding", message: '"{{x}}" failed: no such value' },
+  test("an issue message never carries a value read from the data", () => {
+    const token = "ghp_secretTOKEN1234567890";
+    const result = render([{ type: "rect", width: "{{ secret + 1 }}", height: 1 }], {
+      secret: token,
+    });
+    expect(result).toMatchObject({ ok: false, issues: [{ code: "binding" }] });
+    expect(JSON.stringify(result)).not.toContain(token);
+  });
+
+  test("a text that is one placeholder is written as text with expr's rules", () => {
+    const result = render(
+      [
+        { type: "text", content: "{{ stars }}", font: "f" },
+        { type: "text", content: "{{ missing.name }}|{{ yes }}|{{ -0 }}", font: "f" },
       ],
+      { stars: 1234, yes: true, missing: null },
+    );
+    if (!result.ok) throw new Error(JSON.stringify(result.issues));
+    const lines = [...result.svg.matchAll(/<tspan [^>]*>([^<]*)<\/tspan>/gu)].map(
+      (match) => match[1],
+    );
+    expect(lines).toEqual(["1234", "|true|0"]);
+  });
+
+  test("a list or an object has no text form", () => {
+    expect(
+      render([{ type: "text", content: "{{ list }}", font: "f" }], { list: [1] }),
+    ).toMatchObject({
+      ok: false,
+      issues: [{ path: "/layers/0/content", code: "type" }],
+    });
+    expect(
+      render([{ type: "text", content: "a {{ list }}", font: "f" }], { list: [1] }),
+    ).toMatchObject({
+      ok: false,
+      issues: [{ path: "/layers/0/content", code: "binding" }],
     });
   });
 
-  test("no evaluator: a binding or a placeholder is a no-evaluator issue", () => {
-    const binding = renderSvg({
-      version: 0,
-      canvas: { width: 10, height: 10 },
-      layers: [{ type: "rect", width: 1, height: 1, if: "{{show}}" }],
-    });
-    expect(binding).toMatchObject({
-      ok: false,
-      issues: [{ path: "/layers/0/if", code: "no-evaluator" }],
-    });
-    const text = renderSvg({
-      version: 0,
-      canvas: { width: 10, height: 10 },
-      assets: { fonts: { f: { family: "F", src: "f.ttf", licence: { embedding: "allowed" } } } },
-      layers: [{ type: "text", content: "hi {{name}}", font: "f" }],
-    });
-    expect(text).toMatchObject({
-      ok: false,
-      issues: [{ path: "/layers/0/content", code: "no-evaluator" }],
-    });
+  test("the locale option reaches the number filters", () => {
+    const text = (locale?: string) => {
+      const result = renderSvg(
+        {
+          version: 0,
+          canvas: { width: 100, height: 40 },
+          assets: { fonts: font },
+          layers: [{ type: "text", content: "{{ n | number(1) }}", font: "f" }],
+        },
+        { data: { n: 1234.5 }, ...(locale === undefined ? {} : { locale }) },
+      );
+      return result.ok ? /<tspan [^>]*>([^<]*)</u.exec(result.svg)?.[1] : result.issues;
+    };
+    expect(text()).toBe("1,234.5");
+    expect(text("de")).toBe("1.234,5");
   });
 
   test("an interpolated text over the length limit is too large", () => {
@@ -223,7 +237,7 @@ describe("evaluator problems", () => {
         assets: { fonts: { f: { family: "F", src: "f.ttf", licence: { embedding: "allowed" } } } },
         layers: [{ type: "text", content: "{{long}}", font: "f" }],
       },
-      { data: { long: "a".repeat(10_001) }, expressions: testEvaluator },
+      { data: { long: "a".repeat(10_001) } },
     );
     expect(result).toMatchObject({
       ok: false,

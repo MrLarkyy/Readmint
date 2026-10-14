@@ -1,5 +1,5 @@
 import { ValueRanges, type TextLayer } from "@readmint/format";
-import type { RenderScope } from "./ExpressionEvaluator.js";
+import type { Scope } from "@readmint/expr";
 import { selectFont } from "./loadFont.js";
 import { measureText, type TextMeasure } from "./measureText.js";
 import { resolvePaint } from "./paint.js";
@@ -8,7 +8,8 @@ import type { RenderContext } from "./RenderContext.js";
 import type { TextNode } from "./RenderNode.js";
 import { resolveBase } from "./resolveBase.js";
 import { resolveStyle } from "./resolveStyle.js";
-import { echo, errorMessage, resolveOptionalNumber } from "./resolveValue.js";
+import { evaluateText } from "./expressions.js";
+import { resolveOptionalNumber } from "./resolveValue.js";
 import { wrapText } from "./wrapText.js";
 
 export const defaultFontSize = 16;
@@ -23,7 +24,7 @@ export function resolveText(
   context: RenderContext,
   layer: TextLayer,
   path: string,
-  scope: RenderScope,
+  scope: Scope,
 ): TextNode {
   const base = resolveBase(context, layer, path, scope);
   const number = (key: "fontSize" | "lineHeight" | "letterSpacing", fallback: number) => {
@@ -89,31 +90,8 @@ export function resolveText(
   };
 }
 
-function interpolate(
-  context: RenderContext,
-  content: string,
-  path: string,
-  scope: RenderScope,
-): string {
-  let text = content;
-  if (content.includes("{{")) {
-    const evaluator = context.evaluator;
-    if (evaluator === undefined) {
-      context.fail(
-        path,
-        "no-evaluator",
-        `${echo(content)} has placeholders but no expression evaluator was given`,
-      );
-    }
-    let result: unknown;
-    try {
-      result = evaluator.interpolate(content, scope);
-    } catch (error) {
-      context.fail(path, "binding", `${echo(content)} failed: ${errorMessage(error)}`);
-    }
-    if (typeof result !== "string") context.fail(path, "type", "the evaluator did not return text");
-    text = result;
-  }
+function interpolate(context: RenderContext, content: string, path: string, scope: Scope): string {
+  const text = evaluateText(context, content, path, scope);
   const max = context.limits.maxTextLength;
   if (text.length > max) {
     context.fail(
