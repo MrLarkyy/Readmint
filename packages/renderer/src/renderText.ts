@@ -32,6 +32,6 @@ export function renderText(writer: SvgWriter, node: TextNode): void {
     )
     .join("");
   writer.write(
-    `<text xml:space="preserve" font-family="${family}" font-size="${formatNumber(node.fontSize)}" font-weight="${String(node.font.weight)}"${style}${spacing}${anchor}${paintAttributes(writer, "fill", node.fill)}${opacityAttribute(node)}${transformAttribute(rotation(node, node.x, node.y))}>${lines}</text>`,
+    `<text xml:space="preserve" font-family="${family}" font-size="${formatNumber(node.fontSize)}" font-weight="${escapeAttribute(String(node.font.weight))}"${style}${spacing}${anchor}${paintAttributes(writer, "fill", node.fill)}${opacityAttribute(node)}${transformAttribute(rotation(node, node.x, node.y))}>${lines}</text>`,
   );
 }

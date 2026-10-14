@@ -106,6 +106,27 @@ export const hostileFixtures: { name: string; input: RenderFixture }[] = [
       data: { user: { bio: `bio${xmlInvalid}end` } },
     },
   },
+  {
+    // The format types weight and style; an unvalidated design (an editor object) may hold strings there.
+    name: "unvalidated font weight and style",
+    input: {
+      design: {
+        version: 0,
+        canvas: { width: 100, height: 40 },
+        assets: {
+          fonts: {
+            f: {
+              ...fontAssets.medium,
+              weight: '400" onload="alert(7)',
+              style:
+                "normal}</style><script>alert(8)</script><style>@import url(https://evil.example/x.css);{",
+            },
+          },
+        },
+        layers: [{ type: "text", content: "x", font: "f" }],
+      } as unknown as Design,
+    },
+  },
 ];
 
 /** A design the format refuses but the renderer may still be handed (an editor object): it must stay inert. */

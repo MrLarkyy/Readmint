@@ -37,6 +37,23 @@ describe("hostile designs stay inert", () => {
     expect(svgSafetyProblems(result.svg)).toEqual([]);
     expect(result.svg).toContain('d="M0 0&quot; onload=&quot;alert(6)"');
   });
+
+  test("font weight and style from an unvalidated design stay one attribute and one declaration each", () => {
+    const fixture = hostileFixtures.find(
+      ({ name }) => name === "unvalidated font weight and style",
+    );
+    if (fixture === undefined) throw new Error("fixture");
+    const svg = renderFixture(fixture.input);
+    expect(svgSafetyProblems(svg)).toEqual([]);
+    expect(svg).toContain('font-weight="400&quot; onload=&quot;alert(7)"');
+    expect(svg.split("</style>")).toHaveLength(2);
+    const style = svg.slice(svg.indexOf("<style>"), svg.indexOf("</style>"));
+    expect(style.match(/[{}]/gu)).toEqual(["{", "}"]);
+    expect(style).not.toMatch(/@import|&lt;|&gt;/u);
+    expect(style).toContain(
+      ";font-weight:400\\22 \\20 onload\\3d \\22 alert\\28 7\\29 ;font-style:normal\\7d \\3c \\2f style\\3e ",
+    );
+  });
 });
 
 describe("the safety check itself", () => {
