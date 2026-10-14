@@ -2,5 +2,14 @@ export const packageName = "@readmint/cli";
 
 export { AssetPathError, type AssetPathErrorCode } from "./AssetPathError.js";
 export { checkAssetPath } from "./checkAssetPath.js";
+export type { CliCommand, DesignArgs } from "./CliCommand.js";
+export { CliError } from "./CliError.js";
+export type { CliIo } from "./CliIo.js";
+export { escapeForLog } from "./escapeForLog.js";
+export { ExitCode } from "./ExitCode.js";
+export { loadDesignAssets } from "./loadDesignAssets.js";
+export { loadDesignFile, type DesignFile, type DesignFileOptions } from "./loadDesignFile.js";
+export { loadFixtureData, maxFixtureBytes } from "./loadFixtureData.js";
 export { readAsset, readResolvedAsset, type AssetReadLimits } from "./readAsset.js";
 export { resolveAsset, type ResolvedAsset } from "./resolveAsset.js";
+export { runCli } from "./runCli.js";

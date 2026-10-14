@@ -1,4 +1,4 @@
-import { quoteAssetSource } from "./quoteAssetSource.js";
+import { quoteForLog } from "./quoteForLog.js";
 
 /** Why an asset source was refused; stable, meant for programs (the message is for people). */
 export type AssetPathErrorCode =
@@ -43,7 +43,7 @@ export class AssetPathError extends Error {
 
   /** `detail`: the device for device-name, the errno code for unreadable, the limit for too-large. */
   constructor(code: AssetPathErrorCode, src: string, detail?: string) {
-    super(`asset ${quoteAssetSource(src)} ${reasons[code](detail)}`);
+    super(`asset ${quoteForLog(src)} ${reasons[code](detail)}`);
     this.code = code;
     this.src = src;
   }

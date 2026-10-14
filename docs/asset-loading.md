@@ -14,8 +14,10 @@ The checks live in `@readmint/cli` (Node only, never imported by a package that 
   resolved asset).
 
 **Every relative asset the CLI or the Action loads is read through `readAsset`.** A refusal throws `AssetPathError` with
-a stable `code` and the `src` as written; its message quotes only that source (at most 200 characters, invisible and
-bidi characters escaped as `\uXXXX`), never an absolute path or a Node error message, since both can reach Action logs.
+a stable `code` and the `src` as written; its message quotes only that source, never an absolute path or a Node error
+message, since both can reach Action logs. The source is quoted by `quoteInput` of `@readmint/format` with the CLI's
+escape set: at most 200 code points, and every control, format (bidi, zero-width), separator, private-use, unassigned
+or surrogate code point escaped as `\uXXXX` (the set every line of the CLI is printed with, see [cli.md](cli.md#messages)).
 A missing or unreadable design folder is the caller's error and is thrown as the Node error.
 
 ## Lexical rules
@@ -68,7 +70,9 @@ integer (else `RangeError`). The size is checked on the open file before reading
 - A hard link inside the folder to a file outside is read: a hard link is a regular file. Git checkouts cannot carry hard
   links, so a repository cannot plant one.
 - The design folder is trusted by its real path. If the folder itself is a link in an untrusted checkout, the boundary
-  moves with it, so the callers (RM-18, RM-19) must resolve the design file inside the workspace first.
+  moves with it, so the callers must resolve the design file inside the workspace first: the CLI's `loadDesignFile`
+  resolves it with `resolveAsset` inside `--root` (see [cli.md](cli.md#the-design-file-and-its-assets)); the Action
+  (RM-18) uses the same loader.
 - On Windows a symlink to a UNC path makes Windows contact that host while the path is resolved, before the link is
   refused as `outside`.
 - `AssetPathError.src` is the raw value from the design. Callers print `error.message` (quoted and escaped), never `src`.

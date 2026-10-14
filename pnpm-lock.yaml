@@ -38,7 +38,17 @@ importers:
 
   packages/action: {}
 
-  packages/cli: {}
+  packages/cli:
+    dependencies:
+      '@readmint/data':
+        specifier: workspace:*
+        version: link:../data
+      '@readmint/format':
+        specifier: workspace:*
+        version: link:../format
+      '@readmint/renderer':
+        specifier: workspace:*
+        version: link:../renderer
 
   packages/components: {}
 
