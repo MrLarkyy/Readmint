@@ -1,4 +1,4 @@
-import type { PlannedDesign } from "./OutputPlan.js";
+import type { PlannedDesign } from "./PlannedDesign.js";
 
 /**
  * The README HTML for the planned designs, in their order: a `<picture>` per design whose `<img>`

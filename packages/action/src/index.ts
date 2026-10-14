@@ -7,11 +7,10 @@ export {
   type ActionInput,
   type ActionInputName,
   ActionInputs,
-  type ActionOutputName,
-  ActionOutputs,
   maxCommitMessageLength,
   maxDesigns,
 } from "./ActionInputs.js";
+export { type ActionOutputName, ActionOutputs } from "./ActionOutputs.js";
 export type { GitResult, GitRunner, GitRunOptions } from "./GitRunner.js";
 export { readInputs } from "./readInputs.js";
 export { runAction } from "./runAction.js";

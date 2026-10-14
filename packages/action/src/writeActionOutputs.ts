@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { appendFile } from "node:fs/promises";
-import type { ActionOutputName } from "./ActionInputs.js";
+import type { ActionOutputName } from "./ActionOutputs.js";
 
 /** The values of one run's outputs. */
 export type ActionOutputValues = Readonly<Record<ActionOutputName, string>>;

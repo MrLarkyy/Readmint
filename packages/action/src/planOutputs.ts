@@ -1,7 +1,7 @@
 import path from "node:path";
 import { quoteForLog } from "@readmint/cli";
 import { ActionError } from "./ActionError.js";
-import type { PlannedDesign } from "./OutputPlan.js";
+import type { PlannedDesign } from "./PlannedDesign.js";
 
 const darkSuffix = ".dark";
 

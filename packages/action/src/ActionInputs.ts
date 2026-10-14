@@ -23,11 +23,6 @@ export const ActionInputs = Object.freeze({
 
 export type ActionInputName = keyof typeof ActionInputs;
 
-/** The outputs of `action.yml`, in the order they are written. */
-export const ActionOutputs = Object.freeze(["changed", "commit", "files", "snippet"] as const);
-
-export type ActionOutputName = (typeof ActionOutputs)[number];
-
 /** Designs one run renders at most (their dark twins not counted). */
 export const maxDesigns = 64;
 

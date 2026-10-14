@@ -1,6 +1,6 @@
 import { CliError, formatIssue, loadRenderInput, renderInput } from "@readmint/cli";
 import { ActionError } from "./ActionError.js";
-import type { PlannedDesign } from "./OutputPlan.js";
+import type { PlannedDesign } from "./PlannedDesign.js";
 
 /** One rendered output file. */
 export interface RenderedFile {
