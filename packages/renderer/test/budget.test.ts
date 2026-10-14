@@ -38,8 +38,82 @@ test("a huge nested repeat from data stops early instead of building everything"
   };
   const started = performance.now();
   const result = renderSvg(design, { data: { items } });
-  expect(result).toMatchObject({ ok: false, issues: [{ code: "too-large" }] });
+  // The copy limit (10000 outer + 10000 per outer item) is passed at outer item 9, before the output budget.
+  expect(result).toMatchObject({
+    ok: false,
+    issues: [{ path: "/layers/0/children/0/repeat", code: "too-large" }],
+  });
+  expect(result.ok ? "" : result.issues[0]?.message).toContain("repeat item 9");
   expect(performance.now() - started).toBeLessThan(2000);
+});
+
+test.each([
+  ["an if", { if: "{{ false }}" }],
+  ["visible: false", { visible: false }],
+] as const)("copies %s drops count toward maxRepeatCopies", (_name, drop) => {
+  const items = Array.from({ length: 400 }, (_, index) => index);
+  const design: Design = {
+    version: 0,
+    canvas: { width: 10, height: 10 },
+    layers: [
+      {
+        type: "group",
+        repeat: { each: "{{ items }}", as: "row" },
+        children: [{ type: "rect", width: 1, height: 1, ...drop, repeat: { each: "{{ items }}" } }],
+      },
+    ],
+  };
+  const started = performance.now();
+  const result = renderSvg(design, { data: { items } });
+  expect(performance.now() - started).toBeLessThan(500);
+  expect(result).toMatchObject({
+    ok: false,
+    issues: [{ path: "/layers/0/children/0/repeat", code: "too-large" }],
+  });
+  const message = result.ok ? "" : (result.issues[0]?.message ?? "");
+  expect(message).toContain("100000");
+  expect(message).toContain("repeat item 249");
+});
+
+test("maxRepeatCopies defaults to 100000 and can be overridden", () => {
+  expect(RenderLimits.maxRepeatCopies).toBe(100_000);
+  const design: Design = {
+    version: 0,
+    canvas: { width: 10, height: 10 },
+    layers: [{ type: "rect", width: 1, height: 1, repeat: { each: "{{ list }}" } }],
+  };
+  const limits = { maxRepeatCopies: 3 };
+  expect(renderSvg(design, { data: { list: [1, 2, 3] }, limits }).ok).toBe(true);
+  const over = renderSvg(design, { data: { list: [1, 2, 3, 4] }, limits });
+  expect(over).toMatchObject({
+    ok: false,
+    issues: [{ path: "/layers/0/repeat", code: "too-large" }],
+  });
+  expect(over.ok ? "" : over.issues[0]?.message).toBe(
+    "this repeat brings the render to 4 copies; at most 3 are allowed (copies an if or visible drops count too)",
+  );
+});
+
+test("a repeat inside a component passes maxRepeatCopies at the definition, naming the instance", () => {
+  const design: Design = {
+    version: 0,
+    canvas: { width: 10, height: 10 },
+    components: {
+      dots: {
+        layers: [{ type: "rect", width: 1, height: 1, repeat: { each: "{{ list }}" } }],
+      },
+    },
+    layers: [
+      { type: "component", ref: "dots" },
+      { type: "component", ref: "dots" },
+    ],
+  };
+  const result = renderSvg(design, { data: { list: [1, 2] }, limits: { maxRepeatCopies: 3 } });
+  expect(result).toMatchObject({
+    ok: false,
+    issues: [{ path: "/components/dots/layers/0/repeat", code: "too-large" }],
+  });
+  expect(result.ok ? "" : result.issues[0]?.message).toContain("(in component instance /layers/1)");
 });
 
 test.each([

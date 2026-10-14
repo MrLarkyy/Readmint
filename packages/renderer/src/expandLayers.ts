@@ -69,7 +69,10 @@ function expandLayer(
     addLayer(context, layer, path, scope, out);
     return;
   }
-  repeatScopes(context, repeat, path, scope).forEach((copy, index) => {
+  const copies = repeatScopes(context, repeat, path, scope);
+  // Charged before any copy is expanded, so copies an `if` or `visible` drops count as well.
+  context.countRepeatCopies(pointer(path, "repeat"), copies.length);
+  copies.forEach((copy, index) => {
     context.within(`repeat item ${String(index)}`, () => {
       addLayer(context, layer, path, copy, out);
     });

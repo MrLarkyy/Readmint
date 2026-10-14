@@ -1,13 +1,33 @@
+import type { Design } from "@readmint/format";
 import { describe, expect, test } from "vitest";
 import { escapeCssString } from "../src/escapeCssString.js";
 import { escapeAttribute, escapeText } from "../src/escapeXml.js";
+import { stripXmlInvalid } from "../src/stripXmlInvalid.js";
 import { hostileFixtures } from "./hostileDesigns.js";
 import { renderFixture } from "./renderFixture.js";
+import { fontAssets } from "./testAssets.js";
 
 function fixture(name: string) {
   const found = hostileFixtures.find((candidate) => candidate.name === name);
   if (found === undefined) throw new Error(name);
   return found.input;
+}
+
+/** Code points outside the XML 1.0 `Char` production, found without the production regex. */
+function xmlInvalidCodePoints(text: string): number[] {
+  const found: number[] = [];
+  for (const char of text) {
+    const code = char.codePointAt(0) ?? 0;
+    const valid =
+      code === 0x9 ||
+      code === 0xa ||
+      code === 0xd ||
+      (code >= 0x20 && code <= 0xd7ff) ||
+      (code >= 0xe000 && code <= 0xfffd) ||
+      (code >= 0x10000 && code <= 0x10ffff);
+    if (!valid) found.push(code);
+  }
+  return found;
 }
 
 describe("escape functions", () => {
@@ -17,6 +37,40 @@ describe("escape functions", () => {
     );
     expect(escapeAttribute(`" onload="x`)).toBe("&quot; onload=&quot;x");
     expect(escapeText("plain text 123")).toBe("plain text 123");
+  });
+
+  test.each([
+    ["NUL", "\u0000"],
+    ["U+0001", "\u0001"],
+    ["backspace", "\u0008"],
+    ["vertical tab", "\u000B"],
+    ["form feed", "\u000C"],
+    ["escape", "\u001B"],
+    ["U+FFFE", "\uFFFE"],
+    ["U+FFFF", "\uFFFF"],
+    ["a lone high surrogate", "\uD800"],
+    ["a lone low surrogate", "\uDC00"],
+    ["a reversed surrogate pair", "\uDC00\uD800"],
+  ])("%s is removed", (_name, char) => {
+    expect(stripXmlInvalid(`a${char}b`)).toBe("ab");
+    expect(escapeText(`<${char}>`)).toBe("&lt;&gt;");
+    expect(escapeAttribute(`"${char}"`)).toBe("&quot;&quot;");
+  });
+
+  test.each([
+    ["tab", "\t"],
+    ["line feed", "\n"],
+    ["carriage return", "\r"],
+    ["U+0085", "\u0085"],
+    ["U+D7FF", "\uD7FF"],
+    ["U+E000", "\uE000"],
+    ["U+FFFD", "\uFFFD"],
+    ["an emoji", "😀"],
+    ["U+10FFFF", "\u{10FFFF}"],
+  ])("%s is kept", (_name, char) => {
+    expect(stripXmlInvalid(`a${char}b`)).toBe(`a${char}b`);
+    expect(escapeText(char)).toBe(char);
+    expect(escapeAttribute(char)).toBe(char);
   });
 
   test("CSS strings cannot be ended or leave the style element", () => {
@@ -53,5 +107,61 @@ describe("rendered strings", () => {
     );
     expect(style).not.toMatch(/@import|url\((?!data:font\/ttf;base64,)/u);
     expect(svg).toContain('font-family="&#39;M\\22 };}\\3c /style\\3e ');
+  });
+
+  test("no rendered SVG holds a code point XML does not allow", () => {
+    for (const { name, input } of hostileFixtures) {
+      expect(xmlInvalidCodePoints(renderFixture(input)), name).toEqual([]);
+    }
+  });
+
+  test("XML-invalid characters are removed from every string they reach", () => {
+    const svg = renderFixture(fixture("XML-invalid characters"));
+    expect(svg).toContain("<title>txyz</title><desc>dxyz</desc>");
+    expect(svg).toContain(">bioxyzend</tspan>");
+    expect(svg).toContain('aria-label="axyz"');
+    expect(svg).toContain("font-family:&quot;Montserrat\\c xyz&quot;");
+    expect(svg).toContain('font-family="&#39;Montserrat\\c xyz&#39;"');
+    expect(svg).toContain('d="M0 0L10 10"');
+  });
+
+  test.each([
+    ["literal", "a\u0000b\u001B😀", {}],
+    ["from data", "{{ s }}", { s: "a\u0000b\u001B😀" }],
+  ])(
+    "a %s text with XML-invalid characters renders as the text without them",
+    (_name, content, data) => {
+      // `end` alignment writes the measured width into the output, so a different measurement shows.
+      const design = (text: string): Design => ({
+        version: 0,
+        canvas: { width: 100, height: 40 },
+        assets: { fonts: { f: fontAssets.medium } },
+        layers: [{ type: "text", content: text, font: "f", align: "end" }],
+      });
+      expect(renderFixture({ design: design(content), data })).toBe(
+        renderFixture({ design: design("ab😀") }),
+      );
+    },
+  );
+
+  test("path data whitespace SVG does not know is written as a space, with the same box", () => {
+    // In a row stack the rect sits right of the path's box, so a different box shows.
+    const design = (d: string): Design => ({
+      version: 0,
+      canvas: { width: 100, height: 100 },
+      layers: [
+        {
+          type: "group",
+          layout: { type: "stack", direction: "row" },
+          children: [
+            { type: "path", d, stroke: "#000" },
+            { type: "rect", width: 1, height: 1 },
+          ],
+        },
+      ],
+    });
+    const odd = renderFixture({ design: design("M0\u000B0L10\u000C10\u00A0L20\u20280") });
+    expect(odd).toContain('d="M0 0L10 10 L20 0"');
+    expect(odd).toBe(renderFixture({ design: design("M0 0L10 10 L20 0") }));
   });
 });

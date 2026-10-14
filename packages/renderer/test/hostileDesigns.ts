@@ -4,6 +4,12 @@ import { fontAssets, imageAssets } from "./testAssets.js";
 
 const attack = `"/><script>alert(1)</script><foreignObject onload="alert(2)">&amp;' javascript:alert(3) ]]> {{`;
 
+/**
+ * Code points XML 1.0 forbids, as GitHub free texts may carry them: C0 controls, U+FFFE / U+FFFF, a lone high and a
+ * lone low surrogate, and a reversed (so unpaired) surrogate pair.
+ */
+const xmlInvalid = "\u0000\u0001\u0008\u000B\u000C\u001B\uFFFE\uFFFFx\uD800y\uDC00z\uDC00\uD800";
+
 /** Designs and data that try to smuggle markup, scripts or references through every string the SVG carries. */
 export const hostileFixtures: { name: string; input: RenderFixture }[] = [
   {
@@ -77,6 +83,27 @@ export const hostileFixtures: { name: string; input: RenderFixture }[] = [
         ],
       },
       data: { bg: "#ffffffff", c: "#abc" },
+    },
+  },
+  {
+    name: "XML-invalid characters",
+    input: {
+      design: {
+        version: 0,
+        title: `t${xmlInvalid}`,
+        description: `d${xmlInvalid}`,
+        canvas: { width: 200, height: 60 },
+        assets: {
+          fonts: { f: { ...fontAssets.medium, family: `Montserrat${xmlInvalid}` } },
+          images: { gif: imageAssets.gif },
+        },
+        layers: [
+          { type: "text", content: "{{user.bio}}", font: "f", width: 180 },
+          { type: "image", asset: "gif", width: 16, height: 16, alt: `a${xmlInvalid}` },
+          { type: "path", d: "M0\u000B0L10\u000C10", stroke: "#000" },
+        ],
+      },
+      data: { user: { bio: `bio${xmlInvalid}end` } },
     },
   },
 ];

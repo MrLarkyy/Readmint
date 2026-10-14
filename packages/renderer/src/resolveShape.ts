@@ -84,16 +84,23 @@ export function resolveEllipse(
   };
 }
 
-/** The layout box of a path runs from its origin to the furthest point of its data. */
+/** Whitespace the format's `\s` accepts but SVG path data does not (VT, FF, NBSP, U+2028, U+FEFF, ...). */
+const nonSvgWhitespace = /[^\S \t\n\r]/gu;
+
+/**
+ * The layout box of a path runs from its origin to the furthest point of its data. Whitespace SVG does not know
+ * becomes a space: one UTF-16 unit for one, so the data keeps its meaning, its bounds and its reserved length.
+ */
 export function resolvePath(
   context: RenderContext,
   layer: PathLayer,
   path: string,
   scope: Scope,
 ): PathNode {
+  const d = layer.d.replace(nonSvgWhitespace, " ");
   let bounds = context.pathBounds.get(path);
   if (!context.pathBounds.has(path)) {
-    bounds = pathBounds(layer.d);
+    bounds = pathBounds(d);
     context.pathBounds.set(path, bounds);
   }
   return {
@@ -101,7 +108,7 @@ export function resolvePath(
     ...resolveBase(context, layer, path, scope),
     width: Math.max(0, bounds?.maxX ?? 0),
     height: Math.max(0, bounds?.maxY ?? 0),
-    d: layer.d,
+    d,
     ...resolveShapeStyle(context, layer, path, scope),
   };
 }
