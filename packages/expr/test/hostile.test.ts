@@ -145,17 +145,23 @@ describe("hostile expressions are bounded in time and memory", () => {
     test.each([
       ["repeated == on two 20M-character strings", `{{ ${"a == b || ".repeat(200)}a == b }}`],
       ["repeated != on two 20M-character strings", `{{ ${"a != b && ".repeat(200)}a != b }}`],
-      ["repeated padStart(0) on a 20M-character string", `{{ a${" | padStart(0)".repeat(400)} }}`],
+      ["repeated padStart(0) at the string limit", `{{ m${" | padStart(0)".repeat(400)} }}`],
+      ["repeated trim at the string limit", `{{ m${" | trim".repeat(400)} }}`],
       ["< on two 20M-character strings", "{{ a < b }}"],
       ["length of a 20M-character string", "{{ a | length }}"],
       ["truncate of a 20M-character string", "{{ a | truncate(5) }}"],
       ["truncate with a 20M-character suffix", "{{ 'x' | truncate(5, a) }}"],
-      ["trim of a 20M-character string", "{{ a | trim }}"],
-      ["upper of a 20M-character string", "{{ a | upper }}"],
       ["a 20M-character string as an index", `{{ ${"o[a] || ".repeat(300)}o[a] }}`],
     ])("%s exhausts the budget", (_name, text) => {
-      expectBounded(text, data, "budget");
+      expectBounded(text, { ...data, m: "x".repeat(ExpressionLimits.maxStringLength) }, "budget");
     });
+
+    test.each(["padStart(0)", "trim", "upper", "lower"])(
+      "%s refuses a 20M-character string by its length, before any work",
+      (filter) => {
+        expectBounded(`{{ a${` | ${filter}`.repeat(400)} }}`, data, "too-large");
+      },
+    );
 
     test("a 20M-character fill is refused by its length before anything is counted", () => {
       expectBounded("{{ 'x' | padStart(5, a) }}", data, "argument");
