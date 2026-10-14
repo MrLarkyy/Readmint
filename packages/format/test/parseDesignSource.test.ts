@@ -5,6 +5,10 @@ import { parseDesignSource } from "../src/parseDesignSource.js";
 const minimalYaml = "version: 0\ncanvas: { width: 10, height: 10 }\nlayers: []\n";
 const minimalJson = '{"version": 0, "canvas": {"width": 10, "height": 10}, "layers": []}';
 
+function atStackDepth<T>(frames: number, run: () => T): T {
+  return frames === 0 ? run() : atStackDepth(frames - 1, run);
+}
+
 function issuesOf(source: string, format?: "json" | "yaml") {
   const result = parseDesign(source, format === undefined ? {} : { format });
   if (result.ok) throw new Error("expected issues");
@@ -115,6 +119,16 @@ describe("YAML source", () => {
     ]);
   });
 
+  // Linear shapes take 1-2 s locally; every super-linear one found took 9 s or more.
+  const linearBudget = 8000;
+  const aliasCount = DesignLimits.maxAliases - 2;
+  const aliasedAnchors = {
+    anchors: Array.from({ length: aliasCount }, (_, i) => `b${String(i)}: &b${String(i)} 0\n`).join(
+      "",
+    ),
+    uses: `y: &a [${Array.from({ length: aliasCount }, (_, i) => `*b${String(i)}`).join(",")}]\nz: *a\n`,
+  };
+
   function fillToYamlLimit(head: string, unit: string, tail = ""): string {
     const room = DesignLimits.maxYamlSourceLength - head.length - tail.length;
     const source = head + unit.repeat(Math.floor(room / unit.length)) + tail;
@@ -139,25 +153,32 @@ describe("YAML source", () => {
       "",
       { code: "too-many-layers" },
     ],
+    [
+      "sequence beside an aliased anchor full of aliases",
+      `${minimalYaml}${aliasedAnchors.anchors}f: [0`,
+      ",0",
+      `]\n${aliasedAnchors.uses}`,
+      { path: "/b0", code: "unknown-property" },
+    ],
   ])(
     "a YAML %s at the size limit is checked within seconds",
     (_, head, unit, tail, issue) => {
       const source = fillToYamlLimit(head, unit, tail);
       const started = performance.now();
-      expect(issuesOf(source)).toMatchObject([issue]);
-      expect(performance.now() - started).toBeLessThan(3000);
+      expect(issuesOf(source)[0]).toMatchObject(issue);
+      expect(performance.now() - started).toBeLessThan(linearBudget);
     },
-    20_000,
+    30_000,
   );
 
   test("a YAML source of syntax errors at the size limit fails within seconds", () => {
     const source = fillToYamlLimit("x: [", ",");
     const started = performance.now();
     const result = parseDesign(source);
-    expect(performance.now() - started).toBeLessThan(3000);
+    expect(performance.now() - started).toBeLessThan(linearBudget);
     expect(result).toMatchObject({ ok: false, truncated: true });
     expect(!result.ok && result.issues).toHaveLength(DesignLimits.maxIssues);
-  }, 20_000);
+  }, 30_000);
 
   test("a YAML source over its limit fails before parsing", () => {
     const source = `${minimalYaml}x: [0${",0".repeat(DesignLimits.maxYamlSourceLength)}]`;
@@ -216,6 +237,7 @@ describe("YAML source", () => {
       "d: &d [*c,*c,*c,*c,*c,*c,*c,*c,*c]",
       "e: &e [*d,*d,*d,*d,*d,*d,*d,*d,*d]",
       "f: &f [*e,*e,*e,*e,*e,*e,*e,*e,*e]",
+      "g: &g [*f,*f,*f,*f,*f,*f,*f,*f,*f]",
     ].join("\n");
     const started = performance.now();
     expect(issuesOf(bomb)).toMatchObject([{ code: "too-large" }]);
@@ -228,10 +250,44 @@ describe("YAML source", () => {
     ).toMatchObject([{ code: "too-deep" }]);
   });
 
-  test("deep nesting is reported once, without a RangeError", () => {
-    expect(issuesOf("[".repeat(10_000))).toEqual([
-      expect.objectContaining({ code: "too-deep", path: "" }),
+  test.each([
+    ["flow sequences", "[".repeat(10_000), 65],
+    ["block sequences", `${"- ".repeat(5000)}0`, 129],
+    ["explicit keys", `${"? ".repeat(5000)}0`, 129],
+    ["flow maps", `x: ${"{a: ".repeat(5000)}`, 256],
+  ])("deep YAML %s fail at the same place on every call and stack depth", (_, source, column) => {
+    const expected = [
+      {
+        path: "",
+        code: "too-deep",
+        message: `objects and arrays nest deeper than ${String(DesignLimits.maxDepth)} levels`,
+        line: 1,
+        column,
+      },
+    ];
+    for (let call = 0; call < 3; call++) expect(issuesOf(source)).toEqual(expected);
+    expect(atStackDepth(2000, () => issuesOf(source))).toEqual(expected);
+  });
+
+  test("YAML nested exactly to the limit is accepted", () => {
+    const depth = DesignLimits.maxDepth - 1;
+    const nested = `${"[".repeat(depth)}${"]".repeat(depth)}`;
+    expect(issuesOf(`${minimalYaml}x: ${nested}\n`)).toMatchObject([
+      { path: "/x", code: "unknown-property" },
     ]);
+    expect(issuesOf(`${minimalYaml}x: [${nested}]\n`)).toMatchObject([{ code: "too-deep" }]);
+  });
+
+  test("a read-only Error.stackTraceLimit is left alone", () => {
+    const saved = Object.getOwnPropertyDescriptor(Error, "stackTraceLimit");
+    if (saved === undefined) return;
+    Object.defineProperty(Error, "stackTraceLimit", { ...saved, writable: false });
+    try {
+      expect(parseDesign(minimalYaml).ok).toBe(true);
+      expect(issuesOf("x: [,]")).toMatchObject([{ code: "parse" }]);
+    } finally {
+      Object.defineProperty(Error, "stackTraceLimit", saved);
+    }
   });
 
   test("non-string keys are rejected", () => {

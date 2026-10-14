@@ -53,13 +53,12 @@ class ReferenceWalker {
       const definition = this.components[name] as ComponentDefinition;
       trees.set(name, collectTree(definition.layers, `/components/${name}/layers`));
     }
-    const finished = this.findCycles(trees);
-    const layerCount = this.countLayers(
-      collectTree(this.design.layers, "/layers"),
-      trees,
-      finished,
-    );
-    if (layerCount > DesignLimits.maxLayers) {
+    const document = collectTree(this.design.layers, "/layers");
+    // Raw counts first: a design too large to expand never reaches the cycle search.
+    const tooMany =
+      rawLayers(document, trees) > DesignLimits.maxLayers ||
+      expandedLayers(document, trees, this.findCycles(trees)) > DesignLimits.maxLayers;
+    if (tooMany) {
       this.add(
         "/layers",
         "too-many-layers",
@@ -182,55 +181,81 @@ class ReferenceWalker {
     }
   }
 
-  /** Iterative DFS; records each cycle at the `ref` that closes it. Returns post-order. */
-  private findCycles(trees: ReadonlyMap<string, Tree>): string[] {
-    const state = new Map<string, "open" | "done">();
+  /**
+   * Iterative DFS; records each cycle at the `ref` that closes it, in time independent of the loop
+   * length. Returns the post-order, or undefined when there is a cycle.
+   */
+  private findCycles(trees: ReadonlyMap<string, Tree>): string[] | undefined {
+    const open = new Map<string, number>();
+    const done = new Set<string>();
     const finished: string[] = [];
     for (const start of trees.keys()) {
-      if (state.has(start)) continue;
+      if (done.has(start)) continue;
       const stack = [{ name: start, next: 0 }];
-      state.set(start, "open");
+      open.set(start, 0);
       for (let top = stack.at(-1); top !== undefined; top = stack.at(-1)) {
         const edge = trees.get(top.name)?.edges[top.next++];
         if (edge === undefined) {
-          state.set(top.name, "done");
+          open.delete(top.name);
+          done.add(top.name);
           finished.push(top.name);
           stack.pop();
-        } else if (trees.has(edge.target)) {
-          const seen = state.get(edge.target);
-          if (seen === undefined) {
-            state.set(edge.target, "open");
+        } else if (trees.has(edge.target) && !done.has(edge.target)) {
+          const from = open.get(edge.target);
+          if (from === undefined) {
+            open.set(edge.target, stack.length);
             stack.push({ name: edge.target, next: 0 });
-          } else if (seen === "open") {
-            const names = stack.map((entry) => entry.name);
-            const loop = [...names.slice(names.indexOf(edge.target)), edge.target];
-            this.cycles.set(edge.path, loop.map((name) => JSON.stringify(name)).join(" -> "));
+          } else {
+            this.cycles.set(edge.path, describeLoop(stack, from, edge.target));
           }
         }
       }
     }
-    return finished;
-  }
-
-  /** Layers after expanding component instances (saturating), or the raw count with a cycle. */
-  private countLayers(document: Tree, trees: ReadonlyMap<string, Tree>, order: string[]): number {
-    const cap = DesignLimits.maxLayers + 1;
-    let raw = document.layers;
-    for (const tree of trees.values()) raw = Math.min(cap, raw + tree.layers);
-    if (raw >= cap || this.cycles.size > 0) return raw;
-    const expanded = new Map<string, number>();
-    const size = (tree: Tree): number =>
-      tree.edges.reduce(
-        (total, edge) => Math.min(cap, total + (expanded.get(edge.target) ?? 0)),
-        tree.layers,
-      );
-    for (const name of order) expanded.set(name, size(trees.get(name) as Tree));
-    return size(document);
+    return this.cycles.size > 0 ? undefined : finished;
   }
 
   private add(path: string, code: DesignIssueCode, message: string): void {
     this.issues.add({ path, code, message });
   }
+}
+
+/** Layers of the document and every definition, each counted once (saturating). */
+function rawLayers(document: Tree, trees: ReadonlyMap<string, Tree>): number {
+  let raw = document.layers;
+  for (const tree of trees.values()) raw = Math.min(DesignLimits.maxLayers + 1, raw + tree.layers);
+  return raw;
+}
+
+/** Layers after expanding component instances (saturating); no expansion when there is a cycle. */
+function expandedLayers(
+  document: Tree,
+  trees: ReadonlyMap<string, Tree>,
+  order: readonly string[] | undefined,
+): number {
+  if (order === undefined) return 0;
+  const cap = DesignLimits.maxLayers + 1;
+  const expanded = new Map<string, number>();
+  const size = (tree: Tree): number =>
+    tree.edges.reduce(
+      (total, edge) => Math.min(cap, total + (expanded.get(edge.target) ?? 0)),
+      tree.layers,
+    );
+  for (const name of order) expanded.set(name, size(trees.get(name) as Tree));
+  return size(document);
+}
+
+/** `"a" -> "b" -> "a"`; a loop of more than 6 keeps its first 3 and last 2 names around an ellipsis. */
+function describeLoop(
+  stack: readonly { readonly name: string }[],
+  from: number,
+  target: string,
+): string {
+  const quote = (entry: { readonly name: string }): string => JSON.stringify(entry.name);
+  const names =
+    stack.length - from <= 6
+      ? stack.slice(from).map(quote)
+      : [...stack.slice(from, from + 3).map(quote), "…", ...stack.slice(-2).map(quote)];
+  return [...names, JSON.stringify(target)].join(" -> ");
 }
 
 function collectTree(layers: readonly Layer[], path: string): Tree {

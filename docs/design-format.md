@@ -166,10 +166,11 @@ components but never themselves, directly or through others.
 | values        | 1000000 values visited; a reused YAML alias counts each time  | `too-large`       |
 | layers        | 10000, counting each component instance with all its layers   | `too-many-layers` |
 | YAML aliases  | 100 alias nodes in the source, counted before any is resolved | `too-large`       |
-| alias uses    | 32 expansions per anchor (weighted by the aliases inside it)  | `too-large`       |
 | issues        | 100 per result, then `truncated: true`                        |                   |
 
-Code reading a design file should also cap its size in bytes before decoding it.
+YAML nesting is checked on the syntax tree before the document is built, so a too-deep YAML source fails at its first
+collection past the limit, with line and column, the same on every call. Code reading a design file should also cap its
+size in bytes before decoding it.
 
 ## Issues
 
@@ -215,7 +216,7 @@ interface DesignIssue {
 | --------------------- | ------------------------------------------------------------------------------- |
 | `parse`               | invalid JSON or YAML syntax, an unknown YAML tag, several YAML documents        |
 | `duplicate-key`       | the same key twice in one object                                                |
-| `too-large`           | source too long, too many values, YAML alias expansion over the limit           |
+| `too-large`           | source too long, too many values or YAML aliases                                |
 | `too-deep`            | nesting over the limit (also a reference cycle in an editor object)             |
 | `unsupported-version` | `version` newer than this reader, or negative                                   |
 | `migration-missing`   | no migration step from the document's version                                   |
@@ -236,7 +237,7 @@ interface DesignIssue {
 ## YAML
 
 YAML is read as YAML 1.2 with the core schema: `yes`, `no`, `on` and `off` stay strings, `012` is the number 12. Merge
-keys (`<<`) are ordinary keys and therefore unknown properties. Anchors and aliases work within the alias limits; an alias must follow its anchor, otherwise it is a `parse` issue
+keys (`<<`) are ordinary keys and therefore unknown properties. Anchors and aliases work within the alias and value limits; an alias must follow its anchor, otherwise it is a `parse` issue
 with line and column. Tags
 other than the core ones (`!!str`, `!!int`, `!!float`, `!!bool`, `!!null`, `!!map`, `!!seq`) are rejected, keys must be
 plain scalars, and a stream must hold exactly one document. The same document as JSON and as YAML gives deep-equal

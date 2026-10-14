@@ -14,8 +14,6 @@ export const DesignLimits = Object.freeze({
   maxIssues: 100,
   /** YAML alias nodes in a source, checked before any alias is resolved. */
   maxAliases: 100,
-  /** YAML alias expansions (per anchor, weighted by aliases inside it). */
-  maxAliasCount: 32,
   /** Characters of an input value an issue message may echo. */
   maxEcho: 64,
 });

@@ -131,6 +131,47 @@ describe("limits", () => {
     expect(issuesOf(value).issues).toMatchObject([{ code: "too-many-layers" }]);
   });
 
+  function componentChain(length: number, backRefs: number) {
+    const instance = (ref: string) => ({ type: "component", ref });
+    const components: Record<string, { layers: unknown[] }> = {};
+    for (let index = 0; index < length - 1; index++)
+      components[`c${String(index)}`] = { layers: [instance(`c${String(index + 1)}`)] };
+    components[`c${String(length - 1)}`] = {
+      layers: Array.from({ length: backRefs }, () => instance("c0")),
+    };
+    return { ...base(), components };
+  }
+
+  test("a component cycle names a short loop in full", () => {
+    expect(issuesOf(componentChain(3, 1)).issues).toEqual([
+      {
+        path: "/components/c2/layers/0/ref",
+        code: "component-cycle",
+        message: 'component cycle "c0" -> "c1" -> "c2" -> "c0"',
+      },
+    ]);
+  });
+
+  test("a long component chain closed by many refs is checked in linear time", () => {
+    const started = performance.now();
+    const result = issuesOf(componentChain(4000, 5000));
+    expect(performance.now() - started).toBeLessThan(2000);
+    expect(result.truncated).toBe(true);
+    expect(result.issues[0]).toEqual({
+      path: "/components/c3999/layers/0/ref",
+      code: "component-cycle",
+      message: 'component cycle "c0" -> "c1" -> "c2" -> … -> "c3998" -> "c3999" -> "c0"',
+    });
+  });
+
+  test("too many layers is decided before the cycle search", () => {
+    const started = performance.now();
+    expect(issuesOf(componentChain(8000, 130_000)).issues).toEqual([
+      expect.objectContaining({ path: "/layers", code: "too-many-layers" }),
+    ]);
+    expect(performance.now() - started).toBeLessThan(2000);
+  });
+
   test("a cyclic or massively shared object fails without hanging", () => {
     const layers: unknown[] = [];
     layers.push(layers, layers);
