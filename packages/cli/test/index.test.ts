@@ -6,7 +6,13 @@ test("exposes its package name", () => {
 });
 
 test("exports the loaders and the renderer call the Action shares with the commands", () => {
-  for (const name of ["loadRenderInput", "renderInput", "formatIssue", "quoteForLog"] as const) {
+  for (const name of [
+    "loadRenderInput",
+    "renderInput",
+    "formatIssue",
+    "quoteForLog",
+    "localeProblem",
+  ] as const) {
     expect(typeof cli[name], name).toBe("function");
   }
 });

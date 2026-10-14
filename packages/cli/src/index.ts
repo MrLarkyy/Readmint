@@ -12,6 +12,7 @@ export { loadDesignAssets } from "./loadDesignAssets.js";
 export { loadDesignFile, type DesignFile, type DesignFileOptions } from "./loadDesignFile.js";
 export { loadFixtureData, maxFixtureBytes } from "./loadFixtureData.js";
 export { loadRenderInput, type RenderInput, type RenderInputOptions } from "./loadRenderInput.js";
+export { localeProblem } from "./localeProblem.js";
 export { quoteForLog } from "./quoteForLog.js";
 export { readAsset, readResolvedAsset, type AssetReadLimits } from "./readAsset.js";
 export { renderInput } from "./renderInput.js";

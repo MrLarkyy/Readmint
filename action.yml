@@ -29,7 +29,7 @@ inputs:
     description: Fixture data JSON file (the CLI `--data` format) used instead of loading GitHub data.
     required: false
   locale:
-    description: BCP 47 tag for the number and date filters, as the CLI `--locale`; empty keeps the renderer's default.
+    description: BCP 47 tag for the number and date filters, checked as the CLI `--locale`; empty uses the design's locale, else en.
     required: false
   commit-message:
     description: Message of the commit with the changed files (at most 4096 characters).

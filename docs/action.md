@@ -37,18 +37,18 @@ Use an exact release tag (`vX.Y.Z`); see [Releases](#releases). Then put the pri
 
 ## Inputs
 
-| input            | default                          | meaning                                                                                                                                    |
-| ---------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| `designs`        | (required)                       | design files, one per line, relative to the workspace; blank lines are ignored; 1 to 64                                                    |
-| `output-dir`     | `readmint`                       | folder inside the workspace the SVG files go to; created when missing                                                                      |
-| `formats`        | `svg`                            | output formats, comma or newline separated; only `svg` until raster export exists, anything else is an input error                         |
-| `token`          | `${{ github.token }}`            | token for the GitHub data; not used with `data-file`; never printed and never given to git                                                 |
-| `login`          | `${{ github.repository_owner }}` | the GitHub user whose data is loaded; needed with `GITHUB_TOKEN`, which belongs to no user                                                 |
-| `data-file`      | none                             | fixture data JSON (the CLI `--data` format) used instead of loading GitHub data: no token, no network                                      |
-| `locale`         | none                             | BCP 47 tag for the `number`, `compact`, `percent` and `date` filters, as the CLI `--locale`; none keeps the renderer's default, as the CLI |
-| `commit-message` | `Update Readmint graphics`       | message of the commit; at most 4096 characters                                                                                             |
-| `branch`         | the checked-out branch           | branch the commit is pushed to; required when the checkout is a detached HEAD                                                              |
-| `dry-run`        | `false`                          | `true` renders and writes the files but runs no git command                                                                                |
+| input            | default                          | meaning                                                                                                                                                                                           |
+| ---------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `designs`        | (required)                       | design files, one per line, relative to the workspace; blank lines are ignored; 1 to 64                                                                                                           |
+| `output-dir`     | `readmint`                       | folder inside the workspace the SVG files go to; created when missing                                                                                                                             |
+| `formats`        | `svg`                            | output formats, comma or newline separated; only `svg` until raster export exists, anything else is an input error                                                                                |
+| `token`          | `${{ github.token }}`            | token for the GitHub data; not used with `data-file`; never printed and never given to git                                                                                                        |
+| `login`          | `${{ github.repository_owner }}` | the GitHub user whose data is loaded; needed with `GITHUB_TOKEN`, which belongs to no user                                                                                                        |
+| `data-file`      | none                             | fixture data JSON (the CLI `--data` format) used instead of loading GitHub data: no token, no network                                                                                             |
+| `locale`         | none                             | BCP 47 tag for the `number`, `compact`, `percent` and `date` filters, checked as the CLI `--locale` (`en`, `de`, `fr`, `es`, `cs` or a region tag of one); none: the design's `locale`, else `en` |
+| `commit-message` | `Update Readmint graphics`       | message of the commit; at most 4096 characters                                                                                                                                                    |
+| `branch`         | the checked-out branch           | branch the commit is pushed to; required when the checkout is a detached HEAD                                                                                                                     |
+| `dry-run`        | `false`                          | `true` renders and writes the files but runs no git command                                                                                                                                       |
 
 Booleans are YAML core booleans: `true`, `True`, `TRUE`, `false`, `False`, `FALSE`. A blank input takes its default.
 Every problem with the inputs is reported at once, before anything is rendered.

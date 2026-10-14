@@ -11,7 +11,7 @@ export interface ActionConfig {
   readonly login: string;
   /** Fixture data file instead of a GitHub load. */
   readonly dataFile?: string;
-  /** Locale override for the expression filters; absent: the renderer's default. */
+  /** Locale override for the expression filters; absent: the design's `locale`, else `en`. */
   readonly locale?: string;
   readonly commitMessage: string;
   /** Branch to push to; absent: the checked-out branch. */

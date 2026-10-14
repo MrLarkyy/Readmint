@@ -1,5 +1,5 @@
 import path from "node:path";
-import { quoteForLog } from "@readmint/cli";
+import { localeProblem, quoteForLog } from "@readmint/cli";
 import type { ActionConfig } from "./ActionConfig.js";
 import { ActionError } from "./ActionError.js";
 import {
@@ -76,9 +76,9 @@ export function readInputs(env: Env): ActionConfig {
   }
 
   const locale = value("locale");
-  if (locale !== "" && !isLocaleTag(locale)) {
-    problems.push(`input locale ${quoteForLog(locale)} is not a BCP 47 language tag`);
-  }
+  const localeReason = locale === "" ? undefined : localeProblem(locale);
+  if (localeReason !== undefined)
+    problems.push(`input locale ${quoteForLog(locale)} ${localeReason}`);
 
   const commitMessage = value("commit-message");
   if (commitMessage.length > maxCommitMessageLength) {
@@ -118,13 +118,4 @@ function lines(text: string): string[] {
     .split(/\r?\n/)
     .map((line) => line.trim())
     .filter((line) => line !== "");
-}
-
-function isLocaleTag(locale: string): boolean {
-  try {
-    Intl.getCanonicalLocales(locale);
-    return true;
-  } catch {
-    return false;
-  }
 }

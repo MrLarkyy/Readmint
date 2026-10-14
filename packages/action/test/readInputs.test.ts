@@ -151,6 +151,16 @@ describe("readInputs", () => {
     ]);
   });
 
+  test("a locale the expression tables lack is refused as by readmint render --locale", () => {
+    expect(problems({ ...base, locale: "pl" })).toEqual([
+      'input locale "pl" is not supported (supported: en, de, fr, es, cs)',
+    ]);
+    expect(problems({ ...base, locale: "cs-CZ-u-nu-latn-ca-gregory-hc-h23-x-foo" })).toHaveLength(
+      1,
+    );
+    expect(readInputs(env({ ...base, locale: "cs-CZ" })).locale).toBe("cs-CZ");
+  });
+
   test("a commit message over 4096 characters is refused", () => {
     expect(problems({ ...base, "commit-message": "x".repeat(4097) })).toEqual([
       "input commit-message is longer than 4096 characters",
