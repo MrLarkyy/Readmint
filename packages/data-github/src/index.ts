@@ -10,4 +10,5 @@ export { GITHUB_DATA_NAMESPACE, GITHUB_DATA_VERSION } from "./GitHubData.js";
 export { GitHubDataError } from "./GitHubDataError.js";
 export { GitHubLimits } from "./GitHubSourceOptions.js";
 export { MemoryCache } from "./MemoryCache.js";
+export { githubDataSource } from "./githubDataSource.js";
 export { loadGitHubData } from "./loadGitHubData.js";

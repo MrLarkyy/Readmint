@@ -13,6 +13,9 @@
       "default": "./dist/node/index.js"
     }
   },
+  "dependencies": {
+    "@readmint/data": "workspace:*"
+  },
   "scripts": {
     "build": "tsc -b tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json"

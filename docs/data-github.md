@@ -2,7 +2,7 @@
 
 `@readmint/data-github` loads one GitHub user's profile, public repositories, languages and contribution calendar
 through the GraphQL API with the user's own token, and returns a plain-JSON data object that designs bind to as
-`github.*`. It runs in Node 22 and in the browser (native `fetch` and `crypto.subtle`, no dependencies).
+`github.*`. It is a [data source](data-sources.md) (`githubDataSource`, namespace `github`). It runs in Node 22 and in the browser (native `fetch` and `crypto.subtle`, no dependencies).
 
 ```ts
 import { loadGitHubData, MemoryCache, GITHUB_DATA_NAMESPACE } from "@readmint/data-github";
@@ -19,13 +19,15 @@ The main entry imports no `node:` module; `FileCache` lives in the `./node` subp
 
 ## API
 
+- `githubDataSource` — the source descriptor of the shared `@readmint/data` interface (`{ interfaceVersion, namespace:
+"github", dataVersion: 0, load }`), frozen; `load` is `loadGitHubData`.
 - `loadGitHubData(options): Promise<GitHubLoadResult>` — resolves to `{ data, meta }`. `data` is the data object below.
   `meta` describes the load and is kept out of `data`, so the same GitHub state gives the same object:
   `requests` (HTTP requests including retries), `cost` (GraphQL rate-limit points), `rateLimitRemaining` and
   `resetAt` (from the last response, `null` when unknown) and `fromCache`.
-- `GitHubDataError` — every failure; `code` is a `GitHubDataErrorCode` (see [Errors](#errors)), with `status`,
+- `GitHubDataError` — every failure; it extends `DataSourceError` with `source` `"github"`; `code` is a `GitHubDataErrorCode` (see [Errors](#errors)), with `status`,
   `resetAt`, `retryAfterSeconds` or `causeCode` when they apply.
-- `GitHubCache` — the cache interface: `get(key)` resolves to the stored text or `undefined`, `set(key, value,
+- `GitHubCache` — the `DataSourceCache` interface: `get(key)` resolves to the stored text or `undefined`, `set(key, value,
 ttlSeconds)` stores it.
 - `MemoryCache({ now?, maxEntries? })` — an in-process cache (default 32 entries, oldest dropped first).
 - `FileCache({ directory, now? })` from `@readmint/data-github/node` — see [Cache](#cache).
@@ -169,7 +171,8 @@ returns twice, fails with `invalid-response` instead of looping. Requests run on
 
 ## Errors
 
-Every failure is a `GitHubDataError`. A GraphQL `errors` entry fails the whole load: no partial data object is ever
+Every failure is a `GitHubDataError`, a `DataSourceError` whose `source` is `github`; the codes that
+[all sources share](data-sources.md#errors) keep their meaning, and `secondary-rate-limited`, `http` and `graphql` are GitHub's own. A GraphQL `errors` entry fails the whole load: no partial data object is ever
 returned. Messages never contain the token. An `invalid-response` message names only the JSON path that failed, never
 the value; a `graphql` message quotes GitHub's own error messages, redacted and shortened.
 
@@ -215,8 +218,10 @@ validation, or belongs to another login, is a miss and is replaced.
 An entry belongs to a pair of token owner and login. GitHub answers about contributions from the side of the token's
 owner (see [Repositories and privacy](#repositories-and-privacy)), so the owner is resolved with the viewer request
 even when `login` is given, and a load with another user's token never reads the owner's entry. The key is the
-SHA-256 hex digest of the data version, a hash of the query text, the viewer and the login (both lowercased),
-`pageSize` and `maxRepositories`. It never covers the token, so two tokens of the same owner share an entry.
+SHA-256 hex digest of the namespace (`github`), the data version, a hash of the query text, the viewer and the login (both lowercased),
+`pageSize` and `maxRepositories`. It never covers the token, so two tokens of the same owner share an entry. The key is built by
+`dataSourceCacheKey` of `@readmint/data`; since the namespace joined it, entries written by earlier versions miss once
+and are refilled.
 
 The owner may be an app: the Actions `GITHUB_TOKEN` and other app installation tokens belong to a bot such as
 `github-actions[bot]`, which works as a cache owner. Such a token needs `login`; in viewer mode a bot owner fails with
@@ -244,7 +249,7 @@ every error path.
 
 `version` is `GITHUB_DATA_VERSION`. Adding a field keeps the version; renaming or removing a field, or changing its
 meaning or type, bumps it. Designs bind to the object as `{ github: data }`; the design format version does not change
-with it.
+with it. The general bump rule is in [data-sources.md](data-sources.md#data-object).
 
 ## Tests and the live run
 

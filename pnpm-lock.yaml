@@ -42,7 +42,13 @@ importers:
 
   packages/components: {}
 
-  packages/data-github: {}
+  packages/data: {}
+
+  packages/data-github:
+    dependencies:
+      '@readmint/data':
+        specifier: workspace:*
+        version: link:../data
 
   packages/editor: {}
 
