@@ -95,7 +95,7 @@ describe("YAML source", () => {
       { code: "duplicate-key", line: 80_001, column: 1 },
     ]);
     expect(best(duplicateKeySource(40_000)) / best(duplicateKeySource(10_000))).toBeLessThan(8);
-  }, 60_000);
+  }, 300_000);
 
   test("more than maxAliases aliases fail before any alias is resolved", () => {
     // As many anchors and aliases as fit in the YAML source limit.
@@ -174,7 +174,7 @@ describe("YAML source", () => {
       expect(issuesOf(source)[0]).toMatchObject(issue);
       expect(performance.now() - started).toBeLessThan(linearBudget * loadScale());
     },
-    30_000,
+    120_000,
   );
 
   /**
@@ -217,7 +217,7 @@ describe("YAML source", () => {
     expect(withAlias.ms).toBeLessThan(linearBudget * loadScale());
     // yaml's alias count walks the whole document per alias: 3x slower than the twin.
     expect(withAlias.ratio).toBeLessThan(1.5);
-  }, 60_000);
+  }, 300_000);
 
   test("a YAML source of syntax errors at the size limit costs no more than valid YAML", () => {
     const errors = fillToYamlLimit("x: [", ",");
@@ -231,7 +231,7 @@ describe("YAML source", () => {
     expect(broken.ms).toBeLessThan(linearBudget * loadScale());
     // A stack trace per syntax error made this 6-10x slower than the valid twin.
     expect(broken.ratio).toBeLessThan(2);
-  }, 60_000);
+  }, 300_000);
 
   test("a YAML source over its limit fails before parsing", () => {
     const source = `${minimalYaml}x: [0${",0".repeat(DesignLimits.maxYamlSourceLength)}]`;

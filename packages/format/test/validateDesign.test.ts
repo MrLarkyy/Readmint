@@ -236,12 +236,13 @@ describe("hostile strings", () => {
       for (const value of hostile) {
         const started = performance.now();
         regex.test(value);
-        expect(performance.now() - started, `${pattern} on ${value.slice(0, 20)}`).toBeLessThan(
-          200 * loadScale(),
-        );
+        const elapsed = performance.now() - started;
+        // The load probe costs more than most of these runs, so it only runs for a slow one.
+        const limit = elapsed < 200 ? 200 : 200 * loadScale();
+        expect(elapsed, `${pattern} on ${value.slice(0, 20)}`).toBeLessThan(limit);
       }
     }
-  });
+  }, 60_000);
 
   test("validation of a design full of hostile strings stays fast", () => {
     for (const value of hostile) {

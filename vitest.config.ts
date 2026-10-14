@@ -24,6 +24,8 @@ export default defineConfig(({ mode }) => ({
   },
   test: {
     env: goldenEnvironment(mode),
+    // Only a hang detector: the wall-clock bounds that matter are asserted, scaled by load, inside the tests.
+    testTimeout: 60_000,
     projects: [
       {
         extends: true,

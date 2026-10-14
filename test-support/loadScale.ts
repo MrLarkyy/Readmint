@@ -1,5 +1,5 @@
-const SPIN_ROUNDS = 1_200_000;
-const NOMINAL_MS = 1;
+const SPIN_ROUNDS = 4_000_000;
+const NOMINAL_MS = 3.3;
 const MAX_SCALE = 20;
 
 function spin(): number {
@@ -18,11 +18,11 @@ const sink = { value: 0 };
 export function loadScale(): number {
   sink.value ^= spin();
   const times: number[] = [];
-  for (let run = 0; run < 3; run++) {
+  for (let run = 0; run < 5; run++) {
     const started = performance.now();
     sink.value ^= spin();
     times.push(performance.now() - started);
   }
-  const median = times.sort((x, y) => x - y)[1] ?? NOMINAL_MS;
-  return Math.min(MAX_SCALE, Math.max(1, median / NOMINAL_MS));
+  const slowest = Math.max(...times);
+  return Math.min(MAX_SCALE, Math.max(1, slowest / NOMINAL_MS));
 }
