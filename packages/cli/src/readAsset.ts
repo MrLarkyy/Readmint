@@ -35,7 +35,7 @@ export async function readResolvedAsset(
   checkLimits(limits);
   const handle = await openAsset(asset);
   try {
-    const stats = await handle.stat({ bigint: true });
+    const stats = await asReadFault(handle.stat({ bigint: true }), asset);
     if (stats.dev !== asset.dev || stats.ino !== asset.ino) {
       throw new AssetPathError("changed", asset.src);
     }
@@ -57,12 +57,25 @@ async function openAsset(asset: ResolvedAsset): Promise<FileHandle> {
   try {
     return await open(asset.path, constants.O_RDONLY | (noFollow ?? 0));
   } catch (error) {
-    const code = errnoCode(error);
-    if (code === undefined) throw error;
-    // The file existed as a regular file when it was resolved.
-    if (gone.has(code)) throw new AssetPathError("changed", asset.src);
-    throw new AssetPathError("unreadable", asset.src, code);
+    throw toAssetError(error, asset);
   }
+}
+
+async function asReadFault<T>(operation: Promise<T>, asset: ResolvedAsset): Promise<T> {
+  try {
+    return await operation;
+  } catch (error) {
+    throw toAssetError(error, asset);
+  }
+}
+
+function toAssetError(error: unknown, asset: ResolvedAsset): unknown {
+  const code = errnoCode(error);
+  if (code === undefined) return error;
+  // The file existed as a regular file when it was resolved.
+  return gone.has(code)
+    ? new AssetPathError("changed", asset.src)
+    : new AssetPathError("unreadable", asset.src, code);
 }
 
 // The file can still grow after fstat; the loop asks for at most maxBytes + 1 bytes in total.
@@ -75,7 +88,7 @@ async function readBounded(
   let total = 0;
   for (;;) {
     const chunk = new Uint8Array(Math.min(chunkBytes, limits.maxBytes + 1 - total));
-    const { bytesRead } = await handle.read(chunk, 0, chunk.length, null);
+    const { bytesRead } = await asReadFault(handle.read(chunk, 0, chunk.length, null), asset);
     if (bytesRead === 0) break;
     chunks.push(chunk.subarray(0, bytesRead));
     total += bytesRead;

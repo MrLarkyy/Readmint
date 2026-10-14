@@ -1,6 +1,6 @@
-import { appendFile, rename, rm } from "node:fs/promises";
+import { appendFile, type FileHandle, open, rename, rm } from "node:fs/promises";
 import { join } from "node:path";
-import { afterEach, beforeEach, describe, expect, test } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import {
   AssetPathError,
   type AssetPathErrorCode,
@@ -107,6 +107,85 @@ describe("readResolvedAsset after the file changed", () => {
     const asset = await resolveAsset(tree.design, "img.png");
     await appendFile(target, "more");
     await expectRefused(readResolvedAsset(asset, { maxBytes: 10 }), "too-large");
+  });
+});
+
+type HandleMethod = (this: FileHandle, ...args: unknown[]) => Promise<unknown>;
+interface HandleMethods {
+  stat: HandleMethod;
+  read: HandleMethod;
+}
+
+async function handlePrototype(path: string): Promise<HandleMethods> {
+  const handle = await open(path);
+  try {
+    return Object.getPrototypeOf(handle) as HandleMethods;
+  } finally {
+    await handle.close();
+  }
+}
+
+describe("readResolvedAsset read-loop cap", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  test("a file reporting size 0 but holding more than maxBytes is too-large after 11 bytes", async () => {
+    const target = await tree.file("design/big.png", new Uint8Array(200_000));
+    const asset = await resolveAsset(tree.design, "big.png");
+    const prototype = await handlePrototype(target);
+    const originalStat = prototype.stat;
+    vi.spyOn(prototype, "stat").mockImplementation(async function (this: FileHandle) {
+      const stats = await originalStat.call(this, { bigint: true });
+      const reported = Object.create(stats as object) as object;
+      return Object.defineProperty(reported, "size", { value: 0n });
+    });
+    const requested: number[] = [];
+    const originalRead = prototype.read;
+    vi.spyOn(prototype, "read").mockImplementation(async function (
+      this: FileHandle,
+      ...args: unknown[]
+    ) {
+      requested.push(Number(args[2]));
+      return originalRead.apply(this, args);
+    });
+    await expectRefused(readResolvedAsset(asset, { maxBytes: 10 }), "too-large");
+    expect(requested).toEqual([11]);
+  });
+});
+
+describe("filesystem errors become unreadable", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  function systemError(code: string, syscall: string, path: string): Error {
+    return Object.assign(new Error(`${code}: failure, ${syscall} '${path}'`), {
+      code,
+      syscall,
+      path,
+    });
+  }
+
+  async function expectUnreadable(read: Promise<unknown>, code: string): Promise<void> {
+    const error: unknown = await read.then(
+      () => undefined,
+      (reason: unknown) => reason,
+    );
+    expect(error).toBeInstanceOf(AssetPathError);
+    expect(error).toMatchObject({ code: "unreadable" });
+    const { message } = error as AssetPathError;
+    expect(message).toContain(code);
+    expect(message).not.toContain(tree.root);
+    expect(message).not.toMatch(/'|failure/u);
+  }
+
+  test.each(["stat", "read"] as const)("EIO on handle.%s", async (method) => {
+    const target = await tree.file("design/img.png", bytes);
+    const asset = await resolveAsset(tree.design, "img.png");
+    const prototype = await handlePrototype(target);
+    vi.spyOn(prototype, method).mockRejectedValue(systemError("EIO", method, target));
+    await expectUnreadable(readResolvedAsset(asset, { maxBytes: 1024 }), "EIO");
   });
 });
 

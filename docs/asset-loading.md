@@ -67,5 +67,10 @@ integer (else `RangeError`). The size is checked on the open file before reading
   repository content, not a concurrent local attacker, so this race is accepted.
 - A hard link inside the folder to a file outside is read: a hard link is a regular file. Git checkouts cannot carry hard
   links, so a repository cannot plant one.
+- The design folder is trusted by its real path. If the folder itself is a link in an untrusted checkout, the boundary
+  moves with it, so the callers (RM-18, RM-19) must resolve the design file inside the workspace first.
+- On Windows a symlink to a UNC path makes Windows contact that host while the path is resolved, before the link is
+  refused as `outside`.
+- `AssetPathError.src` is the raw value from the design. Callers print `error.message` (quoted and escaped), never `src`.
 - Only paths are checked here; the bytes (format sniffing, dimensions, frames, font licence) are checked by the font and
   image loaders.
