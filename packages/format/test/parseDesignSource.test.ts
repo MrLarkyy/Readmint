@@ -153,13 +153,6 @@ describe("YAML source", () => {
       "",
       { code: "too-many-layers" },
     ],
-    [
-      "sequence beside an aliased anchor full of aliases",
-      `${minimalYaml}${aliasedAnchors.anchors}f: [0`,
-      ",0",
-      `]\n${aliasedAnchors.uses}`,
-      { path: "/b0", code: "unknown-property" },
-    ],
   ])(
     "a YAML %s at the size limit is checked within seconds",
     (_, head, unit, tail, issue) => {
@@ -171,14 +164,45 @@ describe("YAML source", () => {
     30_000,
   );
 
-  test("a YAML source of syntax errors at the size limit fails within seconds", () => {
-    const source = fillToYamlLimit("x: [", ",");
-    const started = performance.now();
-    const result = parseDesign(source);
-    expect(performance.now() - started).toBeLessThan(linearBudget);
-    expect(result).toMatchObject({ ok: false, truncated: true });
-    expect(!result.ok && result.issues).toHaveLength(DesignLimits.maxIssues);
-  }, 30_000);
+  /** Median of three timed runs after a warm-up run; the last result is checked by the caller. */
+  function timed<T>(run: () => T): { ms: number; result: T } {
+    const times: number[] = [];
+    let result = run();
+    for (let round = 0; round < 3; round++) {
+      const started = performance.now();
+      result = run();
+      times.push(performance.now() - started);
+    }
+    return { ms: times.sort((x, y) => x - y)[1] ?? 0, result };
+  }
+
+  test("a YAML sequence beside an aliased anchor full of aliases costs no more than without the alias", () => {
+    const head = `${minimalYaml}${aliasedAnchors.anchors}f: [0`;
+    const aliased = fillToYamlLimit(head, ",0", `]\n${aliasedAnchors.uses}`);
+    const plain = aliased.replace(/z: \*a\n$/u, "z: 0\n");
+    expect(plain).not.toBe(aliased);
+    const withAlias = timed(() => issuesOf(aliased));
+    const without = timed(() => issuesOf(plain));
+    expect(withAlias.result[0]).toMatchObject({
+      path: "/b0",
+      code: "unknown-property",
+    });
+    expect(withAlias.ms).toBeLessThan(linearBudget);
+    // yaml's alias count walks the whole document per alias: 3x slower than the twin.
+    expect(withAlias.ms / without.ms).toBeLessThan(1.5);
+  }, 60_000);
+
+  test("a YAML source of syntax errors at the size limit costs no more than valid YAML", () => {
+    const errors = fillToYamlLimit("x: [", ",");
+    const values = fillToYamlLimit("x: [0", ",0", "]");
+    const broken = timed(() => parseDesign(errors));
+    const valid = timed(() => parseDesign(values));
+    expect(broken.result).toMatchObject({ ok: false, truncated: true });
+    expect(!broken.result.ok && broken.result.issues).toHaveLength(DesignLimits.maxIssues);
+    expect(broken.ms).toBeLessThan(linearBudget);
+    // A stack trace per syntax error made this 6-10x slower than the valid twin.
+    expect(broken.ms / valid.ms).toBeLessThan(2);
+  }, 60_000);
 
   test("a YAML source over its limit fails before parsing", () => {
     const source = `${minimalYaml}x: [0${",0".repeat(DesignLimits.maxYamlSourceLength)}]`;
