@@ -25,6 +25,8 @@ function mapping(name: string, operation: (text: string) => string): FilterDefin
     apply(input: ExprValue, _args: readonly ExprValue[], context: FilterContext): FilterOutcome {
       const text = stringInput(name, input);
       if (!text.ok) return text;
+      // The result is as long as the input or shorter: refuse an oversized input before any work.
+      if (text.value.length > maxLength) return tooLarge(name);
       if (!context.charge(textSteps(text.value.length))) return budgetFailure();
       return success(operation(text.value));
     },
@@ -49,13 +51,13 @@ export const stringFilters: Readonly<Record<string, FilterDefinition>> = {
       if (!context.charge(textSteps(text.value.length + suffix.value.length))) {
         return budgetFailure();
       }
-      if (countCodePoints(text.value) <= length.value) return success(text.value);
+      if (countCodePoints(text.value) <= length.value) return capped("truncate", text.value);
       const suffixLength = countCodePoints(suffix.value);
       if (suffixLength > length.value) {
         return failure("argument", "truncate: the suffix is longer than the length");
       }
       const kept = Array.from(text.value).slice(0, length.value - suffixLength);
-      return success(kept.join("") + suffix.value);
+      return capped("truncate", kept.join("") + suffix.value);
     },
   },
   padStart: {
@@ -64,6 +66,8 @@ export const stringFilters: Readonly<Record<string, FilterDefinition>> = {
     apply(input: ExprValue, args: readonly ExprValue[], context: FilterContext): FilterOutcome {
       const text = padInput(input);
       if (!text.ok) return text;
+      // Padding never shortens: an oversized input is refused before any work.
+      if (text.value.length > maxLength) return tooLarge("padStart");
       const width = integerArgument("padStart", args, 0, { min: 0, max: maxLength }, "too-large");
       if (!width.ok) return width;
       const fill = stringArgument("padStart", args, 1, " ");
@@ -89,6 +93,11 @@ function padInput(input: ExprValue): Checked<string> {
   if (typeof input === "string") return { ok: true, value: input };
   if (typeof input === "number") return { ok: true, value: String(input) };
   return failure("type", `padStart needs a string or a number, got ${typeName(input)}`);
+}
+
+/** `maxStringLength` counts UTF-16 code units, so a result within a code point length may still exceed it. */
+function capped(name: string, result: string): FilterOutcome {
+  return result.length > maxLength ? tooLarge(name) : success(result);
 }
 
 function tooLarge(name: string): FilterOutcome {

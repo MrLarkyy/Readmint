@@ -1,4 +1,5 @@
 import { describe, expect, test } from "vitest";
+import { ExpressionLimits } from "../src/index.js";
 import { errorOf, valueOf } from "./evaluateText.js";
 
 const emoji = "\u{1F600}";
@@ -119,5 +120,30 @@ describe("general filters", () => {
 
   test("first and last give the item itself, not a copy", () => {
     expect(valueOf("{{ (repos | first).name }}", { repos: [{ name: "a" }] })).toBe("a");
+  });
+});
+
+describe("string filters never return more than maxStringLength code units", () => {
+  const limit = ExpressionLimits.maxStringLength;
+  const over = "a".repeat(limit + 1);
+
+  test.each(["upper", "lower", "trim", "padStart(0)", "padStart(5, '-')"])(
+    "%s refuses an input over the limit",
+    (filter) => {
+      expect(errorOf(`{{ s | ${filter} }}`, { s: over }).code).toBe("too-large");
+    },
+  );
+
+  test.each(["upper", "lower", "trim", "padStart(0)"])(
+    "%s accepts an input at the limit",
+    (filter) => {
+      expect(valueOf(`{{ s | ${filter} | length }}`, { s: "a".repeat(limit) })).toBe(limit);
+    },
+  );
+
+  test("truncate shortens an oversized input but refuses to pass one through", () => {
+    expect(valueOf("{{ s | truncate(3) }}", { s: over })).toBe("aa…");
+    const pairs = "\u{1F600}".repeat(60_000);
+    expect(errorOf(`{{ s | truncate(${String(limit)}) }}`, { s: pairs }).code).toBe("too-large");
   });
 });
