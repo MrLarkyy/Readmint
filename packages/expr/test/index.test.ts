@@ -13,7 +13,9 @@ test("exports exactly the public API", () => {
     "createScope",
     "evaluateCondition",
     "expandRepeat",
+    "isSupportedLocale",
     "packageName",
+    "supportedLocales",
     "toText",
   ]);
 });

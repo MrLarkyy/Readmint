@@ -1,3 +1,5 @@
+import type { DesignLocale } from "./designLocales.js";
+
 /** A value written as `{{...}}` (starts with `{{`, ends with `}}`); opaque here, evaluated by `@readmint/expr`. */
 export type Binding = `{{${string}}}`;
 
@@ -269,6 +271,11 @@ export interface Design {
   readonly version: 0;
   readonly title?: string;
   readonly description?: string;
+  /**
+   * Locale of the `number`, `compact`, `percent` and `date` filters in every expression of the design. A filter's
+   * `locale` argument or the render option `locale` overrides it; default `en`.
+   */
+  readonly locale?: DesignLocale;
   readonly canvas: Canvas;
   readonly layers: readonly Layer[];
   readonly styles?: Readonly<Record<string, Style>>;

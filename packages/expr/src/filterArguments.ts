@@ -2,7 +2,7 @@ import type { ExpressionErrorCode } from "./ExpressionError.js";
 import type { ExprValue } from "./ExprValue.js";
 import type { FilterContext, FilterFailure, FilterOutcome } from "./FilterDefinition.js";
 import type { LocaleData } from "./LocaleData.js";
-import { resolveLocale } from "./locales.js";
+import { resolveLocale, supportedLocales } from "./locales.js";
 import { typeName } from "./typeName.js";
 
 /** A checked input or argument. Messages name the filter and the argument, never the value. */
@@ -89,7 +89,10 @@ export function localeArgument(
   }
   const locale = resolveLocale(value ?? context.locale);
   if (locale === undefined) {
-    return failure("unknown-locale", `${filter}: unknown locale (supported: en, de, fr, es, cs)`);
+    return failure(
+      "unknown-locale",
+      `${filter}: unknown locale (supported: ${supportedLocales.join(", ")})`,
+    );
   }
   return { ok: true, value: locale };
 }
