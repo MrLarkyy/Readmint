@@ -47,7 +47,7 @@ Use an exact release tag (`vX.Y.Z`); see [Releases](#releases). Then put the pri
 | `data-file`      | none                             | fixture data JSON (the CLI `--data` format) used instead of loading GitHub data: no token, no network                                                                                             |
 | `locale`         | none                             | BCP 47 tag for the `number`, `compact`, `percent` and `date` filters, checked as the CLI `--locale` (`en`, `de`, `fr`, `es`, `cs` or a region tag of one); none: the design's `locale`, else `en` |
 | `commit-message` | `Update Readmint graphics`       | message of the commit; at most 4096 characters                                                                                                                                                    |
-| `branch`         | the checked-out branch           | branch the commit is pushed to; required when the checkout is a detached HEAD                                                                                                                     |
+| `branch`         | the checked-out branch           | branch the commit is pushed to, without `refs/`; the checkout must be this branch at its latest commit on `origin` (see [Pushing](#pushing))                                                      |
 | `dry-run`        | `false`                          | `true` renders and writes the files but runs no git command                                                                                                                                       |
 
 Booleans are YAML core booleans: `true`, `True`, `TRUE`, `false`, `False`, `FALSE`. A blank input takes its default.
@@ -72,10 +72,11 @@ too, to `<output-dir>/card.dark.svg`, and the snippet switches to it when the re
 design like any other; nothing in the design format or the renderer knows about light or dark. You do not need to
 list it; if you do, list its light design too, else it is an input error.
 
+<!-- prettier-ignore -->
 ```html
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="readmint/card.dark.svg" />
-  <img alt="card" src="readmint/card.svg" />
+  <source media="(prefers-color-scheme: dark)" srcset="readmint/card.dark.svg">
+  <img alt="card" src="readmint/card.svg">
 </picture>
 ```
 
@@ -86,7 +87,8 @@ Outputs of designs you remove from the list are not deleted.
 ## What a run does
 
 1. Reads and checks the inputs, then pairs the designs with their outputs.
-2. Unless it is a dry run: finds the branch to push to and checks its name, before anything is written.
+2. Unless it is a dry run: finds the branch to push to, checks its name and that the checkout is that branch's latest
+   commit on `origin`, before anything is written.
 3. Loads the data once: the `data-file`, else the GitHub data of `login`, bound as `github` (see
    [data-github.md](data-github.md)). The load is given 5 minutes.
 4. Loads and renders every design and dark variant. Design files and their assets are read only inside the workspace,
@@ -121,8 +123,13 @@ The push uses the credentials `actions/checkout` stores in the repository, so:
 
 - keep `persist-credentials` of the checkout on (its default) and give the job `permissions: contents: write`;
 - check the repository out into the workspace root (no `path:`), since git runs there;
-- the push goes to `origin`, to `branch` or the checked-out branch; a branch that moved since the checkout rejects the
-  push and the run fails: nothing is rebased or forced. A `concurrency` group keeps two runs from racing;
+- check out the branch the Action pushes to (the default of `actions/checkout` on a schedule or `workflow_dispatch`
+  run): the commit is pushed with the checkout's history, so the Action refuses to run, before writing anything, when
+  the checkout is not the latest commit of that branch on `origin` (a detached HEAD, a pull request merge, another
+  branch, a branch missing on `origin` or one that moved since the checkout). It never pushes commits nobody merged
+  into the branch;
+- the push goes to `origin`; a branch that moves between that check and the push rejects the push and the run fails:
+  nothing is rebased or forced. A `concurrency` group keeps two runs from racing;
 - a push made with `GITHUB_TOKEN` starts no other workflow, so the commit does not trigger your other workflows.
 
 On Windows runners git may convert line ends; a `.gitattributes` line such as `readmint/*.svg -text` keeps the SVG

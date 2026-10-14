@@ -117,8 +117,8 @@ A port in use, or one the system refuses, is exit code 3.
 ## Programmatic use
 
 `@readmint/cli` exports `runCli(argv, io)` (returns the exit code, never throws), `ExitCode`, `CliError`, `CliIo`,
-`escapeForLog`, `quoteForLog`, `formatIssue`, and the loaders the commands share: `loadDesignFile`, `loadDesignAssets`,
-`loadFixtureData`, `loadRenderInput` (design file, assets and fixture data in one call; `RenderInput`,
+`escapeForLog`, `quoteForLog`, `formatIssue`, `localeProblem(locale)` (why a tag cannot be the `--locale`, `undefined` when it can; the Action's `locale` input uses it too), and the loaders the commands share: `loadDesignFile`, `loadDesignAssets`,
+`loadFixtureData` (with `maxFixtureBytes`, its size cap), `loadRenderInput` (design file, assets and fixture data in one call; `RenderInput`,
 `RenderInputOptions`) and `renderInput` (`renderSvg` of a loaded input with the renderer's default limits). The GitHub
 Action ([action.md](action.md)) renders through `loadRenderInput` and `renderInput`, so it writes the bytes
 `readmint render` prints.

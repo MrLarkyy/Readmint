@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, test } from "vitest";
 import { pictureSnippet } from "../src/pictureSnippet.js";
 
@@ -48,4 +50,21 @@ describe("pictureSnippet", () => {
     );
     expect(snippet.match(/"/g)?.length).toBe(8);
   });
+});
+
+test("docs/action.md shows the snippet exactly as the Action prints it", () => {
+  const docs = readFileSync(
+    join(import.meta.dirname, "..", "..", "..", "docs", "action.md"),
+    "utf8",
+  );
+  const fence = /```html\n([^`]*)```/.exec(docs)?.[1]?.trimEnd();
+  expect(fence).toBe(
+    pictureSnippet([
+      {
+        stem: "card",
+        light: { design: "card.yaml", output: "readmint/card.svg" },
+        dark: { design: "card.dark.yaml", output: "readmint/card.dark.svg" },
+      },
+    ]),
+  );
 });
