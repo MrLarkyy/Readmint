@@ -13,6 +13,7 @@ test("exposes the data source API", () => {
     "GitHubDataError",
     "GitHubLimits",
     "MemoryCache",
+    "githubDataSource",
     "loadGitHubData",
     "packageName",
   ]);

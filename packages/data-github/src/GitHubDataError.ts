@@ -1,3 +1,5 @@
+import { DataSourceError } from "@readmint/data";
+import { GITHUB_DATA_NAMESPACE } from "./GitHubData.js";
 import { redactSecret } from "./redactSecret.js";
 
 /** Stable machine-readable reason of a failed load; part of the public contract. */
@@ -31,17 +33,15 @@ export interface GitHubDataErrorDetails {
  * Failure of a GitHub load. It carries no `cause`: a fetch or GitHub error may hold request
  * details, so only a redacted message and plain fields survive.
  */
-export class GitHubDataError extends Error {
-  readonly code: GitHubDataErrorCode;
+export class GitHubDataError extends DataSourceError<GitHubDataErrorCode> {
   readonly status?: number;
   readonly resetAt?: string;
   readonly retryAfterSeconds?: number;
   readonly causeCode?: string;
 
   constructor(code: GitHubDataErrorCode, message: string, details: GitHubDataErrorDetails = {}) {
-    super(redactSecret(message, details.secret));
+    super(GITHUB_DATA_NAMESPACE, code, redactSecret(message, details.secret));
     this.name = "GitHubDataError";
-    this.code = code;
     if (details.status !== undefined) this.status = details.status;
     if (details.resetAt !== undefined) this.resetAt = details.resetAt;
     if (details.retryAfterSeconds !== undefined) this.retryAfterSeconds = details.retryAfterSeconds;
