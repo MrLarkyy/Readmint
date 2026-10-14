@@ -1,4 +1,6 @@
-/*
+/*!
+ * @license Unicode-3.0 for the CLDR data below; full text also in LICENSE-CLDR.
+ *
  * Locale tables for the number and date filters.
  *
  * Source: Unicode CLDR 48 (common/main/en.xml, de.xml, fr.xml, es.xml, cs.xml): decimal and group
@@ -40,6 +42,7 @@
  * advertising or otherwise to promote the sale, use or other dealings in these Data Files or
  * Software without prior written authorization of the copyright holder.
  */
+
 import type { LocaleData } from "./LocaleData.js";
 
 /** U+00A0 NO-BREAK SPACE. */
