@@ -130,7 +130,9 @@ Drawn in document order, first at the back. Layer `id` and `name` are not emitte
   `<defs>`, one `<symbol id="s<hash>">` per `fit` that shows it (its `viewBox` and `preserveAspectRatio` do what the
   inline image does, its viewport clips like `cover`), and per layer a `<use>` with the layer's `x y width height`,
   opacity and rotation. A `<use>` with an `alt` gets `role="img"` beside its `aria-label`, so it keeps the accessible
-  name an `<image>` has. Animation classes and transform groups apply to the `<use>` as to an `<image>`.
+  name an `<image>` has. Animation classes and transform groups apply to the `<use>` as to an `<image>`. An image
+  with EXIF data (JPEG APP1 `Exif`, PNG `eXIf`, WebP `EXIF`) is never shared and stays an inline `<image>` at every
+  use, because browsers apply its orientation, which a symbol sized from the stored pixels would not follow.
 - An animated GIF, APNG or WebP is inlined as is; browsers play it, rasterizers draw the first frame. The Node golden
   rasterizer (resvg-js 2.6.2) cannot decode WebP, so WebP has unit tests but no golden image.
 
@@ -257,6 +259,6 @@ keyframes before any is resolved. Fixed limits: 10000 items per `repeat` (expr, 
 
 A successful render reports `bytes` (UTF-8 size of the SVG), `limit` (the `maxOutputBytes` used) and, in first-use
 order, `fonts` and `images` as `{ asset, bytes }`: the bytes each asset adds to the SVG. The data of an image counts
-once however often it is drawn, and 0 for an asset whose bytes an earlier asset already wrote, so the image bytes add
-up to what the SVG holds. A design with a timeline also reports `animation: { duration, loop }`, what `frameTimes`
+once however often it is drawn (an image with EXIF data, inline at every use, once per use), and 0 for an asset whose
+bytes an earlier asset already wrote, so the image bytes add up to what the SVG holds. A design with a timeline also reports `animation: { duration, loop }`, what `frameTimes`
 takes.

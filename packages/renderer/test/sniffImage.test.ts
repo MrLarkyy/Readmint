@@ -93,7 +93,10 @@ describe("dimensions per format", () => {
     ["apng", apng(3), "image/png", 4, 4, 3],
     ["animated webp", animatedWebp(2), "image/webp", 10, 10, 2],
   ])("%s", (_name, data, mime, width, height, frames) => {
-    expect(sniffImage(data, 1000)).toEqual({ ok: true, info: { mime, width, height, frames } });
+    expect(sniffImage(data, 1000)).toEqual({
+      ok: true,
+      info: { mime, width, height, frames, exif: false },
+    });
   });
 
   test("lossy and lossless WebP headers", () => {
@@ -110,6 +113,72 @@ describe("dimensions per format", () => {
     const bits = (40 - 1) | ((50 - 1) << 14);
     const vp8l = bytes("RIFF", u32le(0), "WEBP", "VP8L", u32le(5), [0x2f], u32le(bits));
     expect(sniffImage(vp8l, 10)).toMatchObject({ ok: true, info: { width: 40, height: 50 } });
+  });
+});
+
+/** `data` with `insert` placed at `offset`. */
+function spliced(data: Uint8Array, offset: number, insert: Uint8Array): Uint8Array {
+  return bytes([...data.subarray(0, offset)], [...insert], [...data.subarray(offset)]);
+}
+
+const exifPayload = bytes("Exif", [0, 0], "MM", [0, 42], u32be(8));
+/** An APP1 segment: `Exif\0\0` and a TIFF header, or XMP, which is no EXIF. */
+const app1 = (payload: Uint8Array) =>
+  bytes([0xff, 0xe1, (payload.length + 2) >> 8, (payload.length + 2) & 255], [...payload]);
+const pngChunk = (type: string, data: Uint8Array) =>
+  bytes(u32be(data.length), type, [...data], u32be(0));
+/** Offset of the first SOS segment of the test JPEG: the frame header lies before it. */
+const jpegScan = jpeg.findIndex((byte, index) => byte === 0xff && jpeg[index + 1] === 0xda);
+const pngIend = png.length - 12;
+
+const exifJpeg = spliced(jpeg, 2, app1(exifPayload));
+const exifPng = spliced(png, 33, pngChunk("eXIf", exifPayload.subarray(6)));
+
+function vp8x(flags: number, ...chunks: Uint8Array[]): Uint8Array {
+  return bytes(
+    "RIFF",
+    u32le(0),
+    "WEBP",
+    "VP8X",
+    u32le(10),
+    [flags, 0, 0, 0],
+    u24le(9),
+    u24le(9),
+    ...chunks.map((chunk) => [...chunk]),
+  );
+}
+
+describe("EXIF data", () => {
+  test.each([
+    ["jpeg with an Exif APP1 first", exifJpeg, true],
+    [
+      "jpeg with an Exif APP1 after the frame header",
+      spliced(jpeg, jpegScan, app1(exifPayload)),
+      true,
+    ],
+    [
+      "jpeg with an XMP APP1",
+      spliced(jpeg, 2, app1(bytes("http://ns.adobe.com/xap/1.0/", [0]))),
+      false,
+    ],
+    [
+      "jpeg with a cut-off APP1 after the frame header",
+      bytes([...jpeg.subarray(0, jpegScan)], [0xff, 0xe1, 0, 20, 0x45]),
+      false,
+    ],
+    ["png with eXIf before the data", exifPng, true],
+    [
+      "png with eXIf after the data",
+      spliced(png, pngIend, pngChunk("eXIf", exifPayload.subarray(6))),
+      true,
+    ],
+    ["png cut off after its data", png.subarray(0, pngIend - 3), false],
+    ["webp with the VP8X EXIF flag", vp8x(0x08), true],
+    ["webp with an EXIF chunk but no flag", vp8x(0, bytes("EXIF", u32le(0))), true],
+    ["webp VP8X without EXIF", vp8x(0, bytes("XMP ", u32le(0))), false],
+    ["gif", gif, false],
+  ])("%s", (_name, data, exif) => {
+    expect(sniffImage(data, 1000)).toMatchObject({ ok: true, info: { exif } });
   });
 });
 
@@ -205,6 +274,37 @@ describe("rendered images", () => {
       ok: false,
       issues: [{ path: "/assets/images/i", code: "asset-too-large" }],
     });
+  });
+
+  test.each([
+    ["jpeg", "image/jpeg", exifJpeg],
+    ["png", "image/png", exifPng],
+    ["webp", "image/webp", vp8x(0x08)],
+  ])("a %s with EXIF data drawn twice stays inline in both places", (_name, mime, data) => {
+    const result = renderSvg(
+      {
+        version: 0,
+        canvas: { width: 50, height: 50 },
+        assets: { images: { i: { src: uri(mime, data) }, j: { src: uri(mime, data) } } },
+        layers: [
+          { type: "image", asset: "i", width: 10, height: 10, repeat: { each: "{{[1, 2]}}" } },
+          { type: "image", asset: "j", width: 10, height: 10 },
+        ],
+      },
+      {},
+    );
+    if (!result.ok) throw new Error(JSON.stringify(result.issues));
+    expect(result.svg).not.toMatch(/<use|<symbol|<defs>/u);
+    expect(
+      result.svg.match(
+        /<image x="0" y="0" width="10" height="10" preserveAspectRatio="xMidYMid meet" href="data:/gu,
+      ),
+    ).toHaveLength(3);
+    const length = uri(mime, data).length;
+    expect(result.report.images).toEqual([
+      { asset: "i", bytes: 2 * length },
+      { asset: "j", bytes: length },
+    ]);
   });
 
   test("the byte cap is checked before decoding", () => {
