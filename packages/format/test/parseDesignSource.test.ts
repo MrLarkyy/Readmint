@@ -76,13 +76,25 @@ describe("YAML source", () => {
   });
 
   test("a map with 80 000 keys is checked in linear time", () => {
-    const keys = Array.from({ length: 80_000 }, (_, index) => `k${String(index)}: 0`);
-    const started = performance.now();
-    expect(issuesOf([...keys, "k7: 1"].join("\n"))).toMatchObject([
+    // A growth ratio instead of a wall-clock bound, so machine load does not decide: linear is
+    // about 4 for 4x the keys, quadratic about 16; the best of three runs filters load spikes.
+    const duplicateKeySource = (count: number) =>
+      [...Array.from({ length: count }, (_, index) => `k${String(index)}: 0`), "k7: 1"].join("\n");
+    const best = (source: string) => {
+      let fastest = Infinity;
+      for (let run = 0; run < 3; run++) {
+        const started = performance.now();
+        issuesOf(source);
+        fastest = Math.min(fastest, performance.now() - started);
+      }
+      return fastest;
+    };
+    // The 80 000-key case stays as the untimed check of the full size; only 10 000 and 40 000 are timed.
+    expect(issuesOf(duplicateKeySource(80_000))).toMatchObject([
       { code: "duplicate-key", line: 80_001, column: 1 },
     ]);
-    expect(performance.now() - started).toBeLessThan(2000);
-  });
+    expect(best(duplicateKeySource(40_000)) / best(duplicateKeySource(10_000))).toBeLessThan(8);
+  }, 60_000);
 
   test("more than maxAliases aliases fail before any alias is resolved", () => {
     // As many anchors and aliases as fit in the YAML source limit.

@@ -1,4 +1,4 @@
-import type { GitHubCache } from "./GitHubCache.js";
+import type { DataSourceLoadOptions } from "@readmint/data";
 
 /** Ranges and defaults of the load options, and the fixed caps applied to every response. */
 export const GitHubLimits = Object.freeze({
@@ -37,7 +37,7 @@ export type GitHubLimits = typeof GitHubLimits;
 /** `fetch` as the loader calls it; injectable so tests replay recorded responses. */
 export type GitHubFetch = (url: string, init: RequestInit) => Promise<Response>;
 
-export interface GitHubSourceOptions {
+export interface GitHubSourceOptions extends DataSourceLoadOptions {
   /** The user's GitHub token. It is only ever sent in the `Authorization` header. */
   readonly token: string;
   /** GitHub login to load; the token's owner (`viewer`) when absent. */
@@ -52,8 +52,6 @@ export interface GitHubSourceOptions {
   readonly maxRetryWaitSeconds?: number;
   /** Lifetime of a cache entry, 1 to 604800 s (default 3600). */
   readonly cacheTtlSeconds?: number;
-  readonly cache?: GitHubCache;
   readonly fetch?: GitHubFetch;
   readonly sleep?: (milliseconds: number) => Promise<void>;
-  readonly signal?: AbortSignal;
 }

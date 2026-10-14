@@ -1,3 +1,4 @@
+import type { DataSourceLoadMeta } from "@readmint/data";
 import type { GitHubData } from "./GitHubData.js";
 
 export interface GitHubLoadResult {
@@ -6,13 +7,10 @@ export interface GitHubLoadResult {
   readonly meta: GitHubLoadMeta;
 }
 
-export interface GitHubLoadMeta {
-  /** HTTP requests sent, retries included. */
-  readonly requests: number;
+export interface GitHubLoadMeta extends DataSourceLoadMeta {
   /** GraphQL rate-limit points the queries cost. */
   readonly cost: number;
   readonly rateLimitRemaining: number | null;
   /** ISO timestamp at which the GraphQL rate limit resets. */
   readonly resetAt: string | null;
-  readonly fromCache: boolean;
 }
