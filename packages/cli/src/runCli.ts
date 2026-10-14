@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import { AssetPathError } from "./AssetPathError.js";
 import { CliError } from "./CliError.js";
 import type { CliIo } from "./CliIo.js";
+import { errnoCode } from "./errnoCode.js";
 import { ExitCode } from "./ExitCode.js";
 import { helpText } from "./helpText.js";
 import { parseCliArgs } from "./parseCliArgs.js";
@@ -13,8 +14,10 @@ import { validateCommand } from "./validateCommand.js";
 /**
  * Runs one `readmint` command line (without node and the script) against `io` and returns the
  * exit code; never throws. Every message line is escaped (`escapeForLog`); the SVG is written as is.
+ * A system error writing standard output (EPIPE, a full disk) is exit code 3 for every command.
  */
-export async function runCli(argv: readonly string[], io: CliIo): Promise<ExitCode> {
+export async function runCli(argv: readonly string[], cliIo: CliIo): Promise<ExitCode> {
+  const io: CliIo = { ...cliIo, stdout: guardStdout(cliIo.stdout) };
   try {
     const command = parseCliArgs(argv);
     switch (command.name) {
@@ -34,6 +37,20 @@ export async function runCli(argv: readonly string[], io: CliIo): Promise<ExitCo
   } catch (error) {
     return report(error, io);
   }
+}
+
+function guardStdout(write: CliIo["stdout"]): CliIo["stdout"] {
+  return async (text) => {
+    try {
+      await write(text);
+    } catch (error) {
+      const code = errnoCode(error);
+      if (code === undefined) throw error;
+      throw new CliError(ExitCode.input, `cannot write standard output (${code})`, {
+        cause: error,
+      });
+    }
+  };
 }
 
 async function report(error: unknown, io: CliIo): Promise<ExitCode> {

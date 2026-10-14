@@ -30,15 +30,7 @@ export async function renderCommand(
     result.warnings.map((issue) => formatIssue(name, issue, "warning")),
   );
   if (args.out === undefined) {
-    try {
-      await io.stdout(result.svg);
-    } catch (error) {
-      const code = errnoCode(error);
-      if (code === undefined) throw error;
-      throw new CliError(ExitCode.input, `cannot write standard output (${code})`, {
-        cause: error,
-      });
-    }
+    await io.stdout(result.svg);
     return ExitCode.ok;
   }
   try {

@@ -1,5 +1,7 @@
+import { Writable } from "node:stream";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import { ExitCode } from "../src/index.js";
+import { streamWriter } from "../src/streamWriter.js";
 import { linkDirectory } from "./assetTree.js";
 import { boundDesign, type CliTree, makeCliTree, plainDesign, png } from "./cliTree.js";
 
@@ -177,14 +179,42 @@ describe("exit code 3", () => {
 });
 
 describe("a failed write to standard output", () => {
-  test("a system error code is exit code 3 without Node's text", async () => {
-    const run = await tree.run(["render", "plain.json"], {
-      stdout: () =>
-        Promise.reject(Object.assign(new Error("write EPIPE at /secret/path"), { code: "EPIPE" })),
+  test.each([["render", "plain.json"], ["validate", "plain.json"], ["--help"], ["--version"]])(
+    "%s: a system error code is exit code 3 without Node's text",
+    async (...argv: string[]) => {
+      const run = await tree.run(argv, {
+        stdout: () =>
+          Promise.reject(
+            Object.assign(new Error("write EPIPE at /secret/path"), { code: "EPIPE" }),
+          ),
+      });
+      expect(run).toMatchObject({
+        code: ExitCode.input,
+        stderr: "cannot write standard output (EPIPE)\n",
+      });
+    },
+  );
+
+  test("the error a process stream failed with, through streamWriter", async () => {
+    const stream = new Writable({
+      write(_chunk, _encoding, callback) {
+        callback(Object.assign(new Error("write EPIPE"), { code: "EPIPE" }));
+      },
     });
+    const run = await tree.run(["validate", "plain.json"], { stdout: streamWriter(stream) });
     expect(run).toMatchObject({
       code: ExitCode.input,
       stderr: "cannot write standard output (EPIPE)\n",
+    });
+  });
+
+  test("an error without a system code stays internal", async () => {
+    const run = await tree.run(["validate", "plain.json"], {
+      stdout: () => Promise.reject(new Error("stdout broke")),
+    });
+    expect(run).toMatchObject({
+      code: ExitCode.internal,
+      stderr: "internal error: stdout broke\n",
     });
   });
 });
