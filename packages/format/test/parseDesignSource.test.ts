@@ -164,16 +164,28 @@ describe("YAML source", () => {
     30_000,
   );
 
-  /** Median of three timed runs after a warm-up run; the last result is checked by the caller. */
-  function timed<T>(run: () => T): { ms: number; result: T } {
-    const times: number[] = [];
+  /**
+   * Times a source against a linear twin: both warmed up once, then three rounds of the two back
+   * to back, so a change in machine load hits both sides of each ratio alike.
+   */
+  function compareWithTwin<T>(
+    run: () => T,
+    twin: () => unknown,
+  ): { ms: number; ratio: number; result: T } {
     let result = run();
+    twin();
+    const times: number[] = [];
+    const ratios: number[] = [];
     for (let round = 0; round < 3; round++) {
       const started = performance.now();
       result = run();
-      times.push(performance.now() - started);
+      const middle = performance.now();
+      twin();
+      times.push(middle - started);
+      ratios.push((middle - started) / (performance.now() - middle));
     }
-    return { ms: times.sort((x, y) => x - y)[1] ?? 0, result };
+    const median = (values: number[]) => values.sort((x, y) => x - y)[1] ?? 0;
+    return { ms: median(times), ratio: median(ratios), result };
   }
 
   test("a YAML sequence beside an aliased anchor full of aliases costs no more than without the alias", () => {
@@ -181,27 +193,31 @@ describe("YAML source", () => {
     const aliased = fillToYamlLimit(head, ",0", `]\n${aliasedAnchors.uses}`);
     const plain = aliased.replace(/z: \*a\n$/u, "z: 0\n");
     expect(plain).not.toBe(aliased);
-    const withAlias = timed(() => issuesOf(aliased));
-    const without = timed(() => issuesOf(plain));
+    const withAlias = compareWithTwin(
+      () => issuesOf(aliased),
+      () => issuesOf(plain),
+    );
     expect(withAlias.result[0]).toMatchObject({
       path: "/b0",
       code: "unknown-property",
     });
     expect(withAlias.ms).toBeLessThan(linearBudget);
     // yaml's alias count walks the whole document per alias: 3x slower than the twin.
-    expect(withAlias.ms / without.ms).toBeLessThan(1.5);
+    expect(withAlias.ratio).toBeLessThan(1.5);
   }, 60_000);
 
   test("a YAML source of syntax errors at the size limit costs no more than valid YAML", () => {
     const errors = fillToYamlLimit("x: [", ",");
     const values = fillToYamlLimit("x: [0", ",0", "]");
-    const broken = timed(() => parseDesign(errors));
-    const valid = timed(() => parseDesign(values));
+    const broken = compareWithTwin(
+      () => parseDesign(errors),
+      () => parseDesign(values),
+    );
     expect(broken.result).toMatchObject({ ok: false, truncated: true });
     expect(!broken.result.ok && broken.result.issues).toHaveLength(DesignLimits.maxIssues);
     expect(broken.ms).toBeLessThan(linearBudget);
     // A stack trace per syntax error made this 6-10x slower than the valid twin.
-    expect(broken.ms / valid.ms).toBeLessThan(2);
+    expect(broken.ratio).toBeLessThan(2);
   }, 60_000);
 
   test("a YAML source over its limit fails before parsing", () => {
