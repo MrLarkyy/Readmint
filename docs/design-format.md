@@ -27,12 +27,24 @@ migrates and validates it; the published JSON Schema gives editors completion an
 ## API
 
 ```ts
-import { parseDesign, validateDesign, migrateDesign, designJsonSchema } from "@readmint/format";
+import {
+  parseDesign,
+  validateDesign,
+  migrateDesign,
+  designJsonSchema,
+  quoteInput,
+} from "@readmint/format";
 
 parseDesign(source, { format?: "json" | "yaml" }); // text -> parse -> migrate -> validate
 validateDesign(value); // already parsed (editor state): migrate -> validate
 migrateDesign(value, { migrations?, target? }); // only the migration chain
+quoteInput(value, { maxEcho?, escape? }); // an input value as issue messages quote it
 ```
+
+`quoteInput` is how every issue message quotes a value from the input: JSON-quoted, clipped at `maxEcho` code points
+(default `DesignLimits.maxEcho`, 64) with an ellipsis, and every code point `escape` selects written as `\uXXXX`, one per
+UTF-16 unit. The default escape set is the engine-independent one of the format (C0 and C1 controls, bidi marks,
+embeddings, overrides and isolates, line and paragraph separators); a host may pass a wider one (the CLI does).
 
 Every function returns a `DesignResult`:
 

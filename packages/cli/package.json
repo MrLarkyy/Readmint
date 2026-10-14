@@ -3,6 +3,9 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "bin": {
+    "readmint": "./dist/bin.js"
+  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -12,5 +15,10 @@
   "scripts": {
     "build": "tsc -b tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@readmint/data": "workspace:*",
+    "@readmint/format": "workspace:*",
+    "@readmint/renderer": "workspace:*"
   }
 }

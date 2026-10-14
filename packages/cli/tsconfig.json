@@ -3,7 +3,14 @@
   "compilerOptions": {
     "composite": false,
     "noEmit": true,
-    "types": ["node"]
+    "types": ["node"],
+    "paths": {
+      "@readmint/data": ["../data/src/index.ts"],
+      "@readmint/expr": ["../expr/src/index.ts"],
+      "@readmint/fonts": ["../fonts/src/index.ts"],
+      "@readmint/format": ["../format/src/index.ts"],
+      "@readmint/renderer": ["../renderer/src/index.ts"]
+    }
   },
   "include": ["src", "test"]
 }
