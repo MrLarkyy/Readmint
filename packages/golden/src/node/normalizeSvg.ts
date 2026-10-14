@@ -95,10 +95,12 @@ function renameTimingReferences(value: string, ids: Map<string, string>): string
 }
 
 function rewriteStyleText(css: string, ids: Map<string, string>): string {
-  return renameUrls(css, ids).replace(/#([A-Za-z_][\w-]*)(?=\s*[{,:.[>+~])/g, (all, id: string) => {
-    const renamed = ids.get(id);
-    return renamed === undefined ? all : `#${renamed}`;
-  });
+  return renameUrls(css, ids)
+    .replace(/#([A-Za-z_][\w-]*)(?=\s*[{,:.[>+~])/g, (all, id: string) => {
+      const renamed = ids.get(id);
+      return renamed === undefined ? all : `#${renamed}`;
+    })
+    .replace(/data:[^)'"\s&]*/g, (uri) => digestData(uri));
 }
 
 function roundValue(value: string, precision: number): string {

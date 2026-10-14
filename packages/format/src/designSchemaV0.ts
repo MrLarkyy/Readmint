@@ -1,5 +1,6 @@
 import { DESIGN_FORMAT_VERSION } from "./designMigrations.js";
 import { DesignLimits } from "./DesignLimits.js";
+import { ValueRanges, type ValueRange } from "./ValueRanges.js";
 import {
   array,
   bindable,
@@ -15,6 +16,7 @@ import {
   ref,
   string,
   union,
+  type NumberNode,
   type ObjectNode,
   type SchemaDocument,
   type SchemaNode,
@@ -24,11 +26,15 @@ const idKey = string("an id (a letter, then letters, digits, _ or -; at most 64)
   maxLength: 64,
   pattern: "^[A-Za-z][A-Za-z0-9_-]{0,63}$",
 });
-const coordinate = bindable(number({ minimum: -100_000, maximum: 100_000 }));
-const size = bindable(number({ exclusiveMinimum: 0, maximum: 100_000 }));
-const length = bindable(number({ minimum: 0, maximum: 100_000 }));
-const unit = bindable(number({ minimum: 0, maximum: 1 }));
-const strokeWidth = bindable(number({ minimum: 0, maximum: 1000 }));
+function numberIn({ integer: whole, ...bounds }: ValueRange): NumberNode {
+  return whole ? integer(bounds) : number(bounds);
+}
+
+const coordinate = bindable(numberIn(ValueRanges.position));
+const size = bindable(numberIn(ValueRanges.size));
+const length = bindable(numberIn(ValueRanges.length));
+const unit = bindable(numberIn(ValueRanges.unit));
+const strokeWidth = bindable(numberIn(ValueRanges.strokeWidth));
 const id = ref("Id");
 const paint = ref("Paint");
 const layers = array("a list of layers", ref("Layer"));
@@ -54,10 +60,10 @@ function dataUri(mediaTypes: string): string {
 
 const fontText = {
   "font?": id,
-  "fontSize?": bindable(number({ exclusiveMinimum: 0, maximum: 1000 })),
-  "fontWeight?": bindable(integer({ minimum: 1, maximum: 1000 })),
-  "lineHeight?": bindable(number({ exclusiveMinimum: 0, maximum: 10 })),
-  "letterSpacing?": bindable(number({ minimum: -100, maximum: 100 })),
+  "fontSize?": bindable(numberIn(ValueRanges.fontSize)),
+  "fontWeight?": bindable(numberIn(ValueRanges.fontWeight)),
+  "lineHeight?": bindable(numberIn(ValueRanges.lineHeight)),
+  "letterSpacing?": bindable(numberIn(ValueRanges.letterSpacing)),
   "align?": enumOf(["start", "middle", "end"]),
 };
 
@@ -69,7 +75,7 @@ function layer(type: string, properties: Record<string, SchemaNode>): ObjectNode
     "x?": coordinate,
     "y?": coordinate,
     "opacity?": unit,
-    "rotation?": bindable(number({ minimum: -360, maximum: 360 })),
+    "rotation?": bindable(numberIn(ValueRanges.rotation)),
     "visible?": bindable(boolean()),
     "style?": id,
     "if?": ref(bindingDef),
@@ -132,7 +138,7 @@ const defs = new Map<string, SchemaNode>([
       }),
       object("a grid layout", {
         type: literal("grid"),
-        columns: bindable(integer({ minimum: 1, maximum: 1000 })),
+        columns: bindable(numberIn(ValueRanges.columns)),
         "gap?": length,
       }),
     ]),
@@ -183,7 +189,7 @@ const defs = new Map<string, SchemaNode>([
     object("a font asset", {
       family: string("a font family", { minLength: 1, maxLength: 128 }),
       src: ref("FontSource"),
-      "weight?": integer({ minimum: 1, maximum: 1000 }),
+      "weight?": numberIn(ValueRanges.fontWeight),
       "style?": enumOf(["normal", "italic"]),
       licence: object("a font licence", {
         embedding: enumOf(["allowed", "restricted"]),
@@ -208,8 +214,8 @@ const defs = new Map<string, SchemaNode>([
     "ImageAsset",
     object("an image asset", {
       src: ref("ImageSource"),
-      "width?": number({ exclusiveMinimum: 0, maximum: 100_000 }),
-      "height?": number({ exclusiveMinimum: 0, maximum: 100_000 }),
+      "width?": numberIn(ValueRanges.size),
+      "height?": numberIn(ValueRanges.size),
     }),
   ],
   [
@@ -229,8 +235,8 @@ const defs = new Map<string, SchemaNode>([
     "ComponentDefinition",
     object("a component definition", {
       "description?": string("a description", { maxLength: 2000 }),
-      "width?": number({ exclusiveMinimum: 0, maximum: 100_000 }),
-      "height?": number({ exclusiveMinimum: 0, maximum: 100_000 }),
+      "width?": numberIn(ValueRanges.size),
+      "height?": numberIn(ValueRanges.size),
       "props?": record("component prop definitions", idKey, ref("ComponentProp")),
       layers,
     }),
@@ -253,8 +259,8 @@ export const designSchemaV0: SchemaDocument = {
     "title?": string("a title", { maxLength: 200 }),
     "description?": string("a description", { maxLength: 2000 }),
     canvas: object("a canvas", {
-      width: bindable(integer({ minimum: 1, maximum: 4096 })),
-      height: bindable(integer({ minimum: 1, maximum: 4096 })),
+      width: bindable(numberIn(ValueRanges.canvasSide)),
+      height: bindable(numberIn(ValueRanges.canvasSide)),
       "background?": paint,
     }),
     layers,

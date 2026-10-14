@@ -122,16 +122,16 @@ function parseYaml(text: string): DesignResult<unknown> {
  * character: capturing a stack trace for each made 1 MiB of them take 9 s or more instead of 1 s.
  */
 function withoutStackTraces<T>(run: () => T): T {
-  const errorClass: { stackTraceLimit?: unknown } = Error;
-  const saved = errorClass.stackTraceLimit;
-  // Left alone when hardened (frozen intrinsics, SES): assigning would throw in strict mode.
+  // Reflect, because stackTraceLimit is a V8 extension the ES2023 library (the package build) does not declare.
+  const saved: unknown = Reflect.get(Error, "stackTraceLimit");
+  // Left alone when hardened (frozen intrinsics, SES).
   const property = Object.getOwnPropertyDescriptor(Error, "stackTraceLimit");
   if (property?.writable !== true || typeof saved !== "number") return run();
-  errorClass.stackTraceLimit = 0;
+  Reflect.set(Error, "stackTraceLimit", 0);
   try {
     return run();
   } finally {
-    errorClass.stackTraceLimit = saved;
+    Reflect.set(Error, "stackTraceLimit", saved);
   }
 }
 

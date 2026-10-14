@@ -6,6 +6,8 @@ import { goldenEnvironment } from "./packages/golden/src/vitest/goldenEnvironmen
 
 const golden = (path: string) =>
   fileURLToPath(new URL(`./packages/golden/src/${path}`, import.meta.url));
+const source = (name: string) =>
+  fileURLToPath(new URL(`./packages/${name}/src/index.ts`, import.meta.url));
 
 export default defineConfig(({ mode }) => ({
   resolve: {
@@ -14,6 +16,10 @@ export default defineConfig(({ mode }) => ({
       { find: new RegExp("^@readmint/golden/browser$"), replacement: golden("browser/index.ts") },
       { find: new RegExp("^@readmint/golden/vitest$"), replacement: golden("vitest/index.ts") },
       { find: new RegExp("^@readmint/golden$"), replacement: golden("index.ts") },
+      ...["expr", "format", "fonts", "renderer"].map((name) => ({
+        find: new RegExp(`^@readmint/${name}$`),
+        replacement: source(name),
+      })),
     ],
   },
   test: {

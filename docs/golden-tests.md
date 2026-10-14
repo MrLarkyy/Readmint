@@ -41,11 +41,14 @@ paths are used as given, so they are relative to the working directory of the te
 `pnpm test`); build absolute ones from `import.meta.dirname`. A missing file is an error naming the path. A font
 committed to the repository must be redistributable and its licence file must sit beside it.
 
+resvg-js 2.6.2 does not decode WebP images: a WebP draws nothing in the Node PNG while Chromium draws it, so a fixture
+with a WebP image fails the browser leg. Cover WebP with unit tests instead.
+
 ## Normalized SVG
 
 Ids are renamed `id0`, `id1`, ... by definition order (references in `url(#x)`, `href`, `aria-labelledby`/`aria-describedby`, SMIL `begin`/`end`
 and `<style>` follow); numbers in attribute values are rounded to `precision` decimals (default 3, `-0` becomes `0`);
-`data:` URIs become `data:<mime>;sha256=<digest>`; line ends become LF. Text nodes, `class`, `font-family` and
+`data:` URIs (in attributes and in `<style>`, such as embedded fonts) become `data:<mime>;sha256=<digest>`; line ends become LF. Text nodes, `class`, `font-family` and
 namespaces are left alone. Fixtures must not contain live data (names, counts from the real GitHub): use fixed values.
 
 ## Tolerance

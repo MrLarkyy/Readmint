@@ -202,6 +202,7 @@ import {
   evaluateCondition,
   expandRepeat,
   ExpressionLimits,
+  toText,
 } from "@readmint/expr";
 
 const template = compileTemplate("{{ github.followers | compact }} followers"); // ExprResult<Template>
@@ -215,6 +216,7 @@ template.value.kind; // "expression" (exactly one placeholder) or "text"
 evaluateCondition(ifTemplate, scope); // ExprResult<boolean>, for a layer's `if`
 expandRepeat(eachTemplate, scope, { as: "repo", index: "i" }); // ExprResult<Scope[]>, one child scope per item
 scope.with({ props: { label: "Stars" } }); // a child scope with locals, e.g. component props
+toText(value); // string | undefined: a value written as a placeholder in text is; undefined for an array or object
 ```
 
 - `ExprResult<T>` is `{ ok: true, value: T } | { ok: false, error: ExpressionError }`; `ExprValue` is a JSON value.
