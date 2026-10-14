@@ -57,6 +57,65 @@ export default defineGoldenSuite<RenderFixture>({
       ]),
     },
     {
+      name: "gradient-clip-repeat",
+      input: design(
+        [
+          {
+            type: "group",
+            x: 10,
+            y: 10,
+            layout: { type: "stack", direction: "row", gap: 10 },
+            children: [
+              {
+                type: "group",
+                width: 40,
+                height: 50,
+                clip: true,
+                repeat: { each: "{{cards}}", as: "card" },
+                children: [
+                  {
+                    type: "rect",
+                    x: -10,
+                    y: "{{card.shift}}",
+                    width: 60,
+                    height: 60,
+                    radius: 12,
+                    fill: {
+                      type: "linear",
+                      x2: 0,
+                      y2: 1,
+                      stops: [
+                        { offset: 0, color: "#0969da" },
+                        { offset: 1, color: "#bf3989" },
+                      ],
+                    },
+                  },
+                ],
+              },
+            ],
+          },
+          {
+            type: "rect",
+            x: 6,
+            y: 70,
+            width: 148,
+            height: 20,
+            radius: 6,
+            fill: "none",
+            strokeWidth: 4,
+            stroke: {
+              type: "linear",
+              stops: [
+                { offset: 0, color: "#0969da" },
+                { offset: 1, color: "#bf3989" },
+              ],
+            },
+          },
+        ],
+        { cards: [{ shift: -20 }, { shift: 0 }, { shift: 15 }] },
+      ),
+    },
+    {
       name: "stack-row-center",
       input: design([
         {

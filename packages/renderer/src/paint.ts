@@ -106,8 +106,8 @@ function resolveGradient(
 }
 
 /**
- * ` fill="..."` (or stroke) plus `fill-opacity` when the colour has alpha; a gradient is written into `<defs>`
- * under the next `g<n>` id. Empty when the paint is undefined.
+ * ` fill="..."` (or stroke) plus `fill-opacity` when the colour has alpha; a gradient refers to its definition in
+ * `<defs>`, written once per distinct gradient under a `g<hash>` id. Empty when the paint is undefined.
  */
 export function paintAttributes(
   writer: SvgWriter,
@@ -130,7 +130,6 @@ function defineGradient(
   writer: SvgWriter,
   paint: Extract<Paint, { kind: "linear" | "radial" }>,
 ): string {
-  const id = writer.id("g");
   const names = paint.kind === "linear" ? ["x1", "y1", "x2", "y2"] : ["cx", "cy", "r"];
   const coordinates = names
     .map((name, index) => ` ${name}="${formatNumber(paint.coordinates[index] ?? 0)}"`)
@@ -142,8 +141,7 @@ function defineGradient(
     )
     .join("");
   const element = paint.kind === "linear" ? "linearGradient" : "radialGradient";
-  writer.define(`<${element} id="${id}"${coordinates}>${stops}</${element}>`);
-  return id;
+  return writer.share("g", (id) => `<${element} id="${id}"${coordinates}>${stops}</${element}>`);
 }
 
 function alpha(attribute: string, colour: PaintColour): string {

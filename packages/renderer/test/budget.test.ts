@@ -5,7 +5,7 @@ import { minimumNodeBytes } from "../src/expandLayers.js";
 import type { AnimatedProperty } from "../src/NodeAnimation.js";
 import { minimumTrackBytes } from "../src/resolveAnimation.js";
 import { utf8Length } from "../src/utf8Length.js";
-import { fontAssets } from "./testAssets.js";
+import { fontAssets, imageAssets } from "./testAssets.js";
 
 test("the default output budget is the camo content length limit", () => {
   expect(RenderLimits.maxOutputBytes).toBe(5_242_880);
@@ -198,6 +198,8 @@ test("the report lists embedded fonts and images once each, in first-use order",
   expect(result.ok && result.report.images).toEqual([]);
 });
 
+const tinyGif = "data:image/gif;base64,R0lGODlhAQABAAAAACwAAAAAAQABAAACAkQBADs=";
+
 test("the bytes reserved per node never exceed what the smallest node of its kind writes", () => {
   const smallest: Layer[] = [
     { type: "group", children: [] },
@@ -219,7 +221,7 @@ test("the bytes reserved per node never exceed what the smallest node of its kin
       canvas: { width: 1, height: 1 },
       assets: {
         fonts: { m: { ...fontAssets.medium, family: "M" } },
-        images: { i: { src: "data:image/gif;base64,R0lGODlhAQABAAAAACwAAAAAAQABAAACAkQBADs=" } },
+        images: { i: { src: tinyGif } },
       },
       layers: [layer],
     });
@@ -227,6 +229,65 @@ test("the bytes reserved per node never exceed what the smallest node of its kin
     const markup = one.svg.replace(/<defs>.*<\/defs>/u, "").length - empty.svg.length;
     expect(markup, layer.type).toBeGreaterThanOrEqual(reserved(layer));
   }
+  const empty = renderSvg({ version: 0, canvas: { width: 1, height: 1 }, layers: [] });
+  const shared = renderSvg(
+    {
+      version: 0,
+      canvas: { width: 1, height: 1 },
+      assets: { images: { i: { src: tinyGif } } },
+      layers: [
+        {
+          type: "image",
+          asset: "i",
+          width: 1,
+          height: 1,
+          fit: "fill",
+          repeat: { each: "{{two}}" },
+        },
+      ],
+    },
+    { data: { two: [0, 0] } },
+  );
+  if (!empty.ok || !shared.ok) throw new Error("shared image");
+  const uses = shared.svg.replace(/<defs>.*<\/defs>/u, "").length - empty.svg.length;
+  expect(uses / 2, "shared image").toBeGreaterThanOrEqual(minimumNodeBytes.image);
+});
+
+/** A real PNG padded after its end to about `size` bytes: sniffed like the PNG, inlined at full size. */
+function paddedPng(size: number): Uint8Array {
+  const png = Buffer.from(
+    imageAssets.png.src.slice(imageAssets.png.src.indexOf(",") + 1),
+    "base64",
+  );
+  const padded = new Uint8Array(size);
+  padded.set(png);
+  return padded;
+}
+
+test("1000 copies of a 1 MB image write its data once, in under 2 s", () => {
+  const big = paddedPng(750_000);
+  const design: Design = {
+    version: 0,
+    canvas: { width: 100, height: 100 },
+    assets: { images: { big: { src: "big.png" } } },
+    layers: [{ type: "image", asset: "big", width: 10, height: 10, repeat: { each: "{{items}}" } }],
+  };
+  const options = {
+    data: { items: new Array<number>(1000).fill(0) },
+    assets: { images: { big } },
+  };
+  const started = performance.now();
+  const result = renderSvg(design, options);
+  expect(performance.now() - started).toBeLessThan(2000);
+  if (!result.ok) throw new Error(JSON.stringify(result.issues));
+  const dataUri = `data:image/png;base64,${Buffer.from(big).toString("base64")}`;
+  expect(result.svg.split(dataUri)).toHaveLength(2);
+  expect(result.report.images).toEqual([{ asset: "big", bytes: dataUri.length }]);
+  expect(result.report.bytes).toBeLessThan(dataUri.length + 1000 * 200);
+
+  // The one definition is still charged: a budget below the data fails like before.
+  const tight = renderSvg(design, { ...options, limits: { maxOutputBytes: dataUri.length - 1 } });
+  expect(tight).toMatchObject({ ok: false, issues: [{ path: "", code: "too-large" }] });
 });
 
 test("utf8Length counts like TextEncoder, lone surrogates included", () => {

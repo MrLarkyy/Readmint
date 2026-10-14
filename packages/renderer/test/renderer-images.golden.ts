@@ -1,5 +1,5 @@
 import { defineGoldenSuite } from "@readmint/golden";
-import type { ImageLayer } from "@readmint/format";
+import type { ImageLayer, Layer } from "@readmint/format";
 import { renderFixture, type RenderFixture } from "./renderFixture.js";
 import { imageAssets } from "./testAssets.js";
 
@@ -21,6 +21,42 @@ function design(image: Omit<ImageLayer, "type" | "x" | "y">): RenderFixture {
           strokeWidth: 1,
         },
         { type: "image", x: 10, y: 10, ...image },
+      ],
+    },
+  };
+}
+
+/** One asset drawn twice in each fit: the data is written once, every copy is a `<use>` of a symbol per fit. */
+function repeated(): RenderFixture {
+  const frame = (x: number, y: number, width: number, height: number): Layer => ({
+    type: "rect",
+    x,
+    y,
+    width,
+    height,
+    fill: "none",
+    stroke: "#57606a",
+    strokeWidth: 1,
+  });
+  const image = (
+    [x, y, width, height]: [number, number, number, number],
+    extra: Partial<ImageLayer>,
+  ): Layer[] => [
+    frame(x, y, width, height),
+    { type: "image", asset: "png", x, y, width, height, ...extra },
+  ];
+  return {
+    design: {
+      version: 0,
+      canvas: { width: 160, height: 100, background: "#eaeef2" },
+      assets: { images: imageAssets },
+      layers: [
+        ...image([6, 6, 40, 24], { fit: "contain", alt: "contain" }),
+        ...image([54, 6, 20, 30], { fit: "contain", opacity: 0.5 }),
+        ...image([82, 6, 16, 30], { fit: "cover" }),
+        ...image([106, 6, 44, 16], { fit: "cover", rotation: 20 }),
+        ...image([6, 52, 60, 20], { fit: "fill" }),
+        ...image([80, 56, 30, 36], { fit: "fill", rotation: -30, opacity: 0.7 }),
       ],
     },
   };
@@ -52,5 +88,6 @@ export default defineGoldenSuite<RenderFixture>({
       scale: 2,
       input: design({ asset: "gif", width: 32, height: 32, alt: "first frame of an animation" }),
     },
+    { name: "image-repeat", scale: 2, input: repeated() },
   ],
 });

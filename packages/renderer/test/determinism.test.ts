@@ -1,4 +1,4 @@
-import type { Design } from "@readmint/format";
+import type { Colour, Design, Paint } from "@readmint/format";
 import { expect, test } from "vitest";
 import { renderSvg } from "../src/index.js";
 import { animationDesigns } from "./animationDesigns.js";
@@ -6,7 +6,11 @@ import { renderFixture } from "./renderFixture.js";
 import layout from "./renderer-layout.golden.js";
 import shapes from "./renderer-shapes.golden.js";
 import text from "./renderer-text.golden.js";
-import { fontAssets } from "./testAssets.js";
+import { fontAssets, imageAssets } from "./testAssets.js";
+
+function ids(svg: string): string[] {
+  return [...svg.matchAll(/ id="([^"]*)"/gu)].map((match) => match[1] ?? "");
+}
 
 function input(
   suite: { fixtures: { name: string; input: Parameters<typeof renderFixture>[0] }[] },
@@ -37,13 +41,67 @@ test.each(animationDesigns.map(({ name, input }) => [name, input] as const))(
   },
 );
 
-test("ids restart with every render", () => {
-  const svg = renderFixture(input(shapes, "rect-linear-gradient"));
-  expect(svg).toContain('id="g0"');
-  expect(renderFixture(input(shapes, "ellipse-radial-gradient"))).toContain('id="g0"');
+test("ids are derived from the definition, not from what an earlier render wrote", () => {
+  const linear = renderFixture(input(shapes, "rect-linear-gradient"));
+  const radial = renderFixture(input(shapes, "ellipse-radial-gradient"));
+  expect(ids(linear)).toEqual([expect.stringMatching(/^g[0-9a-z]{7}$/u)]);
+  expect(ids(radial)).toEqual([expect.stringMatching(/^g[0-9a-z]{7}$/u)]);
+  expect(ids(radial)).not.toEqual(ids(linear));
   const clip = renderFixture(input(layout, "group-clip"));
-  expect(clip).toContain('id="c0"');
-  expect(clip).not.toContain('id="c1"');
+  expect(ids(clip)).toEqual([expect.stringMatching(/^c[0-9a-z]{7}$/u)]);
+});
+
+function sharing(colour: Colour, clip: number, asset: "png" | "jpeg"): Design {
+  const gradient = (stop: Colour): Paint => ({
+    type: "linear",
+    stops: [
+      { offset: 0, color: stop },
+      { offset: 1, color: "#ffffff" },
+    ],
+  });
+  return {
+    version: 0,
+    canvas: { width: 100, height: 100 },
+    assets: { images: imageAssets },
+    layers: [
+      { type: "rect", width: 10, height: 10, fill: gradient(colour) },
+      { type: "rect", width: 10, height: 10, fill: gradient("#1a7f37") },
+      {
+        type: "group",
+        width: clip,
+        height: clip,
+        clip: true,
+        children: [{ type: "image", asset, width: 20, height: 20 }],
+        repeat: { each: "{{two}}" },
+      },
+    ],
+  };
+}
+
+function definitions(svg: string): Map<string, string> {
+  const defs = /<defs>(.*)<\/defs>/u.exec(svg)?.[1] ?? "";
+  return new Map(
+    [
+      ...defs.matchAll(
+        /<(linearGradient|clipPath|symbol) id="([^"]+)".*?<\/\1>|<image id="([^"]+)"[^>]*\/>/gu,
+      ),
+    ].map((match) => [match[2] ?? match[3] ?? "", match[0]]),
+  );
+}
+
+test("two different documents share an id only for an identical definition", () => {
+  const data = { two: [0, 0] };
+  const a = renderFixture({ design: sharing("#cf222e", 40, "png"), data });
+  const b = renderFixture({ design: sharing("#0969da", 50, "jpeg"), data });
+  expect(renderFixture({ design: sharing("#cf222e", 40, "png"), data })).toBe(a);
+  const inA = definitions(a);
+  const inB = definitions(b);
+  expect([...inA.keys()].map((id) => id[0]).sort()).toEqual(["c", "g", "g", "i", "s"]);
+  const common = [...inA.keys()].filter((id) => inB.has(id));
+  expect(common).toEqual([expect.stringMatching(/^g/u)]);
+  const [green] = common;
+  expect(inA.get(green ?? "")).toBe(inB.get(green ?? ""));
+  expect(inA.get(green ?? "")).toContain("#1a7f37");
 });
 
 test("reordering the keys of styles, assets and data changes nothing", () => {

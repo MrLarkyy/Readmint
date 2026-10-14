@@ -8,6 +8,7 @@ import images from "./renderer-images.golden.js";
 import layout from "./renderer-layout.golden.js";
 import shapes from "./renderer-shapes.golden.js";
 import text from "./renderer-text.golden.js";
+import { imageAssets } from "./testAssets.js";
 
 function track(from: unknown, to: unknown, extra: Record<string, unknown> = {}) {
   return {
@@ -505,5 +506,42 @@ describe("frameTimes", () => {
     [{ duration: 1000 }, NaN],
   ])("%j at %d frames per second is a RangeError", (animation, rate) => {
     expect(() => frameTimes(animation, rate)).toThrow(RangeError);
+  });
+});
+
+describe("shared images", () => {
+  const animate = { opacity: track(0, 1), rotation: track(0, 90) };
+  const pair = (second: "png" | "jpeg"): Design => ({
+    ...animated([
+      { type: "image", asset: "png", width: 20, height: 10, animate },
+      { type: "image", asset: second, x: 30, width: 20, height: 10, animate },
+    ]),
+    assets: { images: imageAssets },
+  });
+  const style = (svg: string) => /<style>.*<\/style>/u.exec(svg)?.[0];
+
+  test("an animated image drawn twice keeps its class and transform groups on the use", () => {
+    const svg = svgOf(pair("png"));
+    expect(
+      svg.match(
+        /<g transform="translate\(\d+ 5\)"><g class="a\d+" transform="rotate\(0\)"><use href="#s[0-9a-z]{7}" x="-10" y="-5" width="20" height="10" opacity="0" class="a\d+"\/><\/g><\/g>/gu,
+      ),
+    ).toHaveLength(2);
+    expect(style(svg)).toBe(style(svgOf(pair("jpeg"))));
+    expect(style(svg)).not.toContain("#s");
+  });
+
+  test("a frame draws the same uses and definitions, without classes", () => {
+    const animatedSvg = svgOf(pair("png"));
+    const frame = svgOf(pair("png"), { time: 500 });
+    const defs = (svg: string) =>
+      /<defs>.*<\/defs>/u.exec(svg)?.[0].replace(/<style>.*<\/style>/u, "");
+    expect(defs(frame)).toBe(defs(animatedSvg));
+    expect(
+      frame.match(
+        /<use href="#s[0-9a-z]{7}" x="-10" y="-5" width="20" height="10" opacity="0.5"\/>/gu,
+      ),
+    ).toHaveLength(2);
+    expect(frame).toContain('<g transform="rotate(45)">');
   });
 });
