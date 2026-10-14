@@ -51,21 +51,24 @@ Validation runs in this order and stops at the first stage with issues: source l
 
 ## Values used below
 
-| name     | accepted                                                                           |
-| -------- | ---------------------------------------------------------------------------------- |
-| id       | `^[A-Za-z][A-Za-z0-9_-]{0,63}$`: layer ids, style, asset, component and prop names |
-| binding  | a string starting with `{{` and ending with `}}`, at most 2048 characters          |
-| colour   | `#rgb`, `#rgba`, `#rrggbb` or `#rrggbbaa`                                          |
-| paint    | a colour, `"none"`, a binding or a gradient                                        |
-| position | a number in [-100000, 100000]                                                      |
-| size     | a number in (0, 100000]                                                            |
-| length   | a number in [0, 100000]                                                            |
-| unit     | a number in [0, 1]                                                                 |
-| `B<x>`   | bindable: the literal `x` or a binding                                             |
+| name     | accepted                                                                                                  |
+| -------- | --------------------------------------------------------------------------------------------------------- |
+| id       | `^[A-Za-z][A-Za-z0-9_-]{0,63}$`: layer ids, style, asset, component and prop names                        |
+| binding  | a string starting with `{{` and ending with `}}`, at most 2048 characters ([expressions](expressions.md)) |
+| colour   | `#rgb`, `#rgba`, `#rrggbb` or `#rrggbbaa`                                                                 |
+| paint    | a colour, `"none"`, a binding or a gradient                                                               |
+| position | a number in [-100000, 100000]                                                                             |
+| size     | a number in (0, 100000]                                                                                   |
+| length   | a number in [0, 100000]                                                                                   |
+| unit     | a number in [0, 1]                                                                                        |
+| `B<x>`   | bindable: the literal `x` or a binding                                                                    |
 
 Every numeric, colour and boolean property of the canvas, layers, styles, layouts and gradients is bindable; asset
 and component-definition metadata takes literals only. Numbers must be finite: YAML `.inf` and `.nan` are rejected. Bindings are opaque here; the expression language
-(`@readmint/expr`) evaluates them, and the renderer checks the evaluated values against the same ranges.
+(`@readmint/expr`, [docs/expressions.md](expressions.md)) evaluates them, and the renderer checks the evaluated values
+against the same ranges. A binding that is exactly one `{{ }}` placeholder keeps the type of its value (`"{{ count }}"` is a
+number); any other string, such as `"{{ a }} x {{ b }}"`, evaluates to a string, so a numeric, colour or boolean
+property, `if` and `repeat.each` should be one placeholder.
 
 ## Document
 
@@ -122,7 +125,8 @@ Every layer has `type` (required) and these optional properties:
   `{ "type": "grid", "columns": B<integer 1..1000>, gap?: B<length> }`.
 - `d` of a path: SVG path data of at most 100000 characters, made only of path commands, digits, `e`/`E`, `.`, `,`,
   `+`, `-` and whitespace.
-- `content` of a text: at most 10000 characters; `{{...}}` placeholders may appear anywhere in it.
+- `content` of a text: at most 10000 characters; `{{...}}` placeholders may appear anywhere in it and are written into
+  the text ([expressions](expressions.md#placeholders-and-text)).
 - A text needs a font: its own `font` or one from its `style`.
 
 ## Assets
@@ -271,4 +275,5 @@ committed file differs from the emitted schema, and the file is excluded from Pr
 - A document newer than the reader fails with `unsupported-version`; it is never partially rendered.
 - Each released version keeps its schema file (`design-v<N>.schema.json`).
 
-Not in v0: animation (a later, additive section) and the expression grammar inside bindings (`@readmint/expr`).
+Not in v0: animation (a later, additive section). The grammar inside bindings is the expression language v0 of
+`@readmint/expr`, described in [docs/expressions.md](expressions.md).
