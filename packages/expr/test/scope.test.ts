@@ -146,6 +146,30 @@ describe("expandRepeat", () => {
     expect(!result.ok && result.error.code).toBe(code);
   });
 
+  test.each([
+    ["repo-1", "i"],
+    ["1st", "i"],
+    ["true", "i"],
+    ["null", "i"],
+    ["", "i"],
+    ["a b", "i"],
+    ["repo", "-i"],
+    ["repo", "i-"],
+    ["repo", "é"],
+  ])("a name an expression cannot read is an argument error: as %j, index %j", (as, index) => {
+    const result = expandRepeat(compile("{{ repos }}"), createScope(data), { as, index });
+    expect(!result.ok && result.error.code).toBe("argument");
+  });
+
+  test.each([["repo-index"], ["_x"], ["a_1"], ["my-item-x2"], ["trueish"]])(
+    "%s is a readable repeat name",
+    (name) => {
+      const result = expandRepeat(compile("{{ repos }}"), createScope(data), { as: name });
+      if (!result.ok) expect.fail(result.error.message);
+      expect(read(`{{ ${name}.name }}`, result.value[0] as Scope)).toBe("a");
+    },
+  );
+
   test("the item and the index need different names", () => {
     const result = expandRepeat(compile("{{ repos }}"), createScope(data), { as: "x", index: "x" });
     expect(!result.ok && result.error.code).toBe("argument");

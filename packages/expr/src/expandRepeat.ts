@@ -1,6 +1,7 @@
 import { failWith, type ErrorSite } from "./createError.js";
 import { ExpressionLimits } from "./ExpressionLimits.js";
 import type { ExprResult } from "./ExprResult.js";
+import { isName } from "./nameSyntax.js";
 import { readProperty } from "./readProperty.js";
 import type { Scope } from "./Scope.js";
 import type { Template } from "./Template.js";
@@ -29,6 +30,15 @@ export function expandRepeat(
   const span = site.segment;
   const itemName = options.as ?? "item";
   const indexName = options.index ?? "index";
+  // `repo-1` or `true` could never be read back: `{{ repo-1 }}` is a subtraction.
+  if (!isName(itemName) || !isName(indexName)) {
+    return failWith(
+      site,
+      "argument",
+      "repeat names must be expression names (letters, digits, _ and - before a letter or _)",
+      span,
+    );
+  }
   if (itemName === indexName) {
     return failWith(
       site,

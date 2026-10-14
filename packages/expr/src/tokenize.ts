@@ -1,5 +1,6 @@
 import { failWith, type ErrorSite } from "./createError.js";
 import type { ExprResult } from "./ExprResult.js";
+import { isDigit, isNameStart, scanName } from "./nameSyntax.js";
 import type { Operator, Token } from "./Token.js";
 
 export interface Placeholder {
@@ -157,31 +158,8 @@ function hexDigit(unit: number): number | undefined {
   return undefined;
 }
 
-/** `-` joins a name only when a letter or `_` follows: `my-label` is one name, `x-1` a subtraction. */
-function scanName(source: string, start: number): number {
-  let index = start + 1;
-  for (;;) {
-    const unit = source.charCodeAt(index);
-    if (isNameStart(unit) || isDigit(unit)) {
-      index++;
-    } else if (unit === 0x2d && isNameStart(source.charCodeAt(index + 1))) {
-      index += 2;
-    } else {
-      return index;
-    }
-  }
-}
-
 function skipDigits(source: string, start: number): number {
   let index = start;
   while (isDigit(source.charCodeAt(index))) index++;
   return index;
-}
-
-function isDigit(unit: number): boolean {
-  return unit >= 0x30 && unit <= 0x39;
-}
-
-function isNameStart(unit: number): boolean {
-  return (unit >= 0x41 && unit <= 0x5a) || (unit >= 0x61 && unit <= 0x7a) || unit === 0x5f;
 }
