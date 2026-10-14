@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { mkdtemp, readdir, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -6,12 +7,20 @@ import { cacheKey } from "../src/cacheKey.js";
 import { allQueries, profileQuery } from "../src/githubQueries.js";
 import { loadGitHubData, MemoryCache, type GitHubCache } from "../src/index.js";
 import { FILE_CACHE_MAX_ENTRY_BYTES, FileCache } from "../src/node/index.js";
-import { FIXTURE_LOGIN, replayFetch, successExchanges } from "./replayFetch.js";
+import { item, withViewer } from "./fixtureBodies.js";
+import { exchange, FIXTURE_LOGIN, replayFetch, successExchanges } from "./replayFetch.js";
 
-function load(cache: GitHubCache, token = "test-token") {
-  const replay = replayFetch(successExchanges());
+const expectedText = JSON.stringify(
+  JSON.parse(
+    readFileSync(new URL("./fixtures/expected-github-data.json", import.meta.url), "utf8"),
+  ),
+);
+
+/** A login-mode load of the fixture user through `cache`, by the token owner `viewer`. */
+function load(cache: GitHubCache, viewer = FIXTURE_LOGIN, exchanges = successExchanges()) {
+  const replay = replayFetch([withViewer(exchange("viewer"), viewer), ...exchanges]);
   return loadGitHubData({
-    token,
+    token: `token-of-${viewer}`,
     login: FIXTURE_LOGIN,
     pageSize: 2,
     cache,
@@ -19,17 +28,43 @@ function load(cache: GitHubCache, token = "test-token") {
   }).then((result) => ({ result, replay }));
 }
 
-const base = { login: FIXTURE_LOGIN, pageSize: 2, maxRepositories: 300 };
+function operations(requests: readonly { body: string }[]): unknown[] {
+  return requests.map(
+    (request) => (JSON.parse(request.body) as { operationName: unknown }).operationName,
+  );
+}
+
+const base = { viewer: FIXTURE_LOGIN, login: FIXTURE_LOGIN, pageSize: 2, maxRepositories: 300 };
 
 describe("loading through a cache", () => {
-  test("a second load is served from the cache without a request", async () => {
+  test("a second load by the same viewer sends only the viewer request", async () => {
     const cache = new MemoryCache();
     const first = await load(cache);
-    const second = await load(cache);
+    const second = await load(cache, FIXTURE_LOGIN, []);
     expect(first.result.meta.fromCache).toBe(false);
-    expect(second.replay.requests).toEqual([]);
-    expect(second.result.meta).toMatchObject({ requests: 0, fromCache: true });
+    expect(operations(first.replay.requests)).toEqual([
+      "ReadmintViewer",
+      "ReadmintProfile",
+      "ReadmintRepositories",
+      "ReadmintRepositories",
+      "ReadmintRepositories",
+    ]);
+    expect(second.replay.failures).toEqual([]);
+    expect(operations(second.replay.requests)).toEqual(["ReadmintViewer"]);
+    expect(second.result.meta).toMatchObject({ requests: 1, fromCache: true });
     expect(JSON.stringify(second.result.data)).toBe(JSON.stringify(first.result.data));
+    expect(JSON.stringify(second.result.data)).toBe(expectedText);
+  });
+
+  test("another viewer of the same login misses, since GitHub answers per viewer", async () => {
+    const cache = new MemoryCache();
+    await load(cache, "alice");
+    const other = await load(cache, "bob");
+    expect(other.replay.failures).toEqual([]);
+    expect(other.result.meta.fromCache).toBe(false);
+    expect(other.replay.requests).toHaveLength(5);
+    const again = await load(cache, "bob", []);
+    expect(again.result.meta.fromCache).toBe(true);
   });
 
   test("an expired entry is fetched again", async () => {
@@ -39,7 +74,7 @@ describe("loading through a cache", () => {
     now += 3600 * 1000;
     const again = await load(cache);
     expect(again.result.meta.fromCache).toBe(false);
-    expect(again.replay.requests).toHaveLength(4);
+    expect(again.replay.requests).toHaveLength(5);
   });
 
   test("an entry that fails validation is a miss and is replaced", async () => {
@@ -57,12 +92,10 @@ describe("loading through a cache", () => {
   test("an entry of another login is a miss", async () => {
     const cache = new MemoryCache();
     await load(cache);
-    const key = await cacheKey(base);
-    const stored = await cache.get(key);
+    const stored = await cache.get(await cacheKey(base));
     if (stored === undefined) throw new Error("the first load stored nothing");
-    const otherKey = await cacheKey({ ...base, login: "someone-else" });
-    await cache.set(otherKey, stored, 3600);
-    const replay = replayFetch([]);
+    await cache.set(await cacheKey({ ...base, login: "someone-else" }), stored, 3600);
+    const replay = replayFetch([exchange("viewer")]);
     const error: unknown = await loadGitHubData({
       token: "test-token",
       login: "someone-else",
@@ -70,8 +103,27 @@ describe("loading through a cache", () => {
       cache,
       fetch: replay.fetch,
     }).catch((reason: unknown) => reason);
-    expect(replay.requests).toHaveLength(1);
+    expect(operations(replay.requests)).toEqual(["ReadmintViewer", "ReadmintProfile"]);
     expect(error).toBeDefined();
+  });
+
+  test("a cache whose reads and writes fail is skipped", async () => {
+    let calls = 0;
+    const broken: GitHubCache = {
+      get: () => {
+        calls += 1;
+        return Promise.reject(new Error("EACCES: permission denied, open '/cache/x.json'"));
+      },
+      set: () => {
+        calls += 1;
+        throw new Error("ENOSPC: no space left on device");
+      },
+    };
+    const { result, replay } = await load(broken);
+    expect(calls).toBe(2);
+    expect(replay.pending()).toBe(0);
+    expect(result.meta.fromCache).toBe(false);
+    expect(JSON.stringify(result.data)).toBe(expectedText);
   });
 
   test("the memory cache drops its oldest entries past maxEntries", async () => {
@@ -85,22 +137,39 @@ describe("loading through a cache", () => {
 });
 
 describe("cache key", () => {
-  test("is a SHA-256 digest that ignores the token and the login's case", async () => {
+  test("is a SHA-256 digest that ignores the token and the case of logins", async () => {
     const key = await cacheKey(base);
     expect(key).toMatch(/^[0-9a-f]{64}$/);
+    expect(
+      await cacheKey({
+        ...base,
+        viewer: FIXTURE_LOGIN.toUpperCase(),
+        login: FIXTURE_LOGIN.toUpperCase(),
+      }),
+    ).toBe(key);
     const cache = new MemoryCache();
-    await load(cache, "token-one");
-    const second = await load(cache, "token-two");
-    expect(second.result.meta.fromCache).toBe(true);
-    expect(await cacheKey({ ...base, login: FIXTURE_LOGIN.toUpperCase() })).toBe(key);
+    await load(cache);
+    const replay = replayFetch([exchange("viewer")]);
+    const second = await loadGitHubData({
+      token: "another-token-of-the-same-owner",
+      login: FIXTURE_LOGIN,
+      pageSize: 2,
+      cache,
+      fetch: replay.fetch,
+    });
+    expect(second.meta.fromCache).toBe(true);
+    expect(item(replay.requests, 0).headers.authorization).toBe(
+      "bearer another-token-of-the-same-owner",
+    );
   });
 
-  test("changes with the login, the paging options and the query text", async () => {
+  test("changes with the viewer, the login, the paging options and the query text", async () => {
     const key = await cacheKey(base);
     const changedQueries = allQueries.map((query) =>
       query === profileQuery ? { ...query, query: `${query.query}\n` } : query,
     );
     const others = await Promise.all([
+      cacheKey({ ...base, viewer: "someone-else" }),
       cacheKey({ ...base, login: "someone-else" }),
       cacheKey({ ...base, pageSize: 50 }),
       cacheKey({ ...base, maxRepositories: 10 }),
@@ -173,8 +242,8 @@ describe("FileCache", () => {
   test("serves a second load from disk", async () => {
     const cache = fileCache();
     await load(cache);
-    const second = await load(cache);
+    const second = await load(cache, FIXTURE_LOGIN, []);
     expect(second.result.meta.fromCache).toBe(true);
-    expect(second.replay.requests).toEqual([]);
+    expect(operations(second.replay.requests)).toEqual(["ReadmintViewer"]);
   });
 });

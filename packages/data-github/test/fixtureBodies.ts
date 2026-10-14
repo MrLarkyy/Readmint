@@ -4,7 +4,7 @@ import type { Exchange } from "./replayFetch.js";
 // something malformed are `unknown`; the loader under test does the validation.
 
 export interface FixtureBody {
-  data: { user: unknown; [key: string]: unknown } | null;
+  data: { user?: unknown; viewer?: unknown; [key: string]: unknown } | null;
   errors?: unknown;
 }
 
@@ -80,6 +80,13 @@ export function withRepositories(
 ): Exchange {
   return withBody(source, (body) => {
     mutate((body.data?.user as { repositories: FixtureConnection }).repositories);
+  });
+}
+
+/** A copy of a viewer exchange naming another token owner. */
+export function withViewer(source: Exchange, login: string): Exchange {
+  return withBody(source, (body) => {
+    (body.data?.viewer as { login: string }).login = login;
   });
 }
 

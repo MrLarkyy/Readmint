@@ -100,7 +100,7 @@ export async function postGraphQL(
             { status, retryAfterSeconds: wait },
           );
         }
-        await context.sleep(wait * 1000);
+        await pause(context, wait * 1000);
         continue;
       }
       throw new GitHubDataError(
@@ -112,12 +112,35 @@ export async function postGraphQL(
     await discard(response);
     if (SERVER_RETRY_STATUSES.has(status) && !serverRetried) {
       serverRetried = true;
-      await context.sleep(GitHubLimits.serverErrorRetryDelayMs);
+      await pause(context, GitHubLimits.serverErrorRetryDelayMs);
       continue;
     }
     throw new GitHubDataError("http", `The GitHub API responded with HTTP ${String(status)}.`, {
       status,
     });
+  }
+}
+
+/**
+ * A retry wait that ends early when the caller aborts: the injected sleep cannot take the signal,
+ * so the wait is raced against it.
+ */
+async function pause(context: GraphQLContext, milliseconds: number): Promise<void> {
+  const signal = context.signal;
+  if (signal === null) return context.sleep(milliseconds);
+  if (signal.aborted) throw timedOut();
+  const listeners: (() => void)[] = [];
+  const aborted = new Promise<never>((_resolve, reject) => {
+    const listener = () => {
+      reject(timedOut());
+    };
+    listeners.push(listener);
+    signal.addEventListener("abort", listener, { once: true });
+  });
+  try {
+    await Promise.race([context.sleep(milliseconds), aborted]);
+  } finally {
+    for (const listener of listeners) signal.removeEventListener("abort", listener);
   }
 }
 

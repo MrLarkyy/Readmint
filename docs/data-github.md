@@ -34,19 +34,19 @@ ttlSeconds)` stores it.
 
 ### Options
 
-| option                | default    | range         | meaning                                                                    |
-| --------------------- | ---------- | ------------- | -------------------------------------------------------------------------- |
-| `token`               | (required) | visible ASCII | the user's token; sent only in the `Authorization` header                  |
-| `login`               | the viewer | GitHub login  | the user to load; without it the token's owner is resolved first           |
-| `pageSize`            | 100        | 1–100         | repositories per request                                                   |
-| `maxRepositories`     | 300        | 1–1000        | repositories loaded at most                                                |
-| `requestTimeoutMs`    | 30000      | 1000–120000   | per request, body included                                                 |
-| `maxRetryWaitSeconds` | 60         | 0–900         | the longest secondary rate-limit wait accepted                             |
-| `cacheTtlSeconds`     | 3600       | 1–604800      | lifetime of a cache entry                                                  |
-| `cache`               | none       |               | a `GitHubCache`                                                            |
-| `fetch`               | `fetch`    |               | `(url, init) => Promise<Response>`, injectable for tests                   |
-| `sleep`               | timer      |               | `(milliseconds) => Promise<void>`, used for rate-limit and 5xx retry waits |
-| `signal`              | none       |               | an `AbortSignal` that cancels the load (reported as `timeout`)             |
+| option                | default    | range         | meaning                                                                     |
+| --------------------- | ---------- | ------------- | --------------------------------------------------------------------------- |
+| `token`               | (required) | visible ASCII | the user's token; sent only in the `Authorization` header                   |
+| `login`               | the viewer | GitHub login  | the user to load; without it the token's owner is resolved first            |
+| `pageSize`            | 100        | 1–100         | repositories per request                                                    |
+| `maxRepositories`     | 300        | 1–1000        | repositories loaded at most                                                 |
+| `requestTimeoutMs`    | 30000      | 1000–120000   | per request, body included                                                  |
+| `maxRetryWaitSeconds` | 60         | 0–900         | the longest secondary rate-limit wait accepted                              |
+| `cacheTtlSeconds`     | 3600       | 1–604800      | lifetime of a cache entry                                                   |
+| `cache`               | none       |               | a `GitHubCache`                                                             |
+| `fetch`               | `fetch`    |               | `(url, init) => Promise<Response>`, injectable for tests                    |
+| `sleep`               | timer      |               | `(milliseconds) => Promise<void>`, used for rate-limit and 5xx retry waits  |
+| `signal`              | none       |               | an `AbortSignal` that cancels the load, retry waits included (as `timeout`) |
 
 A value outside its range fails with `invalid-option` before any request.
 
@@ -61,75 +61,75 @@ Current version: **0**
 Every value is JSON: absent values are `null`, never missing; dates are `YYYY-MM-DD`; timestamps are ISO 8601 in UTC
 as GitHub returns them. Array items are written `[]` below.
 
-| path                                   | type              | meaning                                                                |
-| -------------------------------------- | ----------------- | ---------------------------------------------------------------------- |
-| `version`                              | number            | data object version, `0`                                               |
-| `login`                                | string            | GitHub login                                                           |
-| `name`                                 | string \| null    | display name                                                           |
-| `bio`                                  | string \| null    | profile bio                                                            |
-| `company`                              | string \| null    | company                                                                |
-| `location`                             | string \| null    | location                                                               |
-| `websiteUrl`                           | string \| null    | website; `null` unless it is an absolute `https://` URL                |
-| `twitterUsername`                      | string \| null    | X/Twitter user name                                                    |
-| `avatarUrl`                            | string            | avatar image URL (`https://`; an external reference, not inlined here) |
-| `url`                                  | string            | profile URL                                                            |
-| `createdAt`                            | timestamp         | account creation                                                       |
-| `followers`                            | number            | followers                                                              |
-| `following`                            | number            | users followed                                                         |
-| `counts`                               | object            | totals                                                                 |
-| `counts.repositories`                  | number            | public repositories the user owns, including those beyond the cap      |
-| `counts.stars`                         | number            | stars of the loaded repositories that are not forks                    |
-| `counts.forks`                         | number            | forks of the loaded repositories that are not forks                    |
-| `repositories`                         | array             | loaded public repositories the user owns, forks included               |
-| `repositories[].name`                  | string            | repository name                                                        |
-| `repositories[].nameWithOwner`         | string            | `owner/name`                                                           |
-| `repositories[].description`           | string \| null    | description                                                            |
-| `repositories[].url`                   | string            | repository URL                                                         |
-| `repositories[].homepageUrl`           | string \| null    | homepage; `null` unless it is an absolute `https://` URL               |
-| `repositories[].stars`                 | number            | stargazers                                                             |
-| `repositories[].forks`                 | number            | forks of this repository                                               |
-| `repositories[].isFork`                | boolean           | the repository is a fork                                               |
-| `repositories[].isArchived`            | boolean           | the repository is archived                                             |
-| `repositories[].createdAt`             | timestamp         | creation                                                               |
-| `repositories[].pushedAt`              | timestamp \| null | last push; `null` for an empty repository                              |
-| `repositories[].primaryLanguage`       | object \| null    | the main language                                                      |
-| `repositories[].primaryLanguage.name`  | string            | language name                                                          |
-| `repositories[].primaryLanguage.color` | string \| null    | `#rrggbb`, or `null` when GitHub has none (or sent anything else)      |
-| `repositories[].languages`             | array             | languages of the repository                                            |
-| `repositories[].languages[].name`      | string            | language name                                                          |
-| `repositories[].languages[].color`     | string \| null    | `#rrggbb` or `null`                                                    |
-| `repositories[].languages[].bytes`     | number            | bytes of code                                                          |
-| `repositoriesTruncated`                | boolean           | the user owns more public repositories than were loaded                |
-| `languages`                            | array             | languages over the loaded repositories that are not forks              |
-| `languages[].name`                     | string            | language name                                                          |
-| `languages[].color`                    | string \| null    | `#rrggbb` or `null`                                                    |
-| `languages[].bytes`                    | number            | bytes of code                                                          |
-| `languages[].share`                    | number            | `bytes` over the bytes of all languages, 0–1 (0 when there are none)   |
-| `contributions`                        | object            | the contribution calendar GitHub shows on the profile                  |
-| `contributions.total`                  | number            | contributions in the calendar                                          |
-| `contributions.commits`                | number            | commit contributions                                                   |
-| `contributions.pullRequests`           | number            | pull requests opened                                                   |
-| `contributions.issues`                 | number            | issues opened                                                          |
-| `contributions.reviews`                | number            | pull request reviews                                                   |
-| `contributions.private`                | number            | contributions to private repositories (a count only)                   |
-| `contributions.from`                   | date              | first calendar day                                                     |
-| `contributions.to`                     | date              | last calendar day                                                      |
-| `contributions.weeks`                  | number            | calendar columns (weeks)                                               |
-| `contributions.days`                   | array             | every calendar day, ascending                                          |
-| `contributions.days[].date`            | date              | the day                                                                |
-| `contributions.days[].count`           | number            | contributions that day                                                 |
-| `contributions.days[].level`           | number            | 0 (none) to 4 (fourth quartile), GitHub's colour level                 |
-| `contributions.days[].weekday`         | number            | 0 = Sunday to 6 = Saturday                                             |
-| `contributions.days[].week`            | number            | calendar column, from 0                                                |
-| `contributions.streaks`                | object            | runs of consecutive days with contributions                            |
-| `contributions.streaks.current`        | object            | the current streak                                                     |
-| `contributions.streaks.current.length` | number            | days; 0 when there is none                                             |
-| `contributions.streaks.current.start`  | date \| null      | first day, `null` when the length is 0                                 |
-| `contributions.streaks.current.end`    | date \| null      | last day, `null` when the length is 0                                  |
-| `contributions.streaks.longest`        | object            | the longest streak in the calendar                                     |
-| `contributions.streaks.longest.length` | number            | days; 0 when there is none                                             |
-| `contributions.streaks.longest.start`  | date \| null      | first day, `null` when the length is 0                                 |
-| `contributions.streaks.longest.end`    | date \| null      | last day, `null` when the length is 0                                  |
+| path                                   | type              | meaning                                                                            |
+| -------------------------------------- | ----------------- | ---------------------------------------------------------------------------------- |
+| `version`                              | number            | data object version, `0`                                                           |
+| `login`                                | string            | GitHub login                                                                       |
+| `name`                                 | string \| null    | display name                                                                       |
+| `bio`                                  | string \| null    | profile bio                                                                        |
+| `company`                              | string \| null    | company                                                                            |
+| `location`                             | string \| null    | location                                                                           |
+| `websiteUrl`                           | string \| null    | website; `null` unless it is an absolute `https://` URL                            |
+| `twitterUsername`                      | string \| null    | X/Twitter user name                                                                |
+| `avatarUrl`                            | string            | avatar image URL (`https://`; an external reference, not inlined here)             |
+| `url`                                  | string            | profile URL                                                                        |
+| `createdAt`                            | timestamp         | account creation                                                                   |
+| `followers`                            | number            | followers                                                                          |
+| `following`                            | number            | users followed                                                                     |
+| `counts`                               | object            | totals                                                                             |
+| `counts.repositories`                  | number            | public repositories the user owns, including those beyond the cap                  |
+| `counts.stars`                         | number            | stars of the loaded repositories that are not forks                                |
+| `counts.forks`                         | number            | forks of the loaded repositories that are not forks                                |
+| `repositories`                         | array             | loaded public repositories the user owns, forks included                           |
+| `repositories[].name`                  | string            | repository name                                                                    |
+| `repositories[].nameWithOwner`         | string            | `owner/name`                                                                       |
+| `repositories[].description`           | string \| null    | description                                                                        |
+| `repositories[].url`                   | string            | repository URL                                                                     |
+| `repositories[].homepageUrl`           | string \| null    | homepage; `null` unless it is an absolute `https://` URL                           |
+| `repositories[].stars`                 | number            | stargazers                                                                         |
+| `repositories[].forks`                 | number            | forks of this repository                                                           |
+| `repositories[].isFork`                | boolean           | the repository is a fork                                                           |
+| `repositories[].isArchived`            | boolean           | the repository is archived                                                         |
+| `repositories[].createdAt`             | timestamp         | creation                                                                           |
+| `repositories[].pushedAt`              | timestamp \| null | last push; `null` for an empty repository                                          |
+| `repositories[].primaryLanguage`       | object \| null    | the main language                                                                  |
+| `repositories[].primaryLanguage.name`  | string            | language name                                                                      |
+| `repositories[].primaryLanguage.color` | string \| null    | `#rrggbb`, or `null` when GitHub has none (or sent anything else)                  |
+| `repositories[].languages`             | array             | languages of the repository                                                        |
+| `repositories[].languages[].name`      | string            | language name                                                                      |
+| `repositories[].languages[].color`     | string \| null    | `#rrggbb` or `null`                                                                |
+| `repositories[].languages[].bytes`     | number            | bytes of code                                                                      |
+| `repositoriesTruncated`                | boolean           | the user owns more public repositories than were loaded                            |
+| `languages`                            | array             | languages over the loaded repositories that are not forks                          |
+| `languages[].name`                     | string            | language name                                                                      |
+| `languages[].color`                    | string \| null    | `#rrggbb` or `null`                                                                |
+| `languages[].bytes`                    | number            | bytes of code                                                                      |
+| `languages[].share`                    | number            | `bytes` over the bytes of all languages, 0–1 (0 when there are none)               |
+| `contributions`                        | object            | the contribution calendar GitHub shows on the profile                              |
+| `contributions.total`                  | number            | contributions in the calendar                                                      |
+| `contributions.commits`                | number            | commit contributions                                                               |
+| `contributions.pullRequests`           | number            | pull requests opened                                                               |
+| `contributions.issues`                 | number            | issues opened                                                                      |
+| `contributions.reviews`                | number            | pull request reviews                                                               |
+| `contributions.private`                | number            | contributions the token's owner cannot see in detail (0 with the user's own token) |
+| `contributions.from`                   | date              | first calendar day                                                                 |
+| `contributions.to`                     | date              | last calendar day                                                                  |
+| `contributions.weeks`                  | number            | calendar columns (weeks)                                                           |
+| `contributions.days`                   | array             | every calendar day, ascending                                                      |
+| `contributions.days[].date`            | date              | the day                                                                            |
+| `contributions.days[].count`           | number            | contributions that day                                                             |
+| `contributions.days[].level`           | number            | 0 (none) to 4 (fourth quartile), GitHub's colour level                             |
+| `contributions.days[].weekday`         | number            | 0 = Sunday to 6 = Saturday                                                         |
+| `contributions.days[].week`            | number            | calendar column, from 0                                                            |
+| `contributions.streaks`                | object            | runs of consecutive days with contributions                                        |
+| `contributions.streaks.current`        | object            | the current streak                                                                 |
+| `contributions.streaks.current.length` | number            | days; 0 when there is none                                                         |
+| `contributions.streaks.current.start`  | date \| null      | first day, `null` when the length is 0                                             |
+| `contributions.streaks.current.end`    | date \| null      | last day, `null` when the length is 0                                              |
+| `contributions.streaks.longest`        | object            | the longest streak in the calendar                                                 |
+| `contributions.streaks.longest.length` | number            | days; 0 when there is none                                                         |
+| `contributions.streaks.longest.start`  | date \| null      | first day, `null` when the length is 0                                             |
+| `contributions.streaks.longest.end`    | date \| null      | last day, `null` when the length is 0                                              |
 
 A test keeps this table equal to the fields the loader produces.
 
@@ -156,20 +156,22 @@ byte-identical object:
 ### Repositories and privacy
 
 Only **public** repositories the user owns are loaded (`privacy: PUBLIC`, `ownerAffiliations: OWNER`), because a README
-is public: private repository names and languages never enter the object. Private work shows only as
-`contributions.private` and in the calendar counts, and only when the user allows it on their profile.
-Whether a token of the user also shows private contributions for `user(login)` the same way the profile page does is
-checked by the live run.
+is public: private repository names and languages never enter the object. GitHub computes the contribution counts from the side of the token's owner (the viewer). With the user's own token,
+contributions to their private repositories are counted in the calendar and the totals like public ones, and
+`contributions.private` is 0; no repository name is involved. With another user's token, private work appears only as
+`contributions.private` and in the calendar counts, and only when the user shows private contributions on their
+profile. A live run with the user's own token loaded and validated a real calendar.
 
 Repositories are loaded in pages of `pageSize`, in GitHub's order (stars descending), until there is no next page or
 `maxRepositories` is reached; `repositoriesTruncated` is then `true`. A next page without a cursor, or a cursor GitHub
 returns twice, fails with `invalid-response` instead of looping. Requests run one after another: the viewer (without
-`login`), the profile with the calendar, then the repository pages.
+`login`, or with a `cache`), the profile with the calendar, then the repository pages.
 
 ## Errors
 
 Every failure is a `GitHubDataError`. A GraphQL `errors` entry fails the whole load: no partial data object is ever
-returned. Messages never contain the token or the response values, only the JSON path that failed.
+returned. Messages never contain the token. An `invalid-response` message names only the JSON path that failed, never
+the value; a `graphql` message quotes GitHub's own error messages, redacted and shortened.
 
 | code                     | when                                                                                    |
 | ------------------------ | --------------------------------------------------------------------------------------- |
@@ -200,18 +202,24 @@ Strings are otherwise kept as GitHub returns them; the renderer escapes them.
   when absent) and retries, at most 3 attempts in all. A wait above `maxRetryWaitSeconds` fails at once with
   `secondary-rate-limited` and `retryAfterSeconds`.
 - 502, 503 and 504 are retried once after one second.
-- A full load costs about 2 + `maxRepositories / pageSize` requests (at most 12 with the defaults).
+- A full load sends 1 + ceil(`maxRepositories` / `pageSize`) requests, plus 1 for the viewer (without `login`, or with
+  a `cache`), plus retries: 5 with the defaults, 12 at most with `pageSize` 100.
 
 ## Cache
 
 With a `cache`, the validated GitHub responses of a load are stored as one entry and a later load within
-`cacheTtlSeconds` sends no profile or repository request (in viewer mode only the viewer request). A hit is
+`cacheTtlSeconds` sends only the viewer request. A hit is
 validated again and rebuilt by the current code, so a changed loader needs no invalidation, and an entry that fails
 validation, or belongs to another login, is a miss and is replaced.
 
-The key is the SHA-256 hex digest of the data version, a hash of the query text, the login (lowercased) and
-`pageSize` and `maxRepositories`. It never covers the token, so two tokens of the same user share an entry; the
-login is resolved before the lookup, so one cache serves several users.
+An entry belongs to a pair of token owner and login. GitHub answers about contributions from the side of the token's
+owner (see [Repositories and privacy](#repositories-and-privacy)), so the owner is resolved with the viewer request
+even when `login` is given, and a load with another user's token never reads the owner's entry. The key is the
+SHA-256 hex digest of the data version, a hash of the query text, the viewer and the login (both lowercased),
+`pageSize` and `maxRepositories`. It never covers the token, so two tokens of the same owner share an entry.
+
+The cache is best effort: a cache that fails to read counts as a miss and a failed write is ignored, so a read-only or
+full cache directory never fails a load whose data was loaded.
 
 `FileCache` writes one `<key>.json` file per entry, `{ storedAt, ttlSeconds, value }`: the directory with mode
 `0o700` when it creates it, files with mode `0o600`, through a temporary file and a rename. A file over 16 MiB, a

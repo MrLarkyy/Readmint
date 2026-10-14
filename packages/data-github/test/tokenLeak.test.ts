@@ -90,6 +90,11 @@ const scenarios: Scenario[] = [
   },
 ];
 
+// Every attempt passes a cache, so the loader resolves the viewer first even with a login.
+function viewerFirst(exchanges: readonly Exchange[]): Exchange[] {
+  return [exchange("viewer"), ...exchanges];
+}
+
 async function attempt(replayOrFetch: Replay | GitHubFetch, viewer = false) {
   const cache = new RecordingCache();
   const fetch = typeof replayOrFetch === "function" ? replayOrFetch : replayOrFetch.fetch;
@@ -126,7 +131,7 @@ function expectErrorClean(error: unknown): void {
 
 describe("the token never leaves the Authorization header", () => {
   test.each(scenarios)("$name", async ({ exchanges, viewer }) => {
-    const replay = replayFetch(exchanges);
+    const replay = replayFetch(viewer ? exchanges : viewerFirst(exchanges));
     const { result, error, cache } = await attempt(replay, viewer);
     expect(replay.failures).toEqual([]);
     expectErrorClean(error);
@@ -149,14 +154,16 @@ describe("the token never leaves the Authorization header", () => {
   });
 
   test("a GraphQL error message that echoes the token comes out redacted", async () => {
-    const { error } = await attempt(replayFetch([echoingError(`bad token ${CANARY} here`)]));
+    const { error } = await attempt(
+      replayFetch(viewerFirst([echoingError(`bad token ${CANARY} here`)])),
+    );
     expect((error as GitHubDataError).code).toBe("graphql");
     expect((error as GitHubDataError).message).toContain("bad token *** here");
   });
 
   test("other token-shaped strings in a GitHub message are redacted too", async () => {
     const other = "github_pat_11ABCDEFG0123456789_abcdefghijklmnopqrstuvwxyz";
-    const { error } = await attempt(replayFetch([echoingError(`leaked ${other}`)]));
+    const { error } = await attempt(replayFetch(viewerFirst([echoingError(`leaked ${other}`)])));
     expect((error as GitHubDataError).message).not.toContain(other);
     expect((error as GitHubDataError).message).toContain("leaked ***");
   });

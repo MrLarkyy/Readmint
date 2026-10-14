@@ -1,7 +1,14 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, test } from "vitest";
 import { GitHubDataError, loadGitHubData, type GitHubSourceOptions } from "../src/index.js";
-import { item, withBody, withCalendar, withRepositories } from "./fixtureBodies.js";
+import {
+  item,
+  withBody,
+  withCalendar,
+  withRepositories,
+  withUser,
+  withViewer,
+} from "./fixtureBodies.js";
 import {
   exchange,
   FIXTURE_LOGIN,
@@ -185,5 +192,41 @@ describe("loadGitHubData", () => {
     await expect(load(replay, { token: "" })).rejects.toMatchObject({ code: "missing-token" });
     await expect(load(replay, { token: "   " })).rejects.toMatchObject({ code: "missing-token" });
     expect(replay.requests).toEqual([]);
+  });
+});
+
+describe("Enterprise Managed User logins", () => {
+  const EMU_LOGIN = "mona_octo";
+
+  // The fixture user's responses, requested for and naming the login mona_octo.
+  function emuExchanges(): Exchange[] {
+    return successExchanges().map((source, index) => {
+      const renamed =
+        index === 0
+          ? withUser(source, (user) => {
+              user.login = EMU_LOGIN;
+            })
+          : source;
+      const variables = { ...source.request.variables, login: EMU_LOGIN };
+      return { ...renamed, request: { ...source.request, variables } };
+    });
+  }
+
+  test("a login with an underscore is accepted as an option", async () => {
+    const replay = replayFetch(emuExchanges());
+    const { data } = await load(replay, { login: EMU_LOGIN });
+    expectReplayDone(replay);
+    expect(data.login).toBe(EMU_LOGIN);
+  });
+
+  test("a login with an underscore is accepted from the viewer response", async () => {
+    const replay = replayFetch([withViewer(exchange("viewer"), EMU_LOGIN), ...emuExchanges()]);
+    const { data } = await loadGitHubData({
+      token: "test-token",
+      pageSize: 2,
+      fetch: replay.fetch,
+    });
+    expectReplayDone(replay);
+    expect(data.login).toBe(EMU_LOGIN);
   });
 });

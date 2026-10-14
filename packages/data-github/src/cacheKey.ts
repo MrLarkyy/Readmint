@@ -3,6 +3,8 @@ import { allQueries } from "./githubQueries.js";
 import type { GraphQLOperation } from "./postGraphQL.js";
 
 export interface CacheKeyInput {
+  /** The token's owner: GitHub answers contribution queries relative to the viewer. */
+  readonly viewer: string;
   readonly login: string;
   readonly pageSize: number;
   readonly maxRepositories: number;
@@ -10,8 +12,9 @@ export interface CacheKeyInput {
 
 /**
  * SHA-256 hex digest of everything that shapes a cached load: the data version, the query text,
- * the login (case-insensitive, as on GitHub) and the paging options. The token is not an input,
- * so two tokens of the same user share an entry and a cache never stores anything derived from it.
+ * the viewer and the login (case-insensitive, as on GitHub) and the paging options. The viewer is
+ * in it because GitHub counts private contributions only for the user's own token; the token
+ * itself is not, so a cache never stores anything derived from it.
  */
 export async function cacheKey(
   input: CacheKeyInput,
@@ -22,6 +25,7 @@ export async function cacheKey(
     JSON.stringify({
       dataVersion: GITHUB_DATA_VERSION,
       queryHash,
+      viewer: input.viewer.toLowerCase(),
       login: input.login.toLowerCase(),
       pageSize: input.pageSize,
       maxRepositories: input.maxRepositories,

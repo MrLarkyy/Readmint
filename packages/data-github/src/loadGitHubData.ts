@@ -1,6 +1,7 @@
 import { buildGitHubData } from "./buildGitHubData.js";
 import { cacheKey } from "./cacheKey.js";
 import { checkPageChain, nextPageCursor } from "./checkPageChain.js";
+import type { GitHubCache } from "./GitHubCache.js";
 import type { GitHubData } from "./GitHubData.js";
 import { GitHubDataError } from "./GitHubDataError.js";
 import type { GitHubLoadMeta, GitHubLoadResult } from "./GitHubLoadResult.js";
@@ -16,8 +17,8 @@ import { resolveSourceOptions, type ResolvedSourceOptions } from "./resolveSourc
 
 /**
  * Loads one user's profile, public repositories, languages and contribution calendar.
- * Requests run one after another: the viewer (only without `login`), the profile, then the
- * repository pages up to `maxRepositories`. Every response is validated before use, any
+ * Requests run one after another: the viewer (without `login`, or with a cache), the profile,
+ * then the repository pages up to `maxRepositories`. Every response is validated before use, any
  * GraphQL error fails the whole load, and the token is sent only in the `Authorization`
  * header: no error, result or cache entry contains it.
  */
@@ -26,24 +27,31 @@ export async function loadGitHubData(options: GitHubSourceOptions): Promise<GitH
   const stats: RequestStats = { requests: 0, lastRateLimit: null };
   const rateLimits: (RateLimitRecord | null)[] = [];
 
-  let login = resolved.login;
+  const cache = resolved.cache;
+  // With a cache the viewer is needed for the key even when the login is given: GitHub's answer
+  // about contributions depends on who asks.
+  let viewer: string | null = null;
+  if (resolved.login === null || cache !== null) {
+    const record = parseViewerResponse(await postGraphQL(viewerQuery, {}, resolved, stats));
+    rateLimits.push(record.rateLimit);
+    viewer = record.login;
+  }
+  const login = resolved.login ?? viewer;
   if (login === null) {
-    const viewer = parseViewerResponse(await postGraphQL(viewerQuery, {}, resolved, stats));
-    rateLimits.push(viewer.rateLimit);
-    login = viewer.login;
+    throw new GitHubDataError("invalid-response", "GitHub did not name the token's owner.");
   }
 
-  const cache = resolved.cache;
   const key =
-    cache === null
+    cache === null || viewer === null
       ? null
       : await cacheKey({
+          viewer,
           login,
           pageSize: resolved.pageSize,
           maxRepositories: resolved.maxRepositories,
         });
   if (cache !== null && key !== null) {
-    const stored = await cache.get(key);
+    const stored = await readCache(cache, key);
     const data = stored === undefined ? null : readStoredLoad(stored, login, resolved);
     if (data !== null) return { data, meta: loadMeta(stats, rateLimits, true) };
   }
@@ -73,9 +81,32 @@ export async function loadGitHubData(options: GitHubSourceOptions): Promise<GitH
   const data = buildGitHubData(profile, pages, resolved.maxRepositories);
   if (cache !== null && key !== null) {
     const stored = JSON.stringify({ profile: profileData, pages: pageData });
-    await cache.set(key, stored, resolved.cacheTtlSeconds);
+    await writeCache(cache, key, stored, resolved.cacheTtlSeconds);
   }
   return { data, meta: loadMeta(stats, rateLimits, false) };
+}
+
+// The cache is best effort: the loaded data is valid either way, so a failing store (read-only
+// directory, full disk, a locked file) neither fails the load nor leaks a raw error.
+async function readCache(cache: GitHubCache, key: string): Promise<string | undefined> {
+  try {
+    return await cache.get(key);
+  } catch {
+    return undefined;
+  }
+}
+
+async function writeCache(
+  cache: GitHubCache,
+  key: string,
+  value: string,
+  ttlSeconds: number,
+): Promise<void> {
+  try {
+    await cache.set(key, value, ttlSeconds);
+  } catch {
+    // Ignored on purpose, see readCache.
+  }
 }
 
 /**

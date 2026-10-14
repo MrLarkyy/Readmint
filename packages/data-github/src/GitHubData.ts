@@ -74,7 +74,7 @@ export interface GitHubContributions {
   readonly pullRequests: number;
   readonly issues: number;
   readonly reviews: number;
-  /** Contributions to private repositories, visible as a count only. */
+  /** Contributions the token's owner cannot see in detail; 0 with the user's own token. */
   readonly private: number;
   /** First calendar day, `YYYY-MM-DD`. */
   readonly from: string;
