@@ -93,6 +93,18 @@ const draw = design(260, 100, { duration: 1000, loop: false }, [
   },
 ]);
 
+/** Subpaths of different lengths: each draws from its own start at the pace of the longest; the short ones finish first. */
+const drawMulti = design(260, 110, { duration: 1000, loop: false }, [
+  {
+    type: "path",
+    d: "M10 15 L250 15 M10 45 L130 45 M10 95 L70 65 L130 95 Z",
+    fill: "none",
+    stroke: "#8250df",
+    strokeWidth: 4,
+    animate: { draw: track(0, 1) },
+  },
+]);
+
 const easings: readonly AnimationTrack<number>["easing"][] = [
   "linear",
   "ease",
@@ -172,6 +184,7 @@ export const animationDesigns: readonly {
 }[] = [
   { name: "tracks", input: { design: tracks }, times: [0, 400, 800, 1200] },
   { name: "draw", input: { design: draw }, times: [0, 500, 1000] },
+  { name: "draw-multi", input: { design: drawMulti }, times: [500] },
   { name: "easing", input: { design: easing }, times: [300] },
   { name: "calendar", input: { design: calendar, data: { cells } }, times: [0, 300, 600, 1200] },
 ];

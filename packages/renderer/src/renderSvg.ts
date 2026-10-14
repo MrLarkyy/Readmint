@@ -7,6 +7,7 @@ import { paintAttributes, resolvePaint } from "./paint.js";
 import { RenderContext } from "./RenderContext.js";
 import { RenderFailure } from "./RenderFailure.js";
 import { renderLayer } from "./renderLayer.js";
+import type { RenderNode } from "./RenderNode.js";
 import type { RenderOptions } from "./RenderOptions.js";
 import type { RenderReport } from "./RenderReport.js";
 import type { RenderResult } from "./RenderResult.js";
@@ -64,6 +65,9 @@ function render(context: RenderContext, options: RenderOptions): RenderResult {
   );
   const background = resolvePaint(context, canvas.background, "/canvas/background", scope);
   const nodes = expandLayers(context, design.layers, "/layers", scope);
+  // A frame has no CSS; the animated SVG names its rules after all of them, so they are known before any is drawn.
+  const prefix = context.time === undefined ? sealAnimations(context, nodes) : undefined;
+  const root = prefix === undefined ? "" : ` class="${prefix}"`;
   const w = formatNumber(width);
   const h = formatNumber(height);
   if (background !== undefined && background.kind !== "none") {
@@ -76,7 +80,7 @@ function render(context: RenderContext, options: RenderOptions): RenderResult {
   const description =
     design.description === undefined ? "" : `<desc>${escapeText(design.description)}</desc>`;
   const { svg, bytes } = writer.finish(
-    `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" role="img">${title}${description}`,
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"${root} role="img">${title}${description}`,
   );
   const report: RenderReport = {
     bytes,
@@ -93,4 +97,16 @@ function render(context: RenderContext, options: RenderOptions): RenderResult {
         }),
   };
   return { ok: true, svg, report, warnings: [...context.warnings] };
+}
+
+/** Registers every animation in drawing order and writes their CSS; returns the document prefix, if any animates. */
+function sealAnimations(context: RenderContext, nodes: readonly RenderNode[]): string | undefined {
+  const visit = (list: readonly RenderNode[]) => {
+    for (const node of list) {
+      if (node.animation !== undefined) context.animationCss.register(node.animation);
+      if (node.kind === "group") visit(node.children);
+    }
+  };
+  visit(nodes);
+  return context.animationCss.seal();
 }

@@ -33,15 +33,29 @@ function animated(
   };
 }
 
+const prefixPattern = / class="(r[0-9a-z]{7})"/u;
+
+/** The document prefix of an animated SVG (the root class), undefined without animation CSS. */
+function prefixOf(svg: string): string | undefined {
+  return prefixPattern.exec(svg.slice(0, svg.indexOf(">")))?.[1];
+}
+
+/** The SVG with the document prefix taken out of its root class and its animation names: `k0`, `a0`, ... */
+function unprefixed(svg: string): string {
+  const prefix = prefixOf(svg);
+  return prefix === undefined ? svg : svg.replace(prefixPattern, "").replaceAll(prefix, "");
+}
+
+/** A successful render, with names unprefixed. */
 function svgOf(design: Design, options: RenderOptions = {}): string {
   const result = renderSvg(design, options);
   if (!result.ok) throw new Error(JSON.stringify(result.issues));
-  return result.svg;
+  return unprefixed(result.svg);
 }
 
 /** The animated SVG without what only plays in a browser: its classes and its animation rules. */
 function withoutCss(svg: string): string {
-  return svg
+  return unprefixed(svg)
     .replace(/ class="a\d+"/gu, "")
     .replace(
       /@keyframes k\d+\{(?:[^{}]*\{[^{}]*\})*\}|\.a\d+\{[^{}]*\}|@media[^{}]*\{[^{}]*\{[^{}]*\}\}/gu,
@@ -66,7 +80,7 @@ describe("frames and the animated SVG", () => {
   test.each(designs)("the static attributes of %s are its frame at time 0", (_name, input) => {
     const svg = renderFixture(input);
     expect(withoutCss(svg)).toBe(renderFixture({ ...input, time: 0 }));
-    expect(svg).toMatch(/@keyframes k0\{/u);
+    expect(unprefixed(svg)).toMatch(/@keyframes k0\{/u);
   });
 
   test.each(designs)("a frame of %s holds no class and no animation CSS", (_name, input) => {
@@ -101,8 +115,41 @@ describe("frames and the animated SVG", () => {
       const svg = renderFixture(input);
       expect(svg).not.toMatch(/<script|<animate|<set |onbegin|url\((?!#|data:font)/u);
       expect(svg.match(/prefers-reduced-motion/gu)).toHaveLength(1);
-      expect(svg).toContain("@media (prefers-reduced-motion:reduce){*{animation:none!important}}");
+      // Only this document's animated elements: an inlined SVG's style is page-wide.
+      expect(svg).toContain(
+        `@media (prefers-reduced-motion:reduce){.${prefixOf(svg) ?? "?"} [class]{animation:none!important}}`,
+      );
+      expect(svg).not.toMatch(/\*/u);
     }
+  });
+
+  test("two different animated designs name their rules apart, the same design names them alike", () => {
+    const names = (svg: string) =>
+      new Set(
+        [...svg.matchAll(/(?:@keyframes |\.|class=")(r[0-9a-z]{7}[ak]?\d*)/gu)].map((m) => m[1]),
+      );
+    const [first, second] = designs.map(([, input]) => renderFixture(input));
+    const a = names(first ?? "");
+    const b = names(second ?? "");
+    expect(a.size).toBeGreaterThan(2);
+    expect([...a].filter((name) => b.has(name))).toEqual([]);
+    for (const [, input] of designs) {
+      const svg = renderFixture(input);
+      expect(renderFixture(input)).toBe(svg);
+      const prefix = prefixOf(svg) ?? "?";
+      expect(svg.match(/class="([^"]*)"/gu)?.every((c) => c.startsWith(`class="${prefix}`))).toBe(
+        true,
+      );
+      expect([...svg.matchAll(/@keyframes (\S+)\{/gu)].every((m) => m[1]?.startsWith(prefix))).toBe(
+        true,
+      );
+    }
+  });
+
+  test("a design without animation CSS has no root class", () => {
+    const { input } = animationDesigns[0] ?? { input: undefined };
+    if (input === undefined) throw new Error("designs");
+    expect(renderFixture({ ...input, time: 0 })).toMatch(/^<svg [^>]*viewBox="[^"]*" role="img">/u);
   });
 
   test("transforms turn around the box centre without touching the element's own transform", () => {
@@ -202,7 +249,7 @@ describe("timing", () => {
         message: "the track runs past the end of the 1000 ms timeline and is cut there",
       },
     ]);
-    const svg = result.ok ? result.svg : "";
+    const svg = unprefixed(result.ok ? result.svg : "");
     // Copy 3 starts at 900 ms: a quarter of its track fits; copy 4 starts after the end and holds its first value.
     expect(svg).toContain("@keyframes k3{0%,90%{opacity:0}100%{opacity:0.25}}");
     expect(svg).toContain("@keyframes k4{0%,100%{opacity:0}}");
@@ -247,6 +294,9 @@ describe("timing", () => {
     expect(svg.match(/@keyframes/gu)).toHaveLength(1);
     expect(svg.match(/\.a\d+\{/gu)).toHaveLength(1);
     expect(svg.match(/ class="a0"/gu)).toHaveLength(371);
+    expect(svg).toContain(
+      "@media (prefers-reduced-motion:reduce){. [class]{animation:none!important}}",
+    );
   });
 
   test("a colour track with alpha also animates the paint opacity", () => {
@@ -301,6 +351,22 @@ describe("timing", () => {
     );
     // 50 + 30 + 40 = 120, dash = ceil3(120 * 1.01 + 1) = 122.2; a quarter drawn.
     expect(svg).toContain('stroke-dasharray="122.2 122.2" stroke-dashoffset="91.65"');
+  });
+
+  test("a path with several subpaths draws each from its own start at the pace of the longest", () => {
+    const svg = svgOf(
+      animated([
+        {
+          type: "path",
+          d: "M0 0 L100 0 M0 10 L40 10",
+          stroke: "#000",
+          animate: { draw: track(0, 1) },
+        },
+      ]),
+      { time: 500 },
+    );
+    // Longest subpath 100: dash = ceil3(100 * 1.01 + 1) = 102, not the summed 142.4.
+    expect(svg).toContain('stroke-dasharray="102 102" stroke-dashoffset="51"');
   });
 
   test("every layer kind takes opacity and transforms; a track its kind cannot take is not drawn", () => {

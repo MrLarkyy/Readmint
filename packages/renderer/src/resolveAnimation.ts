@@ -238,7 +238,7 @@ function checkLiteral(
 /** Longest stroke a `draw` track takes, so the dash numbers print without an exponent. */
 const maxDash = 1e9;
 
-/** Dash and gap of a stroke drawn on: the computed length (chords run a little short) plus a margin. */
+/** Dash and gap of a stroke drawn on: the longest subpath (chords run a little short) plus a margin. */
 function dashLength(context: RenderContext, d: string, path: string, trackPath: string): number {
   let length = context.pathLengths.get(path);
   if (length === undefined) {

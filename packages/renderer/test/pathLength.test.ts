@@ -19,11 +19,18 @@ describe("pathLength", () => {
     ["M0 0 L3 4", 5],
     ["M0 0 l3 4 l3 -4", 10],
     ["M0 0 H10 V10 h-10 z", 40],
-    ["M0 0 L30 40 M100 100 L100 110", 60],
+    ["M0 0 L30 40 M100 100 L100 110", 50],
     ["M5 5", 0],
     ["", 0],
   ])("lines of %s are exact", (d, length) => {
     expect(pathLength(d)).toBe(length);
+  });
+
+  test("the longest subpath counts: a dash pattern starts again at every subpath", () => {
+    expect(pathLength("M0 0 L10 0 M0 5 L30 5 M0 9 L20 9")).toBe(30);
+    // The segment after a Z starts a subpath at the closed one's start.
+    expect(pathLength("M0 0 L10 0 L10 10 Z L0 -40")).toBe(40);
+    expect(pathLength("M0 0 h3 v4 z m10 0 h1")).toBe(12);
   });
 
   test("a cubic is within 0.5 % and never longer than the curve", () => {

@@ -1,6 +1,6 @@
 import type { Design } from "@readmint/format";
 import type { ExprResult, Template } from "@readmint/expr";
-import { AnimationCss } from "./animationCss.js";
+import { AnimationCss } from "./AnimationCss.js";
 import type { LoadedFont } from "./loadFont.js";
 import type { LoadedImage } from "./loadImage.js";
 import type { Bounds } from "./pathBounds.js";

@@ -2,12 +2,19 @@ import { afterEach, describe, expect, test } from "vitest";
 import { animatedSnapshot } from "./animatedSnapshot.js";
 import { animationDesigns } from "./animationDesigns.js";
 import calendar from "./golden/renderer-animation-svg/calendar.svg?raw";
+import drawMulti from "./golden/renderer-animation-svg/draw-multi.svg?raw";
 import draw from "./golden/renderer-animation-svg/draw.svg?raw";
 import easing from "./golden/renderer-animation-svg/easing.svg?raw";
 import tracks from "./golden/renderer-animation-svg/tracks.svg?raw";
 import { renderFixture } from "./renderFixture.js";
 
-const snapshots: Readonly<Record<string, string>> = { calendar, draw, easing, tracks };
+const snapshots: Readonly<Record<string, string>> = {
+  calendar,
+  draw,
+  "draw-multi": drawMulti,
+  easing,
+  tracks,
+};
 
 afterEach(() => {
   document.body.replaceChildren();

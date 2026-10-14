@@ -99,7 +99,10 @@ export interface ShapeAnimation extends LayerAnimation {
 }
 
 export interface PathAnimation extends ShapeAnimation {
-  /** The drawn fraction of the stroke, in [0, 1]; the path data must hold no arc. */
+  /**
+   * The drawn fraction of the stroke, in [0, 1]: every subpath draws from its own start at the pace of the longest
+   * one, so shorter subpaths finish earlier. The path data must hold no arc.
+   */
   readonly draw?: AnimationTrack<number>;
 }
 

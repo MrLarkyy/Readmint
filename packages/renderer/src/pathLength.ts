@@ -7,37 +7,46 @@ const chords = 32;
 const twoPiUp = 6.2832;
 
 /**
- * The length of path data, for drawing a stroke on: lines exactly, curves as `chords` chords (a little short), only
- * `+ - * /` and `Math.sqrt`, which ECMAScript specifies exactly, so every engine gets the same number. Validated
- * designs never draw an arc; one in unvalidated data counts as the perimeter of a circle surely containing it.
+ * The length of the longest subpath of path data, for drawing a stroke on: SVG engines start the dash pattern again
+ * at every subpath (each `M`, and the segment after a `Z`), so every subpath draws from its own start and the longest
+ * one sets the pace. Lines count exactly, curves as `chords` chords (a little short), with only `+ - * /` and
+ * `Math.sqrt`, which ECMAScript specifies exactly, so every engine gets the same number. Validated designs never draw
+ * an arc; one in unvalidated data counts as the perimeter of a circle surely containing it.
  */
 export function pathLength(d: string): number {
-  let total = 0;
+  let longest = 0;
+  let current = 0;
+  const end = () => {
+    longest = Math.max(longest, current);
+    current = 0;
+  };
   walkPathData(d, {
-    move: () => undefined,
+    move: end,
     line: (fromX, fromY, x, y) => {
-      total += distance(x - fromX, y - fromY);
+      current += distance(x - fromX, y - fromY);
     },
     quadratic: (fromX, fromY, cx, cy, x, y) => {
-      total += flatten((t, u) => [
+      current += flatten((t, u) => [
         u * u * fromX + 2 * u * t * cx + t * t * x,
         u * u * fromY + 2 * u * t * cy + t * t * y,
       ]);
     },
     cubic: (fromX, fromY, c1x, c1y, c2x, c2y, x, y) => {
-      total += flatten((t, u) => [
+      current += flatten((t, u) => [
         u * u * u * fromX + 3 * u * u * t * c1x + 3 * u * t * t * c2x + t * t * t * x,
         u * u * u * fromY + 3 * u * u * t * c1y + 3 * u * t * t * c2y + t * t * t * y,
       ]);
     },
     arc: (fromX, fromY, rx, ry, x, y) => {
-      total += arcBound(x - fromX, y - fromY, rx, ry);
+      current += arcBound(x - fromX, y - fromY, rx, ry);
     },
     close: (fromX, fromY, x, y) => {
-      total += distance(x - fromX, y - fromY);
+      current += distance(x - fromX, y - fromY);
+      end();
     },
   });
-  return total;
+  end();
+  return longest;
 }
 
 function distance(dx: number, dy: number): number {

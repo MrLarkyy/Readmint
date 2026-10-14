@@ -49,3 +49,15 @@ export interface NodeAnimation {
   /** The dash and gap length of a `draw` track (a little more than the path length). */
   readonly dash: number | undefined;
 }
+
+/**
+ * The tracks of a node that play together on one element, in drawing order: each transform track on a group of its
+ * own (outermost first), then the element's own tracks (none when it has none).
+ */
+export function playGroups(animation: NodeAnimation): TrackTimeline[][] {
+  const transforms = animation.tracks.filter(({ property }) =>
+    transformProperties.includes(property),
+  );
+  const own = animation.tracks.filter(({ property }) => !transformProperties.includes(property));
+  return [...transforms.map((track) => [track]), ...(own.length === 0 ? [] : [own])];
+}

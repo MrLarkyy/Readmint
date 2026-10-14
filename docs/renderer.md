@@ -142,7 +142,8 @@ keyframes per track, so the browser and the frames cannot drift:
 
 Each track is mapped onto the timeline: it holds its first value until it starts (`delay + stagger x index`), runs its
 keyframes over its `duration`, and holds its last value to the end of the timeline; a track running past the end is cut
-there (the warning `animation-cut`, once per track). Keyframe positions are percentages of the timeline rounded to 3
+there (the warning `animation-cut`, once per track), the segment before the cut keeping its easing over the shorter
+span. Keyframe positions are percentages of the timeline rounded to 3
 decimals; keyframes landing on the same rounded position keep their order one step (0.001 %) apart. Values are rounded
 as written (numbers to 3 decimals, colour channels to integers), and the frames sample these rounded keyframes with the
 same curves CSS uses: `easing` from a keyframe to the next is written as that keyframe's `animation-timing-function`,
@@ -151,15 +152,22 @@ paint opacities are clamped like CSS clamps them when an easing overshoots; tran
 
 Output:
 
-- `<style>` holds `@keyframes k0, k1, ...` (one per distinct track; tracks of one element with the same positions and
-  easings share one) and classes `.a0, .a1, ...` (`animation: <keyframes> <duration>ms linear infinite`, or `linear
-both` when the timeline plays once), deduplicated by their text, so identical copies of a repeat share their rules.
-  Only numbers, `#rrggbb` colours and fixed words are written there; nothing from the design or the data. One rule
-  `@media (prefers-reduced-motion:reduce){*{animation:none!important}}` stops every animation for readers who ask for
-  less motion. No SMIL, no script.
+- Every animation of the render is known before anything is drawn, so the rules get a document prefix `r<hash>`:
+  `r` and 7 base-36 digits of the 32-bit FNV-1a hash of the rule text. `<style>` holds `@keyframes r<hash>k0, k1, ...`
+  (one per distinct track; tracks of one element with the same positions and easings share one) and classes
+  `.r<hash>a0, a1, ...` (`animation: <keyframes> <duration>ms linear infinite`, or `linear both` when the timeline
+  plays once), deduplicated by their text, so identical copies of a repeat share their rules. The root `<svg>` carries
+  `class="r<hash>"`. An SVG inlined into a page (the editor) shares the page's style: the prefix keeps two different
+  Readmint SVGs apart, while the same design still gives the same bytes. Only numbers, `#rrggbb` colours and fixed
+  words are written there; nothing from the design or the data. One rule
+  `@media (prefers-reduced-motion:reduce){.r<hash> [class]{animation:none!important}}` stops this document's
+  animations, and nothing of the host page, for readers who ask for less motion. No SMIL, no script. A frame and a
+  design without animation have no root class.
 - `opacity`, `fill` and `stroke` are animated on the element itself (`fill` with `fill-opacity` when a keyframe colour
   has alpha). `draw` sets `stroke-dasharray="D D"` and animates `stroke-dashoffset` from `D` (nothing drawn) to 0 (all
-  drawn), `D` being the path length times 1.01 plus 1, rounded up to 3 decimals; the length is computed (lines exactly,
+  drawn), `D` being the length of the longest subpath times 1.01 plus 1, rounded up to 3 decimals. Engines start the
+  dash pattern again at every subpath (each `M`, and the segment after a `Z`), so every subpath draws from its own start
+  at the pace of the longest one, and shorter subpaths are complete earlier. The length is computed (lines exactly,
   curves as 32 chords each, `+ - * /` and `Math.sqrt` only), because resvg ignores `pathLength`. Paths with arcs cannot
   `draw` (their length needs trigonometry).
 - `x`, `y`, `rotation` and `scale` each get a `<g>` of their own around the element, outermost first in that order,

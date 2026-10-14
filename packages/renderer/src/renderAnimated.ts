@@ -1,6 +1,11 @@
-import { hexColour } from "./animationCss.js";
+import { hexColour } from "./hexColour.js";
 import { formatNumber } from "./formatNumber.js";
-import type { AnimatedProperty, NodeAnimation, TrackTimeline } from "./NodeAnimation.js";
+import {
+  transformProperties,
+  type AnimatedProperty,
+  type NodeAnimation,
+  type TrackTimeline,
+} from "./NodeAnimation.js";
 import type { Paint } from "./paint.js";
 import type { RenderContext } from "./RenderContext.js";
 import type { RenderNode } from "./RenderNode.js";
@@ -12,7 +17,8 @@ export type NodeDrawer = (context: RenderContext, node: RenderNode, extra: strin
 /**
  * An animated node. Its static attributes are the frame at `context.time` (frame 0 when the render is the animated
  * SVG), so a viewer without CSS animation (resvg, reduced motion) shows a correct picture. The animated SVG adds a
- * class per element and per transform group that plays its tracks as CSS; a frame writes neither.
+ * class per element and per transform group that plays its tracks as CSS (in the groups `playGroups` lists, which
+ * `AnimationCss` registered before drawing); a frame writes neither.
  *
  * Transforms never touch the element's own `transform`: one group per animated transform property (x, y, rotation,
  * scale, outermost first) wraps it and its CSS animates only that group's `transform`. With a rotation or scale the
@@ -67,7 +73,7 @@ export function renderAnimated(
 }
 
 function isTransform(property: AnimatedProperty): boolean {
-  return property === "x" || property === "y" || property === "rotation" || property === "scale";
+  return transformProperties.includes(property);
 }
 
 function transformText(property: AnimatedProperty, value: readonly number[]): string {

@@ -218,7 +218,7 @@ is `unknown-property`; a key twice is `duplicate-key`. A layer with `animate` in
 | `opacity`  | `B<unit>`               | replaces the layer's opacity                                               |
 | `fill`     | `B<colour>`             | replaces the fill (a gradient too); alpha animates `fill-opacity`          |
 | `stroke`   | `B<colour>`             | replaces the stroke, like `fill`                                           |
-| `draw`     | `B<unit>`               | the drawn share of the stroke, from its start; the path data has no arcs   |
+| `draw`     | `B<unit>`               | the drawn share of the stroke; the path data has no arcs (see below)       |
 | `x`, `y`   | `B<position>`           | moves the layer by this much on top of its layout                          |
 | `scale`    | `B<-100..100>`          | scales the layer around the centre of its box                              |
 | `rotation` | `B<-360..360>`, degrees | turns the layer around the centre of its box, on top of its own `rotation` |
@@ -236,7 +236,9 @@ the timeline's), `delay` and `stagger` (`B<integer 0..60000>` ms, default 0), `e
   `"delay": "{{ (week * 7 + day) * 8 }}"` with `index: "week"` and `index: "day"` on the two repeats.
 - A track that runs past the end of the timeline is cut there: its last keyframe becomes the value it has at that
   moment, and the render warns `animation-cut` once per track. Copy counts come from data, so this is a warning, not a
-  failure.
+  failure. The segment before the cut keeps its easing, played over the shorter span up to the end.
+- `draw` with several subpaths (each `M`, and the segment after a `Z`): every subpath draws from its own start, all at
+  the pace of the longest one, which is complete at `1`; shorter subpaths are complete earlier.
 - `easing` from one keyframe to the next: the keyframe's own `easing`, else the track's. It is `linear`, `ease`,
   `ease-in`, `ease-out`, `ease-in-out` (the CSS curves) or `{ x1, y1, x2, y2 }`, a CSS `cubic-bezier` with `x1`, `x2` in
   [0, 1] and `y1`, `y2` in [-10, 10]; outside [0, 1] the value overshoots its keyframes (opacity and colours are clamped).
