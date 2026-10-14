@@ -91,7 +91,11 @@ export function resolvePath(
   path: string,
   scope: RenderScope,
 ): PathNode {
-  const bounds = pathBounds(layer.d);
+  let bounds = context.pathBounds.get(path);
+  if (!context.pathBounds.has(path)) {
+    bounds = pathBounds(layer.d);
+    context.pathBounds.set(path, bounds);
+  }
   return {
     kind: "path",
     ...resolveBase(context, layer, path, scope),

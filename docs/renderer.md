@@ -142,7 +142,8 @@ order), then the canvas background and the layers.
 | `maxTextLength`      | 10000   | characters of a text after its placeholders are filled | `too-large`       |
 
 The output size is counted while the SVG is written, and every layer reserves the least markup of its kind before it
-is built, so a huge `repeat` stops early instead of building everything. A bound on the number of repeat copies and
+is built (a path also its data, a text its filled-in content, before either is measured), so a huge or nested `repeat`
+stops early instead of building everything. A bound on the number of repeat copies and
 stripping of characters XML does not allow arrive with RM-25.
 
 ## Issues

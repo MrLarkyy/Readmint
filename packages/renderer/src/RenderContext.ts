@@ -2,6 +2,7 @@ import type { Design } from "@readmint/format";
 import type { ExpressionEvaluator } from "./ExpressionEvaluator.js";
 import type { LoadedFont } from "./loadFont.js";
 import type { LoadedImage } from "./loadImage.js";
+import type { Bounds } from "./pathBounds.js";
 import { RenderFailure } from "./RenderFailure.js";
 import type { RenderIssue, RenderIssueCode } from "./RenderIssue.js";
 import { RenderLimits } from "./RenderLimits.js";
@@ -21,6 +22,8 @@ export class RenderContext {
   readonly images = new Map<string, LoadedImage>();
   /** Bytes each image adds to the output, every use counted. */
   readonly imageBytes = new Map<string, number>();
+  /** Bounds of path data by layer pointer: `d` is never bound, so every repeat copy of a layer shares them. */
+  readonly pathBounds = new Map<string, Bounds | undefined>();
   private readonly trail: string[] = [];
   private depth = 0;
 

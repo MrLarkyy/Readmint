@@ -28,15 +28,16 @@ import {
 } from "./resolveValue.js";
 
 /**
- * The least markup each kind of node produces (`<g></g>`, a `<rect>` with its four numbers, ...); reserved per node
- * against the output budget, so a huge expansion stops long before it is built.
+ * The least markup each kind of node produces without its variable parts (`<g></g>`, a `<rect>` with its four
+ * numbers, `<path d=""/>`, ...); reserved per node against the output budget, so a huge expansion stops long before
+ * it is built. A path also reserves its data and a text its filled-in content.
  */
 export const minimumNodeBytes: Readonly<Record<LayerType, number>> = {
   group: 7,
   component: 7,
   rect: 40,
   ellipse: 37,
-  path: 13,
+  path: 12,
   text: 60,
   image: 60,
 };
@@ -106,6 +107,8 @@ function addLayer(
     return;
   }
   context.writer.reserve(minimumNodeBytes[layer.type]);
+  // The data is written whole (escaping only lengthens it), so it is reserved before its bounds are computed.
+  if (layer.type === "path") context.writer.reserve(layer.d.length);
   out.push(resolveLayer(context, layer, path, scope));
 }
 

@@ -33,7 +33,32 @@ test("a huge repeat from data stops early instead of building everything", () =>
   const started = performance.now();
   const result = renderSvg(design, { data: { items }, expressions: testEvaluator });
   expect(result).toMatchObject({ ok: false, issues: [{ code: "too-large" }] });
-  expect(performance.now() - started).toBeLessThan(5000);
+  expect(performance.now() - started).toBeLessThan(2000);
+});
+
+test.each([
+  ["a long path", { type: "path", d: `M0 0${" l1 1".repeat(19_999)}`, stroke: "#000" }],
+  ["a long text", { type: "text", content: "{{long}}", width: 200, font: "m" }],
+] as const)("nested repeats of %s stop with too-large well under a second", (_name, leaf) => {
+  const items = Array.from({ length: 1000 }, (_, index) => index);
+  const design: Design = {
+    version: 0,
+    canvas: { width: 100, height: 100 },
+    assets: { fonts: { m: fontAssets.medium } },
+    layers: [
+      {
+        type: "group",
+        repeat: { each: "{{items}}", as: "outer" },
+        children: [{ ...(leaf as Layer), repeat: { each: "{{items}}" } }],
+      },
+    ],
+  };
+  const long = "word ".repeat(2000);
+  const started = performance.now();
+  const result = renderSvg(design, { data: { items, long }, expressions: testEvaluator });
+  const elapsed = performance.now() - started;
+  expect(result).toMatchObject({ ok: false, issues: [{ code: "too-large" }] });
+  expect(elapsed).toBeLessThan(500);
 });
 
 test("a 10000-rect design renders in under 2 s and the report counts UTF-8 bytes", () => {
@@ -83,9 +108,14 @@ test("the bytes reserved per node never exceed what the smallest node of its kin
     { type: "rect", width: 1, height: 1 },
     { type: "ellipse", width: 1, height: 1 },
     { type: "path", d: "M" },
+    { type: "path", d: "M0 0 L1 1 L2 0 Z" },
     { type: "text", content: "", font: "m" },
+    { type: "text", content: "a b c d\r\ne f", width: 1, font: "m" },
     { type: "image", asset: "i", width: 1, height: 1, fit: "fill" },
   ];
+  const reserved = (layer: Layer) =>
+    minimumNodeBytes[layer.type] +
+    (layer.type === "path" ? layer.d.length : layer.type === "text" ? layer.content.length : 0);
   for (const layer of smallest) {
     const empty = renderSvg({ version: 0, canvas: { width: 1, height: 1 }, layers: [] });
     const one = renderSvg({
@@ -99,7 +129,7 @@ test("the bytes reserved per node never exceed what the smallest node of its kin
     });
     if (!empty.ok || !one.ok) throw new Error(layer.type);
     const markup = one.svg.replace(/<defs>.*<\/defs>/u, "").length - empty.svg.length;
-    expect(markup, layer.type).toBeGreaterThanOrEqual(minimumNodeBytes[layer.type]);
+    expect(markup, layer.type).toBeGreaterThanOrEqual(reserved(layer));
   }
 });
 

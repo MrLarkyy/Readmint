@@ -37,7 +37,10 @@ export class SvgWriter {
   /** Accounts for output that is certain to come (a lower bound), so huge expansions stop before they are built. */
   reserve(bytes: number): void {
     this.reserved += bytes;
-    if (this.reserved > this.limit) this.overflow(this.reserved);
+    // Reservations happen while layers are resolved, before any of their markup is written, so the bytes written
+    // so far (embedded fonts) and the reservations never count the same output twice.
+    const total = this.reserved + this.bytes;
+    if (total > this.limit) this.overflow(total);
   }
 
   /** `prefix` + the next number for that prefix: `g0`, `g1`, ... */

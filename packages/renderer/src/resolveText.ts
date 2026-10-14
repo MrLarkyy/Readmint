@@ -53,12 +53,20 @@ export function resolveText(
     scope,
   );
   const content = interpolate(context, layer.content, pointer(path, "content"), scope);
+  // Every UTF-16 unit is written as at least one byte (a dropped soft-break space or line break costs a <tspan>),
+  // so the content is reserved before it is measured and wrapped.
+  context.writer.reserve(content.length);
   const fontRef = resolveStyle(context, layer, path, "font");
   if (typeof fontRef.value !== "string") {
     context.fail(fontRef.path, "missing-asset", "a text needs a font (its own or its style's)");
   }
   const loaded = selectFont(context, fontRef.value, fontWeight, fontRef.path);
-  const measure: TextMeasure = { font: loaded.font, fontSize, letterSpacing };
+  const measure: TextMeasure = {
+    font: loaded.font,
+    fontSize,
+    letterSpacing,
+    advances: new Map(),
+  };
   const lines = wrapText(content, width, (text) => measureText(text, measure));
   let widest = 0;
   for (const line of lines) widest = Math.max(widest, measureText(line, measure));
