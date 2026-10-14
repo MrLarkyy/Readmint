@@ -102,6 +102,17 @@ The scope's locale (`createScope(data, { locale })`, default `en`) applies to `n
 (`de-AT` uses `de`); anything else is `unknown-locale`. The tables are fixed in the package and never come from `Intl`
 or the host, because ICU data differs between Node and browsers.
 
+A design states its locale once with the root property `locale` (`en`, `de`, `fr`, `es` or `cs`, exactly these lowercase
+tags); the renderer hands it to the scope, so every expression of the design formats with it. The first of these wins:
+
+1. the filter's `locale` argument,
+2. the render option `locale` (the CLI `--locale`), an explicit choice of the caller for one render,
+3. the design's `locale`,
+4. `en`.
+
+The design takes no region tags (`cs-CZ` is not valid there): a region table can later be added as a new value without
+changing the meaning of a design that is valid today. `supportedLocales` from `@readmint/expr` lists the tags.
+
 | locale | decimal | group             | grouping from | percent | compact suffixes (K, M, B, T)   | default date  |
 | ------ | ------- | ----------------- | ------------- | ------- | ------------------------------- | ------------- |
 | en     | `.`     | `,`               | 4 digits      | `25%`   | `K` `M` `B` `T`                 | `MMM d, yyyy` |

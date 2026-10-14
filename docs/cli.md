@@ -27,14 +27,14 @@ loaded, used or not, so a broken reference fails `validate` too.
 
 ## Options
 
-| option           | commands             | meaning                                                                                     |
-| ---------------- | -------------------- | ------------------------------------------------------------------------------------------- |
-| `--root <dir>`   | all                  | the folder the design file must lie in; default the current folder                          |
-| `--data <file>`  | all                  | fixture data (below)                                                                        |
-| `--locale <tag>` | all                  | BCP 47 language tag for the `number`, `compact`, `percent` and `date` filters; default `en` |
-| `--time <ms>`    | `render`, `validate` | renders that frame of the animation as a static SVG, in 0..86400000                         |
-| `--out <file>`   | `render`             | writes the SVG to this file (its folder must exist) instead of standard output              |
-| `--port <n>`     | `preview`            | port in 0..65535; default 4870, `0` picks a free one                                        |
+| option           | commands             | meaning                                                                                                                                                                                                                           |
+| ---------------- | -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--root <dir>`   | all                  | the folder the design file must lie in; default the current folder                                                                                                                                                                |
+| `--data <file>`  | all                  | fixture data (below)                                                                                                                                                                                                              |
+| `--locale <tag>` | all                  | BCP 47 language tag for the `number`, `compact`, `percent` and `date` filters; default the design's `locale`, else `en`; a tag the expression tables lack (`en`, `de`, `fr`, `es`, `cs`, or a region tag of one) is a usage error |
+| `--time <ms>`    | `render`, `validate` | renders that frame of the animation as a static SVG, in 0..86400000                                                                                                                                                               |
+| `--out <file>`   | `render`             | writes the SVG to this file (its folder must exist) instead of standard output                                                                                                                                                    |
+| `--port <n>`     | `preview`            | port in 0..65535; default 4870, `0` picks a free one                                                                                                                                                                              |
 
 An option a command does not take, an unknown option, a missing or extra argument and a bad value are usage errors
 (exit code 2). There is no host option: the preview listens on 127.0.0.1 only.

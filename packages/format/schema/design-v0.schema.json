@@ -20,6 +20,16 @@
       "type": "string",
       "maxLength": 2000
     },
+    "locale": {
+      "type": "string",
+      "enum": [
+        "en",
+        "de",
+        "fr",
+        "es",
+        "cs"
+      ]
+    },
     "canvas": {
       "type": "object",
       "properties": {

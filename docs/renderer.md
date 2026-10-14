@@ -10,7 +10,7 @@ import { frameTimes, renderSvg, RenderLimits } from "@readmint/renderer";
 
 const result = renderSvg(design, {
   data, // a plain JSON object the expressions read; its own top-level keys are the root names
-  locale: "de", // optional: the locale of the number and date filters, default "en"
+  locale: "de", // optional: the locale of the number and date filters; overrides the design `locale`, default that, else "en"
   assets: { fonts: { inter: bytes }, images: { logo: bytes } }, // bytes for assets whose src is a path
   limits: { maxOutputBytes: 1_000_000 }, // optional overrides of RenderLimits
   time: 400, // optional: the static frame at 400 ms of the design's timeline (see Animation)

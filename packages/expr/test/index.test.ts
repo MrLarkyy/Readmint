@@ -14,6 +14,7 @@ test("exports exactly the public API", () => {
     "evaluateCondition",
     "expandRepeat",
     "packageName",
+    "supportedLocales",
     "toText",
   ]);
 });

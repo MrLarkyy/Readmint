@@ -69,6 +69,7 @@ export const maximalDesign = {
   version: 0,
   title: "Maximal",
   description: "Every optional property.",
+  locale: "cs",
   canvas: {
     width: 4096,
     height: "{{size.height}}",

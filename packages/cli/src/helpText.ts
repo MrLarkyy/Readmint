@@ -10,7 +10,7 @@ Commands:
 Options:
   --root <dir>        Folder the design file must lie in (default: the current folder)
   --data <file>       Fixture data: a JSON object of data namespaces, at most 8 MiB
-  --locale <tag>      Language tag for number and date filters (default: en)
+  --locale <tag>      Language tag for number and date filters (default: the design locale, else en)
   --time <ms>         Render one frame of the animation as a static SVG (render, validate)
   --out <file>        Write the SVG to this file instead of standard output (render)
   --port <n>          Preview port, 0 for any free one (preview; default 4870)
