@@ -1,5 +1,6 @@
 import { encodeBase64 } from "./base64.js";
 import { decodeDataUri } from "./decodeDataUri.js";
+import { fnv1a } from "./fnv1a.js";
 import { ownEntry } from "./ownEntry.js";
 import { pointer } from "./pointer.js";
 import type { RenderContext } from "./RenderContext.js";
@@ -9,7 +10,10 @@ import { sniffImage, type ImageInfo } from "./sniffImage.js";
 /** An image asset that passed every check, with its bytes re-encoded as a data URI of the sniffed type. */
 export interface LoadedImage extends ImageInfo {
   readonly asset: string;
+  /** One string instance per distinct data in a render: assets with identical bytes hold the same string. */
   readonly dataUri: string;
+  /** Short and equal exactly for identical data: what per-copy lookups key by, never the megabytes of `dataUri`. */
+  readonly dataKey: string;
 }
 
 /** Checks one image asset (size before decoding, magic bytes, dimensions, frames) once per render. */
@@ -80,8 +84,27 @@ export function loadImage(context: RenderContext, assetId: string, usePath: stri
   const loaded: LoadedImage = {
     ...info,
     asset: assetId,
-    dataUri: `data:${info.mime};base64,${encodeBase64(bytes)}`,
+    ...distinctData(context, `data:${info.mime};base64,${encodeBase64(bytes)}`),
   };
   context.images.set(assetId, loaded);
   return loaded;
+}
+
+/**
+ * The data URI as the first asset with the same data loaded it, and its key: length and hash find the candidates, a
+ * full comparison runs only against those, once per asset.
+ */
+function distinctData(
+  context: RenderContext,
+  dataUri: string,
+): { readonly dataUri: string; readonly dataKey: string } {
+  const hashed = `${fnv1a(dataUri)}${dataUri.length.toString(36)}`;
+  let candidates = context.imageData.get(hashed);
+  if (candidates === undefined) {
+    candidates = [];
+    context.imageData.set(hashed, candidates);
+  }
+  let index = candidates.indexOf(dataUri);
+  if (index < 0) index = candidates.push(dataUri) - 1;
+  return { dataUri: candidates[index] ?? dataUri, dataKey: `${hashed}-${String(index)}` };
 }

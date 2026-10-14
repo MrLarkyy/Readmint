@@ -24,10 +24,12 @@ export class RenderContext {
   readonly templates = new Map<string, ExprResult<Template>>();
   /** Bytes each image asset adds to the output: its data URI where it is written, which is once per distinct data. */
   readonly imageBytes = new Map<string, number>();
-  /** Image nodes per data URI, counted before drawing: data used more than once is defined once and referenced. */
+  /** Distinct image data URIs by length and hash, so assets with identical bytes share one string and one key. */
+  readonly imageData = new Map<string, string[]>();
+  /** Image nodes per `dataKey`, counted before drawing: data used more than once is defined once and referenced. */
   readonly imageUses = new Map<string, number>();
   /**
-   * Data URI -> id of its shared `<image>` definition, looked up before `SvgWriter.share` so megabytes of image
+   * `dataKey` -> id of its shared `<image>` definition, looked up before `SvgWriter.share` so megabytes of image
    * markup are built and hashed once per distinct data, not once per use.
    */
   readonly sharedImages = new Map<string, string>();

@@ -264,6 +264,40 @@ function paddedPng(size: number): Uint8Array {
   return padded;
 }
 
+test("40000 copies of a 2 MB image under a second asset id with the same bytes render in under 2 s", () => {
+  const data = paddedPng(1_500_000);
+  const design: Design = {
+    version: 0,
+    canvas: { width: 100, height: 100 },
+    assets: { images: { first: { src: "a.png" }, second: { src: "b.png" } } },
+    layers: [
+      { type: "image", asset: "first", width: 10, height: 10 },
+      {
+        type: "group",
+        repeat: { each: "{{items}}" },
+        children: [
+          { type: "image", asset: "second", width: 10, height: 10, repeat: { each: "{{items}}" } },
+        ],
+      },
+    ],
+  };
+  const started = performance.now();
+  const result = renderSvg(design, {
+    data: { items: new Array<number>(200).fill(0) },
+    // Separate copies of the bytes, so nothing but their content makes the two assets alike.
+    assets: { images: { first: data, second: data.slice() } },
+    limits: { maxOutputBytes: 20_000_000 },
+  });
+  expect(performance.now() - started).toBeLessThan(2000);
+  if (!result.ok) throw new Error(JSON.stringify(result.issues));
+  const dataUri = `data:image/png;base64,${Buffer.from(data).toString("base64")}`;
+  expect(result.svg.split(dataUri)).toHaveLength(2);
+  expect(result.report.images).toEqual([
+    { asset: "first", bytes: dataUri.length },
+    { asset: "second", bytes: 0 },
+  ]);
+});
+
 test("1000 copies of a 1 MB image write its data once, in under 2 s", () => {
   const big = paddedPng(750_000);
   const design: Design = {
