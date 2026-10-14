@@ -1,4 +1,5 @@
 import { parseArgs } from "node:util";
+import { isSupportedLocale, supportedLocales } from "@readmint/expr";
 import { CliError } from "./CliError.js";
 import type { CliCommand, DesignArgs } from "./CliCommand.js";
 import { ExitCode } from "./ExitCode.js";
@@ -106,6 +107,11 @@ function checkLocale(locale: string | undefined): string | undefined {
     Intl.getCanonicalLocales(locale);
   } catch {
     usage(`--locale ${quoteForLog(locale)} is not a BCP 47 language tag`);
+  }
+  if (!isSupportedLocale(locale)) {
+    usage(
+      `--locale ${quoteForLog(locale)} is not supported (supported: ${supportedLocales.join(", ")})`,
+    );
   }
   return locale;
 }

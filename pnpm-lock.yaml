@@ -57,6 +57,9 @@ importers:
       '@readmint/data':
         specifier: workspace:*
         version: link:../data
+      '@readmint/expr':
+        specifier: workspace:*
+        version: link:../expr
       '@readmint/format':
         specifier: workspace:*
         version: link:../format

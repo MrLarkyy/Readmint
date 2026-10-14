@@ -86,18 +86,19 @@ one placeholder.
 
 ## Document
 
-| property      | required | type                                           | notes                                     |
-| ------------- | -------- | ---------------------------------------------- | ----------------------------------------- |
-| `$schema`     |          | string, at most 512                            | editor hint, ignored                      |
-| `version`     | yes      | the integer `0`                                | see [Versioning](#versioning)             |
-| `title`       |          | string, at most 200                            | accessible title of the output            |
-| `description` |          | string, at most 2000                           | accessible description of the output      |
-| `canvas`      | yes      | canvas                                         |                                           |
-| `layers`      | yes      | array of layers                                | drawn in order, first at the back         |
-| `styles`      |          | object: id -> style                            | shared by layers through `style`          |
-| `assets`      |          | `{ fonts?: id -> font, images?: id -> image }` |                                           |
-| `components`  |          | object: id -> component definition             | reusable layer groups                     |
-| `animation`   |          | `{ duration, loop? }`                          | the timeline, see [Animation](#animation) |
+| property      | required | type                                           | notes                                                                        |
+| ------------- | -------- | ---------------------------------------------- | ---------------------------------------------------------------------------- |
+| `$schema`     |          | string, at most 512                            | editor hint, ignored                                                         |
+| `version`     | yes      | the integer `0`                                | see [Versioning](#versioning)                                                |
+| `title`       |          | string, at most 200                            | accessible title of the output                                               |
+| `description` |          | string, at most 2000                           | accessible description of the output                                         |
+| `locale`      |          | `en`, `de`, `fr`, `es` or `cs`                 | locale of the number and date filters, see [Locales](expressions.md#locales) |
+| `canvas`      | yes      | canvas                                         |                                                                              |
+| `layers`      | yes      | array of layers                                | drawn in order, first at the back                                            |
+| `styles`      |          | object: id -> style                            | shared by layers through `style`                                             |
+| `assets`      |          | `{ fonts?: id -> font, images?: id -> image }` |                                                                              |
+| `components`  |          | object: id -> component definition             | reusable layer groups                                                        |
+| `animation`   |          | `{ duration, loop? }`                          | the timeline, see [Animation](#animation)                                    |
 
 **canvas**: `width`, `height` (required, `B<integer 1..4096>`; 4096 is the PNG cap of the raster path),
 `background` (paint).

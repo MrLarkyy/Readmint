@@ -244,6 +244,9 @@ export const locales: ReadonlyMap<string, LocaleData> = new Map(
   [en, de, fr, es, cs].map((table) => [table.tag, freezeTable(table)]),
 );
 
+/** The canonical tags of every supported locale, in table order. */
+export const supportedLocales: readonly string[] = Object.freeze([...locales.keys()]);
+
 /** Longest BCP 47 tag worth looking up; longer input is unknown without being lowercased. */
 const maxTagLength = 35;
 
@@ -255,4 +258,9 @@ export function resolveLocale(tag: string): LocaleData | undefined {
   if (exact !== undefined) return exact;
   const dash = lower.indexOf("-");
   return dash > 0 ? locales.get(lower.slice(0, dash)) : undefined;
+}
+
+/** Whether `resolveLocale` finds a table for `tag`. */
+export function isSupportedLocale(tag: string): boolean {
+  return resolveLocale(tag) !== undefined;
 }

@@ -1,6 +1,7 @@
 export const packageName = "@readmint/format";
 
 export type * from "./Design.js";
+export type { DesignLocale } from "./designLocales.js";
 export type { DesignIssue, DesignIssueCode } from "./DesignIssue.js";
 export type { DesignMigration } from "./DesignMigration.js";
 export type { DesignResult } from "./DesignResult.js";
@@ -10,6 +11,7 @@ export type { ParseDesignOptions } from "./parseDesign.js";
 export type { QuoteOptions } from "./quoteInput.js";
 export type { JsonSchema } from "./schema/toJsonSchema.js";
 export type { ValueRange, ValueRangeName } from "./ValueRanges.js";
+export { designLocales } from "./designLocales.js";
 export { DesignLimits } from "./DesignLimits.js";
 export { designJsonSchema } from "./designJsonSchema.js";
 export { DESIGN_FORMAT_VERSION } from "./designMigrations.js";

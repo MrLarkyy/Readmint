@@ -1,4 +1,5 @@
 import { DESIGN_FORMAT_VERSION } from "./designMigrations.js";
+import { designLocales } from "./designLocales.js";
 import { DesignLimits } from "./DesignLimits.js";
 import { ValueRanges, type ValueRange } from "./ValueRanges.js";
 import {
@@ -317,6 +318,7 @@ export const designSchemaV0: SchemaDocument = {
     version: literal(DESIGN_FORMAT_VERSION),
     "title?": string("a title", { maxLength: 200 }),
     "description?": string("a description", { maxLength: 2000 }),
+    "locale?": enumOf(designLocales),
     canvas: object("a canvas", {
       width: bindable(numberIn(ValueRanges.canvasSide)),
       height: bindable(numberIn(ValueRanges.canvasSide)),

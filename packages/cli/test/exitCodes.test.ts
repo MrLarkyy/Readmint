@@ -81,6 +81,7 @@ describe("exit code 2", () => {
     [["preview", "plain.json", "--port", "8o"], "--port must be a number in 0..65535"],
     [["render", "plain.json", "--time", "1e3"], "--time must be milliseconds"],
     [["render", "plain.json", "--locale", "not a tag"], "is not a BCP 47 language tag"],
+    [["render", "plain.json", "--locale", "pl"], "supported: en, de, fr, es, cs"],
     [["validate", "plain.json", "--out", "x.svg"], "--out does not apply to validate"],
     [["render", "plain.json", "--root"], "--root needs a value"],
     [["render", "plain.json", "--root", ".", "--root", "."], "is given twice"],

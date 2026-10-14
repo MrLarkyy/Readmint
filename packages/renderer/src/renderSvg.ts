@@ -45,9 +45,11 @@ function render(context: RenderContext, options: RenderOptions): RenderResult {
   // One budget for every evaluation of the render: child scopes share it and each repeated item is charged.
   const steps = Math.min(Math.floor(context.limits.maxExpressionSteps), Number.MAX_SAFE_INTEGER);
   const budget = createBudget(steps);
+  // An unvalidated editor object may carry any value here; only a string reaches the locale lookup.
+  const locale = options.locale ?? (typeof design.locale === "string" ? design.locale : undefined);
   const scope = createScope(options.data ?? {}, {
     budget,
-    ...(options.locale === undefined ? {} : { locale: options.locale }),
+    ...(locale === undefined ? {} : { locale }),
   });
   const canvas = design.canvas;
   const width = resolveNumber(

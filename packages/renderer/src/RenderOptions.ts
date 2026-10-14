@@ -12,7 +12,10 @@ export interface RenderAssets {
 export interface RenderOptions {
   /** JSON data the expressions read (`@readmint/expr`): its own top-level keys are the root names. */
   readonly data?: Readonly<Record<string, unknown>>;
-  /** BCP 47 tag the `number`, `compact`, `percent` and `date` filters format for; default `en`. */
+  /**
+   * BCP 47 tag the `number`, `compact`, `percent` and `date` filters format for. Overrides the design `locale`;
+   * default the design `locale`, else `en`.
+   */
   readonly locale?: string;
   readonly assets?: RenderAssets;
   readonly limits?: Partial<RenderLimits>;
