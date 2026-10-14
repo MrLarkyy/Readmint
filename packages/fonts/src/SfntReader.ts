@@ -1,5 +1,4 @@
-/** Thrown for a structural fault; `parseSfnt` turns it into a `malformed` result. */
-export class MalformedFont extends Error {}
+import { MalformedFont } from "./MalformedFont.js";
 
 /** Big-endian reads that fail with `MalformedFont` instead of reading outside the bytes. */
 export class SfntReader {

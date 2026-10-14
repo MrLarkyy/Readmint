@@ -1,5 +1,6 @@
 import type { SfntFont, SfntProblemKind, SfntResult } from "./SfntFont.js";
-import { MalformedFont, SfntReader } from "./SfntReader.js";
+import { MalformedFont } from "./MalformedFont.js";
+import { SfntReader } from "./SfntReader.js";
 import { readCmap } from "./readCmap.js";
 import { readFamilyName } from "./readFamilyName.js";
 import { readTableDirectory, requireTable } from "./readTableDirectory.js";

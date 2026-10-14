@@ -1,4 +1,5 @@
-import { MalformedFont, type SfntReader } from "./SfntReader.js";
+import { MalformedFont } from "./MalformedFont.js";
+import type { SfntReader } from "./SfntReader.js";
 import type { SfntTable } from "./readTableDirectory.js";
 
 const englishUs = 0x0409;
