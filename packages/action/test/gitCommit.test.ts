@@ -1,6 +1,8 @@
 import { execFileSync } from "node:child_process";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
+import type { GitRunner } from "../src/index.js";
+import { runGit } from "../src/runGit.js";
 import { type ActionTree, design, makeActionTree } from "./actionTree.js";
 
 let tree: ActionTree;
@@ -75,37 +77,103 @@ describe("commit and push", { timeout: 30_000 }, () => {
     expect(tree.git("diff", "--cached", "--name-only")).toBe("notes.txt");
   });
 
-  test("pushes to the branch input", async () => {
-    const run = await tree.run({ ...inputs, branch: "graphics" });
-    expect(run.code).toBe(0);
-    expect(tree.originGit("rev-parse", "graphics")).toBe(run.outputs.commit);
+  test("pushes to the branch input when that branch is checked out, run after run", async () => {
+    tree.git("checkout", "--quiet", "-b", "graphics");
+    tree.git("push", "--quiet", "origin", "graphics");
+    const first = await tree.run({ ...inputs, branch: "graphics" });
+    expect(first.code).toBe(0);
+    expect(tree.originGit("rev-parse", "graphics")).toBe(first.outputs.commit);
+    await tree.file("designs/card.json", design("#ff0000"));
+    const second = await tree.run({ ...inputs, branch: "graphics" });
+    expect(second.log).not.toContain("::error::");
+    expect(second.outputs).toMatchObject({ changed: "true", files: "readmint/card.svg" });
+    expect(tree.originGit("rev-parse", "graphics")).toBe(second.outputs.commit);
+  });
+
+  test("finds the branch when a tag has the same name", async () => {
+    tree.git("tag", "main");
+    const run = await tree.run(inputs);
+    expect(run.log).not.toContain("::error::");
+    expect(tree.originGit("rev-parse", "refs/heads/main")).toBe(run.outputs.commit);
   });
 
   test("a detached HEAD without the branch input is an error before anything is written", async () => {
     tree.git("checkout", "--quiet", "--detach");
     const run = await tree.run(inputs);
     expect(run.code).toBe(1);
-    expect(run.log).toBe("::error::HEAD is detached; set the branch input to push to\n");
-    expect(tree.git("status", "--porcelain", "--untracked-files=all")).not.toContain("readmint/");
+    expect(run.log).toBe("::error::HEAD is detached; check out the branch the Action pushes to\n");
+    expect(written()).toBe(false);
   });
 
-  test("a branch that moved on the remote rejects the push: exit 1, nothing rebased", async () => {
-    const other = join(tree.base, "other");
-    execFileSync("git", ["clone", "--quiet", tree.origin, other], { env: gitTestEnv() });
-    execFileSync("git", ["commit", "--quiet", "--allow-empty", "-m", "elsewhere"], {
-      cwd: other,
-      env: gitTestEnv(),
-    });
-    execFileSync("git", ["push", "--quiet", "origin", "main"], { cwd: other, env: gitTestEnv() });
+  test("a pull request merge checkout cannot push into the branch input", async () => {
+    tree.git("checkout", "--quiet", "--detach");
+    await tree.file("feature.txt", "unreviewed\n");
+    tree.git("add", "feature.txt");
+    tree.git("commit", "--quiet", "-m", "pull request merge");
+    const remote = tree.originGit("rev-parse", "main");
+    const run = await tree.run({ ...inputs, branch: "main" });
+    expect(run.code).toBe(1);
+    expect(run.log).toMatch(
+      /^::error::the checkout \([0-9a-f]{12}\) is not the tip of branch "main" on origin \([0-9a-f]{12}\); check out the branch the Action pushes to, at its latest commit\n$/,
+    );
+    expect(tree.originGit("rev-parse", "main")).toBe(remote);
+    expect(written()).toBe(false);
+  });
+
+  test("a branch input that names another branch is refused, missing or diverged", async () => {
+    const missing = await tree.run({ ...inputs, branch: "graphics" });
+    expect(missing.code).toBe(1);
+    expect(missing.log).toBe(
+      '::error::branch "graphics" does not exist on origin; check out the branch the Action pushes to\n',
+    );
+    tree.git("checkout", "--quiet", "-b", "graphics");
+    tree.git("commit", "--quiet", "--allow-empty", "-m", "graphics only");
+    tree.git("push", "--quiet", "origin", "graphics");
+    tree.git("checkout", "--quiet", "main");
+    const diverged = await tree.run({ ...inputs, branch: "graphics" });
+    expect(diverged.code).toBe(1);
+    expect(diverged.log).toContain('is not the tip of branch "graphics" on origin');
+    expect(written()).toBe(false);
+  });
+
+  test("a branch that moved on the remote is refused before anything is written", async () => {
+    pushElsewhere();
     const remote = tree.originGit("rev-parse", "main");
     const run = await tree.run(inputs);
     expect(run.code).toBe(1);
+    expect(run.log).toContain('is not the tip of branch "main" on origin');
+    expect(tree.originGit("rev-parse", "main")).toBe(remote);
+    expect(written()).toBe(false);
+  });
+
+  test("a branch that moves between the check and the push rejects the push: nothing rebased", async () => {
+    const racing: GitRunner = (args, options) => {
+      if (args[0] === "push") pushElsewhere();
+      return runGit(args, options);
+    };
+    const run = await tree.run(inputs, { runGit: racing });
+    expect(run.code).toBe(1);
     expect(run.log).toContain("::error::git push exited with 1");
     expect(run.log).toContain("persist-credentials");
-    expect(tree.originGit("rev-parse", "main")).toBe(remote);
+    expect(tree.originGit("log", "--format=%s", "-1", "main")).toBe("elsewhere");
     expect(run.outputText).toBe("");
   });
 });
+
+function written(): boolean {
+  return tree.git("status", "--porcelain", "--untracked-files=all").includes("readmint/");
+}
+
+/** Another clone pushes a commit to `main` of origin. */
+function pushElsewhere(): void {
+  const other = join(tree.base, `other-${String(Date.now())}`);
+  execFileSync("git", ["clone", "--quiet", tree.origin, other], { env: gitTestEnv() });
+  execFileSync("git", ["commit", "--quiet", "--allow-empty", "-m", "elsewhere"], {
+    cwd: other,
+    env: gitTestEnv(),
+  });
+  execFileSync("git", ["push", "--quiet", "origin", "main"], { cwd: other, env: gitTestEnv() });
+}
 
 function gitTestEnv(): NodeJS.ProcessEnv {
   return {

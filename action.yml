@@ -36,7 +36,7 @@ inputs:
     required: false
     default: Update Readmint graphics
   branch:
-    description: Branch the commit is pushed to; empty pushes to the checked-out branch.
+    description: Branch the commit is pushed to (empty, the checked-out branch); the checkout must be its latest commit on origin.
     required: false
   dry-run:
     description: "`true` renders and writes the files but runs no git command: no commit, no push."

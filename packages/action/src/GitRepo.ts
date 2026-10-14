@@ -10,6 +10,7 @@ export const gitIdentity = Object.freeze({
 const commandTimeoutMs = 60_000;
 const pushTimeoutMs = 300_000;
 const stderrLines = 20;
+const branchPrefix = "refs/heads/";
 
 /**
  * The git work of one run in the workspace repository. The push uses the credentials the
@@ -30,9 +31,30 @@ export class GitRepo {
 
   /** The checked-out branch, `undefined` on a detached HEAD. */
   async currentBranch(): Promise<string | undefined> {
-    const result = await this.#git(["symbolic-ref", "--quiet", "--short", "HEAD"]);
+    // The full ref: `--short` answers `heads/main` when a tag `main` exists too.
+    const result = await this.#git(["symbolic-ref", "--quiet", "HEAD"]);
     if (result.code === 1) return undefined;
-    return this.#ok(result, "symbolic-ref").stdout.trim();
+    const ref = this.#ok(result, "symbolic-ref").stdout.trim();
+    return ref.startsWith(branchPrefix) ? ref.slice(branchPrefix.length) : undefined;
+  }
+
+  /** The commit checked out. */
+  async head(): Promise<string> {
+    return this.#ok(await this.#git(["rev-parse", "HEAD"]), "rev-parse").stdout.trim();
+  }
+
+  /** The commit `branch` points to on `origin`, `undefined` when it has no such branch. */
+  async remoteHead(branch: string): Promise<string | undefined> {
+    const ref = `${branchPrefix}${branch}`;
+    const result = this.#ok(
+      await this.#git(["ls-remote", "--heads", "origin", ref], undefined, pushTimeoutMs),
+      "ls-remote",
+    );
+    for (const line of result.stdout.split("\n")) {
+      const [sha, name] = line.trim().split("\t");
+      if (name === ref && sha !== undefined) return sha;
+    }
+    return undefined;
   }
 
   /** Throws `ActionError` (git) unless git takes `name` as a branch name. */
@@ -73,7 +95,7 @@ export class GitRepo {
       ...literal(paths),
     ];
     this.#ok(await this.#git(args, message), "commit");
-    return this.#ok(await this.#git(["rev-parse", "HEAD"]), "rev-parse").stdout.trim();
+    return this.head();
   }
 
   /** Pushes HEAD to `branch` of `origin`; a rejected push (the branch moved) is an error. */

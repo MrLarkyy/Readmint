@@ -88,7 +88,9 @@ export function readInputs(env: Env): ActionConfig {
   }
 
   const branch = value("branch");
-  if (branch !== "" && !isBranchName(branch)) {
+  if (branch.startsWith("refs/")) {
+    problems.push(`input branch ${quoteForLog(branch)} must be a branch name without refs/`);
+  } else if (branch !== "" && !isBranchName(branch)) {
     problems.push(`input branch ${quoteForLog(branch)} is not a valid branch name`);
   }
 

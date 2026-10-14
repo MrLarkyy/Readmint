@@ -42,6 +42,8 @@ const networkError = (): Promise<Response> =>
   Promise.reject(new TypeError(`fetch failed for token ${CANARY}`));
 
 /** git that succeeds, prints the token in a push error the way a credential helper might. */
+const sha = "0123456789abcdef0123456789abcdef01234567";
+
 function fakeGit(pushFails: boolean): GitRunner {
   return (args): Promise<GitResult> => {
     const command = args.find((arg) => !arg.startsWith("-") && !arg.includes("=")) ?? "";
@@ -49,7 +51,9 @@ function fakeGit(pushFails: boolean): GitRunner {
       Promise.resolve({ code: 0, stdout, stderr: "" });
     switch (command) {
       case "symbolic-ref":
-        return ok("main\n");
+        return ok("refs/heads/main\n");
+      case "ls-remote":
+        return ok(`${sha}\trefs/heads/main\n`);
       case "diff":
         return ok(
           args
@@ -58,7 +62,7 @@ function fakeGit(pushFails: boolean): GitRunner {
             .join("\0"),
         );
       case "rev-parse":
-        return ok("0123456789abcdef0123456789abcdef01234567\n");
+        return ok(`${sha}\n`);
       case "push":
         return Promise.resolve(
           pushFails

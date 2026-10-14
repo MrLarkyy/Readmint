@@ -145,6 +145,12 @@ describe("readInputs", () => {
     },
   );
 
+  test("a branch given as a ref is refused", () => {
+    expect(problems({ ...base, branch: "refs/heads/main" })).toEqual([
+      'input branch "refs/heads/main" must be a branch name without refs/',
+    ]);
+  });
+
   test("a locale that is not a BCP 47 tag is refused", () => {
     expect(problems({ ...base, locale: "en_US!" })).toEqual([
       'input locale "en_US!" is not a BCP 47 language tag',

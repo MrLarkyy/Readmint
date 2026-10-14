@@ -1,5 +1,6 @@
 import { lstat } from "node:fs/promises";
 import path from "node:path";
+import { quoteForLog } from "@readmint/cli";
 import type { ActionDeps } from "./ActionDeps.js";
 import { ActionError } from "./ActionError.js";
 import { ActionLog } from "./ActionLog.js";
@@ -38,9 +39,10 @@ export async function runAction(env: Env, deps: ActionDeps): Promise<number> {
       const repo = new GitRepo(deps.runGit, workspace, gitEnv(env, secrets));
       const branch = config.branch ?? (await repo.currentBranch());
       if (branch === undefined) {
-        throw new ActionError("git", "HEAD is detached; set the branch input to push to");
+        throw new ActionError("git", "HEAD is detached; check out the branch the Action pushes to");
       }
       await repo.checkBranchName(branch);
+      await checkPushTarget(repo, branch);
       push = { repo, branch };
     }
 
@@ -84,6 +86,29 @@ export async function runAction(env: Env, deps: ActionDeps): Promise<number> {
       log.error(`internal error (${errorName(error)})`);
     }
     return 1;
+  }
+}
+
+/**
+ * The commit is pushed with the checkout's history, so the checkout must be the tip of the
+ * branch on `origin`: anything else (a pull request merge, another branch, a branch that moved)
+ * would push commits nobody merged into it, or fail after the files were written.
+ */
+async function checkPushTarget(repo: GitRepo, branch: string): Promise<void> {
+  const remote = await repo.remoteHead(branch);
+  const name = quoteForLog(branch);
+  if (remote === undefined) {
+    throw new ActionError(
+      "git",
+      `branch ${name} does not exist on origin; check out the branch the Action pushes to`,
+    );
+  }
+  const head = await repo.head();
+  if (remote !== head) {
+    throw new ActionError(
+      "git",
+      `the checkout (${head.slice(0, 12)}) is not the tip of branch ${name} on origin (${remote.slice(0, 12)}); check out the branch the Action pushes to, at its latest commit`,
+    );
   }
 }
 
