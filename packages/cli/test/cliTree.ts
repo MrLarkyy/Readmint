@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rename, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { type CliIo, runCli } from "../src/index.js";
@@ -38,11 +38,13 @@ export interface CliRun {
 /** A temporary folder the CLI runs in. */
 export interface CliTree {
   readonly root: string;
-  /** Writes a file below `root` (an object as JSON), creating its folders; returns its path. */
+  /** Writes a file below `root` (an object as JSON) atomically, creating its folders; returns its path. */
   file(relative: string, content: string | Uint8Array | object): Promise<string>;
   run(argv: readonly string[], io?: Partial<CliIo>): Promise<CliRun>;
   remove(): Promise<void>;
 }
+
+let writes = 0;
 
 export async function makeCliTree(): Promise<CliTree> {
   const root = await mkdtemp(join(tmpdir(), "readmint-cli-"));
@@ -55,7 +57,9 @@ export async function makeCliTree(): Promise<CliTree> {
         typeof content === "string" || content instanceof Uint8Array
           ? content
           : JSON.stringify(content);
-      await writeFile(path, data);
+      const temporary = `${path}.${String(process.pid)}.${String(++writes)}.tmp`;
+      await writeFile(temporary, data);
+      await rename(temporary, path);
       return path;
     },
     async run(argv, io = {}) {

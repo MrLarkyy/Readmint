@@ -176,6 +176,19 @@ describe("exit code 3", () => {
   });
 });
 
+describe("a failed write to standard output", () => {
+  test("a system error code is exit code 3 without Node's text", async () => {
+    const run = await tree.run(["render", "plain.json"], {
+      stdout: () =>
+        Promise.reject(Object.assign(new Error("write EPIPE at /secret/path"), { code: "EPIPE" })),
+    });
+    expect(run).toMatchObject({
+      code: ExitCode.input,
+      stderr: "cannot write standard output (EPIPE)\n",
+    });
+  });
+});
+
 describe("exit code 70", () => {
   test("a standard output writer that throws", async () => {
     const run = await tree.run(["render", "plain.json"], {

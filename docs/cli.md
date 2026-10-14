@@ -41,15 +41,18 @@ An option a command does not take, an unknown option, a missing or extra argumen
 
 ## Exit codes
 
-| code | name       | meaning                                                                                                                                               |
-| ---- | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 0    | `ok`       | done; warnings (such as `animation-cut`) may have been printed                                                                                        |
-| 1    | `invalid`  | the design is invalid (parse, schema, references, not UTF-8, too large), an asset was refused, or the render failed                                   |
-| 2    | `usage`    | unknown command or option, missing or extra argument, bad option value                                                                                |
-| 3    | `input`    | a file, folder or port cannot be used: design file missing or outside `--root`, fixture data unreadable or invalid, `--out` not writable, port in use |
-| 70   | `internal` | a bug in Readmint                                                                                                                                     |
+| code | name       | meaning                                                                                                                                                                  |
+| ---- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 0    | `ok`       | done; warnings (such as `animation-cut`) may have been printed                                                                                                           |
+| 1    | `invalid`  | the design is invalid (parse, schema, references, not UTF-8, too large), an asset was refused, or the render failed                                                      |
+| 2    | `usage`    | unknown command or option, missing or extra argument, bad option value                                                                                                   |
+| 3    | `input`    | a file, folder or port cannot be used: design file missing or outside `--root`, fixture data unreadable or invalid, `--out` or standard output not writable, port in use |
+| 70   | `internal` | a bug in Readmint                                                                                                                                                        |
 
 `@readmint/cli` exports the same values as `ExitCode`.
+
+Ctrl+C (SIGINT) and SIGTERM are caught once: `render` and `validate` ignore the first one and finish the running command
+with its own exit code; only `preview` stops on it (exit code 0). A second signal ends the process at once, as usual.
 
 ## Messages
 
@@ -75,7 +78,7 @@ renderer's limits (`maxFontBytes`, `maxImageBytes`); `data:` sources are left to
 `--data` names a JSON file holding what the data sources would provide, keyed by namespace:
 
 ```json
-{ "github": { "version": 1, "login": "octocat", "followers": 42 } }
+{ "github": { "version": 0, "login": "octocat", "followers": 42 } }
 ```
 
 It must be a JSON object, at most 8 MiB, UTF-8; every key must be a data namespace (a lowercase letter, then up to 31
@@ -85,8 +88,8 @@ environment variable, and makes no network request.
 
 ## Preview
 
-`readmint preview` prints `preview: http://127.0.0.1:<port>/` and serves the render until it is stopped (Ctrl+C,
-exit code 0). The page shows the SVG exactly as `render` writes it and the current issues. Every 300 ms it checks the
+`readmint preview` prints `preview: http://127.0.0.1:<port>/` and serves the render until it is stopped (Ctrl+C
+or SIGTERM, exit code 0). The page shows the SVG exactly as `render` writes it and the current issues. Every 300 ms it checks the
 design file, the fixture data and every asset file the design declares (also one that does not exist yet); after a
 change it renders again and the page reloads. A render that fails keeps the last good SVG and shows the issues.
 
@@ -106,5 +109,5 @@ A port in use, or one the system refuses, is exit code 3.
 ## Programmatic use
 
 `@readmint/cli` exports `runCli(argv, io)` (returns the exit code, never throws), `ExitCode`, `CliError`, `CliIo`,
-`escapeForLog`, and the loaders the commands share: `loadDesignFile`, `loadDesignAssets`, `loadFixtureData`. The GitHub
-Action uses the same loaders, so a design that renders here renders the same there.
+`escapeForLog`, and the loaders the commands share: `loadDesignFile`, `loadDesignAssets`, `loadFixtureData`. They are
+exported for the GitHub Action (RM-18), which does not use them yet.

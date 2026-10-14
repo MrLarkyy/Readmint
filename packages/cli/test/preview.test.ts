@@ -275,6 +275,7 @@ describe("live reload", () => {
     const edited = boundDesign() as { canvas: { width: number } };
     edited.canvas.width = 60;
     await tree.file("bound/design.json", edited);
+    await until(async () => (await get(port, "/render.svg")).body !== before);
     await until(() => stream.text().includes("event: reload\ndata: 2\n\n"));
     const after = await get(port, "/render.svg");
     expect(after.body).not.toBe(before);

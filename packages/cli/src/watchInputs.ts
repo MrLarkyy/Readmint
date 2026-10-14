@@ -17,20 +17,28 @@ export interface InputWatcher {
 /**
  * Polls the identity (modification time, size, inode) of the input files: the same on every
  * platform, with no recursive-watch gaps, and an asset that does not exist yet is seen when it
- * appears. The snapshot is taken before each `onChange`, so an edit made during it is not lost.
+ * appears. A change counts once it reads the same on two consecutive polls, so a file still being
+ * written is not rendered half done. The snapshot is taken before each `onChange`, so an edit made
+ * during it is not lost.
  */
 export async function watchInputs(options: WatchInputsOptions): Promise<InputWatcher> {
   let last = await snapshot(options.paths());
   await options.onChange();
+  let pending: string | undefined;
   let closed = false;
   let timer: NodeJS.Timeout | undefined;
   let running: Promise<void> | undefined;
   let failure: { error: unknown } | undefined;
   const check = async () => {
     const current = await snapshot(options.paths());
-    if (current !== last) {
+    if (current === last) {
+      pending = undefined;
+    } else if (current === pending) {
       last = current;
+      pending = undefined;
       await options.onChange();
+    } else {
+      pending = current;
     }
   };
   const schedule = () => {

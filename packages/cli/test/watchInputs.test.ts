@@ -1,3 +1,4 @@
+import { writeFile } from "node:fs/promises";
 import { setTimeout as sleep } from "node:timers/promises";
 import { afterEach, beforeEach, expect, test } from "vitest";
 import { watchInputs } from "../src/watchInputs.js";
@@ -36,6 +37,28 @@ test("runs once at the start, then once per change, also for a file that appears
   await tree.file("a.txt", "333");
   await sleep(60);
   expect(calls).toBe(3);
+});
+
+test("a file still being written is not reported until it has been stable for a poll", async () => {
+  const file = await tree.file("a.txt", "1");
+  let calls = 0;
+  const watcher = await watchInputs({
+    paths: () => [file],
+    onChange: () => {
+      calls += 1;
+      return Promise.resolve();
+    },
+    intervalMs: 30,
+  });
+  for (let size = 2; size < 30; size++) {
+    await writeFile(file, "x".repeat(size));
+    await sleep(5);
+  }
+  expect(calls).toBe(1);
+  await waitFor(() => calls === 2);
+  await sleep(100);
+  expect(calls).toBe(2);
+  await watcher.close();
 });
 
 test("a throwing onChange stops the polling and close rethrows it", async () => {
