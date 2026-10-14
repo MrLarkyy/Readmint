@@ -1,4 +1,5 @@
 import path from "node:path";
+import { setTimeout as sleep } from "node:timers/promises";
 import { AssetPathError } from "./AssetPathError.js";
 import { checkAssetPath } from "./checkAssetPath.js";
 import type { CliCommand } from "./CliCommand.js";
@@ -52,7 +53,7 @@ export async function previewCommand(args: PreviewArgs, io: CliIo): Promise<Exit
     const watcher = await watchInputs({
       paths: () => [...inputs, ...assets],
       onChange: rebuild,
-      intervalMs: io.pollIntervalMs ?? 300,
+      nextPoll: (signal) => sleep(io.pollIntervalMs ?? 300, undefined, { signal }),
     });
     try {
       await printLines(io.stderr, [`preview: http://127.0.0.1:${String(port)}/`]);

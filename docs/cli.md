@@ -51,6 +51,12 @@ An option a command does not take, an unknown option, a missing or extra argumen
 
 `@readmint/cli` exports the same values as `ExitCode`.
 
+Every command that writes to standard output (`render`, `validate`, `help`, `--version`) exits with 3 and prints
+`cannot write standard output (<code>)` when the system refuses the write, such as `EPIPE` for a reader that went away.
+A standard output that was closed (`readmint render design.json >&-`) cannot be told apart: Node gives the process the
+null device instead (on Linux and macOS it reopens a closed descriptor on `/dev/null`; on Windows it reads as a
+character device like `NUL`), writes succeed, and the exit code is 0 as with `>/dev/null`.
+
 Ctrl+C (SIGINT) and SIGTERM are caught once: `render` and `validate` ignore the first one and finish the running command
 with its own exit code; only `preview` stops on it (exit code 0). A second signal ends the process at once, as usual.
 
@@ -90,8 +96,10 @@ environment variable, and makes no network request.
 
 `readmint preview` prints `preview: http://127.0.0.1:<port>/` and serves the render until it is stopped (Ctrl+C
 or SIGTERM, exit code 0). The page shows the SVG exactly as `render` writes it and the current issues. Every 300 ms it checks the
-design file, the fixture data and every asset file the design declares (also one that does not exist yet); after a
-change it renders again and the page reloads. A render that fails keeps the last good SVG and shows the issues.
+design file, the fixture data and every asset file the design declares (also one that does not exist yet). A change
+counts once it reads the same on two consecutive checks, so the preview renders again up to about 600 ms after a save
+and the page reloads; a file still being written is not rendered half done, and a file that changes on every check is
+not rendered until it stops changing. A render that fails keeps the last good SVG and shows the issues.
 
 The preview is for this computer only:
 
