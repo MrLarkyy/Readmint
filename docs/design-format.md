@@ -161,6 +161,7 @@ components but never themselves, directly or through others.
 | limit         | value                                                         | issue code        |
 | ------------- | ------------------------------------------------------------- | ----------------- |
 | source length | 4194304 UTF-16 code units, checked before parsing             | `too-large`       |
+| YAML length   | 1048576 UTF-16 code units for a YAML source, before parsing   | `too-large`       |
 | nesting       | 64 levels of objects and arrays (the root object is level 1)  | `too-deep`        |
 | values        | 1000000 values visited; a reused YAML alias counts each time  | `too-large`       |
 | layers        | 10000, counting each component instance with all its layers   | `too-many-layers` |

@@ -2,6 +2,8 @@
 export const DesignLimits = Object.freeze({
   /** Source text length in UTF-16 code units, checked before parsing. */
   maxSourceLength: 4_194_304,
+  /** YAML source text length in UTF-16 code units; the YAML parser is far slower than the JSON scanner. */
+  maxYamlSourceLength: 1_048_576,
   /** Nesting of objects and arrays; the root object is level 1. */
   maxDepth: 64,
   /** Values visited in the parsed document (YAML aliases count each time they are used). */

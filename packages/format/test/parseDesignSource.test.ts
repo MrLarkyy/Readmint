@@ -81,17 +81,21 @@ describe("YAML source", () => {
   });
 
   test("more than maxAliases aliases fail before any alias is resolved", () => {
+    // As many anchors and aliases as fit in the YAML source limit.
+    const count = 30_000;
     const anchors = Array.from(
-      { length: 40_000 },
+      { length: count },
       (_, index) => `a${String(index)}: &x${String(index)} 0`,
     );
     const aliases = Array.from(
-      { length: 40_000 },
+      { length: count },
       (_, index) => `b${String(index)}: *x${String(index)}`,
     );
+    const source = [...anchors, ...aliases].join("\n");
+    expect(source.length).toBeLessThanOrEqual(DesignLimits.maxYamlSourceLength);
     const started = performance.now();
-    expect(issuesOf([...anchors, ...aliases].join("\n"))).toEqual([
-      expect.objectContaining({ code: "too-large", line: 40_000 + DesignLimits.maxAliases + 1 }),
+    expect(issuesOf(source)).toEqual([
+      expect.objectContaining({ code: "too-large", line: count + DesignLimits.maxAliases + 1 }),
     ]);
     expect(performance.now() - started).toBeLessThan(2000);
   });
@@ -111,15 +115,68 @@ describe("YAML source", () => {
     ]);
   });
 
-  test("a YAML source at the size limit parses within seconds", () => {
-    const layer = "  - { type: rect, x: 1, y: 2, width: 10, height: 10, fill: '#fff' }\n";
-    const count = Math.floor((DesignLimits.maxSourceLength - minimalYaml.length) / layer.length);
-    const source = minimalYaml.replace("layers: []\n", "layers:\n") + layer.repeat(count);
-    expect(source.length).toBeLessThanOrEqual(DesignLimits.maxSourceLength);
+  function fillToYamlLimit(head: string, unit: string, tail = ""): string {
+    const room = DesignLimits.maxYamlSourceLength - head.length - tail.length;
+    const source = head + unit.repeat(Math.floor(room / unit.length)) + tail;
+    expect(source.length).toBeGreaterThan(DesignLimits.maxYamlSourceLength - unit.length);
+    expect(source.length).toBeLessThanOrEqual(DesignLimits.maxYamlSourceLength);
+    return source;
+  }
+
+  test.each([
+    [
+      "dense flow sequence",
+      `${minimalYaml}x: [0`,
+      ",0",
+      "]",
+      { path: "/x", code: "unknown-property" },
+    ],
+    ["block sequence", `${minimalYaml}x:\n`, "- 0\n", "", { path: "/x", code: "unknown-property" }],
+    [
+      "list of layers",
+      minimalYaml.replace("layers: []\n", "layers:\n"),
+      "  - { type: rect, x: 1, y: 2, width: 10, height: 10, fill: '#fff' }\n",
+      "",
+      { code: "too-many-layers" },
+    ],
+  ])(
+    "a YAML %s at the size limit is checked within seconds",
+    (_, head, unit, tail, issue) => {
+      const source = fillToYamlLimit(head, unit, tail);
+      const started = performance.now();
+      expect(issuesOf(source)).toMatchObject([issue]);
+      expect(performance.now() - started).toBeLessThan(3000);
+    },
+    20_000,
+  );
+
+  test("a YAML source of syntax errors at the size limit fails within seconds", () => {
+    const source = fillToYamlLimit("x: [", ",");
     const started = performance.now();
-    expect(issuesOf(source)).toMatchObject([{ code: "too-many-layers" }]);
-    expect(performance.now() - started).toBeLessThan(10_000);
+    const result = parseDesign(source);
+    expect(performance.now() - started).toBeLessThan(3000);
+    expect(result).toMatchObject({ ok: false, truncated: true });
+    expect(!result.ok && result.issues).toHaveLength(DesignLimits.maxIssues);
   }, 20_000);
+
+  test("a YAML source over its limit fails before parsing", () => {
+    const source = `${minimalYaml}x: [0${",0".repeat(DesignLimits.maxYamlSourceLength)}]`;
+    const started = performance.now();
+    expect(issuesOf(source)).toEqual([
+      {
+        path: "",
+        code: "too-large",
+        message: `the YAML source is longer than ${String(DesignLimits.maxYamlSourceLength)} characters`,
+      },
+    ]);
+    expect(performance.now() - started).toBeLessThan(100);
+  });
+
+  test("a JSON source may exceed the YAML limit", () => {
+    const padding = " ".repeat(DesignLimits.maxYamlSourceLength);
+    expect(parseDesign(`${minimalJson}${padding}`).ok).toBe(true);
+    expect(issuesOf(`${minimalJson}${padding}`, "yaml")).toMatchObject([{ code: "too-large" }]);
+  });
 
   test("unknown and language-specific tags are rejected", () => {
     for (const tag of [

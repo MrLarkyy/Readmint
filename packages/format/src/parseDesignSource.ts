@@ -27,16 +27,23 @@ export function parseDesignSource(
   if (typeof source !== "string")
     return failure([{ path: "", code: "type", message: "expected the design source text" }]);
   if (source.length > DesignLimits.maxSourceLength)
-    return failure([
-      {
-        path: "",
-        code: "too-large",
-        message: `the source is longer than ${String(DesignLimits.maxSourceLength)} characters`,
-      },
-    ]);
+    return tooLong("source", DesignLimits.maxSourceLength);
   const text = source.startsWith("\ufeff") ? source.slice(1) : source;
   const chosen = format ?? (/^\s*\{/u.test(text) ? "json" : "yaml");
-  return chosen === "json" ? parseJson(text) : parseYaml(text);
+  if (chosen === "json") return parseJson(text);
+  if (source.length > DesignLimits.maxYamlSourceLength)
+    return tooLong("YAML source", DesignLimits.maxYamlSourceLength);
+  return parseYaml(text);
+}
+
+function tooLong(what: string, limit: number): DesignResult<unknown> {
+  return failure([
+    {
+      path: "",
+      code: "too-large",
+      message: `the ${what} is longer than ${String(limit)} characters`,
+    },
+  ]);
 }
 
 function parseJson(text: string): DesignResult<unknown> {
@@ -47,18 +54,20 @@ function parseJson(text: string): DesignResult<unknown> {
 }
 
 function parseYaml(text: string): DesignResult<unknown> {
-  const document = parseDocument(text, {
-    version: "1.2",
-    schema: "core",
-    merge: false,
-    // Pairwise, so quadratic on a large map; checkYamlTree finds duplicates linearly instead.
-    uniqueKeys: false,
-    stringKeys: true,
-    resolveKnownTags: false,
-    prettyErrors: false,
-    // "silent" would also drop the multiple-documents error; "error" only mutes console output.
-    logLevel: "error",
-  });
+  const document = withoutStackTraces(() =>
+    parseDocument(text, {
+      version: "1.2",
+      schema: "core",
+      merge: false,
+      // Pairwise, so quadratic on a large map; checkYamlTree finds duplicates linearly instead.
+      uniqueKeys: false,
+      stringKeys: true,
+      resolveKnownTags: false,
+      prettyErrors: false,
+      // "silent" would also drop the multiple-documents error; "error" only mutes console output.
+      logLevel: "error",
+    }),
+  );
   const all = [...document.errors, ...document.warnings].sort((a, b) => a.pos[0] - b.pos[0]);
   // Running out of stack leaves a trail of follow-up errors; the nesting is the one cause.
   const exhausted = all.find((problem) => problem.code === "RESOURCE_EXHAUSTION");
@@ -67,6 +76,7 @@ function parseYaml(text: string): DesignResult<unknown> {
   const issues = new IssueCollector();
   if (problems.length > 0) {
     for (const problem of problems) {
+      if (issues.isFull()) break;
       issues.add({
         path: "",
         code: problem.code === "RESOURCE_EXHAUSTION" ? "too-deep" : "parse",
@@ -96,6 +106,22 @@ function parseYaml(text: string): DesignResult<unknown> {
     if (error instanceof ReferenceError)
       return failure([{ path: "", code: "parse", message: "invalid YAML alias" }]);
     throw error;
+  }
+}
+
+/**
+ * yaml builds an Error per syntax problem, and a source of nothing but stray commas holds one per
+ * character: capturing a stack trace for each made 1 MiB of them take 9 s or more instead of 1 s.
+ */
+function withoutStackTraces<T>(run: () => T): T {
+  const errorClass: { stackTraceLimit?: number } = Error;
+  const saved = errorClass.stackTraceLimit;
+  if (typeof saved !== "number") return run();
+  errorClass.stackTraceLimit = 0;
+  try {
+    return run();
+  } finally {
+    errorClass.stackTraceLimit = saved;
   }
 }
 
