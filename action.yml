@@ -1,0 +1,58 @@
+name: Readmint
+description: Render your Readmint designs to SVG and commit the files that changed.
+author: MrLarkyy
+branding:
+  icon: image
+  color: green
+
+inputs:
+  designs:
+    description: Design files to render, one per line, relative to the workspace (at most 64). A `<name>.dark.<ext>` next to a design is rendered as its dark variant.
+    required: true
+  output-dir:
+    description: Folder inside the workspace the SVG files are written to; created when missing.
+    required: false
+    default: readmint
+  formats:
+    description: Output formats, comma or newline separated. Only `svg` until raster export exists.
+    required: false
+    default: svg
+  token:
+    description: GitHub token for the GitHub data; not used with `data-file`, never printed and never given to git.
+    required: false
+    default: ${{ github.token }}
+  login:
+    description: GitHub login whose data is loaded; required with the workflow's GITHUB_TOKEN.
+    required: false
+    default: ${{ github.repository_owner }}
+  data-file:
+    description: Fixture data JSON file (the CLI `--data` format) used instead of loading GitHub data.
+    required: false
+  locale:
+    description: BCP 47 tag for the number and date filters, as the CLI `--locale`; empty keeps the renderer's default.
+    required: false
+  commit-message:
+    description: Message of the commit with the changed files (at most 4096 characters).
+    required: false
+    default: Update Readmint graphics
+  branch:
+    description: Branch the commit is pushed to; empty pushes to the checked-out branch.
+    required: false
+  dry-run:
+    description: "`true` renders and writes the files but runs no git command: no commit, no push."
+    required: false
+    default: "false"
+
+outputs:
+  changed:
+    description: "`true` when any output differs from the last commit (in a dry run: from the files in the workspace)."
+  commit:
+    description: SHA of the pushed commit; empty when nothing was committed.
+  files:
+    description: The changed output files, one per line, relative to the workspace.
+  snippet:
+    description: "`<picture>` HTML showing every design, with the dark variant where there is one, for the README."
+
+runs:
+  using: node24
+  main: packages/action/dist/action.js

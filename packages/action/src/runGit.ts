@@ -1,0 +1,53 @@
+import { spawn } from "node:child_process";
+import type { GitResult, GitRunner } from "./GitRunner.js";
+
+/** Most bytes kept of each output stream; git's answers here are short. */
+const maxOutputBytes = 1024 * 1024;
+
+/**
+ * The real `GitRunner`: spawns `git` without a shell, so no argument is ever parsed by one.
+ * A failure to start resolves with code `null` and the error code as standard error.
+ */
+export const runGit: GitRunner = (args, options) =>
+  new Promise<GitResult>((resolve) => {
+    const child = spawn("git", [...args], {
+      cwd: options.cwd,
+      env: options.env,
+      shell: false,
+      windowsHide: true,
+      timeout: options.timeoutMs,
+      stdio: ["pipe", "pipe", "pipe"],
+    });
+    const stdout = collect();
+    const stderr = collect();
+    child.stdout.on("data", stdout.add);
+    child.stderr.on("data", stderr.add);
+    let settled = false;
+    const finish = (result: GitResult): void => {
+      if (settled) return;
+      settled = true;
+      resolve(result);
+    };
+    // Spawning can fail with or without a later "close"; the first event decides.
+    child.on("error", (error: NodeJS.ErrnoException) => {
+      finish({ code: null, stdout: "", stderr: `git could not run (${error.code ?? error.name})` });
+    });
+    child.on("close", (code) => {
+      finish({ code, stdout: stdout.text(), stderr: stderr.text() });
+    });
+    child.stdin.on("error", () => undefined);
+    child.stdin.end(options.input ?? "");
+  });
+
+function collect(): { add: (chunk: Buffer) => void; text: () => string } {
+  const chunks: Buffer[] = [];
+  let size = 0;
+  return {
+    add: (chunk) => {
+      if (size >= maxOutputBytes) return;
+      chunks.push(chunk);
+      size += chunk.length;
+    },
+    text: () => Buffer.concat(chunks).subarray(0, maxOutputBytes).toString("utf8"),
+  };
+}

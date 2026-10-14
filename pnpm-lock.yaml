@@ -36,7 +36,21 @@ importers:
         specifier: 5.0.4
         version: 5.0.4(@types/node@22.20.5)(@vitest/browser-playwright@5.0.4)(@vitest/ui@5.0.4)(vite@8.3.4(@types/node@22.20.5)(yaml@2.9.1))
 
-  packages/action: {}
+  packages/action:
+    dependencies:
+      '@readmint/cli':
+        specifier: workspace:*
+        version: link:../cli
+      '@readmint/data-github':
+        specifier: workspace:*
+        version: link:../data-github
+    devDependencies:
+      rolldown:
+        specifier: 1.2.13
+        version: 1.2.13
+      yaml:
+        specifier: 2.9.1
+        version: 2.9.1
 
   packages/cli:
     dependencies:

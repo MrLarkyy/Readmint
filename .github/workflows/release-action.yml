@@ -1,0 +1,52 @@
+name: Release Action
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: The new tag, vMAJOR.MINOR.PATCH; an existing tag is never moved
+        required: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-action
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm -r build
+      - run: pnpm --filter @readmint/action bundle
+      - run: pnpm exec vitest run --project node packages/action
+      - name: Tag a commit carrying the bundle
+        shell: bash
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          if [[ ! "$VERSION" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+            echo "::error::version must be vMAJOR.MINOR.PATCH"
+            exit 1
+          fi
+          if git ls-remote --exit-code --tags origin "refs/tags/$VERSION" > /dev/null; then
+            echo "::error::tag $VERSION exists; releases never move a tag"
+            exit 1
+          fi
+          grep -q "@license Unicode-3.0" packages/action/dist/action.js
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout --detach
+          git add -f packages/action/dist/action.js
+          git commit --quiet --message "Release $VERSION"
+          git tag "$VERSION"
+          git push origin "refs/tags/$VERSION"
