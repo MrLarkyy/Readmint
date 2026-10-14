@@ -13,7 +13,7 @@ migrates and validates it; the published JSON Schema gives editors completion an
     "fonts": {
       "inter": {
         "family": "Inter",
-        "src": "fonts/Inter-Regular.woff2",
+        "src": "fonts/Inter-Regular.ttf",
         "licence": { "embedding": "allowed", "name": "OFL-1.1" }
       }
     }
@@ -65,7 +65,8 @@ Validation runs in this order and stops at the first stage with issues: source l
 
 Every numeric, colour and boolean property of the canvas, layers, styles, layouts and gradients is bindable; asset
 and component-definition metadata takes literals only. Numbers must be finite: YAML `.inf` and `.nan` are rejected. Bindings are opaque here; the expression language
-(`@readmint/expr`) evaluates them, and the renderer checks the evaluated values against the same ranges.
+(`@readmint/expr`) evaluates them, and the renderer checks the evaluated values against the same ranges (`ValueRanges`
+from `@readmint/format`, which the schema is built from).
 
 ## Document
 
@@ -131,7 +132,9 @@ Every layer has `type` (required) and these optional properties:
 `italic`), `licence` (required): `{ embedding: "allowed" | "restricted", name?: SPDX identifier such as "OFL-1.1" }`.
 
 The licence is declared by the author. The renderer applies the stricter of this flag and the OS/2 `fsType` of the font
-file: a font that may not be embedded is never embedded (text becomes paths or raster instead).
+file: a font that may not be embedded is never embedded. Until text-to-paths arrives (RM-14) such a font fails the render
+with `font-not-embeddable`; the v0 renderer also refuses WOFF and WOFF2 until then (use `.ttf` or `.otf`). How fonts,
+images and layouts render: [renderer.md](renderer.md).
 
 **image**: `src` (required), `width`, `height` (intrinsic size, `(0, 100000]`).
 

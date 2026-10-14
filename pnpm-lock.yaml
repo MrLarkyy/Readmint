@@ -78,7 +78,18 @@ importers:
 
   packages/raster: {}
 
-  packages/renderer: {}
+  packages/renderer:
+    dependencies:
+      '@readmint/fonts':
+        specifier: workspace:*
+        version: link:../fonts
+      '@readmint/format':
+        specifier: workspace:*
+        version: link:../format
+    devDependencies:
+      '@readmint/golden':
+        specifier: workspace:*
+        version: link:../golden
 
 packages:
 

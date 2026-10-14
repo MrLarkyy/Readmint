@@ -12,5 +12,12 @@
   "scripts": {
     "build": "tsc -b tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@readmint/fonts": "workspace:*",
+    "@readmint/format": "workspace:*"
+  },
+  "devDependencies": {
+    "@readmint/golden": "workspace:*"
   }
 }
