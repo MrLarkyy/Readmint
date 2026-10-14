@@ -1,0 +1,27 @@
+{
+  "request": {
+    "operation": "ReadmintViewer",
+    "variables": {}
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json; charset=utf-8",
+    "x-ratelimit-limit": "5000",
+    "x-ratelimit-remaining": "4999",
+    "x-ratelimit-reset": "1791972000",
+    "x-ratelimit-used": "1",
+    "x-ratelimit-resource": "graphql"
+  },
+  "body": {
+    "data": {
+      "viewer": {
+        "login": "readmint-fixture"
+      },
+      "rateLimit": {
+        "cost": 1,
+        "remaining": 4999,
+        "resetAt": "2026-10-14T10:00:00Z"
+      }
+    }
+  }
+}

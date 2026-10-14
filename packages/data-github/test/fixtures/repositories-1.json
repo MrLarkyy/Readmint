@@ -1,0 +1,109 @@
+{
+  "request": {
+    "operation": "ReadmintRepositories",
+    "variables": {
+      "login": "readmint-fixture",
+      "first": 2,
+      "after": null
+    }
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json; charset=utf-8",
+    "x-ratelimit-limit": "5000",
+    "x-ratelimit-remaining": "4997",
+    "x-ratelimit-reset": "1791972000",
+    "x-ratelimit-used": "3",
+    "x-ratelimit-resource": "graphql"
+  },
+  "body": {
+    "data": {
+      "user": {
+        "repositories": {
+          "totalCount": 5,
+          "pageInfo": {
+            "hasNextPage": true,
+            "endCursor": "Y3Vyc29yOnYyOpK5MjA="
+          },
+          "nodes": [
+            {
+              "name": "readmint",
+              "nameWithOwner": "readmint-fixture/readmint",
+              "description": "Designs for READMEs",
+              "url": "https://github.com/readmint-fixture/readmint",
+              "homepageUrl": "https://readmint.example.com/docs",
+              "stargazerCount": 120,
+              "forkCount": 8,
+              "isFork": false,
+              "isArchived": false,
+              "createdAt": "2020-01-01T00:00:00Z",
+              "pushedAt": "2026-09-30T12:00:00Z",
+              "primaryLanguage": {
+                "name": "TypeScript",
+                "color": "#3178c6"
+              },
+              "languages": {
+                "edges": [
+                  {
+                    "size": 50000,
+                    "node": {
+                      "name": "TypeScript",
+                      "color": "#3178c6"
+                    }
+                  },
+                  {
+                    "size": 4000,
+                    "node": {
+                      "name": "CSS",
+                      "color": "#663399"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "name": "dotfiles",
+              "nameWithOwner": "readmint-fixture/dotfiles",
+              "description": "Shell setup",
+              "url": "https://github.com/readmint-fixture/dotfiles",
+              "homepageUrl": "",
+              "stargazerCount": 40,
+              "forkCount": 2,
+              "isFork": false,
+              "isArchived": false,
+              "createdAt": "2020-01-01T00:00:00Z",
+              "pushedAt": "2026-09-30T12:00:00Z",
+              "primaryLanguage": {
+                "name": "Shell",
+                "color": "#89e051"
+              },
+              "languages": {
+                "edges": [
+                  {
+                    "size": 1200,
+                    "node": {
+                      "name": "Shell",
+                      "color": "#89e051"
+                    }
+                  },
+                  {
+                    "size": 800,
+                    "node": {
+                      "name": "Lua",
+                      "color": "#000080"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "rateLimit": {
+        "cost": 1,
+        "remaining": 4997,
+        "resetAt": "2026-10-14T10:00:00Z"
+      }
+    }
+  }
+}

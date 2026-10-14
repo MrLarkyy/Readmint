@@ -1,0 +1,84 @@
+{
+  "request": {
+    "operation": "ReadmintRepositories",
+    "variables": {
+      "login": "readmint-fixture",
+      "first": 2,
+      "after": "Y3Vyc29yOnYyOpK5MjA="
+    }
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json; charset=utf-8",
+    "x-ratelimit-limit": "5000",
+    "x-ratelimit-remaining": "4996",
+    "x-ratelimit-reset": "1791972000",
+    "x-ratelimit-used": "4",
+    "x-ratelimit-resource": "graphql"
+  },
+  "body": {
+    "data": {
+      "user": {
+        "repositories": {
+          "totalCount": 5,
+          "pageInfo": {
+            "hasNextPage": true,
+            "endCursor": "Y3Vyc29yOnYyOpK0MjA="
+          },
+          "nodes": [
+            {
+              "name": "forked-lib",
+              "nameWithOwner": "readmint-fixture/forked-lib",
+              "description": "A fork",
+              "url": "https://github.com/readmint-fixture/forked-lib",
+              "homepageUrl": null,
+              "stargazerCount": 40,
+              "forkCount": 0,
+              "isFork": true,
+              "isArchived": false,
+              "createdAt": "2020-01-01T00:00:00Z",
+              "pushedAt": "2026-09-30T12:00:00Z",
+              "primaryLanguage": {
+                "name": "Rust",
+                "color": "#dea584"
+              },
+              "languages": {
+                "edges": [
+                  {
+                    "size": 9000,
+                    "node": {
+                      "name": "Rust",
+                      "color": "#dea584"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "name": "notes",
+              "nameWithOwner": "readmint-fixture/notes",
+              "description": null,
+              "url": "https://github.com/readmint-fixture/notes",
+              "homepageUrl": null,
+              "stargazerCount": 3,
+              "forkCount": 0,
+              "isFork": false,
+              "isArchived": true,
+              "createdAt": "2020-01-01T00:00:00Z",
+              "pushedAt": null,
+              "primaryLanguage": null,
+              "languages": {
+                "edges": []
+              }
+            }
+          ]
+        }
+      },
+      "rateLimit": {
+        "cost": 1,
+        "remaining": 4996,
+        "resetAt": "2026-10-14T10:00:00Z"
+      }
+    }
+  }
+}
