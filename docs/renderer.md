@@ -100,6 +100,9 @@ Drawn in document order, first at the back. Layer `id` and `name` are not emitte
 - **Weight**: a text's `font` names an asset; with a `fontWeight`, the renderer picks among the assets of the same
   `family` and `style` by CSS font matching (declared `weight`, default 400; equal weights prefer the named asset, then
   the smallest asset id) and writes that asset's weight. Bold is never synthesized.
+- **Style**: the text is drawn in the style of the asset its `font` names; an `italic` asset gets
+  `font-style="italic"` on the text and `font-style:italic` in its `@font-face` rule, so a regular and an italic asset
+  of one family each draw with their own face.
 - **Family**: the SVG asks for the asset's `family`. Rasterizers (resvg in the Action and the goldens) match fonts by
   the family name inside the file, so an asset whose `family` differs from it renders, but with the warning
   `font-family-mismatch`. Family names are written as CSS strings with `\ " ' < > ( ) @` and line breaks escaped;

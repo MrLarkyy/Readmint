@@ -22,6 +22,8 @@ export function renderText(writer: SvgWriter, node: TextNode): void {
   const spacing =
     node.letterSpacing === 0 ? "" : ` letter-spacing="${formatNumber(node.letterSpacing)}"`;
   const anchor = node.align === "start" ? "" : ` text-anchor="${node.align}"`;
+  // The face's own style, matching its @font-face rule; without it an italic face would draw as the regular one.
+  const style = node.font.style === "italic" ? ' font-style="italic"' : "";
   const x = formatNumber(anchorX);
   const lines = node.lines
     .map(
@@ -30,6 +32,6 @@ export function renderText(writer: SvgWriter, node: TextNode): void {
     )
     .join("");
   writer.write(
-    `<text xml:space="preserve" font-family="${family}" font-size="${formatNumber(node.fontSize)}" font-weight="${String(node.font.weight)}"${spacing}${anchor}${paintAttributes(writer, "fill", node.fill)}${opacityAttribute(node)}${transformAttribute(rotation(node, node.x, node.y))}>${lines}</text>`,
+    `<text xml:space="preserve" font-family="${family}" font-size="${formatNumber(node.fontSize)}" font-weight="${String(node.font.weight)}"${style}${spacing}${anchor}${paintAttributes(writer, "fill", node.fill)}${opacityAttribute(node)}${transformAttribute(rotation(node, node.x, node.y))}>${lines}</text>`,
   );
 }

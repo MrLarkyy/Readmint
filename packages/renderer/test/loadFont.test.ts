@@ -157,6 +157,26 @@ describe("selection and embedding", () => {
     expect(result.ok && result.report.fonts.map((font) => font.asset)).toEqual(["medium"]);
   });
 
+  test("regular and italic faces of one family each draw with their own style", () => {
+    const fonts = { ...family, italic: { ...fontAssets.medium, style: "italic" as const } };
+    const result = renderSvg(
+      design(fonts, [
+        { type: "text", content: "upright", font: "medium" },
+        { type: "text", y: 20, content: "slanted", font: "italic" },
+        { type: "text", y: 40, content: "slanted bold", font: "italic", fontWeight: 800 },
+      ]),
+    );
+    if (!result.ok) throw new Error(JSON.stringify(result.issues));
+    const texts = result.svg.match(/<text [^>]*>/gu) ?? [];
+    expect(texts[0]).not.toContain("font-style");
+    expect(texts[1]).toContain('font-weight="500" font-style="italic"');
+    // Only italic faces are candidates for an italic text: the 800 face is upright, so the italic 500 is kept.
+    expect(texts[2]).toContain('font-weight="500" font-style="italic"');
+    const faces = result.svg.match(/@font-face\{[^}]*\}/gu) ?? [];
+    expect(faces.map((face) => /font-style:(\w+)/u.exec(face)?.[1])).toEqual(["normal", "italic"]);
+    expect(result.report.fonts.map((font) => font.asset)).toEqual(["medium", "italic"]);
+  });
+
   test("a family that differs from the name inside the font is a warning", () => {
     const result = renderSvg(design({ m: { ...fontAssets.medium, family: "Monts" } }, text("m")));
     expect(result).toMatchObject({
