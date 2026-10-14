@@ -31,3 +31,14 @@ jobs:
           path: test-results/golden
           retention-days: 14
           if-no-files-found: ignore
+
+  windows-paths:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec vitest run --project node packages/cli
