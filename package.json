@@ -16,7 +16,7 @@
     "golden:update": "vitest run --mode golden-update --project node"
   },
   "devDependencies": {
-    "@eslint/js": "9.39.5",
+    "@eslint/js": "10.0.1",
     "@types/node": "22.20.5",
     "@vitest/browser-playwright": "5.0.4",
     "eslint": "9.39.5",
