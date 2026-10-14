@@ -2,7 +2,7 @@ import { describe, expect, test } from "vitest";
 import { errorOf, valueOf } from "./evaluateText.js";
 
 const emoji = "\u{1F600}";
-const family = "\u{1F468}‍\u{1F469}";
+const family = "\u{1F468}\u200d\u{1F469}";
 
 describe("string filters", () => {
   test.each([

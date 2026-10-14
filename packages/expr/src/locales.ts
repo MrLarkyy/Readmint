@@ -1,33 +1,40 @@
 /*
  * Locale tables for the number and date filters.
  *
- * Source: Unicode CLDR 43 (common/main/en.xml, de.xml, fr.xml, es.xml, cs.xml): decimal and group
+ * Source: Unicode CLDR 48 (common/main/en.xml, de.xml, fr.xml, es.xml, cs.xml): decimal and group
  * symbols, minimumGroupingDigits, the percent pattern, format-context wide and abbreviated month
- * and weekday names, abbreviated day periods and the medium date pattern, checked against ICU 73.2.
+ * and weekday names, abbreviated day periods and the medium date pattern, checked against ICU 78.3.
  * The compact suffixes are Readmint's own values (based on the CLDR short decimal formats, with a
  * German thousands suffix and a Spanish billions suffix CLDR does not have), see docs/expressions.md.
  *
+ * UNICODE LICENSE V3
+ *
  * COPYRIGHT AND PERMISSION NOTICE
  *
- * Copyright © 1991-2023 Unicode, Inc. All rights reserved.
- * Distributed under the Terms of Use in https://www.unicode.org/copyright.html.
+ * Copyright © 1991-2025 Unicode, Inc.
  *
- * Permission is hereby granted, free of charge, to any person obtaining a copy of the Unicode data
- * files and any associated documentation (the "Data Files") or Unicode software and any associated
- * documentation (the "Software") to deal in the Data Files or Software without restriction,
- * including without limitation the rights to use, copy, modify, merge, publish, distribute, and/or
- * sell copies of the Data Files or Software, and to permit persons to whom the Data Files or
- * Software are furnished to do so, provided that either (a) this copyright and permission notice
- * appear with all copies of the Data Files or Software, or (b) this copyright and permission notice
- * appear in associated Documentation.
+ * NOTICE TO USER: Carefully read the following legal agreement. BY DOWNLOADING, INSTALLING, COPYING
+ * OR OTHERWISE USING DATA FILES, AND/OR SOFTWARE, YOU UNEQUIVOCALLY ACCEPT, AND AGREE TO BE BOUND BY,
+ * ALL OF THE TERMS AND CONDITIONS OF THIS AGREEMENT. IF YOU DO NOT AGREE, DO NOT DOWNLOAD, INSTALL,
+ * COPY, DISTRIBUTE OR USE THE DATA FILES OR SOFTWARE.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of data files and any
+ * associated documentation (the "Data Files") or software and any associated documentation (the
+ * "Software") to deal in the Data Files or Software without restriction, including without
+ * limitation the rights to use, copy, modify, merge, publish, distribute, and/or sell copies of the
+ * Data Files or Software, and to permit persons to whom the Data Files or Software are furnished to
+ * do so, provided that either (a) this copyright and permission notice appear with all copies of the
+ * Data Files or Software, or (b) this copyright and permission notice appear in associated
+ * Documentation.
  *
  * THE DATA FILES AND SOFTWARE ARE PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
- * PURPOSE AND NONINFRINGEMENT OF THIRD PARTY RIGHTS. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR
- * HOLDERS INCLUDED IN THIS NOTICE BE LIABLE FOR ANY CLAIM, OR ANY SPECIAL INDIRECT OR CONSEQUENTIAL
- * DAMAGES, OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
- * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE
- * USE OR PERFORMANCE OF THE DATA FILES OR SOFTWARE.
+ * PURPOSE AND NONINFRINGEMENT OF THIRD PARTY RIGHTS.
+ *
+ * IN NO EVENT SHALL THE COPYRIGHT HOLDER OR HOLDERS INCLUDED IN THIS NOTICE BE LIABLE FOR ANY CLAIM,
+ * OR ANY SPECIAL INDIRECT OR CONSEQUENTIAL DAMAGES, OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF
+ * USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION,
+ * ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THE DATA FILES OR SOFTWARE.
  *
  * Except as contained in this notice, the name of a copyright holder shall not be used in
  * advertising or otherwise to promote the sale, use or other dealings in these Data Files or
@@ -36,9 +43,9 @@
 import type { LocaleData } from "./LocaleData.js";
 
 /** U+00A0 NO-BREAK SPACE. */
-const nbsp = " ";
+const nbsp = "\u00a0";
 /** U+202F NARROW NO-BREAK SPACE. */
-const narrowNbsp = " ";
+const narrowNbsp = "\u202f";
 
 const en: LocaleData = {
   tag: "en",
@@ -187,7 +194,7 @@ const es: LocaleData = {
   ],
   weekdaysLong: ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"],
   weekdaysShort: ["dom", "lun", "mar", "mié", "jue", "vie", "sáb"],
-  dayPeriods: [`a.${nbsp}m.`, `p.${nbsp}m.`],
+  dayPeriods: [`a.${narrowNbsp}m.`, `p.${narrowNbsp}m.`],
   datePattern: "d MMM yyyy",
 };
 

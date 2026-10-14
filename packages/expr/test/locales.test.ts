@@ -2,10 +2,10 @@ import { describe, expect, test } from "vitest";
 import { locales, resolveLocale } from "../src/locales.js";
 import { errorOf, valueOf } from "./evaluateText.js";
 
-const nbsp = " ";
-const nnbsp = " ";
+const nbsp = "\u00a0";
+const nnbsp = "\u202f";
 
-/** Every value of every table, pinned: CLDR 43 for the symbols and names, own compact suffixes. */
+/** Every value of every table, pinned: CLDR 48 for the symbols and names, own compact suffixes. */
 const expected = {
   en: {
     tag: "en",
@@ -164,7 +164,7 @@ const expected = {
     ],
     weekdaysLong: ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"],
     weekdaysShort: ["dom", "lun", "mar", "mié", "jue", "vie", "sáb"],
-    dayPeriods: [`a.${nbsp}m.`, `p.${nbsp}m.`],
+    dayPeriods: [`a.${nnbsp}m.`, `p.${nnbsp}m.`],
     datePattern: "d MMM yyyy",
   },
   cs: {

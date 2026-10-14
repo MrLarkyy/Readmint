@@ -3,7 +3,7 @@ import { civilFromDays, daysFromCivil } from "../src/civilDays.js";
 import { maxDateMs, minDateMs, parseDate } from "../src/parseDate.js";
 import { errorOf, valueOf } from "./evaluateText.js";
 
-const nbsp = " ";
+const nnbsp = "\u202f";
 
 function date(input: string | number, args = "", locale = "en"): unknown {
   return valueOf(`{{ d | date(${args}) }}`, { d: input }, { locale });
@@ -123,7 +123,7 @@ describe("date", () => {
   test("a locale argument overrides the scope locale; null keeps the default pattern", () => {
     expect(date(moment, "'EEEE d. MMMM', 'de'")).toBe("Dienstag 5. März");
     expect(date(moment, "null, 'cs'")).toBe("5. 3. 2024");
-    expect(date(moment, "'h a', 'es'")).toBe(`2 p.${nbsp}m.`);
+    expect(date(moment, "'h a', 'es'")).toBe(`2 p.${nnbsp}m.`);
     expect(date(moment, "'a', 'cs'")).toBe("odp.");
     expect(date(moment, "'EEE d MMM', 'de-AT'")).toBe("Di. 5 März");
   });

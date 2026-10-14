@@ -111,9 +111,10 @@ or the host, because ICU data differs between Node and browsers.
 
 The space before `%` and before a compact suffix is U+00A0 NO-BREAK SPACE. Separators, grouping, the percent pattern,
 month and weekday names (wide and abbreviated, format context: Czech months in the genitive, `5. ledna`), AM/PM
-markers and the default date pattern are Unicode CLDR 43 values. The compact suffixes are Readmint's own: CLDR's short
+markers and the default date pattern are Unicode CLDR 48 values. The compact suffixes are Readmint's own: CLDR's short
 forms, except German thousands (`Tsd.`, CLDR writes `1234`) and Spanish billions (`mil M`, CLDR writes `1234 M`). The
-Unicode copyright and permission notice for the CLDR data is in `packages/expr/src/locales.ts`.
+CLDR data is used under the Unicode License v3; its copyright and permission notice is in `packages/expr/src/locales.ts`.
+The Spanish AM/PM markers (`a. m.`, `p. m.`) hold U+202F NARROW NO-BREAK SPACE.
 
 ## Dates
 

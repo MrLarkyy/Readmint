@@ -1,8 +1,8 @@
 import { describe, expect, test } from "vitest";
 import { errorOf, valueOf } from "./evaluateText.js";
 
-const nbsp = " ";
-const nnbsp = " ";
+const nbsp = "\u00a0";
+const nnbsp = "\u202f";
 
 function format(expression: string, n: number, locale = "en"): unknown {
   return valueOf(`{{ n | ${expression} }}`, { n }, { locale });
