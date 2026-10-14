@@ -14,7 +14,7 @@ import { DATA_SOURCE_INTERFACE_VERSION, type DataSource } from "@readmint/data";
 interface DataSource<
   Options extends DataSourceLoadOptions,
   Data extends DataObject,
-  Meta extends DataSourceLoadMeta,
+  Meta extends DataSourceLoadMeta = DataSourceLoadMeta,
 > {
   readonly interfaceVersion: typeof DATA_SOURCE_INTERFACE_VERSION; // 0
   readonly namespace: string;
@@ -63,7 +63,7 @@ rejects with `timeout`.
 A `DataSourceCache` is `get(key)` (the stored text or `undefined`) and `set(key, value, ttlSeconds)`. Values are JSON
 text and validated again on read. The cache is best effort: a failed read is a miss and a failed write is ignored.
 Keys come from `dataSourceCacheKey(source, input)`, the SHA-256 hex digest (64 lowercase characters, `sha256Hex`) of the
-namespace, the data version and the input fields; the input never holds a secret. `MemoryCache` and `FileCache` of
+namespace, the data version and the input fields; the input never holds a secret, and a non-finite number (`NaN`, `Infinity`) throws a `TypeError` naming the field. `MemoryCache` and `FileCache` of
 `@readmint/data-github` work with any source.
 
 ## Host duties
@@ -75,21 +75,33 @@ namespace, the data version and the input fields; the input never holds a secret
 ## A minimal source
 
 ```ts
-import { DATA_SOURCE_INTERFACE_VERSION, DataSourceError, type DataSource } from "@readmint/data";
+import {
+  DATA_SOURCE_INTERFACE_VERSION,
+  DataSourceError,
+  type DataObject,
+  type DataSource,
+  type DataSourceLoadOptions,
+} from "@readmint/data";
 
-export const fakeSource: DataSource<{ value?: string }, { version: 0; value: string }> =
-  Object.freeze({
-    interfaceVersion: DATA_SOURCE_INTERFACE_VERSION,
-    namespace: "fake",
-    dataVersion: 0,
-    load(options) {
-      if (options.value === undefined) {
-        return Promise.reject(new DataSourceError("fake", "invalid-option", "value is required"));
-      }
-      return Promise.resolve({
-        data: { version: 0, value: options.value },
-        meta: { requests: 0, fromCache: false },
-      });
-    },
-  });
+interface FakeData extends DataObject {
+  readonly version: 0;
+  readonly value: string;
+}
+
+interface FakeOptions extends DataSourceLoadOptions {
+  readonly value?: string;
+}
+
+export const fakeSource: DataSource<FakeOptions, FakeData> = Object.freeze({
+  interfaceVersion: DATA_SOURCE_INTERFACE_VERSION,
+  namespace: "fake",
+  dataVersion: 0,
+  load(options: FakeOptions) {
+    if (options.value === undefined) {
+      return Promise.reject(new DataSourceError("fake", "invalid-option", "value is required"));
+    }
+    const data: FakeData = { version: 0, value: options.value };
+    return Promise.resolve({ data, meta: { requests: 0, fromCache: false } });
+  },
+});
 ```

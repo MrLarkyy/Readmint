@@ -2,7 +2,7 @@
 
 `@readmint/data-github` loads one GitHub user's profile, public repositories, languages and contribution calendar
 through the GraphQL API with the user's own token, and returns a plain-JSON data object that designs bind to as
-`github.*`. It is a [data source](data-sources.md) (`githubDataSource`, namespace `github`). It runs in Node 22 and in the browser (native `fetch` and `crypto.subtle`, no dependencies).
+`github.*`. It is a [data source](data-sources.md) (`githubDataSource`, namespace `github`). It runs in Node 22 and in the browser (native `fetch` and `crypto.subtle`; its only dependency is `@readmint/data`).
 
 ```ts
 import { loadGitHubData, MemoryCache, GITHUB_DATA_NAMESPACE } from "@readmint/data-github";

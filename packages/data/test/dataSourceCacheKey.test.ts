@@ -31,3 +31,12 @@ test("covers the namespace, the data version and every input field", async () =>
 test("never contains an input string", async () => {
   expect(await dataSourceCacheKey(source, { token: "alpha" })).not.toContain("alpha");
 });
+
+test.each([Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY])(
+  "rejects the non-finite number %s, naming the field",
+  async (value) => {
+    await expect(dataSourceCacheKey(source, { pageSize: value })).rejects.toThrow(
+      new TypeError("cache key input pageSize must be a finite number"),
+    );
+  },
+);
