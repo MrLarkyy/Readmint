@@ -199,10 +199,10 @@ the canvas background and the layers.
 - Every definition is written once however often it is used: identical gradients (fills, strokes, text fills, the
   canvas background), clip paths of one size and image data drawn more than once each share one element. Its id is a
   letter (`g` gradient, `c` clip path, `i` image, `s` image symbol) and a 7-character base-36 FNV-1a hash of its
-  markup, so the same definition gets the same id in every render and every document, whatever the order of use;
-  two different definitions of one document whose hashes clash get `-1`, `-2`, ... in order of use. Two different
-  Readmint SVGs inlined into one page therefore only share an id where both define the same thing (up to a 32-bit
-  hash clash); a per-document id prefix is not written yet.
+  markup, whatever the order of use; two different definitions of one document whose hashes clash get `-1`, `-2`, ...
+  in order of use. Every id is prefixed `d<hash>-`, the same hash function over the finished document, so two
+  different Readmint SVGs inlined into one page never share an id (`d<hash>-g<hash>`). The same prefix means the same
+  document: a hidden copy of one design shares ids with its visible twin, harmlessly, as the definitions are equal.
 
 - No `<script>`, no event attributes, no `foreignObject`, no external reference: every `href` is a `data:image/...`
   URI or a `#fragment` of the same document, every `url()` a `#fragment` or (in the style) a `data:font/...` URI;

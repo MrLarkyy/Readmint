@@ -524,7 +524,7 @@ describe("shared images", () => {
     const svg = svgOf(pair("png"));
     expect(
       svg.match(
-        /<g transform="translate\(\d+ 5\)"><g class="a\d+" transform="rotate\(0\)"><use href="#s[0-9a-z]{7}" x="-10" y="-5" width="20" height="10" opacity="0" class="a\d+"\/><\/g><\/g>/gu,
+        /<g transform="translate\(\d+ 5\)"><g class="a\d+" transform="rotate\(0\)"><use href="#d[0-9a-z]{7}-s[0-9a-z]{7}" x="-10" y="-5" width="20" height="10" opacity="0" class="a\d+"\/><\/g><\/g>/gu,
       ),
     ).toHaveLength(2);
     expect(style(svg)).toBe(style(svgOf(pair("jpeg"))));
@@ -536,10 +536,11 @@ describe("shared images", () => {
     const frame = svgOf(pair("png"), { time: 500 });
     const defs = (svg: string) =>
       /<defs>.*<\/defs>/u.exec(svg)?.[0].replace(/<style>.*<\/style>/u, "");
-    expect(defs(frame)).toBe(defs(animatedSvg));
+    const unprefixed = (text: string | undefined) => text?.replaceAll(/d[0-9a-z]{7}-/gu, "");
+    expect(unprefixed(defs(frame))).toBe(unprefixed(defs(animatedSvg)));
     expect(
       frame.match(
-        /<use href="#s[0-9a-z]{7}" x="-10" y="-5" width="20" height="10" opacity="0.5"\/>/gu,
+        /<use href="#d[0-9a-z]{7}-s[0-9a-z]{7}" x="-10" y="-5" width="20" height="10" opacity="0.5"\/>/gu,
       ),
     ).toHaveLength(2);
     expect(frame).toContain('<g transform="rotate(45)">');

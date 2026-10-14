@@ -44,11 +44,11 @@ test.each(animationDesigns.map(({ name, input }) => [name, input] as const))(
 test("ids are derived from the definition, not from what an earlier render wrote", () => {
   const linear = renderFixture(input(shapes, "rect-linear-gradient"));
   const radial = renderFixture(input(shapes, "ellipse-radial-gradient"));
-  expect(ids(linear)).toEqual([expect.stringMatching(/^g[0-9a-z]{7}$/u)]);
-  expect(ids(radial)).toEqual([expect.stringMatching(/^g[0-9a-z]{7}$/u)]);
+  expect(ids(linear)).toEqual([expect.stringMatching(/^d[0-9a-z]{7}-g[0-9a-z]{7}$/u)]);
+  expect(ids(radial)).toEqual([expect.stringMatching(/^d[0-9a-z]{7}-g[0-9a-z]{7}$/u)]);
   expect(ids(radial)).not.toEqual(ids(linear));
   const clip = renderFixture(input(layout, "group-clip"));
-  expect(ids(clip)).toEqual([expect.stringMatching(/^c[0-9a-z]{7}$/u)]);
+  expect(ids(clip)).toEqual([expect.stringMatching(/^d[0-9a-z]{7}-c[0-9a-z]{7}$/u)]);
 });
 
 function sharing(colour: Colour, clip: number, asset: "png" | "jpeg"): Design {
@@ -89,19 +89,27 @@ function definitions(svg: string): Map<string, string> {
   );
 }
 
-test("two different documents share an id only for an identical definition", () => {
+test("two different documents share no id, and equal definitions differ only by the prefix", () => {
   const data = { two: [0, 0] };
   const a = renderFixture({ design: sharing("#cf222e", 40, "png"), data });
   const b = renderFixture({ design: sharing("#0969da", 50, "jpeg"), data });
   expect(renderFixture({ design: sharing("#cf222e", 40, "png"), data })).toBe(a);
   const inA = definitions(a);
   const inB = definitions(b);
-  expect([...inA.keys()].map((id) => id[0]).sort()).toEqual(["c", "g", "g", "i", "s"]);
-  const common = [...inA.keys()].filter((id) => inB.has(id));
+  const local = (id: string) => id.replace(/^d[0-9a-z]{7}-/u, "");
+  expect([...inA.keys()].map((id) => local(id)[0]).sort()).toEqual(["c", "g", "g", "i", "s"]);
+  expect([...inA.keys()].filter((id) => inB.has(id))).toEqual([]);
+  const localA = new Map(
+    [...inA].map(([id, markup]) => [local(id), markup.replaceAll(/d[0-9a-z]{7}-/gu, "")]),
+  );
+  const localB = new Map(
+    [...inB].map(([id, markup]) => [local(id), markup.replaceAll(/d[0-9a-z]{7}-/gu, "")]),
+  );
+  const common = [...localA.keys()].filter((id) => localB.has(id));
   expect(common).toEqual([expect.stringMatching(/^g/u)]);
   const [green] = common;
-  expect(inA.get(green ?? "")).toBe(inB.get(green ?? ""));
-  expect(inA.get(green ?? "")).toContain("#1a7f37");
+  expect(localA.get(green ?? "")).toBe(localB.get(green ?? ""));
+  expect(localA.get(green ?? "")).toContain("#1a7f37");
 });
 
 test("reordering the keys of styles, assets and data changes nothing", () => {

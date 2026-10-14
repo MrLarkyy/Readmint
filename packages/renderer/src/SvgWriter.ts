@@ -2,13 +2,17 @@ import { fnv1a } from "./fnv1a.js";
 import { RenderFailure } from "./RenderFailure.js";
 import { utf8Length } from "./utf8Length.js";
 
+/** Stands for the document prefix in shared ids until `finish`; U+0001 is not an XML character, so no content has it. */
+const MARK = "";
+
 /**
  * Collects the SVG in three parts (style rules, definitions, body) and keeps a running UTF-8 size, so a render
  * stops as soon as it passes the output budget instead of building an unbounded string.
  *
  * Definitions shared by reference (gradients, clip paths, images) are written once per distinct markup under an id
- * derived from that markup, not from the order of use: the same definition gets the same id in every render and in
- * every document, so two Readmint SVGs inlined into one page only share an id where the definitions are equal.
+ * derived from that markup, not from the order of use, and prefixed with a hash of the whole document (`finish`):
+ * two different Readmint SVGs inlined into one page never share an id. Two byte-identical documents do share
+ * their ids (a hidden copy of the same design), which is harmless as the definitions are equal.
  */
 export class SvgWriter {
   private readonly styleParts: string[] = [];
@@ -52,7 +56,7 @@ export class SvgWriter {
   /**
    * The id of a shared definition, written into `<defs>` (and counted) at its first request only. `build(id)` gives
    * the markup with that id; `build("")` is the key, so it must differ only in the id. The id is `letter` + the
-   * hash of the key; a different key with the same hash in this document gets `-1`, `-2`, ... in request order.
+   * hash of the key, behind the document prefix; a different key with the same hash in this document gets `-1`, `-2`, ... in request order.
    */
   share(letter: string, build: (id: string) => string): string {
     const key = build("");
@@ -63,7 +67,7 @@ export class SvgWriter {
     }
     const known = ids.get(key);
     if (known !== undefined) return known;
-    const hashed = `${letter}${fnv1a(key)}`;
+    const hashed = `${MARK}${letter}${fnv1a(key)}`;
     let id = hashed;
     for (let clash = 1; this.sharedIds.has(id); clash++) id = `${hashed}-${String(clash)}`;
     ids.set(key, id);
@@ -78,7 +82,8 @@ export class SvgWriter {
       this.styleParts.length + this.defParts.length === 0
         ? ""
         : `<defs>${this.styleParts.length === 0 ? "" : `<style>${this.styleParts.join("")}</style>`}${this.defParts.join("")}</defs>`;
-    const svg = `${open}${defs}${this.bodyParts.join("")}</svg>`;
+    const marked = `${open}${defs}${this.bodyParts.join("")}</svg>`;
+    const svg = marked.includes(MARK) ? marked.replaceAll(MARK, `d${fnv1a(marked)}-`) : marked;
     const bytes = utf8Length(svg);
     if (bytes > this.limit) this.overflow(bytes);
     return { svg, bytes };
