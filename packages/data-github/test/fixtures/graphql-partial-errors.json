@@ -1,0 +1,52 @@
+{
+  "request": {
+    "operation": "ReadmintProfile",
+    "variables": {
+      "login": "readmint-fixture"
+    }
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json; charset=utf-8",
+    "x-ratelimit-limit": "5000",
+    "x-ratelimit-remaining": "4996",
+    "x-ratelimit-reset": "1791972000",
+    "x-ratelimit-used": "4",
+    "x-ratelimit-resource": "graphql"
+  },
+  "body": {
+    "data": {
+      "user": {
+        "login": "readmint-fixture",
+        "name": "Readmint Fixture",
+        "bio": "Synthetic account used by the Readmint tests.",
+        "company": null,
+        "location": "Prague",
+        "websiteUrl": "https://readmint.example.com",
+        "twitterUsername": null,
+        "avatarUrl": "https://avatars.githubusercontent.com/u/1?v=4",
+        "url": "https://github.com/readmint-fixture",
+        "createdAt": "2019-04-01T08:30:00Z",
+        "followers": {
+          "totalCount": 42
+        },
+        "following": {
+          "totalCount": 7
+        },
+        "contributionsCollection": null
+      },
+      "rateLimit": {
+        "cost": 1,
+        "remaining": 4996,
+        "resetAt": "2026-10-14T10:00:00Z"
+      }
+    },
+    "errors": [
+      {
+        "type": "FORBIDDEN",
+        "path": ["user", "contributionsCollection"],
+        "message": "Resource not accessible by integration"
+      }
+    ]
+  }
+}

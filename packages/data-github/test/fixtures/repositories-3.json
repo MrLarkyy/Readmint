@@ -1,0 +1,81 @@
+{
+  "request": {
+    "operation": "ReadmintRepositories",
+    "variables": {
+      "login": "readmint-fixture",
+      "first": 2,
+      "after": "Y3Vyc29yOnYyOpK0MjA="
+    }
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json; charset=utf-8",
+    "x-ratelimit-limit": "5000",
+    "x-ratelimit-remaining": "4995",
+    "x-ratelimit-reset": "1791972000",
+    "x-ratelimit-used": "5",
+    "x-ratelimit-resource": "graphql"
+  },
+  "body": {
+    "data": {
+      "user": {
+        "repositories": {
+          "totalCount": 5,
+          "pageInfo": {
+            "hasNextPage": false,
+            "endCursor": "Y3Vyc29yOnYyOpKzMjA="
+          },
+          "nodes": [
+            {
+              "name": "site",
+              "nameWithOwner": "readmint-fixture/site",
+              "description": "Personal site",
+              "url": "https://github.com/readmint-fixture/site",
+              "homepageUrl": "http://insecure.example.com",
+              "stargazerCount": 3,
+              "forkCount": 1,
+              "isFork": false,
+              "isArchived": false,
+              "createdAt": "2020-01-01T00:00:00Z",
+              "pushedAt": "2026-09-30T12:00:00Z",
+              "primaryLanguage": {
+                "name": "HTML",
+                "color": "#e34c26"
+              },
+              "languages": {
+                "edges": [
+                  {
+                    "size": 3000,
+                    "node": {
+                      "name": "HTML",
+                      "color": "#e34c26"
+                    }
+                  },
+                  {
+                    "size": 1000,
+                    "node": {
+                      "name": "TypeScript",
+                      "color": "#3178c6"
+                    }
+                  },
+                  {
+                    "size": 1000,
+                    "node": {
+                      "name": "Fixture Lang",
+                      "color": null
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "rateLimit": {
+        "cost": 1,
+        "remaining": 4995,
+        "resetAt": "2026-10-14T10:00:00Z"
+      }
+    }
+  }
+}

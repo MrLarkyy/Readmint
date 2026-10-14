@@ -1,0 +1,13 @@
+{
+  "request": {
+    "operation": "ReadmintProfile",
+    "variables": {
+      "login": "readmint-fixture"
+    }
+  },
+  "status": 500,
+  "headers": {
+    "content-type": "text/html"
+  },
+  "body": "<!DOCTYPE html><html><body>Internal Server Error</body></html>"
+}

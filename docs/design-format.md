@@ -19,7 +19,7 @@ migrates and validates it; the published JSON Schema gives editors completion an
     }
   },
   "layers": [
-    { "type": "text", "x": 16, "y": 32, "content": "Hello, {{user.name}}", "font": "inter" }
+    { "type": "text", "x": 16, "y": 32, "content": "Hello, {{github.name}}", "font": "inter" }
   ]
 }
 ```

@@ -1,0 +1,25 @@
+{
+  "request": {
+    "operation": "ReadmintProfile",
+    "variables": {
+      "login": "readmint-fixture"
+    }
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json; charset=utf-8",
+    "x-ratelimit-limit": "5000",
+    "x-ratelimit-remaining": "0",
+    "x-ratelimit-reset": "1791972000",
+    "x-ratelimit-used": "5000",
+    "x-ratelimit-resource": "graphql"
+  },
+  "body": {
+    "errors": [
+      {
+        "type": "RATE_LIMITED",
+        "message": "API rate limit already exceeded for user ID 1."
+      }
+    ]
+  }
+}
