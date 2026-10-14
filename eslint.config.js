@@ -14,4 +14,11 @@ export default defineConfig(
       },
     },
   },
+  {
+    // Designs are untrusted: nothing in the repository may turn a string into code.
+    rules: {
+      "no-eval": "error",
+      "no-new-func": "error",
+    },
+  },
 );
