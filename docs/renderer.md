@@ -183,7 +183,8 @@ throws a `RangeError`.
 
 ## Output
 
-`<svg xmlns width height viewBox role="img">`, then `<title>` / `<desc>` from the design's `title` / `description`, then
+`<svg xmlns width height viewBox role="img">` (an animated SVG adds `class="r<hash>"`, the prefix of its animation
+names), then `<title>` / `<desc>` from the design's `title` / `description`, then
 `<defs>` (the style with fonts and animation rules, gradients `g0, g1, ...`, clip paths `c0, c1, ...`, ids and
 animation names allocated per render in creation order), then the canvas background and the layers.
 
@@ -200,38 +201,41 @@ animation names allocated per render in creation order), then the canvas backgro
 
 `RenderLimits` (override per call with `limits`):
 
-| limit                | default | why                                                                                                                  | issue                |
-| -------------------- | ------- | -------------------------------------------------------------------------------------------------------------------- | -------------------- |
-| `maxOutputBytes`     | 5242880 | GitHub's camo proxy refuses larger images                                                                            | `too-large`          |
-| `maxImageBytes`      | 4194304 | one image, decoded size, checked before decoding                                                                     | `asset-too-large`    |
-| `maxFontBytes`       | 4194304 | one font, decoded size, checked before decoding                                                                      | `asset-too-large`    |
-| `maxImageSide`       | 8192    | pixels per side; keeps the raster path within memory                                                                 | `asset-too-large`    |
-| `maxAnimationFrames` | 1000    | frames of an animated image                                                                                          | `asset-too-large`    |
-| `maxTextLength`      | 10000   | characters of a text after its placeholders are filled                                                               | `too-large`          |
-| `maxExpressionSteps` | 5000000 | expression work of the whole render (under a second of the costliest string filters), including copies an `if` drops | `binding` (`budget`) |
-| `maxRepeatCopies`    | 100000  | copies made by every `repeat` of the render together, including copies an `if` or `visible: false` drops             | `too-large`          |
+| limit                   | default | why                                                                                                                  | issue                |
+| ----------------------- | ------- | -------------------------------------------------------------------------------------------------------------------- | -------------------- |
+| `maxOutputBytes`        | 5242880 | GitHub's camo proxy refuses larger images                                                                            | `too-large`          |
+| `maxImageBytes`         | 4194304 | one image, decoded size, checked before decoding                                                                     | `asset-too-large`    |
+| `maxFontBytes`          | 4194304 | one font, decoded size, checked before decoding                                                                      | `asset-too-large`    |
+| `maxImageSide`          | 8192    | pixels per side; keeps the raster path within memory                                                                 | `asset-too-large`    |
+| `maxAnimationFrames`    | 1000    | frames of an animated image                                                                                          | `asset-too-large`    |
+| `maxTextLength`         | 10000   | characters of a text after its placeholders are filled                                                               | `too-large`          |
+| `maxExpressionSteps`    | 5000000 | expression work of the whole render (under a second of the costliest string filters), including copies an `if` drops | `binding` (`budget`) |
+| `maxRepeatCopies`       | 100000  | copies made by every `repeat` of the render together, including copies an `if` or `visible: false` drops             | `too-large`          |
+| `maxAnimationKeyframes` | 100000  | keyframes of every animation track of the render together, every repeat copy counted, in a frame too                 | `too-large`          |
 
 The output size is counted while the SVG is written, and every layer reserves the least markup of its kind before it
 is built (a path also its data, a text its filled-in content, before either is measured), so a huge or nested `repeat`
 stops early instead of building everything. Animation CSS counts toward `maxOutputBytes` like any markup, and every
-animated transform reserves its group (a `draw` its dash attributes) before the layer is built. Fixed limits: 10000 items per `repeat` (expr, `binding` at
+animated transform reserves its group (a `draw` its dash attributes) before the layer is built. Opacity and colour
+tracks write nothing of their own and the CSS is written only once every track is built, so `maxAnimationKeyframes`
+bounds that work: each track charges its keyframes before any is resolved. Fixed limits: 10000 items per `repeat` (expr, `binding` at
 `repeat/each`) and 64 levels of nested component instances (`too-large`).
 
 ## Issues
 
-| code                   | meaning                                                                                                                                                                                                                   |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `binding`              | an expression failed to compile or evaluate, the step budget ran out, a repeat `each` is not a list or has more than 10000 items, or its `as`/`index` names are unreadable or equal (the message names expr's error code) |
-| `type`                 | a value of the wrong kind (also a prop of the wrong type, a list or object written into text)                                                                                                                             |
-| `range`                | a number outside the format's range, a keyframe offset below the one before it, a `time` outside [0, 86400000]                                                                                                            |
-| `missing-asset`        | an asset path without supplied bytes, or a reference to no asset                                                                                                                                                          |
-| `asset-format`         | not an accepted image or a malformed font; a data URI type that does not match                                                                                                                                            |
-| `asset-too-large`      | over a byte, side or frame limit                                                                                                                                                                                          |
-| `unsupported-font`     | WOFF, WOFF2 or a font collection                                                                                                                                                                                          |
-| `font-not-embeddable`  | the licence or the fsType forbids embedding                                                                                                                                                                               |
-| `too-large`            | the SVG passes `maxOutputBytes`, a text passes `maxTextLength`, the repeats pass `maxRepeatCopies` (at the `repeat` that crossed it), components nest deeper than 64 levels                                               |
-| `font-family-mismatch` | warning: the asset family differs from the family inside the font                                                                                                                                                         |
-| `animation-cut`        | warning: a track runs past the end of the timeline and is cut there (once per track, however many copies)                                                                                                                 |
+| code                   | meaning                                                                                                                                                                                                                                             |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `binding`              | an expression failed to compile or evaluate, the step budget ran out, a repeat `each` is not a list or has more than 10000 items, or its `as`/`index` names are unreadable or equal (the message names expr's error code)                           |
+| `type`                 | a value of the wrong kind (also a prop of the wrong type, a list or object written into text)                                                                                                                                                       |
+| `range`                | a number outside the format's range, a keyframe offset below the one before it, a `time` outside [0, 86400000]                                                                                                                                      |
+| `missing-asset`        | an asset path without supplied bytes, or a reference to no asset                                                                                                                                                                                    |
+| `asset-format`         | not an accepted image or a malformed font; a data URI type that does not match                                                                                                                                                                      |
+| `asset-too-large`      | over a byte, side or frame limit                                                                                                                                                                                                                    |
+| `unsupported-font`     | WOFF, WOFF2 or a font collection                                                                                                                                                                                                                    |
+| `font-not-embeddable`  | the licence or the fsType forbids embedding                                                                                                                                                                                                         |
+| `too-large`            | the SVG passes `maxOutputBytes`, a text passes `maxTextLength`, the repeats pass `maxRepeatCopies` (at the `repeat` that crossed it), the tracks pass `maxAnimationKeyframes` (at the track that crossed it), components nest deeper than 64 levels |
+| `font-family-mismatch` | warning: the asset family differs from the family inside the font                                                                                                                                                                                   |
+| `animation-cut`        | warning: a track runs past the end of the timeline and is cut there (once per track, however many copies)                                                                                                                                           |
 
 ## Report
 

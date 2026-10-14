@@ -36,6 +36,7 @@ export class RenderContext {
   private readonly trail: string[] = [];
   private depth = 0;
   private repeatCopies = 0;
+  private animationKeyframes = 0;
 
   constructor(
     readonly design: Design,
@@ -67,6 +68,19 @@ export class RenderContext {
         path,
         "too-large",
         `this repeat brings the render to ${String(this.repeatCopies)} copies; at most ${String(max)} are allowed (copies an if or visible drops count too)`,
+      );
+    }
+  }
+
+  /** Charges the keyframes of one track against `maxAnimationKeyframes`, before any of them is resolved. */
+  countAnimationKeyframes(path: string, count: number): void {
+    this.animationKeyframes += count;
+    const max = this.limits.maxAnimationKeyframes;
+    if (this.animationKeyframes > max) {
+      this.fail(
+        path,
+        "too-large",
+        `this track brings the render to ${String(this.animationKeyframes)} animation keyframes; at most ${String(max)} are allowed (every repeat copy counts)`,
       );
     }
   }

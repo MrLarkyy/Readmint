@@ -128,6 +128,12 @@ function resolveTrack(
   timeline: number,
   dash: number | undefined,
 ): ResolvedKeyframe[] {
+  const keyframesPath = pointer(path, "keyframes");
+  const list: unknown = track.keyframes;
+  if (!Array.isArray(list) || list.length < 2 || list.length > maxKeyframes) {
+    context.fail(keyframesPath, "type", `a track needs 2 to ${String(maxKeyframes)} keyframes`);
+  }
+  context.countAnimationKeyframes(path, list.length);
   const time = (key: "delay" | "stagger") =>
     resolveOptionalNumber(
       context,
@@ -146,11 +152,6 @@ function resolveTrack(
     ) ?? timeline;
   const start = time("delay") + time("stagger") * copy;
   const trackEasing = resolveEasing(context, track.easing, pointer(path, "easing")) ?? linearEasing;
-  const keyframesPath = pointer(path, "keyframes");
-  const list: unknown = track.keyframes;
-  if (!Array.isArray(list) || list.length < 2 || list.length > maxKeyframes) {
-    context.fail(keyframesPath, "type", `a track needs 2 to ${String(maxKeyframes)} keyframes`);
-  }
   let previous = 0;
   return (list as AnimationTrack<unknown>["keyframes"]).map((keyframe, index) => {
     const at = pointer(keyframesPath, index);

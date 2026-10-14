@@ -380,7 +380,8 @@ test("10000 animated copies stop at the output budget before everything is built
         },
       ],
     },
-    { data: { items: hugeItems } },
+    // The keyframe limit (120000 here) lifted, only the bytes each track reserves stop the expansion.
+    { data: { items: hugeItems }, limits: { maxAnimationKeyframes: 1e9 } },
   );
   expect(result).toMatchObject({ ok: false, issues: [{ path: "", code: "too-large" }] });
   expect(performance.now() - started).toBeLessThan(1000);
@@ -420,5 +421,107 @@ test("the bytes reserved per animation track never exceed what the track adds to
     expect(render(undefined, layer) - plain, property).toBeGreaterThanOrEqual(
       minimumTrackBytes[property],
     );
+  }
+});
+
+/** 32 keyframes, the most a track takes, at offsets the stagger shifts per copy so no two copies share CSS. */
+function longTrack<T extends number | `#${string}`>(
+  value: (index: number) => T,
+): AnimationTrack<T> {
+  return {
+    keyframes: Array.from({ length: 32 }, (_, index) => ({
+      offset: index / 31,
+      value: value(index),
+    })),
+    duration: 1000,
+    stagger: 1,
+  };
+}
+
+// 70 x 1000 path copies with three tracks that reserve no output bytes: 6.7 million keyframes unbounded.
+const manyKeyframes: Design = {
+  version: 0,
+  canvas: { width: 100, height: 100 },
+  animation: { duration: 60_000 },
+  layers: [
+    {
+      type: "group",
+      repeat: { each: "{{rows}}" },
+      children: [
+        {
+          type: "path",
+          d: "M0 0 L1 1",
+          repeat: { each: "{{items}}" },
+          animate: {
+            opacity: longTrack((index) => (index % 2 === 0 ? 0 : 1)),
+            fill: longTrack((index) => (index % 2 === 0 ? "#000000" : "#ffffff")),
+            stroke: longTrack((index) => (index % 2 === 0 ? "#ff0000" : "#0000ff")),
+          },
+        },
+      ],
+    },
+  ],
+};
+const manyKeyframesData = {
+  rows: Array.from({ length: 70 }, (_, index) => index),
+  items: Array.from({ length: 1000 }, (_, index) => index),
+};
+
+test.each([
+  ["the animated SVG", undefined],
+  ["a frame", 500],
+] as const)("tracks over many copies stop %s at maxAnimationKeyframes fast", (_name, time) => {
+  const started = performance.now();
+  const result = renderSvg(manyKeyframes, {
+    data: manyKeyframesData,
+    ...(time === undefined ? {} : { time }),
+  });
+  const elapsed = performance.now() - started;
+  expect(result).toMatchObject({
+    ok: false,
+    issues: [{ path: "/layers/0/children/0/animate/stroke", code: "too-large" }],
+  });
+  // 96 keyframes a copy: the 1042nd copy (row 1, item 41) crosses 100000.
+  expect(result.ok ? "" : result.issues[0]?.message).toBe(
+    "this track brings the render to 100032 animation keyframes; at most 100000 are allowed (every repeat copy counts) (repeat item 1, repeat item 41)",
+  );
+  expect(elapsed).toBeLessThan(1000);
+});
+
+test("maxAnimationKeyframes defaults to 100000 and can be overridden", () => {
+  expect(RenderLimits.maxAnimationKeyframes).toBe(100_000);
+  const design: Design = {
+    version: 0,
+    canvas: { width: 10, height: 10 },
+    animation: { duration: 1000 },
+    layers: [
+      {
+        type: "rect",
+        width: 1,
+        height: 1,
+        repeat: { each: "{{ list }}" },
+        animate: { opacity: fadeIn({}), x: fadeIn({}) },
+      },
+    ],
+  };
+  const limits = { maxAnimationKeyframes: 8 };
+  expect(renderSvg(design, { data: { list: [1, 2] }, limits }).ok).toBe(true);
+  expect(renderSvg(design, { data: { list: [1, 2] }, limits, time: 100 }).ok).toBe(true);
+  for (const time of [undefined, 100]) {
+    const over = renderSvg(design, {
+      data: { list: [1, 2, 3] },
+      limits,
+      ...(time === undefined ? {} : { time }),
+    });
+    expect(over).toMatchObject({
+      ok: false,
+      issues: [{ path: "/layers/0/animate/opacity", code: "too-large" }],
+    });
+    expect(over.ok ? "" : over.issues[0]?.message).toContain("10 animation keyframes; at most 8");
+  }
+  for (const maxAnimationKeyframes of [Number.NaN, -1, Infinity]) {
+    expect(
+      renderSvg(design, { data: { list: [1, 2, 3] }, limits: { maxAnimationKeyframes } }).ok,
+    ).toBe(true);
   }
 });
