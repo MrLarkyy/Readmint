@@ -8,7 +8,8 @@ export type RenderIssueCode =
   | "unsupported-font"
   | "font-not-embeddable"
   | "too-large"
-  | "font-family-mismatch";
+  | "font-family-mismatch"
+  | "animation-cut";
 
 /** Why a render failed, or a warning about a successful one. */
 export interface RenderIssue {

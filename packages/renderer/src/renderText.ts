@@ -11,7 +11,7 @@ import type { SvgWriter } from "./SvgWriter.js";
  * end of the box), so a small difference between measured and drawn widths never shifts the alignment.
  * `xml:space="preserve"` keeps the spaces the measurement counted.
  */
-export function renderText(writer: SvgWriter, node: TextNode): void {
+export function renderText(writer: SvgWriter, node: TextNode, extra = ""): void {
   const anchorX =
     node.align === "start"
       ? node.x
@@ -32,6 +32,6 @@ export function renderText(writer: SvgWriter, node: TextNode): void {
     )
     .join("");
   writer.write(
-    `<text xml:space="preserve" font-family="${family}" font-size="${formatNumber(node.fontSize)}" font-weight="${escapeAttribute(String(node.font.weight))}"${style}${spacing}${anchor}${paintAttributes(writer, "fill", node.fill)}${opacityAttribute(node)}${transformAttribute(rotation(node, node.x, node.y))}>${lines}</text>`,
+    `<text xml:space="preserve" font-family="${family}" font-size="${formatNumber(node.fontSize)}" font-weight="${escapeAttribute(String(node.font.weight))}"${style}${spacing}${anchor}${paintAttributes(writer, "fill", node.fill)}${opacityAttribute(node)}${transformAttribute(rotation(node, node.x, node.y))}${extra}>${lines}</text>`,
   );
 }

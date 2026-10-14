@@ -1,7 +1,9 @@
-import type { Design, Layer } from "@readmint/format";
+import type { AnimationTrack, Design, Layer } from "@readmint/format";
 import { expect, test } from "vitest";
 import { RenderLimits, renderSvg } from "../src/index.js";
 import { minimumNodeBytes } from "../src/expandLayers.js";
+import type { AnimatedProperty } from "../src/NodeAnimation.js";
+import { minimumTrackBytes } from "../src/resolveAnimation.js";
 import { utf8Length } from "../src/utf8Length.js";
 import { fontAssets } from "./testAssets.js";
 
@@ -281,4 +283,142 @@ test("the step budget is shared by the render and can be lowered", () => {
   expect(lowered).toMatchObject({ ok: false, issues: [{ code: "binding" }] });
   expect(lowered.ok ? "" : lowered.issues[0]?.message).toContain("(budget)");
   expect(RenderLimits.maxExpressionSteps).toBe(5_000_000);
+});
+
+function fadeIn(extra: Record<string, unknown>) {
+  return {
+    keyframes: [
+      { offset: 0, value: 0 },
+      { offset: 1, value: 1 },
+    ],
+    duration: 300,
+    ...extra,
+  } as AnimationTrack<number>;
+}
+
+test("a 53 x 7 staggered calendar renders in under 1 s and under 200 kB", () => {
+  const delay = { delay: "{{(week * 7 + day) * 8}}" } as const;
+  const design: Design = {
+    version: 0,
+    canvas: { width: 800, height: 120 },
+    animation: { duration: 4000 },
+    layers: [
+      {
+        type: "group",
+        layout: { type: "stack", direction: "row", gap: 3 },
+        children: [
+          {
+            type: "group",
+            repeat: { each: "{{weeks}}", index: "week" },
+            layout: { type: "stack", direction: "column", gap: 3 },
+            children: [
+              {
+                type: "rect",
+                width: 11,
+                height: 11,
+                radius: 2,
+                fill: "{{colour}}",
+                repeat: { each: "{{days}}", as: "colour", index: "day" },
+                animate: {
+                  opacity: fadeIn(delay),
+                  scale: { ...fadeIn(delay), easing: "ease-out" },
+                  fill: {
+                    keyframes: [
+                      { offset: 0, value: "#ebedf0" },
+                      { offset: 1, value: "{{colour}}" },
+                    ],
+                    duration: 300,
+                    ...delay,
+                  },
+                },
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  };
+  const data = {
+    weeks: Array.from({ length: 53 }, (_, index) => index),
+    days: ["#9be9a8", "#40c463", "#30a14e", "#216e39", "#9be9a8", "#40c463", "#30a14e"],
+  };
+  const started = performance.now();
+  const result = renderSvg(design, { data });
+  expect(performance.now() - started).toBeLessThan(1000);
+  expect(result.ok ? result.warnings : result.issues).toEqual([]);
+  expect(result.ok && result.report.bytes).toBeLessThan(200_000);
+  expect(result.ok && result.svg.match(/<rect /gu)).toHaveLength(371);
+});
+
+test("10000 animated copies stop at the output budget before everything is built", () => {
+  const started = performance.now();
+  const result = renderSvg(
+    {
+      version: 0,
+      canvas: { width: 100, height: 100 },
+      animation: { duration: 60_000 },
+      layers: [
+        {
+          type: "rect",
+          width: 1,
+          height: 1,
+          repeat: { each: "{{items}}" },
+          animate: {
+            opacity: fadeIn({ stagger: 5 }),
+            x: fadeIn({ stagger: 5 }),
+            y: fadeIn({ stagger: 5 }),
+            rotation: fadeIn({ stagger: 5 }),
+            scale: fadeIn({ stagger: 5 }),
+            fill: {
+              keyframes: [
+                { offset: 0, value: "#000000" },
+                { offset: 1, value: "#ffffff" },
+              ],
+              stagger: 5,
+            },
+          },
+        },
+      ],
+    },
+    { data: { items: hugeItems } },
+  );
+  expect(result).toMatchObject({ ok: false, issues: [{ path: "", code: "too-large" }] });
+  expect(performance.now() - started).toBeLessThan(1000);
+});
+
+test("the bytes reserved per animation track never exceed what the track adds to a frame", () => {
+  const track = fadeIn({});
+  const cases: [AnimatedProperty, Layer][] = [
+    ["opacity", { type: "rect", width: 1, height: 1, animate: { opacity: track } }],
+    ["x", { type: "rect", width: 1, height: 1, animate: { x: track } }],
+    ["y", { type: "rect", width: 1, height: 1, animate: { y: track } }],
+    ["rotation", { type: "rect", width: 1, height: 1, animate: { rotation: track } }],
+    ["scale", { type: "rect", width: 1, height: 1, animate: { scale: track } }],
+    ["draw", { type: "path", d: "M0 0 L1 0", animate: { draw: track } }],
+  ];
+  for (const [property, layer] of cases) {
+    const still = Object.fromEntries(
+      Object.entries(layer).filter(([key]) => key !== "animate"),
+    ) as unknown as Layer;
+    const render = (time: number | undefined, animated: Layer) => {
+      const result = renderSvg(
+        {
+          version: 0,
+          canvas: { width: 1, height: 1 },
+          animation: { duration: 1000 },
+          layers: [animated],
+        },
+        time === undefined ? {} : { time },
+      );
+      if (!result.ok) throw new Error(property);
+      return result.svg.replace(/<defs>.*<\/defs>/u, "").length;
+    };
+    const plain = render(undefined, still);
+    expect(render(500, layer) - plain, property).toBeGreaterThanOrEqual(
+      minimumTrackBytes[property],
+    );
+    expect(render(undefined, layer) - plain, property).toBeGreaterThanOrEqual(
+      minimumTrackBytes[property],
+    );
+  }
 });

@@ -15,6 +15,7 @@ import { parseColour } from "./parseColour.js";
 import { pointer } from "./pointer.js";
 import type { RenderContext } from "./RenderContext.js";
 import type { GroupNode, RenderNode } from "./RenderNode.js";
+import { resolveAnimation } from "./resolveAnimation.js";
 import { resolveBase } from "./resolveBase.js";
 import { resolveImage } from "./resolveImage.js";
 import { resolveEllipse, resolvePath, resolveRect } from "./resolveShape.js";
@@ -66,7 +67,7 @@ function expandLayer(
 ): void {
   const repeat = layer.repeat;
   if (repeat === undefined) {
-    addLayer(context, layer, path, scope, out);
+    addLayer(context, layer, path, scope, 0, out);
     return;
   }
   const copies = repeatScopes(context, repeat, path, scope);
@@ -74,16 +75,18 @@ function expandLayer(
   context.countRepeatCopies(pointer(path, "repeat"), copies.length);
   copies.forEach((copy, index) => {
     context.within(`repeat item ${String(index)}`, () => {
-      addLayer(context, layer, path, copy, out);
+      addLayer(context, layer, path, copy, index, out);
     });
   });
 }
 
+/** `copy` is the index of the layer's own repeat copy (0 without a repeat), the step of an animation's stagger. */
 function addLayer(
   context: RenderContext,
   layer: Layer,
   path: string,
   scope: Scope,
+  copy: number,
   out: RenderNode[],
 ): void {
   if (
@@ -98,7 +101,9 @@ function addLayer(
   context.writer.reserve(minimumNodeBytes[layer.type]);
   // The data is written whole (escaping only lengthens it), so it is reserved before its bounds are computed.
   if (layer.type === "path") context.writer.reserve(layer.d.length);
-  out.push(resolveLayer(context, layer, path, scope));
+  const node = resolveLayer(context, layer, path, scope);
+  const animation = resolveAnimation(context, layer, node, path, scope, copy);
+  out.push(animation === undefined ? node : { ...node, animation });
 }
 
 function resolveLayer(

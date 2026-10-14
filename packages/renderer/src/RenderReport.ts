@@ -12,4 +12,6 @@ export interface RenderReport {
   readonly limit: number;
   readonly fonts: readonly RenderAssetUsage[];
   readonly images: readonly RenderAssetUsage[];
+  /** The design's timeline, when it has one: what `frameTimes` takes. */
+  readonly animation?: { readonly duration: number; readonly loop: boolean };
 }

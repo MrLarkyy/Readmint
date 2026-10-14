@@ -10,7 +10,7 @@ import { renderLayer } from "./renderLayer.js";
 import type { RenderOptions } from "./RenderOptions.js";
 import type { RenderReport } from "./RenderReport.js";
 import type { RenderResult } from "./RenderResult.js";
-import { resolveNumber } from "./resolveValue.js";
+import { echo, resolveNumber } from "./resolveValue.js";
 
 /**
  * A validated v0 design plus data becomes a self-contained SVG: no scripts, no external references (fonts and
@@ -27,8 +27,19 @@ export function renderSvg(design: Design, options: RenderOptions = {}): RenderRe
   }
 }
 
+/** Latest frame time a render takes: a day, far past any timeline (at most a minute), yet well inside doubles. */
+export const maxFrameTime = 86_400_000;
+
 function render(context: RenderContext, options: RenderOptions): RenderResult {
   const { design, writer } = context;
+  const time: unknown = options.time;
+  if (time !== undefined && !(typeof time === "number" && time >= 0 && time <= maxFrameTime)) {
+    context.fail(
+      "",
+      "range",
+      `time must be a number of milliseconds in [0, ${String(maxFrameTime)}], got ${echo(time)}`,
+    );
+  }
   // One budget for every evaluation of the render: child scopes share it and each repeated item is charged.
   const steps = Math.min(Math.floor(context.limits.maxExpressionSteps), Number.MAX_SAFE_INTEGER);
   const budget = createBudget(steps);
@@ -75,6 +86,11 @@ function render(context: RenderContext, options: RenderOptions): RenderResult {
       bytes: font.dataUri.length,
     })),
     images: [...context.imageBytes].map(([asset, total]) => ({ asset, bytes: total })),
+    ...(design.animation === undefined
+      ? {}
+      : {
+          animation: { duration: design.animation.duration, loop: design.animation.loop !== false },
+        }),
   };
   return { ok: true, svg, report, warnings: [...context.warnings] };
 }

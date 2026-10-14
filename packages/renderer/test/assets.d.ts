@@ -3,3 +3,9 @@ declare module "*?inline" {
   const dataUri: string;
   export default dataUri;
 }
+
+// The committed snapshots of the animated SVGs, read as text in both projects.
+declare module "*.svg?raw" {
+  const source: string;
+  export default source;
+}
