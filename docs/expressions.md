@@ -62,7 +62,8 @@ The hyphen rule keeps ids usable as names: `props.my-label` and `repo-index` are
   `"0"`). `!` gives a boolean; `a && b` and `a || b` give one of their operands (`name || "anonymous"`) and skip the
   other side.
 - **Filters** receive the value on their left. Every filter except `default` passes `null` through unchanged, so
-  `{{ missing | upper | default("-") }}` is `-`.
+  `{{ user.nickname | upper | default("-") }}` is `-` when `user` has no `nickname` (an unknown root name such as
+  `{{ nickname }}` stays an `unknown-name` error).
 
 ## Filters
 
@@ -79,9 +80,9 @@ The hyphen rule keeps ids usable as names: `props.my-label` and `repo-index` are
 | `max(b)`                       | number                | the larger of the value and `b`                                                      |
 | `clamp(low, high)`             | number                | the value within `[low, high]`; `low > high` is an `argument` error                  |
 | `date(pattern?, locale?)`      | ISO 8601 string or ms | the date in UTC written with `pattern`, else the locale's default pattern            |
-| `upper`                        | string                | upper case (locale-independent)                                                      |
-| `lower`                        | string                | lower case (locale-independent)                                                      |
-| `trim`                         | string                | without leading and trailing white space                                             |
+| `upper`                        | string                | upper case by a fixed 1:1 table (see Determinism)                                    |
+| `lower`                        | string                | lower case by a fixed 1:1 table (see Determinism)                                    |
+| `trim`                         | string                | without leading and trailing white space (a fixed set, see Determinism)              |
 | `truncate(length, suffix="…")` | string                | at most `length` code points, the suffix included when it was cut                    |
 | `padStart(width, char=" ")`    | string or number      | padded on the left to `width` code points with `char` (exactly one code point)       |
 | `default(value)`               | anything              | `value` when the input is `null`, else the input                                     |
@@ -113,7 +114,7 @@ The space before `%` and before a compact suffix is U+00A0 NO-BREAK SPACE. Separ
 month and weekday names (wide and abbreviated, format context: Czech months in the genitive, `5. ledna`), AM/PM
 markers and the default date pattern are Unicode CLDR 48 values. The compact suffixes are Readmint's own: CLDR's short
 forms, except German thousands (`Tsd.`, CLDR writes `1234`) and Spanish billions (`mil M`, CLDR writes `1234 M`). The
-CLDR data is used under the Unicode License v3; its copyright and permission notice is in `packages/expr/src/locales.ts`.
+CLDR data is used under the Unicode License v3; its copyright and permission notice is in `packages/expr/src/locales.ts` and `packages/expr/LICENSE-CLDR`.
 The Spanish AM/PM markers (`a. m.`, `p. m.`) hold U+202F NARROW NO-BREAK SPACE.
 
 ## Dates
@@ -151,7 +152,9 @@ cannot silently change an existing pattern. A pattern has at most 64 characters.
 | filter args   | 4 per call                                                                      | `argument`  |
 | error excerpt | 64 characters of the source                                                     |             |
 
-A step is one expression node, plus one per 16 characters or one per item a filter or operator processes. Work is
+A step is one expression node, plus one per 16 characters or one per item a filter or operator processes: string
+`+`, `==`, `!=` and `< <= > >=`, a string used as an index, literal text, and every filter that reads a string or
+an array. Work is
 charged and sizes are checked before the work is done, so a hostile expression stops early. Long flat chains
 (`a + b + …`, `a.b.c…`, `a | f | g …`) are evaluated by loops; only nesting counts against the depth limit.
 
@@ -216,7 +219,8 @@ scope.with({ props: { label: "Stars" } }); // a child scope with locals, e.g. co
 
 - `ExprResult<T>` is `{ ok: true, value: T } | { ok: false, error: ExpressionError }`; `ExprValue` is a JSON value.
 - A `Template` is frozen and reusable; compile each design string once.
-- `expandRepeat` defaults `as` to `item` and `index` to `index` (0-based); `null` repeats nothing, anything but an
+- `expandRepeat` defaults `as` to `item` and `index` to `index` (0-based); both must be names an expression can
+  read (`repo-index`, not `repo-1`, `1st` or `true`) and differ, else `argument`; `null` repeats nothing, anything but an
   array is a `type` error, more than 10000 items `too-large`. Child scopes keep the outer locals and data.
 - Without a shared budget each `evaluate` gets a fresh one of 100000 steps; with `createBudget(n)` passed to
   `createScope`, every evaluation in that scope and its children draws from the same `n` steps, and an exhausted
@@ -227,4 +231,9 @@ scope.with({ props: { label: "Stars" } }); // a child scope with locals, e.g. co
 
 The same template, data and locale give the same value in Node and in every browser: no `Intl`, no host locale or
 time zone, no clock, no randomness; numbers are written by `toFixed` and `String(n)`, both exactly specified, and
-strings are compared by code unit. A shared corpus of expressions is checked in Node and in headless Chromium.
+strings are compared by code unit. `upper` and `lower` never use `toUpperCase` / `toLowerCase`, whose mappings change
+with the engine's Unicode version: they use a fixed table of the simple (one to one) Unicode case mappings for Basic
+Latin, Latin-1 Supplement, Latin Extended-A, Greek and Coptic, and Cyrillic, and leave every other character
+unchanged. Nothing expands: `ß` stays `ß`, `İ` lowers to `i`, and `Σ` always lowers to `σ`. `trim` removes a fixed
+set: tab, line feed, vertical tab, form feed, carriage return, space, U+00A0, U+1680, U+2000 to U+200A, U+2028,
+U+2029, U+202F, U+205F, U+3000 and U+FEFF. A shared corpus of expressions is checked in Node and in headless Chromium.
