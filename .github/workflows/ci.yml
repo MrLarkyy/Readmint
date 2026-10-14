@@ -25,6 +25,7 @@ jobs:
         shell: bash
         run: |
           grep -q "@license Unicode-3.0" packages/action/dist/action.js
+          grep -q "^ \* Package: yaml@" packages/action/dist/action.js
           work="$RUNNER_TEMP/readmint-smoke"
           cp -r packages/action/test/fixtures/smoke "$work"
           env "INPUT_DESIGNS=card.json" "INPUT_DATA-FILE=data.json" "INPUT_DRY-RUN=true" \

@@ -3,6 +3,7 @@
   "compilerOptions": {
     "composite": false,
     "noEmit": true,
+    "allowImportingTsExtensions": true,
     "types": ["node"],
     "paths": {
       "@readmint/cli": ["../cli/src/index.ts"],
@@ -14,5 +15,5 @@
       "@readmint/renderer": ["../renderer/src/index.ts"]
     }
   },
-  "include": ["src", "test", "rolldown.config.ts"]
+  "include": ["src", "test", "scripts", "rolldown.config.ts"]
 }

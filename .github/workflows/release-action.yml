@@ -43,6 +43,7 @@ jobs:
             exit 1
           fi
           grep -q "@license Unicode-3.0" packages/action/dist/action.js
+          grep -q "^ \* Package: yaml@" packages/action/dist/action.js
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git checkout --detach
