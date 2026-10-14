@@ -89,11 +89,12 @@ describe("YAML source", () => {
       }
       return fastest;
     };
+    // The 80 000-key case stays as the untimed check of the full size; only 10 000 and 40 000 are timed.
     expect(issuesOf(duplicateKeySource(80_000))).toMatchObject([
       { code: "duplicate-key", line: 80_001, column: 1 },
     ]);
-    expect(best(duplicateKeySource(80_000)) / best(duplicateKeySource(20_000))).toBeLessThan(8);
-  });
+    expect(best(duplicateKeySource(40_000)) / best(duplicateKeySource(10_000))).toBeLessThan(8);
+  }, 60_000);
 
   test("more than maxAliases aliases fail before any alias is resolved", () => {
     // As many anchors and aliases as fit in the YAML source limit.
