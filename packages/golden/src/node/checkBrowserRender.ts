@@ -1,7 +1,7 @@
 import type { GoldenFixture, GoldenSuite } from "../GoldenSuite.js";
 import { defaultBrowserTolerance, resolveTolerance } from "../GoldenTolerance.js";
 import type { FixtureCheck } from "./FixtureCheck.js";
-import type { GoldenStore } from "./GoldenStore.js";
+import { browserArtefactKinds, type GoldenStore } from "./GoldenStore.js";
 import { comparePng } from "./comparePng.js";
 
 /**
@@ -16,7 +16,7 @@ export function checkBrowserRender<I>(
   browser: { svg: string; png: Uint8Array },
 ): FixtureCheck {
   const result: FixtureCheck = { problems: [], artefacts: [] };
-  store.clearArtefacts(fixture.name);
+  store.clearArtefacts(fixture.name, browserArtefactKinds);
   if (browser.svg !== nodeSvg) {
     result.problems.push(`${fixture.name}: browser SVG differs from the Node SVG`);
     result.artefacts.push(store.writeArtefact(fixture.name, "node.svg", nodeSvg));

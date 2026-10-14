@@ -12,14 +12,13 @@ export type ArtefactKind =
   | "node.svg"
   | "browser.svg";
 
-const artefactKinds: ArtefactKind[] = [
-  "actual.svg",
-  "actual.png",
-  "diff.png",
-  "browser.png",
-  "browser-diff.png",
+export const nodeArtefactKinds: readonly ArtefactKind[] = ["actual.svg", "actual.png", "diff.png"];
+
+export const browserArtefactKinds: readonly ArtefactKind[] = [
   "node.svg",
   "browser.svg",
+  "browser.png",
+  "browser-diff.png",
 ];
 
 /** Committed goldens of one suite and the failure artefacts written next to the test results. */
@@ -41,7 +40,10 @@ export class GoldenStore {
       resultsRoot ??
       process.env["READMINT_GOLDEN_RESULTS"] ??
       join(findRepositoryRoot(testDir), "test-results", "golden");
-    return new GoldenStore(join(testDir, "golden", suite), join(root, basename(packageDir), suite));
+    return new GoldenStore(
+      join(testDir, "golden", suite),
+      join(root, basename(packageDir) === "golden" ? "" : basename(packageDir), suite),
+    );
   }
 
   svgPath(fixture: string): string {
@@ -77,8 +79,9 @@ export class GoldenStore {
     return path;
   }
 
-  clearArtefacts(fixture: string): void {
-    for (const kind of artefactKinds) rmSync(this.artefactPath(fixture, kind), { force: true });
+  /** Removes only the given kinds: the Node and browser legs share the directory and must not delete each other's files. */
+  clearArtefacts(fixture: string, kinds: readonly ArtefactKind[]): void {
+    for (const kind of kinds) rmSync(this.artefactPath(fixture, kind), { force: true });
   }
 
   /** Golden files in the suite directory that no fixture owns. */

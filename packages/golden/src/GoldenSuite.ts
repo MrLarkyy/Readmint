@@ -13,6 +13,8 @@ export interface GoldenSuite<I> {
   fixtures: GoldenFixture<I>[];
   tolerance?: Partial<GoldenTolerance>;
   browserTolerance?: Partial<GoldenTolerance>;
+  /** TTF/OTF files resvg may draw text with; system fonts are never loaded. Required when a fixture has text. */
+  fonts?: string[];
   /** Decimal places kept in normalized SVG numbers, default 3. */
   precision?: number;
 }

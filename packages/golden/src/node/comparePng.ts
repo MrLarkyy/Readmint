@@ -19,8 +19,18 @@ export function comparePng(
 ): PngComparison {
   const rejected = rejectUnusable(expected, "golden") ?? rejectUnusable(actual, "rendered");
   if (rejected !== undefined) return failure(rejected);
-  const a = PNG.sync.read(Buffer.from(expected));
-  const b = PNG.sync.read(Buffer.from(actual));
+  let a: PNG;
+  let b: PNG;
+  try {
+    a = PNG.sync.read(Buffer.from(expected));
+  } catch {
+    return failure("golden image is corrupt and cannot be decoded");
+  }
+  try {
+    b = PNG.sync.read(Buffer.from(actual));
+  } catch {
+    return failure("rendered image is corrupt and cannot be decoded");
+  }
   if (a.width !== b.width || a.height !== b.height) {
     return failure(
       `size ${String(b.width)}x${String(b.height)} differs from golden ${String(a.width)}x${String(a.height)}`,

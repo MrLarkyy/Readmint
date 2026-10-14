@@ -1,9 +1,21 @@
+import { fileURLToPath } from "node:url";
 import { playwright } from "@vitest/browser-playwright";
 import { defineConfig } from "vitest/config";
 import { goldenBrowserCheck } from "./packages/golden/src/vitest/goldenCommands.ts";
 import { goldenEnvironment } from "./packages/golden/src/vitest/goldenEnvironment.ts";
 
+const golden = (path: string) =>
+  fileURLToPath(new URL(`./packages/golden/src/${path}`, import.meta.url));
+
 export default defineConfig(({ mode }) => ({
+  resolve: {
+    alias: [
+      { find: new RegExp("^@readmint/golden/node$"), replacement: golden("node/index.ts") },
+      { find: new RegExp("^@readmint/golden/browser$"), replacement: golden("browser/index.ts") },
+      { find: new RegExp("^@readmint/golden/vitest$"), replacement: golden("vitest/index.ts") },
+      { find: new RegExp("^@readmint/golden$"), replacement: golden("index.ts") },
+    ],
+  },
   test: {
     env: goldenEnvironment(mode),
     projects: [

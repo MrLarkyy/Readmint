@@ -1,9 +1,9 @@
 import type { GoldenFixture, GoldenSuite } from "../GoldenSuite.js";
 import { defaultNodeTolerance, resolveTolerance } from "../GoldenTolerance.js";
 import type { FixtureCheck } from "./FixtureCheck.js";
-import type { GoldenStore } from "./GoldenStore.js";
+import { nodeArtefactKinds, type GoldenStore } from "./GoldenStore.js";
 import type { GoldenMode } from "./goldenMode.js";
-import { comparePng } from "./comparePng.js";
+import { comparePng, maxPngSide } from "./comparePng.js";
 import { normalizeSvg } from "./normalizeSvg.js";
 import { rasterizeSvg } from "./rasterizeSvg.js";
 
@@ -15,7 +15,7 @@ export async function checkNodeFixture<I>(
   mode: GoldenMode,
 ): Promise<FixtureCheck> {
   const result: FixtureCheck = { problems: [], artefacts: [] };
-  store.clearArtefacts(fixture.name);
+  store.clearArtefacts(fixture.name, nodeArtefactKinds);
   const first = await suite.render(fixture.input);
   const second = await suite.render(fixture.input);
   if (first !== second) {
@@ -68,7 +68,15 @@ function checkRaster<I>(
   result: FixtureCheck,
 ): void {
   const path = store.pngPath(fixture.name);
-  const png = rasterizeSvg(svg, fixture.scale ?? 1);
+  const png = rasterizeSvg(svg, fixture.scale ?? 1, suite.fonts);
+  const width = png.readUInt32BE(16);
+  const height = png.readUInt32BE(20);
+  if (width > maxPngSide || height > maxPngSide) {
+    result.problems.push(
+      `${fixture.name}: rendered PNG ${String(width)}x${String(height)} at scale ${String(fixture.scale ?? 1)} exceeds ${String(maxPngSide)}x${String(maxPngSide)}; lower the scale`,
+    );
+    return;
+  }
   const golden = store.read(path);
   const tolerance = resolveTolerance(suite.tolerance, defaultNodeTolerance);
   const comparison = golden === undefined ? undefined : comparePng(golden, png, tolerance);

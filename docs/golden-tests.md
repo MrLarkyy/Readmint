@@ -27,11 +27,21 @@ packages/<pkg>/test/golden/<suite>/<fixture>.svg|png  committed goldens
 
 The suite file must import the renderer through code that runs in the browser too (no `fs`, no `Buffer`).
 Suite and fixture names match `^[a-z0-9][a-z0-9-]*$`. A suite is `{ name, render(input) => svg, fixtures:
-[{ name, input, scale? }], tolerance?, browserTolerance?, precision? }`; `scale` (1..4) zooms the PNG.
+[{ name, input, scale? }], tolerance?, browserTolerance?, precision? }`; `scale` (1..4) zooms the PNG; a rendered PNG above 4096 x 4096 is a failure in every mode.
+
+Imports: `@readmint/golden` (suite types, `defineGoldenSuite`), `@readmint/golden/node` (`goldenTest`, ...),
+`@readmint/golden/browser` (`goldenBrowserTest`), `@readmint/golden/vitest`. The root `vitest.config.ts` aliases them to
+the sources, so no build is needed before `pnpm test`.
+
+## Text
+
+resvg loads no system fonts, so a fixture with `<text>` needs `fonts: [paths to TTF/OTF files]` in the suite;
+without them the rasterizer throws "SVG has text but the suite supplies no fonts" instead of drawing nothing. Use
+only fonts whose licence allows redistribution when committing them next to the suite.
 
 ## Normalized SVG
 
-Ids are renamed `id0`, `id1`, ... by definition order (references in `url(#x)`, `href`, `aria-*`, SMIL `begin`/`end`
+Ids are renamed `id0`, `id1`, ... by definition order (references in `url(#x)`, `href`, `aria-labelledby`/`aria-describedby`, SMIL `begin`/`end`
 and `<style>` follow); numbers in attribute values are rounded to `precision` decimals (default 3, `-0` becomes `0`);
 `data:` URIs become `data:<mime>;sha256=<digest>`; line ends become LF. Text nodes, `class`, `font-family` and
 namespaces are left alone. Fixtures must not contain live data (names, counts from the real GitHub): use fixed values.
@@ -64,6 +74,5 @@ Browser tests need Chromium: `pnpm exec playwright install --only-shell chromium
 ## Portability of goldens
 
 Goldens are rendered by resvg with system fonts turned off, so they do not depend on the machine's fonts, and
-anti-aliased pixels are ignored by the comparison. They were generated on Windows and verified on Linux
-(`mcr.microsoft.com/playwright:v1.64.0-noble`, same lockfile) when Docker was available; see the task evidence. Chromium
+anti-aliased pixels are ignored by the comparison. They were generated on Windows and the whole suite also passes on Linux (`mcr.microsoft.com/playwright:v1.64.0-noble`, same lockfile). Chromium
 rasterization differs slightly between platforms (gradient dithering, AA), which the browser tolerance absorbs.

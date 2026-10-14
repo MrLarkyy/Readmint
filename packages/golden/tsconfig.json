@@ -4,7 +4,13 @@
     "lib": ["ES2023", "DOM"],
     "composite": false,
     "noEmit": true,
-    "types": ["node"]
+    "types": ["node"],
+    "paths": {
+      "@readmint/golden": ["./src/index.ts"],
+      "@readmint/golden/node": ["./src/node/index.ts"],
+      "@readmint/golden/browser": ["./src/browser/index.ts"],
+      "@readmint/golden/vitest": ["./src/vitest/index.ts"]
+    }
   },
   "include": ["src", "test"]
 }
