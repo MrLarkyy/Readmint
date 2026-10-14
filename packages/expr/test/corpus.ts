@@ -1,0 +1,114 @@
+import type { ExpressionErrorCode, ExprValue } from "../src/index.js";
+
+/**
+ * Expressions with their exact results, checked in Node (corpus.test.ts) and in Chromium
+ * (corpus.browser.test.ts): the renderer's output must be byte-identical in both, so everything
+ * locale-, float- or Unicode-sensitive belongs here.
+ */
+export interface CorpusCase {
+  readonly text: string;
+  readonly locale?: string;
+  readonly expected?: ExprValue;
+  readonly error?: ExpressionErrorCode;
+}
+
+export const corpusData = {
+  github: {
+    login: "octo-cat",
+    name: "Ada Lövelace",
+    followers: 1_234_567,
+    stars: 999_950,
+    ratio: 0.4567,
+    createdAt: "2011-01-26T19:01:12Z",
+    updatedAt: "2024-02-29T23:59:59.999+01:00",
+    languages: [
+      { name: "TypeScript", share: 0.6123 },
+      { name: "Rust", share: 0.25 },
+      { name: "Go", share: 0.1377 },
+    ],
+    bio: "Builds \u{1F680} things — sometimes",
+    "my-label": "hyphen",
+  },
+  calendar: {
+    weeks: [
+      [0, 3, 12],
+      [7, 0, 25],
+    ],
+    levels: ["#ebedf0", "#9be9a8", "#40c463", "#30a14e", "#216e39"],
+  },
+  epoch: 1_700_000_000_000,
+  empty: [],
+};
+
+export const corpus: readonly CorpusCase[] = [
+  { text: "{{ github.login }}", expected: "octo-cat" },
+  { text: "{{ github.followers }}", expected: 1_234_567 },
+  { text: "{{ github.followers | number }}", expected: "1,234,567" },
+  { text: "{{ github.followers | number }}", locale: "de", expected: "1.234.567" },
+  { text: "{{ github.followers | number }}", locale: "fr", expected: "1 234 567" },
+  { text: "{{ github.followers | number }}", locale: "es", expected: "1.234.567" },
+  { text: "{{ github.followers | number }}", locale: "cs", expected: "1 234 567" },
+  { text: "{{ 1234 | number }}", locale: "es", expected: "1234" },
+  { text: "{{ github.followers | compact }}", expected: "1.2M" },
+  { text: "{{ github.stars | compact }}", expected: "1M" },
+  { text: "{{ github.followers | compact(2) }}", locale: "de", expected: "1,23 Mio." },
+  { text: "{{ 1500000000 | compact }}", locale: "es", expected: "1,5 mil M" },
+  { text: "{{ 4321 | compact }}", locale: "cs", expected: "4,3 tis." },
+  { text: "{{ github.ratio | percent }}", expected: "46%" },
+  { text: "{{ github.ratio | percent(1) }}", locale: "fr", expected: "45,7 %" },
+  { text: "{{ 2.5 | round }} {{ -2.5 | round }} {{ 1.005 | round(2) }}", expected: "3 -3 1" },
+  { text: "{{ 0.1 + 0.2 }}", expected: 0.30000000000000004 },
+  { text: "{{ 0.1 + 0.2 }}!", expected: "0.30000000000000004!" },
+  { text: "{{ 1 / 3 }}", expected: 0.3333333333333333 },
+  { text: "{{ 1e21 | number }}", expected: "1e+21" },
+  { text: "{{ 123456789.125 | number(2) }}", expected: "123,456,789.13" },
+  { text: "{{ -0.0001 | number(2) }}", expected: "0.00" },
+  { text: "{{ 2 ** 3 }}", error: "syntax" },
+  { text: "{{ 7 % 3 * 2 - 1 }}", expected: 1 },
+  { text: "{{ github.createdAt | date }}", expected: "Jan 26, 2011" },
+  { text: "{{ github.createdAt | date }}", locale: "de", expected: "26.01.2011" },
+  { text: "{{ github.createdAt | date }}", locale: "fr", expected: "26 janv. 2011" },
+  { text: "{{ github.createdAt | date }}", locale: "es", expected: "26 ene 2011" },
+  { text: "{{ github.createdAt | date }}", locale: "cs", expected: "26. 1. 2011" },
+  {
+    text: "{{ github.createdAt | date('EEEE, d MMMM yyyy HH:mm:ss') }}",
+    expected: "Wednesday, 26 January 2011 19:01:12",
+  },
+  { text: "{{ github.createdAt | date('EEEE d. MMMM', 'cs') }}", expected: "středa 26. ledna" },
+  { text: "{{ github.updatedAt | date('yyyy-MM-dd HH:mm:ss') }}", expected: "2024-02-29 22:59:59" },
+  { text: "{{ epoch | date('yyyy-MM-dd HH:mm EEE') }}", expected: "2023-11-14 22:13 Tue" },
+  { text: "{{ epoch | date('h:mm a') }}", locale: "es", expected: "10:13 p. m." },
+  { text: "{{ '2024-02-30' | date }}", error: "invalid-date" },
+  { text: "{{ github.name | upper }}", expected: "ADA LÖVELACE" },
+  { text: "{{ github.name | lower }}", expected: "ada lövelace" },
+  { text: "{{ 'ß' | upper }}", expected: "SS" },
+  { text: "{{ github.bio | length }}", expected: 27 },
+  { text: "{{ github.bio | truncate(9) }}", expected: "Builds \u{1F680}…" },
+  { text: "{{ github.bio | first }}{{ github.bio | last }}", expected: "Bs" },
+  { text: "{{ 7 | padStart(3, '0') }}", expected: "007" },
+  { text: "{{ '  x  ' | trim }}", expected: "x" },
+  { text: "{{ github.my-label }}", expected: "hyphen" },
+  { text: "{{ github['my-label'] | upper }}", expected: "HYPHEN" },
+  { text: "{{ github.languages | length }}", expected: 3 },
+  {
+    text: "{{ github.languages[0].name }}: {{ github.languages[0].share | percent(1) }}",
+    expected: "TypeScript: 61.2%",
+  },
+  { text: "{{ github.languages | last }}", expected: { name: "Go", share: 0.1377 } },
+  { text: "{{ ['a', 'b', 'c'] | join(' · ') }}", expected: "a · b · c" },
+  { text: "{{ calendar.levels[calendar.weeks[1][2] > 20 ? 4 : 1] }}", expected: "#216e39" },
+  { text: "{{ calendar.levels[calendar.weeks[0][0] | clamp(0, 4)] }}", expected: "#ebedf0" },
+  { text: "{{ (calendar.weeks[0][2] / 3) | ceil | min(4) }}", expected: 4 },
+  { text: "{{ github.missing.deeper | default('n/a') }}", expected: "n/a" },
+  { text: "{{ empty ? 'some' : 'none' }}", expected: "none" },
+  { text: "{{ github.followers > 1000 && 'popular' || 'quiet' }}", expected: "popular" },
+  { text: "{{ 'b' > 'B' }} {{ 'a' < 'á' }}", expected: "true true" },
+  { text: "{{ github.constructor }}", expected: null },
+  { text: "{{ github.languages.length }}", expected: null },
+  { text: "{{ nope }}", error: "unknown-name" },
+  { text: "{{ github | upper }}", error: "type" },
+  { text: "{{ github.login + 1 }}", error: "type" },
+  { text: "{{ 1 / 0 }}", error: "not-finite" },
+  { text: "{{ 1 | number(0, 'tlh') }}", error: "unknown-locale" },
+  { text: "{{ 1 | eval }}", error: "unknown-filter" },
+];
