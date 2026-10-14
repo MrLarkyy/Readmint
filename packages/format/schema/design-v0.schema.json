@@ -1,0 +1,1663 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/MrLarkyy/Readmint/main/packages/format/schema/design-v0.schema.json",
+  "title": "Readmint design format v0",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "maxLength": 512
+    },
+    "version": {
+      "type": "integer",
+      "const": 0
+    },
+    "title": {
+      "type": "string",
+      "maxLength": 200
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 2000
+    },
+    "canvas": {
+      "type": "object",
+      "properties": {
+        "width": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 4096
+            },
+            {
+              "$ref": "#/$defs/Binding"
+            }
+          ]
+        },
+        "height": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 4096
+            },
+            {
+              "$ref": "#/$defs/Binding"
+            }
+          ]
+        },
+        "background": {
+          "$ref": "#/$defs/Paint"
+        }
+      },
+      "required": [
+        "width",
+        "height"
+      ],
+      "additionalProperties": false
+    },
+    "layers": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Layer"
+      }
+    },
+    "styles": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string",
+        "maxLength": 64,
+        "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/Style"
+      }
+    },
+    "assets": {
+      "type": "object",
+      "properties": {
+        "fonts": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "maxLength": 64,
+            "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/FontAsset"
+          }
+        },
+        "images": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "maxLength": 64,
+            "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/ImageAsset"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "components": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string",
+        "maxLength": 64,
+        "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/ComponentDefinition"
+      }
+    }
+  },
+  "required": [
+    "version",
+    "canvas",
+    "layers"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "Binding": {
+      "type": "string",
+      "maxLength": 2048,
+      "pattern": "^\\{\\{[\\s\\S]+\\}\\}$"
+    },
+    "Id": {
+      "type": "string",
+      "maxLength": 64,
+      "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
+    },
+    "Colour": {
+      "type": "string",
+      "maxLength": 9,
+      "pattern": "^#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$"
+    },
+    "Paint": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Colour"
+        },
+        {
+          "type": "string",
+          "const": "none"
+        },
+        {
+          "$ref": "#/$defs/Binding"
+        },
+        {
+          "$ref": "#/$defs/Gradient"
+        }
+      ]
+    },
+    "Gradient": {
+      "type": "object",
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "linear"
+            },
+            "x1": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                {
+                  "$ref": "#/$defs/Binding"
+                }
+              ]
+            },
+            "y1": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                {
+                  "$ref": "#/$defs/Binding"
+                }
+              ]
+            },
+            "x2": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                {
+                  "$ref": "#/$defs/Binding"
+                }
+              ]
+            },
+            "y2": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                {
+                  "$ref": "#/$defs/Binding"
+                }
+              ]
+            },
+            "stops": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/GradientStop"
+              },
+              "minItems": 2,
+              "maxItems": 32
+            }
+          },
+          "required": [
+            "type",
+            "stops"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "radial"
+            },
+            "cx": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                {
+                  "$ref": "#/$defs/Binding"
+                }
+              ]
+            },
+            "cy": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                {
+                  "$ref": "#/$defs/Binding"
+                }
+              ]
+            },
+            "r": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                {
+                  "$ref": "#/$defs/Binding"
+                }
+              ]
+            },
+            "stops": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/GradientStop"
+              },
+              "minItems": 2,
+              "maxItems": 32
+            }
+          },
+          "required": [
+            "type",
+            "stops"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "GradientStop": {
+      "type": "object",
+      "properties": {
+        "offset": {
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            {
+              "$ref": "#/$defs/Binding"
+            }
+          ]
+        },
+        "color": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Colour"
+            },
+            {
+              "$ref": "#/$defs/Binding"
+            }
+          ]
+        }
+      },
+      "required": [
+        "offset",
+        "color"
+      ],
+      "additionalProperties": false
+    },
+    "Style": {
+      "type": "object",
+      "properties": {
+        "fill": {
+          "$ref": "#/$defs/Paint"
+        },
+        "stroke": {
+          "$ref": "#/$defs/Paint"
+        },
+        "strokeWidth": {
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1000
+            },
+            {
+              "$ref": "#/$defs/Binding"
+            }
+          ]
+        },
+        "opacity": {
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            {
+              "$ref": "#/$defs/Binding"
+            }
+          ]
+        },
+        "font": {
+          "$ref": "#/$defs/Id"
+        },
+        "fontSize": {
+          "anyOf": [
+            {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 1000
+            },
+            {
+              "$ref": "#/$defs/Binding"
+            }
+          ]
+        },
+        "fontWeight": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000
+            },
+            {
+              "$ref": "#/$defs/Binding"
+            }
+          ]
+        },
+        "lineHeight": {
+          "anyOf": [
+            {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 10
+            },
+            {
+              "$ref": "#/$defs/Binding"
+            }
+          ]
+        },
+        "letterSpacing": {
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": -100,
+              "maximum": 100
+            },
+            {
+              "$ref": "#/$defs/Binding"
+            }
+          ]
+        },
+        "align": {
+          "type": "string",
+          "enum": [
+            "start",
+            "middle",
+            "end"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "Repeat": {
+      "type": "object",
+      "properties": {
+        "each": {
+          "$ref": "#/$defs/Binding"
+        },
+        "as": {
+          "$ref": "#/$defs/Id"
+        },
+        "index": {
+          "$ref": "#/$defs/Id"
+        }
+      },
+      "required": [
+        "each"
+      ],
+      "additionalProperties": false
+    },
+    "Layout": {
+      "type": "object",
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "absolute"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "stack"
+            },
+            "direction": {
+              "type": "string",
+              "enum": [
+                "row",
+                "column"
+              ]
+            },
+            "gap": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 100000
+                },
+                {
+                  "$ref": "#/$defs/Binding"
+                }
+              ]
+            },
+            "align": {
+              "type": "string",
+              "enum": [
+                "start",
+                "center",
+                "end"
+              ]
+            }
+          },
+          "required": [
+            "type",
+            "direction"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "grid"
+            },
+            "columns": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 1000
+                },
+                {
+                  "$ref": "#/$defs/Binding"
+                }
+              ]
+            },
+            "gap": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 100000
+                },
+                {
+                  "$ref": "#/$defs/Binding"
+                }
+              ]
+            }
+          },
+          "required": [
+            "type",
+            "columns"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "Layer": {
+      "type": "object",
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "group"
+            },
+            "id": {
+              "$ref": "#/$defs/Id"
+            },
+            "name": {
+              "type": "string",
+              "maxLength": 128
+            },
+            "x": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": -100000,
+                  "maximum": 100000
+                },
+                {
+                  "$ref": "#/$defs/Binding"
+                }
+              ]
+            },
+            "y": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": -100000,
+                  "maximum": 100000
+                },
+                {
+                  "$ref": "#/$defs/Binding"
+                }
+              ]
+            },
+            "opacity": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                {
+                  "$ref": "#/$defs/Binding"
+                }
+              ]
+            },
+            "rotation": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": -360,
+                  "maximum": 360
+                },
+                {
+                  "$ref": "#/$defs/Binding"
+                }
+              ]
+            },
+            "visible": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "$ref": "#/$defs/Binding"
+                }
+              ]
+            },
+            "style": {
+              "$ref": "#/$defs/Id"
+            },
+            "if": {
+              "$ref": "#/$defs/Binding"
+            },
+            "repeat": {
+              "$ref": "#/$defs/Repeat"
+            },
+            "children": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/Layer"
+              }
+            },
+            "width": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "exclusiveMinimum": 0,
+                  "maximum": 100000
+                },
+                {
+                  "$ref": "#/$defs/Binding"
+                }
+              ]
+            },
+            "height": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "exclusiveMinimum": 0,
+                  "maximum": 100000
+                },
+                {
+                  "$ref": "#/$defs/Binding"
+                }
+              ]
+            },
+            "clip": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "$ref": "#/$defs/Binding"
+                }
+              ]
+            },
+            "layout": {
+              "$ref": "#/$defs/Layout"
+            }
+          },
+          "required": [
+            "type",
+            "children"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "rect"
+            },
+            "id": {
+              "$ref": "#/$defs/Id"
+            },
+            "name": {
+              "type": "string",
+              "maxLength": 128
+            },
+            "x": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": -100000,
+                  "maximum": 100000
+                },
+                {
+                  "$ref": "#/$defs/Binding"
+                }
+              ]
+            },
+            "y": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": -100000,
+                  "maximum": 100000
+                },
+                {
+                  "$ref": "#/$defs/Binding"
+                }
+              ]
+            },
+            "opacity": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                {
+                  "$ref": "#/$defs/Binding"
+                }
+              ]
+            },
+            "rotation": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": -360,
+                  "maximum": 360
+                },
+                {
+                  "$ref": "#/$defs/Binding"
+                }
+              ]
+            },
+            "visible": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "$ref": "#/$defs/Binding"
+                }
+              ]
+            },
+            "style": {
+              "$ref": "#/$defs/Id"
+            },
+            "if": {
+              "$ref": "#/$defs/Binding"
+            },
+            "repeat": {
+              "$ref": "#/$defs/Repeat"
+            },
+            "width": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "exclusiveMinimum": 0,
+                  "maximum": 100000
+                },
+                {
+                  "$ref": "#/$defs/Binding"
+                }
+              ]
+            },
+            "height": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "exclusiveMinimum": 0,
+                  "maximum": 100000
+                },
+                {
+                  "$ref": "#/$defs/Binding"
+                }
+              ]
+            },
+            "radius": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 100000
+                },
+                {
+                  "$ref": "#/$defs/Binding"
+                }
+              ]
+            },
+            "fill": {
+              "$ref": "#/$defs/Paint"
+            },
+            "stroke": {
+              "$ref": "#/$defs/Paint"
+            },
+            "strokeWidth": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1000
+                },
+                {
+                  "$ref": "#/$defs/Binding"
+                }
+              ]
+            }
+          },
+          "required": [
+            "type",
+            "width",
+            "height"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "ellipse"
+            },
+            "id": {
+              "$ref": "#/$defs/Id"
+            },
+            "name": {
+              "type": "string",
+              "maxLength": 128
+            },
+            "x": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": -100000,
+                  "maximum": 100000
+                },
+                {
+                  "$ref": "#/$defs/Binding"
+                }
+              ]
+            },
+            "y": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": -100000,
+                  "maximum": 100000
+                },
+                {
+                  "$ref": "#/$defs/Binding"
+                }
+              ]
+            },
+            "opacity": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                {
+                  "$ref": "#/$defs/Binding"
+                }
+              ]
+            },
+            "rotation": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": -360,
+                  "maximum": 360
+                },
+                {
+                  "$ref": "#/$defs/Binding"
+                }
+              ]
+            },
+            "visible": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "$ref": "#/$defs/Binding"
+                }
+              ]
+            },
+            "style": {
+              "$ref": "#/$defs/Id"
+            },
+            "if": {
+              "$ref": "#/$defs/Binding"
+            },
+            "repeat": {
+              "$ref": "#/$defs/Repeat"
+            },
+            "width": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "exclusiveMinimum": 0,
+                  "maximum": 100000
+                },
+                {
+                  "$ref": "#/$defs/Binding"
+                }
+              ]
+            },
+            "height": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "exclusiveMinimum": 0,
+                  "maximum": 100000
+                },
+                {
+                  "$ref": "#/$defs/Binding"
+                }
+              ]
+            },
+            "fill": {
+              "$ref": "#/$defs/Paint"
+            },
+            "stroke": {
+              "$ref": "#/$defs/Paint"
+            },
+            "strokeWidth": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1000
+                },
+                {
+                  "$ref": "#/$defs/Binding"
+                }
+              ]
+            }
+          },
+          "required": [
+            "type",
+            "width",
+            "height"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "path"
+            },
+            "id": {
+              "$ref": "#/$defs/Id"
+            },
+            "name": {
+              "type": "string",
+              "maxLength": 128
+            },
+            "x": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": -100000,
+                  "maximum": 100000
+                },
+                {
+                  "$ref": "#/$defs/Binding"
+                }
+              ]
+            },
+            "y": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": -100000,
+                  "maximum": 100000
+                },
+                {
+                  "$ref": "#/$defs/Binding"
+                }
+              ]
+            },
+            "opacity": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                {
+                  "$ref": "#/$defs/Binding"
+                }
+              ]
+            },
+            "rotation": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": -360,
+                  "maximum": 360
+                },
+                {
+                  "$ref": "#/$defs/Binding"
+                }
+              ]
+            },
+            "visible": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "$ref": "#/$defs/Binding"
+                }
+              ]
+            },
+            "style": {
+              "$ref": "#/$defs/Id"
+            },
+            "if": {
+              "$ref": "#/$defs/Binding"
+            },
+            "repeat": {
+              "$ref": "#/$defs/Repeat"
+            },
+            "d": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100000,
+              "pattern": "^[MmLlHhVvCcSsQqTtAaZz0-9eE.,+\\s-]+$"
+            },
+            "fill": {
+              "$ref": "#/$defs/Paint"
+            },
+            "stroke": {
+              "$ref": "#/$defs/Paint"
+            },
+            "strokeWidth": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1000
+                },
+                {
+                  "$ref": "#/$defs/Binding"
+                }
+              ]
+            }
+          },
+          "required": [
+            "type",
+            "d"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "text"
+            },
+            "id": {
+              "$ref": "#/$defs/Id"
+            },
+            "name": {
+              "type": "string",
+              "maxLength": 128
+            },
+            "x": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": -100000,
+                  "maximum": 100000
+                },
+                {
+                  "$ref": "#/$defs/Binding"
+                }
+              ]
+            },
+            "y": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": -100000,
+                  "maximum": 100000
+                },
+                {
+                  "$ref": "#/$defs/Binding"
+                }
+              ]
+            },
+            "opacity": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                {
+                  "$ref": "#/$defs/Binding"
+                }
+              ]
+            },
+            "rotation": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": -360,
+                  "maximum": 360
+                },
+                {
+                  "$ref": "#/$defs/Binding"
+                }
+              ]
+            },
+            "visible": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "$ref": "#/$defs/Binding"
+                }
+              ]
+            },
+            "style": {
+              "$ref": "#/$defs/Id"
+            },
+            "if": {
+              "$ref": "#/$defs/Binding"
+            },
+            "repeat": {
+              "$ref": "#/$defs/Repeat"
+            },
+            "content": {
+              "type": "string",
+              "maxLength": 10000
+            },
+            "width": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "exclusiveMinimum": 0,
+                  "maximum": 100000
+                },
+                {
+                  "$ref": "#/$defs/Binding"
+                }
+              ]
+            },
+            "fill": {
+              "$ref": "#/$defs/Paint"
+            },
+            "font": {
+              "$ref": "#/$defs/Id"
+            },
+            "fontSize": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "exclusiveMinimum": 0,
+                  "maximum": 1000
+                },
+                {
+                  "$ref": "#/$defs/Binding"
+                }
+              ]
+            },
+            "fontWeight": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 1000
+                },
+                {
+                  "$ref": "#/$defs/Binding"
+                }
+              ]
+            },
+            "lineHeight": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "exclusiveMinimum": 0,
+                  "maximum": 10
+                },
+                {
+                  "$ref": "#/$defs/Binding"
+                }
+              ]
+            },
+            "letterSpacing": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": -100,
+                  "maximum": 100
+                },
+                {
+                  "$ref": "#/$defs/Binding"
+                }
+              ]
+            },
+            "align": {
+              "type": "string",
+              "enum": [
+                "start",
+                "middle",
+                "end"
+              ]
+            }
+          },
+          "required": [
+            "type",
+            "content"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "image"
+            },
+            "id": {
+              "$ref": "#/$defs/Id"
+            },
+            "name": {
+              "type": "string",
+              "maxLength": 128
+            },
+            "x": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": -100000,
+                  "maximum": 100000
+                },
+                {
+                  "$ref": "#/$defs/Binding"
+                }
+              ]
+            },
+            "y": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": -100000,
+                  "maximum": 100000
+                },
+                {
+                  "$ref": "#/$defs/Binding"
+                }
+              ]
+            },
+            "opacity": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                {
+                  "$ref": "#/$defs/Binding"
+                }
+              ]
+            },
+            "rotation": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": -360,
+                  "maximum": 360
+                },
+                {
+                  "$ref": "#/$defs/Binding"
+                }
+              ]
+            },
+            "visible": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "$ref": "#/$defs/Binding"
+                }
+              ]
+            },
+            "style": {
+              "$ref": "#/$defs/Id"
+            },
+            "if": {
+              "$ref": "#/$defs/Binding"
+            },
+            "repeat": {
+              "$ref": "#/$defs/Repeat"
+            },
+            "asset": {
+              "$ref": "#/$defs/Id"
+            },
+            "width": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "exclusiveMinimum": 0,
+                  "maximum": 100000
+                },
+                {
+                  "$ref": "#/$defs/Binding"
+                }
+              ]
+            },
+            "height": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "exclusiveMinimum": 0,
+                  "maximum": 100000
+                },
+                {
+                  "$ref": "#/$defs/Binding"
+                }
+              ]
+            },
+            "fit": {
+              "type": "string",
+              "enum": [
+                "contain",
+                "cover",
+                "fill"
+              ]
+            },
+            "alt": {
+              "type": "string",
+              "maxLength": 500
+            }
+          },
+          "required": [
+            "type",
+            "asset",
+            "width",
+            "height"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "component"
+            },
+            "id": {
+              "$ref": "#/$defs/Id"
+            },
+            "name": {
+              "type": "string",
+              "maxLength": 128
+            },
+            "x": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": -100000,
+                  "maximum": 100000
+                },
+                {
+                  "$ref": "#/$defs/Binding"
+                }
+              ]
+            },
+            "y": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": -100000,
+                  "maximum": 100000
+                },
+                {
+                  "$ref": "#/$defs/Binding"
+                }
+              ]
+            },
+            "opacity": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                {
+                  "$ref": "#/$defs/Binding"
+                }
+              ]
+            },
+            "rotation": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": -360,
+                  "maximum": 360
+                },
+                {
+                  "$ref": "#/$defs/Binding"
+                }
+              ]
+            },
+            "visible": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "$ref": "#/$defs/Binding"
+                }
+              ]
+            },
+            "style": {
+              "$ref": "#/$defs/Id"
+            },
+            "if": {
+              "$ref": "#/$defs/Binding"
+            },
+            "repeat": {
+              "$ref": "#/$defs/Repeat"
+            },
+            "ref": {
+              "$ref": "#/$defs/Id"
+            },
+            "width": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "exclusiveMinimum": 0,
+                  "maximum": 100000
+                },
+                {
+                  "$ref": "#/$defs/Binding"
+                }
+              ]
+            },
+            "height": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "exclusiveMinimum": 0,
+                  "maximum": 100000
+                },
+                {
+                  "$ref": "#/$defs/Binding"
+                }
+              ]
+            },
+            "props": {
+              "type": "object",
+              "propertyNames": {
+                "type": "string",
+                "maxLength": 64,
+                "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
+              },
+              "additionalProperties": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "maxLength": 10000
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "boolean"
+                  }
+                ]
+              }
+            }
+          },
+          "required": [
+            "type",
+            "ref"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "FontAsset": {
+      "type": "object",
+      "properties": {
+        "family": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "src": {
+          "$ref": "#/$defs/FontSource"
+        },
+        "weight": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000
+        },
+        "style": {
+          "type": "string",
+          "enum": [
+            "normal",
+            "italic"
+          ]
+        },
+        "licence": {
+          "type": "object",
+          "properties": {
+            "embedding": {
+              "type": "string",
+              "enum": [
+                "allowed",
+                "restricted"
+              ]
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          },
+          "required": [
+            "embedding"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "family",
+        "src",
+        "licence"
+      ],
+      "additionalProperties": false
+    },
+    "FontSource": {
+      "anyOf": [
+        {
+          "type": "string",
+          "maxLength": 1024,
+          "pattern": "^(?!/)(?!(?:[\\s\\S]*/)?\\.\\.(?:/|$))[^\\\\:\\u0000-\\u001f\\u007f?#%]+\\.(?:[tT][tT][fF]|[oO][tT][fF]|[wW][oO][fF][fF]|[wW][oO][fF][fF]2)$"
+        },
+        {
+          "type": "string",
+          "maxLength": 4194304,
+          "pattern": "^data:font/(?:ttf|otf|woff|woff2);base64,[A-Za-z0-9+/]+={0,2}$"
+        }
+      ]
+    },
+    "ImageAsset": {
+      "type": "object",
+      "properties": {
+        "src": {
+          "$ref": "#/$defs/ImageSource"
+        },
+        "width": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 100000
+        },
+        "height": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 100000
+        }
+      },
+      "required": [
+        "src"
+      ],
+      "additionalProperties": false
+    },
+    "ImageSource": {
+      "anyOf": [
+        {
+          "type": "string",
+          "maxLength": 1024,
+          "pattern": "^(?!/)(?!(?:[\\s\\S]*/)?\\.\\.(?:/|$))[^\\\\:\\u0000-\\u001f\\u007f?#%]+\\.(?:[pP][nN][gG]|[jJ][pP][gG]|[jJ][pP][eE][gG]|[gG][iI][fF]|[wW][eE][bB][pP])$"
+        },
+        {
+          "type": "string",
+          "maxLength": 4194304,
+          "pattern": "^data:image/(?:png|jpeg|gif|webp);base64,[A-Za-z0-9+/]+={0,2}$"
+        }
+      ]
+    },
+    "ComponentDefinition": {
+      "type": "object",
+      "properties": {
+        "description": {
+          "type": "string",
+          "maxLength": 2000
+        },
+        "width": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 100000
+        },
+        "height": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 100000
+        },
+        "props": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "maxLength": 64,
+            "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/ComponentProp"
+          }
+        },
+        "layers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Layer"
+          }
+        }
+      },
+      "required": [
+        "layers"
+      ],
+      "additionalProperties": false
+    },
+    "ComponentProp": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "string",
+            "number",
+            "boolean",
+            "color"
+          ]
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "default": {
+          "anyOf": [
+            {
+              "type": "string",
+              "maxLength": 10000
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            }
+          ]
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

@@ -13,7 +13,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "vitest run",
-    "golden:update": "vitest run --mode golden-update --project node"
+    "golden:update": "vitest run --mode golden-update --project node",
+    "schema:update": "vitest run --mode schema-update --project node packages/format/test/schemaFile.test.ts"
   },
   "devDependencies": {
     "@eslint/js": "9.39.5",

@@ -1,0 +1,6 @@
+[
+  {
+    "path": "/components/b/layers/0/children/0/ref",
+    "code": "component-cycle"
+  }
+]

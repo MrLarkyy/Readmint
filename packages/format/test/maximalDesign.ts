@@ -1,0 +1,162 @@
+import type { Design } from "../src/index.js";
+
+const common = {
+  name: "Layer",
+  x: 1,
+  y: "{{pos.y}}",
+  opacity: 0.9,
+  rotation: -15,
+  visible: true,
+  style: "card",
+  if: "{{show}}",
+  repeat: { each: "{{items}}", as: "item", index: "n" },
+} as const;
+
+/** Every optional property of the format set at least once; must stay valid. */
+export const maximalDesign = {
+  $schema:
+    "https://raw.githubusercontent.com/MrLarkyy/Readmint/main/packages/format/schema/design-v0.schema.json",
+  version: 0,
+  title: "Maximal",
+  description: "Every optional property.",
+  canvas: {
+    width: 4096,
+    height: "{{size.height}}",
+    background: {
+      type: "linear",
+      x1: 0,
+      y1: 0,
+      x2: 1,
+      y2: "{{g.y2}}",
+      stops: [
+        { offset: 0, color: "#000" },
+        { offset: "{{g.mid}}", color: "{{g.color}}" },
+      ],
+    },
+  },
+  styles: {
+    card: {
+      fill: {
+        type: "radial",
+        cx: 0.5,
+        cy: 0.5,
+        r: 1,
+        stops: [
+          { offset: 0, color: "#fff" },
+          { offset: 1, color: "#0000" },
+        ],
+      },
+      stroke: "none",
+      strokeWidth: 1,
+      opacity: 1,
+      font: "body",
+      fontSize: 12,
+      fontWeight: 700,
+      lineHeight: 1.4,
+      letterSpacing: -0.5,
+      align: "middle",
+    },
+  },
+  assets: {
+    fonts: {
+      body: {
+        family: "Body",
+        src: "fonts/body.otf",
+        weight: 400,
+        style: "italic",
+        licence: { embedding: "allowed", name: "OFL-1.1" },
+      },
+    },
+    images: { photo: { src: "images/photo.webp", width: 64, height: 64 } },
+  },
+  components: {
+    chip: {
+      description: "A chip.",
+      width: 40,
+      height: 16,
+      props: {
+        label: { type: "string", required: true, default: "chip" },
+        size: { type: "number", required: false, default: 1 },
+        on: { type: "boolean", default: false },
+        tint: { type: "color", default: "#123456" },
+      },
+      layers: [{ type: "rect", width: 40, height: 16, fill: "{{props.tint}}" }],
+    },
+  },
+  layers: [
+    {
+      type: "group",
+      id: "group",
+      ...common,
+      width: 100,
+      height: 100,
+      clip: false,
+      layout: { type: "stack", direction: "row", gap: 2, align: "end" },
+      children: [
+        {
+          type: "rect",
+          id: "rect",
+          ...common,
+          width: 1,
+          height: 1,
+          radius: 2,
+          fill: "#fff",
+          stroke: "#000",
+          strokeWidth: 1,
+        },
+        {
+          type: "ellipse",
+          id: "ellipse",
+          ...common,
+          width: 1,
+          height: 1,
+          fill: "#fff",
+          stroke: "#000",
+          strokeWidth: 1,
+        },
+        {
+          type: "path",
+          id: "path",
+          ...common,
+          d: "M 0,0 C 1 2 3 4 5e1 -6.5 z",
+          fill: "none",
+          stroke: "#000",
+          strokeWidth: 1,
+        },
+        {
+          type: "text",
+          id: "text",
+          ...common,
+          content: "{{item.name}}",
+          width: 80,
+          fill: "#fff",
+          font: "body",
+          fontSize: 10,
+          fontWeight: 400,
+          lineHeight: 1,
+          letterSpacing: 0,
+          align: "end",
+        },
+        {
+          type: "image",
+          id: "image",
+          ...common,
+          asset: "photo",
+          width: 8,
+          height: 8,
+          fit: "cover",
+          alt: "A photo",
+        },
+        {
+          type: "component",
+          id: "component",
+          ...common,
+          ref: "chip",
+          width: 40,
+          height: 16,
+          props: { label: "Hi", size: 2, on: true, tint: "{{theme.tint}}" },
+        },
+      ],
+    },
+  ],
+} as const satisfies Design;

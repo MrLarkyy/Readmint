@@ -1,0 +1,15 @@
+{
+  "version": 0,
+  "canvas": {
+    "width": 10,
+    "height": 10
+  },
+  "layers": [],
+  "assets": {
+    "images": {
+      "logo": {
+        "src": "images/%2e%2e/secret.png"
+      }
+    }
+  }
+}

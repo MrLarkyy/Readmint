@@ -1,0 +1,7 @@
+version: 0
+canvas: { width: 10, height: 10 }
+layers:
+  - type: rect
+    width: .inf
+    height: 10
+    opacity: .nan

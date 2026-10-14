@@ -1,0 +1,219 @@
+import { describe, expect, test } from "vitest";
+import { DesignLimits, designJsonSchema, validateDesign } from "../src/index.js";
+import { maximalDesign } from "./maximalDesign.js";
+
+const base = () => ({ version: 0, canvas: { width: 10, height: 10 }, layers: [] as unknown[] });
+const rect = (extra: Record<string, unknown> = {}) => ({
+  type: "rect",
+  width: 1,
+  height: 1,
+  ...extra,
+});
+
+function issuesOf(value: unknown) {
+  const result = validateDesign(value);
+  if (result.ok) throw new Error("expected issues");
+  return result;
+}
+
+describe("validateDesign", () => {
+  test("a design with every optional property set is valid", () => {
+    expect(validateDesign(maximalDesign)).toEqual({ ok: true, value: maximalDesign });
+  });
+
+  test("returns the caller's object and never changes it", () => {
+    const input = { ...base(), layers: [rect()] };
+    const before = structuredClone(input);
+    const result = validateDesign(input);
+    expect(result.ok && result.value).toBe(input);
+    expect(input).toEqual(before);
+  });
+
+  test("record keys are escaped in pointers", () => {
+    expect(issuesOf({ ...base(), styles: { "a/b~c": {} } }).issues).toMatchObject([
+      { path: "/styles/a~1b~0c", code: "pattern" },
+    ]);
+  });
+
+  test("an over-long or control-character key is reported at its parent", () => {
+    const long = "k".repeat(200);
+    const result = issuesOf({ ...base(), [long]: 1, "line\nbreak": 2 });
+    expect(result.issues.map(({ path, code }) => ({ path, code }))).toEqual([
+      { path: "", code: "unknown-property" },
+      { path: "", code: "unknown-property" },
+    ]);
+    expect(result.issues[1]?.message).toBe('unknown property "line\\nbreak"');
+  });
+
+  test("a __proto__ key is an unknown property and pollutes nothing", () => {
+    const value = JSON.parse(
+      '{"version":0,"canvas":{"width":1,"height":1},"layers":[],"__proto__":{"polluted":1},' +
+        '"styles":{"__proto__":{"fill":"#fff"}}}',
+    ) as unknown;
+    expect(issuesOf(value).issues).toMatchObject([
+      { path: "/__proto__", code: "unknown-property" },
+      { path: "/styles/__proto__", code: "pattern" },
+    ]);
+    expect(({} as Record<string, unknown>)["polluted"]).toBeUndefined();
+    expect(Object.prototype).not.toHaveProperty("polluted");
+  });
+
+  test("issues come in document order, identical on every run", () => {
+    const value = {
+      ...base(),
+      layers: [rect({ fill: "red", zzz: 1 }), rect({ opacity: 3 })],
+      title: 1,
+    };
+    const first = issuesOf(value).issues;
+    expect(first.map((issue) => issue.path)).toEqual([
+      "/layers/0/fill",
+      "/layers/0/zzz",
+      "/layers/1/opacity",
+      "/title",
+    ]);
+    expect(issuesOf(value).issues).toEqual(first);
+  });
+
+  test("more than maxIssues issues are capped and marked truncated", () => {
+    const layers = Array.from({ length: 150 }, () => rect({ extra: true }));
+    const result = issuesOf({ ...base(), layers });
+    expect(result.issues).toHaveLength(DesignLimits.maxIssues);
+    expect(result.truncated).toBe(true);
+  });
+
+  test("a non-JSON value is a type issue", () => {
+    expect(issuesOf({ ...base(), title: new Date(0) }).issues).toMatchObject([
+      { path: "/title", code: "type" },
+    ]);
+    expect(issuesOf(new Map()).issues).toMatchObject([{ path: "", code: "type" }]);
+  });
+
+  test("a bindable property names both accepted forms", () => {
+    expect(issuesOf({ ...base(), layers: [rect({ opacity: "half" })] }).issues).toEqual([
+      { path: "/layers/0/opacity", code: "type", message: "expected a number or a {{binding}}" },
+    ]);
+    expect(issuesOf({ ...base(), layers: [rect({ opacity: "{{x" })] }).issues).toMatchObject([
+      { path: "/layers/0/opacity", code: "pattern" },
+    ]);
+  });
+});
+
+describe("limits", () => {
+  test("more than maxLayers layers fail", () => {
+    const layers = Array.from({ length: DesignLimits.maxLayers + 1 }, () => rect());
+    expect(issuesOf({ ...base(), layers }).issues).toMatchObject([
+      { path: "/layers", code: "too-many-layers" },
+    ]);
+    expect(validateDesign({ ...base(), layers: layers.slice(1) }).ok).toBe(true);
+  });
+
+  test("component instances count with their expanded layers", () => {
+    const hundred = Array.from({ length: 100 }, () => rect());
+    const refs = Array.from({ length: 100 }, () => ({ type: "component", ref: "inner" }));
+    const value = {
+      ...base(),
+      components: { inner: { layers: hundred }, outer: { layers: refs } },
+      layers: [{ type: "component", ref: "outer" }],
+    };
+    expect(issuesOf(value).issues).toMatchObject([{ code: "too-many-layers" }]);
+  });
+
+  test("a cyclic or massively shared object fails without hanging", () => {
+    const layers: unknown[] = [];
+    layers.push(layers, layers);
+    expect(issuesOf({ ...base(), layers }).issues).toMatchObject([{ code: "too-deep" }]);
+
+    const shared = Array.from({ length: 1000 }, () => 0);
+    const wide = Array.from({ length: 1001 }, () => shared);
+    expect(issuesOf({ ...base(), layers: wide }).issues).toMatchObject([{ code: "too-large" }]);
+  });
+
+  test("nesting deeper than maxDepth fails", () => {
+    let layer: Record<string, unknown> = rect();
+    for (let level = 0; level < 40; level++) layer = { type: "group", children: [layer] };
+    expect(issuesOf({ ...base(), layers: [layer] }).issues).toMatchObject([
+      { path: "", code: "too-deep" },
+    ]);
+  });
+
+  test("messages never echo more than maxEcho characters of an input value", () => {
+    const long = "Z".repeat(500);
+    const value = {
+      ...base(),
+      [long]: 1,
+      title: long,
+      styles: { [long]: {} },
+      layers: [
+        rect({ fill: long, fit: long, style: long }),
+        { type: long },
+        { type: "image", asset: "a", width: 1, height: 1, fit: long },
+      ],
+    };
+    const { issues } = issuesOf(value);
+    expect(issues.length).toBeGreaterThan(5);
+    for (const issue of issues) {
+      expect(issue.message).not.toMatch(/Z{64}/u);
+      expect(issue.path).not.toMatch(/Z{65}/u);
+    }
+  });
+});
+
+describe("hostile strings", () => {
+  const megabyte = 1 << 20;
+  const hostile = [
+    "a".repeat(megabyte),
+    `{{${"}".repeat(megabyte)}x`,
+    `{{${"{".repeat(megabyte)}`,
+    `#${"0".repeat(megabyte)}`,
+    `${"a/".repeat(megabyte / 2)}..`,
+    `${"../".repeat(megabyte / 3)}x.png`,
+    `${"/".repeat(megabyte)}x.png`,
+    `data:image/png;base64,${"A".repeat(megabyte)}!`,
+    `M${"0 ".repeat(megabyte / 2)}<`,
+    `${" ".repeat(megabyte)}!`,
+  ];
+
+  test("every schema pattern runs in linear time", () => {
+    const patterns = collectPatterns(designJsonSchema);
+    expect(patterns.length).toBeGreaterThan(6);
+    for (const pattern of patterns) {
+      const regex = new RegExp(pattern, "u");
+      for (const value of hostile) {
+        const started = performance.now();
+        regex.test(value);
+        expect(performance.now() - started, `${pattern} on ${value.slice(0, 20)}`).toBeLessThan(
+          200,
+        );
+      }
+    }
+  });
+
+  test("validation of a design full of hostile strings stays fast", () => {
+    for (const value of hostile) {
+      const design = {
+        ...base(),
+        title: value,
+        assets: { images: { a: { src: value } } },
+        styles: { s: { fill: value } },
+        layers: [
+          { type: "path", d: value, fill: value },
+          { type: "text", content: value, font: value, opacity: value, if: value },
+          { type: "image", asset: value, width: 1, height: 1 },
+        ],
+      };
+      const started = performance.now();
+      expect(validateDesign(design).ok).toBe(false);
+      expect(performance.now() - started).toBeLessThan(200);
+    }
+  });
+});
+
+function collectPatterns(node: unknown, found: string[] = []): string[] {
+  if (Array.isArray(node)) for (const item of node) collectPatterns(item, found);
+  else if (typeof node === "object" && node !== null)
+    for (const [key, value] of Object.entries(node)) {
+      if (key === "pattern" && typeof value === "string") found.push(value);
+      else collectPatterns(value, found);
+    }
+  return found;
+}

@@ -1,0 +1,34 @@
+{
+  "version": 0,
+  "canvas": {
+    "width": 100,
+    "height": 100
+  },
+  "layers": [
+    {
+      "type": "component",
+      "ref": "c",
+      "props": {
+        "label": "x",
+        "colour": "#fff"
+      }
+    }
+  ],
+  "components": {
+    "c": {
+      "props": {
+        "label": {
+          "type": "string",
+          "required": true
+        },
+        "n": {
+          "type": "number"
+        },
+        "tint": {
+          "type": "color"
+        }
+      },
+      "layers": []
+    }
+  }
+}

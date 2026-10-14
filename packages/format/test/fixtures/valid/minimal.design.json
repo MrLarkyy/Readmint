@@ -1,0 +1,6 @@
+{
+  "$schema": "https://raw.githubusercontent.com/MrLarkyy/Readmint/main/packages/format/schema/design-v0.schema.json",
+  "version": 0,
+  "canvas": { "width": 100, "height": 50 },
+  "layers": []
+}

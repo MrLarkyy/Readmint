@@ -1,0 +1,7 @@
+version: 0
+canvas: { width: 10, height: 10 }
+layers:
+  - type: rect
+    width: 10
+    height: 10
+    visible: yes
