@@ -107,7 +107,7 @@ function resolveGradient(
 
 /**
  * ` fill="..."` (or stroke) plus `fill-opacity` when the colour has alpha; a gradient refers to its definition in
- * `<defs>`, written once per distinct gradient under a `g<hash>` id. Empty when the paint is undefined.
+ * `<defs>`, written once per distinct gradient under a document-prefixed `d<hash>-g<hash>` id. Empty when the paint is undefined.
  */
 export function paintAttributes(
   writer: SvgWriter,

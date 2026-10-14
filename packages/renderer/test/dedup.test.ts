@@ -124,13 +124,13 @@ describe("images", () => {
     expect(occurrences(svg, "<image")).toBe(1);
     expect(occurrences(svg, "<symbol")).toBe(1);
     expect(svg).toMatch(
-      /<image id="i[0-9a-z]{7}" width="24" height="16" href="data:image\/png;base64,/u,
+      /<image id="d[0-9a-z]{7}-i[0-9a-z]{7}" width="24" height="16" href="data:image\/png;base64,/u,
     );
     expect(svg).toMatch(
-      /<symbol id="s[0-9a-z]{7}" viewBox="0 0 24 16" preserveAspectRatio="xMidYMid meet"><use href="#i[0-9a-z]{7}"\/><\/symbol>/u,
+      /<symbol id="d[0-9a-z]{7}-s[0-9a-z]{7}" viewBox="0 0 24 16" preserveAspectRatio="xMidYMid meet"><use href="#d[0-9a-z]{7}-i[0-9a-z]{7}"\/><\/symbol>/u,
     );
     expect(
-      svg.match(/<use href="#s[0-9a-z]{7}" x="0" y="0" width="30" height="20"\/>/gu),
+      svg.match(/<use href="#d[0-9a-z]{7}-s[0-9a-z]{7}" x="0" y="0" width="30" height="20"\/>/gu),
     ).toHaveLength(3);
   });
 
@@ -149,7 +149,7 @@ describe("images", () => {
     });
     expect(occurrences(svg, "data:image/png")).toBe(1);
     expect(occurrences(svg, "<symbol")).toBe(1);
-    expect(occurrences(svg, '<use href="#s')).toBe(2);
+    expect(svg.split(/<use href="#d[0-9a-z]{7}-s/u).length - 1).toBe(2);
   });
 
   test("one asset in two fits has one image definition and a symbol per fit", () => {
@@ -158,7 +158,9 @@ describe("images", () => {
     expect(occurrences(svg, "<image id=")).toBe(1);
     expect(occurrences(svg, "<symbol")).toBe(3);
     for (const aspect of ["xMidYMid meet", "xMidYMid slice", "none"]) {
-      expect(svg).toContain(`preserveAspectRatio="${aspect}"><use href="#i`);
+      expect(svg).toMatch(
+        new RegExp(`preserveAspectRatio="${aspect}"><use href="#d[0-9a-z]{7}-i`, "u"),
+      );
     }
   });
 
@@ -171,7 +173,7 @@ describe("images", () => {
     const svg = rendered([image({ x: 10, y: 20, rotation: 30, opacity: 0.5, ...repeated })], {}, 2);
     expect(
       svg.match(
-        /<use href="#s[0-9a-z]{7}" x="10" y="20" width="30" height="20" opacity="0.5" transform="rotate\(30 25 30\)"\/>/gu,
+        /<use href="#d[0-9a-z]{7}-s[0-9a-z]{7}" x="10" y="20" width="30" height="20" opacity="0.5" transform="rotate\(30 25 30\)"\/>/gu,
       ),
     ).toHaveLength(2);
   });
@@ -184,7 +186,7 @@ describe("images", () => {
       image({ x: 44, y: 44, width: 36, height: 20, fit: "cover", rotation: 25 }),
     ];
     const svg = rendered(layers);
-    expect(occurrences(svg, '<use href="#s')).toBe(4);
+    expect(svg.split(/<use href="#d[0-9a-z]{7}-s/u).length - 1).toBe(4);
     // The inline form of the same picture: every <use> replaced by the <image> one use alone would write.
     const data = /href="(data:[^"]+)"/u.exec(svg)?.[1] ?? "";
     const aspects = new Map(

@@ -126,8 +126,8 @@ Drawn in document order, first at the back. Layer `id` and `name` are not emitte
 - `fit`: `contain` (default) = `preserveAspectRatio="xMidYMid meet"`, `cover` = `xMidYMid slice`, `fill` = `none`.
   `alt` becomes `aria-label`.
 - An image drawn once is an `<image>` holding its data URI. Image data drawn more than once (a `repeat`, several
-  layers, or several assets with the same bytes) is written once: an `<image id="i<hash>">` at its own pixel size in
-  `<defs>`, one `<symbol id="s<hash>">` per `fit` that shows it (its `viewBox` and `preserveAspectRatio` do what the
+  layers, or several assets with the same bytes) is written once: an `<image id="d<hash>-i<hash>">` at its own pixel size in
+  `<defs>`, one `<symbol id="d<hash>-s<hash>">` per `fit` that shows it (its `viewBox` and `preserveAspectRatio` do what the
   inline image does, its viewport clips like `cover`), and per layer a `<use>` with the layer's `x y width height`,
   opacity and rotation. A `<use>` with an `alt` gets `role="img"` beside its `aria-label`, so it keeps the accessible
   name an `<image>` has. Animation classes and transform groups apply to the `<use>` as to an `<image>`. An image
@@ -199,10 +199,13 @@ the canvas background and the layers.
 - Every definition is written once however often it is used: identical gradients (fills, strokes, text fills, the
   canvas background), clip paths of one size and image data drawn more than once each share one element. Its id is a
   letter (`g` gradient, `c` clip path, `i` image, `s` image symbol) and a 7-character base-36 FNV-1a hash of its
-  markup, so the same definition gets the same id in every render and every document, whatever the order of use;
-  two different definitions of one document whose hashes clash get `-1`, `-2`, ... in order of use. Two different
-  Readmint SVGs inlined into one page therefore only share an id where both define the same thing (up to a 32-bit
-  hash clash); a per-document id prefix is not written yet.
+  markup, whatever the order of use; two different definitions of one document whose hashes clash get `-1`, `-2`, ...
+  in order of use. Every id is prefixed `d<hash>-`, the same hash function over the document before the prefix
+  is written in, so two different Readmint SVGs inlined into one page get different ids (`d<hash>-g<hash>`), barring a
+  32-bit hash clash. Two byte-identical documents share their ids, and the renderer cannot change that (the same input
+  gives the same bytes): an embedder must not hide a copy with `display:none`, because in Chromium the visible copy's
+  gradient and clip-path `url(#...)` references then resolve to the hidden copy's definitions and break. Hide a copy
+  with `visibility`, off-screen placement or `opacity: 0`, or rewrite the ids per copy.
 
 - No `<script>`, no event attributes, no `foreignObject`, no external reference: every `href` is a `data:image/...`
   URI or a `#fragment` of the same document, every `url()` a `#fragment` or (in the style) a `data:font/...` URI;
