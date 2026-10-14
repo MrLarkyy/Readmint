@@ -178,8 +178,9 @@ describe("YAML source", () => {
   );
 
   /**
-   * Times a source against a linear twin: both warmed up once, then three rounds of the two back
-   * to back, so a change in machine load hits both sides of each ratio alike.
+   * Times a source against a linear twin: both warmed up once, then five rounds of the two back
+   * to back. The ratio is the smallest of the rounds: a load spike inflates one side of a round, while
+   * a real regression is steady, so it shows in every round.
    */
   function compareWithTwin<T>(
     run: () => T,
@@ -189,7 +190,7 @@ describe("YAML source", () => {
     twin();
     const times: number[] = [];
     const ratios: number[] = [];
-    for (let round = 0; round < 3; round++) {
+    for (let round = 0; round < 5; round++) {
       const started = performance.now();
       result = run();
       const middle = performance.now();
@@ -197,8 +198,9 @@ describe("YAML source", () => {
       times.push(middle - started);
       ratios.push((middle - started) / (performance.now() - middle));
     }
-    const median = (values: number[]) => values.sort((x, y) => x - y)[1] ?? 0;
-    return { ms: median(times), ratio: median(ratios), result };
+    const median = (values: number[]) =>
+      values.sort((x, y) => x - y)[Math.floor(values.length / 2)] ?? 0;
+    return { ms: median(times), ratio: Math.min(...ratios), result };
   }
 
   test("a YAML sequence beside an aliased anchor full of aliases costs no more than without the alias", () => {
