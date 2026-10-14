@@ -61,11 +61,65 @@ describe("YAML source", () => {
     });
   });
 
-  test("duplicate keys are reported with line and column", () => {
+  test("duplicate keys are reported with line and column, in document order", () => {
     expect(issuesOf("version: 0\nlayers: []\nversion: 0\n")).toEqual([
-      { path: "", code: "duplicate-key", message: "duplicate key", line: 3, column: 1 },
+      { path: "", code: "duplicate-key", message: 'duplicate key "version"', line: 3, column: 1 },
+    ]);
+    expect(issuesOf("a:\n  b: 1\n  b: 2\nc: 1\nc: 2\n")).toMatchObject([
+      { code: "duplicate-key", line: 3 },
+      { code: "duplicate-key", line: 5 },
     ]);
   });
+
+  test("a map with 80 000 keys is checked in linear time", () => {
+    const keys = Array.from({ length: 80_000 }, (_, index) => `k${String(index)}: 0`);
+    const started = performance.now();
+    expect(issuesOf([...keys, "k7: 1"].join("\n"))).toMatchObject([
+      { code: "duplicate-key", line: 80_001, column: 1 },
+    ]);
+    expect(performance.now() - started).toBeLessThan(2000);
+  });
+
+  test("more than maxAliases aliases fail before any alias is resolved", () => {
+    const anchors = Array.from(
+      { length: 40_000 },
+      (_, index) => `a${String(index)}: &x${String(index)} 0`,
+    );
+    const aliases = Array.from(
+      { length: 40_000 },
+      (_, index) => `b${String(index)}: *x${String(index)}`,
+    );
+    const started = performance.now();
+    expect(issuesOf([...anchors, ...aliases].join("\n"))).toEqual([
+      expect.objectContaining({ code: "too-large", line: 40_000 + DesignLimits.maxAliases + 1 }),
+    ]);
+    expect(performance.now() - started).toBeLessThan(2000);
+  });
+
+  test("aliases within the limit resolve", () => {
+    const source = `${minimalYaml}styles:\n  a: &card { opacity: 1 }\n  b: *card\n`;
+    const result = parseDesign(source);
+    expect(result.ok && result.value.styles).toEqual({ a: { opacity: 1 }, b: { opacity: 1 } });
+  });
+
+  test("an alias to no earlier anchor is a parse issue with line and column", () => {
+    expect(issuesOf(`${minimalYaml}title: *nope\n`)).toEqual([
+      { path: "", code: "parse", message: 'unknown YAML alias "nope"', line: 4, column: 8 },
+    ]);
+    expect(issuesOf(`${minimalYaml}title: *late\ndescription: &late x\n`)).toMatchObject([
+      { code: "parse", line: 4 },
+    ]);
+  });
+
+  test("a YAML source at the size limit parses within seconds", () => {
+    const layer = "  - { type: rect, x: 1, y: 2, width: 10, height: 10, fill: '#fff' }\n";
+    const count = Math.floor((DesignLimits.maxSourceLength - minimalYaml.length) / layer.length);
+    const source = minimalYaml.replace("layers: []\n", "layers:\n") + layer.repeat(count);
+    expect(source.length).toBeLessThanOrEqual(DesignLimits.maxSourceLength);
+    const started = performance.now();
+    expect(issuesOf(source)).toMatchObject([{ code: "too-many-layers" }]);
+    expect(performance.now() - started).toBeLessThan(10_000);
+  }, 20_000);
 
   test("unknown and language-specific tags are rejected", () => {
     for (const tag of [

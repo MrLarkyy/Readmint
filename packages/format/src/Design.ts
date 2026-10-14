@@ -1,4 +1,4 @@
-/** A whole-value placeholder; the content is opaque here and evaluated by `@readmint/expr`. */
+/** A value written as `{{...}}` (starts with `{{`, ends with `}}`); opaque here, evaluated by `@readmint/expr`. */
 export type Binding = `{{${string}}}`;
 
 export type Bindable<T> = T | Binding;

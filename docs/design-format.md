@@ -54,7 +54,7 @@ Validation runs in this order and stops at the first stage with issues: source l
 | name     | accepted                                                                           |
 | -------- | ---------------------------------------------------------------------------------- |
 | id       | `^[A-Za-z][A-Za-z0-9_-]{0,63}$`: layer ids, style, asset, component and prop names |
-| binding  | a string that is one whole `{{...}}` placeholder, at most 2048 characters          |
+| binding  | a string starting with `{{` and ending with `}}`, at most 2048 characters          |
 | colour   | `#rgb`, `#rgba`, `#rrggbb` or `#rrggbbaa`                                          |
 | paint    | a colour, `"none"`, a binding or a gradient                                        |
 | position | a number in [-100000, 100000]                                                      |
@@ -158,14 +158,15 @@ components but never themselves, directly or through others.
 
 ## Limits
 
-| limit         | value                                                        | issue code        |
-| ------------- | ------------------------------------------------------------ | ----------------- |
-| source length | 4194304 UTF-16 code units, checked before parsing            | `too-large`       |
-| nesting       | 64 levels of objects and arrays (the root object is level 1) | `too-deep`        |
-| values        | 1000000 values visited; a reused YAML alias counts each time | `too-large`       |
-| layers        | 10000, counting each component instance with all its layers  | `too-many-layers` |
-| YAML aliases  | 32 expansions (weighted by the aliases inside an anchor)     | `too-large`       |
-| issues        | 100 per result, then `truncated: true`                       |                   |
+| limit         | value                                                         | issue code        |
+| ------------- | ------------------------------------------------------------- | ----------------- |
+| source length | 4194304 UTF-16 code units, checked before parsing             | `too-large`       |
+| nesting       | 64 levels of objects and arrays (the root object is level 1)  | `too-deep`        |
+| values        | 1000000 values visited; a reused YAML alias counts each time  | `too-large`       |
+| layers        | 10000, counting each component instance with all its layers   | `too-many-layers` |
+| YAML aliases  | 100 alias nodes in the source, counted before any is resolved | `too-large`       |
+| alias uses    | 32 expansions per anchor (weighted by the aliases inside it)  | `too-large`       |
+| issues        | 100 per result, then `truncated: true`                        |                   |
 
 Code reading a design file should also cap its size in bytes before decoding it.
 
@@ -234,7 +235,8 @@ interface DesignIssue {
 ## YAML
 
 YAML is read as YAML 1.2 with the core schema: `yes`, `no`, `on` and `off` stay strings, `012` is the number 12. Merge
-keys (`<<`) are ordinary keys and therefore unknown properties. Anchors and aliases work within the alias limit. Tags
+keys (`<<`) are ordinary keys and therefore unknown properties. Anchors and aliases work within the alias limits; an alias must follow its anchor, otherwise it is a `parse` issue
+with line and column. Tags
 other than the core ones (`!!str`, `!!int`, `!!float`, `!!bool`, `!!null`, `!!map`, `!!seq`) are rejected, keys must be
 plain scalars, and a stream must hold exactly one document. The same document as JSON and as YAML gives deep-equal
 results.

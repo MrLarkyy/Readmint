@@ -45,6 +45,19 @@ describe("validateDesign", () => {
     expect(result.issues[1]?.message).toBe('unknown property "line\\nbreak"');
   });
 
+  test("bidi and separator characters never reach a path or message raw", () => {
+    for (const unit of [
+      0x061c, 0x200e, 0x200f, 0x2028, 0x2029, 0x202a, 0x202e, 0x2066, 0x2069, 0x85,
+    ]) {
+      const key = `a${String.fromCharCode(unit)}b`;
+      const { issues } = issuesOf({ ...base(), [key]: 1 });
+      expect(issues[0]?.path, unit.toString(16)).toBe("");
+      expect(issues[0]?.message).toBe(
+        `unknown property "a\\u${unit.toString(16).padStart(4, "0")}b"`,
+      );
+    }
+  });
+
   test("a __proto__ key is an unknown property and pollutes nothing", () => {
     const value = JSON.parse(
       '{"version":0,"canvas":{"width":1,"height":1},"layers":[],"__proto__":{"polluted":1},' +

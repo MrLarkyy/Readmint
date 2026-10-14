@@ -1,6 +1,7 @@
 import { parseDocument, type YAMLError } from "yaml";
 import type { DesignIssue } from "./DesignIssue.js";
 import type { DesignResult } from "./DesignResult.js";
+import { checkYamlTree } from "./checkYamlTree.js";
 import { DesignLimits } from "./DesignLimits.js";
 import { IssueCollector } from "./IssueCollector.js";
 import { LineIndex } from "./LineIndex.js";
@@ -9,7 +10,6 @@ import { scanJson } from "./scanJson.js";
 export type DesignSourceFormat = "json" | "yaml";
 
 const yamlMessages: Partial<Record<YAMLError["code"], string>> = {
-  DUPLICATE_KEY: "duplicate key",
   MULTIPLE_DOCS: "the source holds more than one YAML document",
   TAG_RESOLVE_FAILED: "unknown YAML tag",
   NON_STRING_KEY: "keys must be plain strings",
@@ -51,7 +51,8 @@ function parseYaml(text: string): DesignResult<unknown> {
     version: "1.2",
     schema: "core",
     merge: false,
-    uniqueKeys: true,
+    // Pairwise, so quadratic on a large map; checkYamlTree finds duplicates linearly instead.
+    uniqueKeys: false,
     stringKeys: true,
     resolveKnownTags: false,
     prettyErrors: false,
@@ -62,19 +63,21 @@ function parseYaml(text: string): DesignResult<unknown> {
   // Running out of stack leaves a trail of follow-up errors; the nesting is the one cause.
   const exhausted = all.find((problem) => problem.code === "RESOURCE_EXHAUSTION");
   const problems = exhausted === undefined ? all : [exhausted];
+  const lines = new LineIndex(text);
+  const issues = new IssueCollector();
   if (problems.length > 0) {
-    const lines = new LineIndex(text);
-    const issues = new IssueCollector();
     for (const problem of problems) {
       issues.add({
         path: "",
-        code: yamlIssueCode(problem.code),
+        code: problem.code === "RESOURCE_EXHAUSTION" ? "too-deep" : "parse",
         message: yamlMessages[problem.code] ?? `invalid YAML (${problem.code.toLowerCase()})`,
         ...lines.at(problem.pos[0]),
       });
     }
     return failure(issues.issues, issues.truncated);
   }
+  checkYamlTree(document, lines, issues);
+  if (!issues.isEmpty) return failure(issues.issues, issues.truncated);
   try {
     return { ok: true, value: document.toJS({ maxAliasCount: DesignLimits.maxAliasCount }) };
   } catch (error) {
@@ -94,11 +97,6 @@ function parseYaml(text: string): DesignResult<unknown> {
       return failure([{ path: "", code: "parse", message: "invalid YAML alias" }]);
     throw error;
   }
-}
-
-function yamlIssueCode(code: YAMLError["code"]): DesignIssue["code"] {
-  if (code === "DUPLICATE_KEY") return "duplicate-key";
-  return code === "RESOURCE_EXHAUSTION" ? "too-deep" : "parse";
 }
 
 function failure(issues: readonly DesignIssue[], truncated = false): DesignResult<unknown> {

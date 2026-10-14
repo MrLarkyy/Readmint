@@ -1,10 +1,9 @@
 import { DesignLimits } from "./DesignLimits.js";
-
-const invisible = /[\u007f-\u009f\u200e\u200f\u2028\u2029\u202a-\u202e\u2066-\u2069]/gu;
+import { isInvisible } from "./isInvisible.js";
 
 /**
  * An input value as it may appear in an issue message: at most `maxEcho` characters, quoted and
- * escaped so control, bidi or line-separator characters cannot reach a log raw.
+ * escaped so no invisible character (`isInvisible`) reaches a log raw.
  */
 export function quoteInput(value: string): string {
   const head = Array.from(value.slice(0, DesignLimits.maxEcho * 2));
@@ -12,8 +11,12 @@ export function quoteInput(value: string): string {
     head.length > DesignLimits.maxEcho || value.length > DesignLimits.maxEcho * 2
       ? `${head.slice(0, DesignLimits.maxEcho - 1).join("")}\u2026`
       : head.join("");
-  return JSON.stringify(clipped).replace(
-    invisible,
-    (char) => `\\u${char.charCodeAt(0).toString(16).padStart(4, "0")}`,
-  );
+  // JSON.stringify escapes quotes, backslashes and C0 controls; the other invisibles follow here.
+  let quoted = "";
+  for (const char of JSON.stringify(clipped)) {
+    const unit = char.charCodeAt(0);
+    quoted +=
+      char.length === 1 && isInvisible(unit) ? `\\u${unit.toString(16).padStart(4, "0")}` : char;
+  }
+  return quoted;
 }
