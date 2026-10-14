@@ -144,7 +144,9 @@ file: a font that may not be embedded is never embedded (text becomes paths or r
 
 `http(s):` and `file:` URLs are rejected, because the output must not reference anything outside itself, and so are SVG
 images, because an inlined SVG can carry scripts or external references. The bytes behind a source are checked (size,
-format sniffing) when they are loaded, not here.
+format sniffing) when they are loaded, not here. A relative path accepted here can still be refused when it is loaded,
+for example for a Windows device name (`CON.png`), a segment ending in a dot or space, or a symlink leaving the design's
+folder: see [asset-loading.md](asset-loading.md).
 
 ## Components
 
