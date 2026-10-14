@@ -29,7 +29,8 @@ function expectBounded(
   expect(result.error.code).toBe(code);
   expect(result.error.excerpt.length).toBeLessThanOrEqual(ExpressionLimits.maxEcho);
   expect(result.error.message.length).toBeLessThan(200);
-  expect(budget.used).toBeLessThanOrEqual(ExpressionLimits.maxSteps + 1_000_001);
+  // One overrunning charge may be large (a 20M-character string is 1.25M steps); it is never paid in work.
+  expect(budget.used).toBeLessThanOrEqual(ExpressionLimits.maxSteps + 2_000_000);
   expect(elapsed).toBeLessThan(wallClockMs);
 }
 
@@ -134,6 +135,49 @@ describe("hostile expressions are bounded in time and memory", () => {
     if (!template.ok) expect.fail(template.error.message);
     const scope = createScope({ s: "x".repeat(50_000) });
     for (let run = 0; run < 3; run++) expect(template.value.evaluate(scope).ok).toBe(true);
+  });
+
+  describe("every O(n) string operation is charged before it runs", () => {
+    const huge = "x".repeat(20_000_000);
+    const twin = `${"x".repeat(19_999_999)}y`;
+    const data = { a: huge, b: twin, o: {} };
+
+    test.each([
+      ["repeated == on two 20M-character strings", `{{ ${"a == b || ".repeat(200)}a == b }}`],
+      ["repeated != on two 20M-character strings", `{{ ${"a != b && ".repeat(200)}a != b }}`],
+      ["repeated padStart(0) on a 20M-character string", `{{ a${" | padStart(0)".repeat(400)} }}`],
+      ["< on two 20M-character strings", "{{ a < b }}"],
+      ["length of a 20M-character string", "{{ a | length }}"],
+      ["truncate of a 20M-character string", "{{ a | truncate(5) }}"],
+      ["truncate with a 20M-character suffix", "{{ 'x' | truncate(5, a) }}"],
+      ["trim of a 20M-character string", "{{ a | trim }}"],
+      ["upper of a 20M-character string", "{{ a | upper }}"],
+      ["a 20M-character string as an index", `{{ ${"o[a] || ".repeat(300)}o[a] }}`],
+    ])("%s exhausts the budget", (_name, text) => {
+      expectBounded(text, data, "budget");
+    });
+
+    test("a 20M-character fill is refused by its length before anything is counted", () => {
+      expectBounded("{{ 'x' | padStart(5, a) }}", data, "argument");
+    });
+
+    test("comparing or padding short strings stays cheap", () => {
+      const template = compileTemplate("{{ 'abc' == 'abc' && ('7' | padStart(0)) == '7' }}");
+      if (!template.ok) expect.fail(template.error.message);
+      const budget = createBudget(20);
+      expect(template.value.evaluate(createScope({}, { budget }))).toEqual({
+        ok: true,
+        value: true,
+      });
+    });
+
+    test("literal text is charged too", () => {
+      const budget = createBudget(100);
+      const template = compileTemplate(`${"x".repeat(5000)}{{ 1 }}`);
+      if (!template.ok) expect.fail(template.error.message);
+      const result = template.value.evaluate(createScope({}, { budget }));
+      expect(!result.ok && result.error.code).toBe("budget");
+    });
   });
 
   test("createBudget refuses a negative or fractional step count", () => {

@@ -12,6 +12,8 @@ import {
 } from "./filterArguments.js";
 import type { FilterContext, FilterDefinition, FilterOutcome } from "./FilterDefinition.js";
 import { textSteps } from "./textSteps.js";
+import { toLowerSimple, toUpperSimple } from "./simpleCase.js";
+import { trimWhitespace } from "./trimWhitespace.js";
 import { typeName } from "./typeName.js";
 
 const maxLength = ExpressionLimits.maxStringLength;
@@ -24,19 +26,16 @@ function mapping(name: string, operation: (text: string) => string): FilterDefin
       const text = stringInput(name, input);
       if (!text.ok) return text;
       if (!context.charge(textSteps(text.value.length))) return budgetFailure();
-      const result = operation(text.value);
-      // Case mapping can grow a string (U+FB03 upper-cases to three letters).
-      if (result.length > maxLength) return tooLarge(name);
-      return success(result);
+      return success(operation(text.value));
     },
   };
 }
 
 export const stringFilters: Readonly<Record<string, FilterDefinition>> = {
-  // Locale-independent case mapping: the same in every engine and host locale.
-  upper: mapping("upper", (text) => text.toUpperCase()),
-  lower: mapping("lower", (text) => text.toLowerCase()),
-  trim: mapping("trim", (text) => text.trim()),
+  // Own tables, not toUpperCase/trim: those follow the engine's Unicode version.
+  upper: mapping("upper", toUpperSimple),
+  lower: mapping("lower", toLowerSimple),
+  trim: mapping("trim", trimWhitespace),
   truncate: {
     minArgs: 1,
     maxArgs: 2,
@@ -69,9 +68,12 @@ export const stringFilters: Readonly<Record<string, FilterDefinition>> = {
       if (!width.ok) return width;
       const fill = stringArgument("padStart", args, 1, " ");
       if (!fill.ok) return fill;
-      if (countCodePoints(fill.value) !== 1) {
+      // A code point is one or two code units: check that before counting anything.
+      const fillLength = fill.value.length;
+      if (fillLength === 0 || fillLength > 2 || countCodePoints(fill.value) !== 1) {
         return failure("argument", "padStart: argument 2 must be exactly one character");
       }
+      if (!context.charge(textSteps(text.value.length))) return budgetFailure();
       const missing = width.value - countCodePoints(text.value);
       if (missing <= 0) return success(text.value);
       const resultLength = text.value.length + missing * fill.value.length;

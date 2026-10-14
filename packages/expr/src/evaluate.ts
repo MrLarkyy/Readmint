@@ -105,6 +105,13 @@ function evaluatePath(node: PathNode, context: EvalContext): ExprResult<ExprValu
         const got = typeName(index.value);
         return fail(context, "type", `an index must be a string or a number, got ${got}`, step);
       }
+      // A property lookup hashes a string key once: charge its length like any other string work.
+      if (
+        typeof index.value === "string" &&
+        !context.budget.charge(textSteps(index.value.length))
+      ) {
+        return budgetExceeded(context, step);
+      }
       key = index.value;
     }
     const read = readProperty(value, key);
@@ -155,6 +162,12 @@ function applyBinary(
         `${operator} compares strings, numbers, booleans and null, got ${types}`,
         span,
       );
+    }
+    // Two equal-length strings compare in time proportional to their length.
+    if (typeof left === "string" && typeof right === "string") {
+      if (!context.budget.charge(textSteps(Math.min(left.length, right.length)))) {
+        return budgetExceeded(context, span);
+      }
     }
     return ok(operator === "==" ? left === right : left !== right);
   }

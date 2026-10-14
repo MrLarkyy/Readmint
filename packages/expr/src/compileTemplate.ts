@@ -73,6 +73,16 @@ function evaluateParts(
   let output = "";
   for (const part of parts) {
     if (part.kind === "text") {
+      if (!budget.charge(textSteps(part.text.length))) {
+        const limit = String(budget.maxSteps);
+        const site: ErrorSite = { source, segment: { start: 0, end: source.length } };
+        return failWith(
+          site,
+          "budget",
+          `evaluation exceeded its budget of ${limit} steps`,
+          site.segment,
+        );
+      }
       output += part.text;
       continue;
     }

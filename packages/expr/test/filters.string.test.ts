@@ -7,7 +7,7 @@ const family = "\u{1F468}\u200d\u{1F469}";
 describe("string filters", () => {
   test.each([
     ["'Ada' | upper", "ADA"],
-    ["'ÄÖÜ ß' | upper", "ÄÖÜ SS"],
+    ["'ÄÖÜ ß' | upper", "ÄÖÜ ß"],
     ["'Ada' | lower", "ada"],
     ["'ÉCOLE' | lower", "école"],
     ["'  a b  ' | trim", "a b"],
