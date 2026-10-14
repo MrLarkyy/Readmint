@@ -1,4 +1,4 @@
-import { createScope } from "@readmint/expr";
+import { createBudget, createScope } from "@readmint/expr";
 import { ValueRanges, type Design } from "@readmint/format";
 import { escapeText } from "./escapeXml.js";
 import { expandLayers } from "./expandLayers.js";
@@ -29,10 +29,13 @@ export function renderSvg(design: Design, options: RenderOptions = {}): RenderRe
 
 function render(context: RenderContext, options: RenderOptions): RenderResult {
   const { design, writer } = context;
-  const scope = createScope(
-    options.data ?? {},
-    options.locale === undefined ? {} : { locale: options.locale },
-  );
+  // One budget for every evaluation of the render: child scopes share it and each repeated item is charged.
+  const steps = Math.min(Math.floor(context.limits.maxExpressionSteps), Number.MAX_SAFE_INTEGER);
+  const budget = createBudget(steps);
+  const scope = createScope(options.data ?? {}, {
+    budget,
+    ...(options.locale === undefined ? {} : { locale: options.locale }),
+  });
   const canvas = design.canvas;
   const width = resolveNumber(
     context,

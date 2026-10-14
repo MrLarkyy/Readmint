@@ -12,6 +12,8 @@ export interface RenderLimits {
   readonly maxAnimationFrames: number;
   /** UTF-16 code units of a text after its placeholders are filled in. */
   readonly maxTextLength: number;
+  /** Expression steps of the whole render (`@readmint/expr` budget, shared by every evaluation). */
+  readonly maxExpressionSteps: number;
 }
 
 export const RenderLimits: RenderLimits = Object.freeze({
@@ -23,4 +25,6 @@ export const RenderLimits: RenderLimits = Object.freeze({
   maxImageSide: 8192,
   maxAnimationFrames: 1000,
   maxTextLength: 10_000,
+  /** Under a second of the most expensive string work (upper/lower over long text); copies dropped by `if` write nothing, so output cannot bound it. */
+  maxExpressionSteps: 5_000_000,
 });

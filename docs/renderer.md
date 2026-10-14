@@ -46,7 +46,8 @@ apply unchanged:
   defaults overlaid by the instance's props (a prop given as a binding is evaluated in the instance's scope, then
   checked against the declared type).
 
-Each design string is compiled once per render. Every evaluation has expr's own step budget (100000 steps). An
+Each design string is compiled once per render. All evaluations of a render draw from one expr step budget
+(`maxExpressionSteps`, below); once it is spent the render fails with a `binding` issue of expr code `budget`. An
 expression error ends the render with a `binding` issue whose message carries expr's message and code (for example
 `"{{ w / 0 }}": ... (not-finite)`); expr never puts a value read from the data into a message.
 
@@ -135,14 +136,15 @@ order), then the canvas background and the layers.
 
 `RenderLimits` (override per call with `limits`):
 
-| limit                | default | why                                                    | issue             |
-| -------------------- | ------- | ------------------------------------------------------ | ----------------- |
-| `maxOutputBytes`     | 5242880 | GitHub's camo proxy refuses larger images              | `too-large`       |
-| `maxImageBytes`      | 4194304 | one image, decoded size, checked before decoding       | `asset-too-large` |
-| `maxFontBytes`       | 4194304 | one font, decoded size, checked before decoding        | `asset-too-large` |
-| `maxImageSide`       | 8192    | pixels per side; keeps the raster path within memory   | `asset-too-large` |
-| `maxAnimationFrames` | 1000    | frames of an animated image                            | `asset-too-large` |
-| `maxTextLength`      | 10000   | characters of a text after its placeholders are filled | `too-large`       |
+| limit                | default | why                                                                                                                  | issue                |
+| -------------------- | ------- | -------------------------------------------------------------------------------------------------------------------- | -------------------- |
+| `maxOutputBytes`     | 5242880 | GitHub's camo proxy refuses larger images                                                                            | `too-large`          |
+| `maxImageBytes`      | 4194304 | one image, decoded size, checked before decoding                                                                     | `asset-too-large`    |
+| `maxFontBytes`       | 4194304 | one font, decoded size, checked before decoding                                                                      | `asset-too-large`    |
+| `maxImageSide`       | 8192    | pixels per side; keeps the raster path within memory                                                                 | `asset-too-large`    |
+| `maxAnimationFrames` | 1000    | frames of an animated image                                                                                          | `asset-too-large`    |
+| `maxTextLength`      | 10000   | characters of a text after its placeholders are filled                                                               | `too-large`          |
+| `maxExpressionSteps` | 5000000 | expression work of the whole render (under a second of the costliest string filters), including copies an `if` drops | `binding` (`budget`) |
 
 The output size is counted while the SVG is written, and every layer reserves the least markup of its kind before it
 is built (a path also its data, a text its filled-in content, before either is measured), so a huge or nested `repeat`
@@ -151,18 +153,18 @@ stripping of characters XML does not allow arrive with RM-25.
 
 ## Issues
 
-| code                   | meaning                                                                                               |
-| ---------------------- | ----------------------------------------------------------------------------------------------------- |
-| `binding`              | an expression failed to compile or evaluate (the message names expr's error code)                     |
-| `type`                 | a value of the wrong kind (also a repeat `each` that is not a list, a bad prop)                       |
-| `range`                | a number outside the format's range                                                                   |
-| `missing-asset`        | an asset path without supplied bytes, or a reference to no asset                                      |
-| `asset-format`         | not an accepted image or a malformed font; a data URI type that does not match                        |
-| `asset-too-large`      | over a byte, side or frame limit                                                                      |
-| `unsupported-font`     | WOFF, WOFF2 or a font collection                                                                      |
-| `font-not-embeddable`  | the licence or the fsType forbids embedding                                                           |
-| `too-large`            | the SVG passes `maxOutputBytes`, a text passes `maxTextLength`, components nest deeper than 64 levels |
-| `font-family-mismatch` | warning: the asset family differs from the family inside the font                                     |
+| code                   | meaning                                                                                                                                                                                                                   |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `binding`              | an expression failed to compile or evaluate, the step budget ran out, a repeat `each` is not a list or has more than 10000 items, or its `as`/`index` names are unreadable or equal (the message names expr's error code) |
+| `type`                 | a value of the wrong kind (also a prop of the wrong type, a list or object written into text)                                                                                                                             |
+| `range`                | a number outside the format's range                                                                                                                                                                                       |
+| `missing-asset`        | an asset path without supplied bytes, or a reference to no asset                                                                                                                                                          |
+| `asset-format`         | not an accepted image or a malformed font; a data URI type that does not match                                                                                                                                            |
+| `asset-too-large`      | over a byte, side or frame limit                                                                                                                                                                                          |
+| `unsupported-font`     | WOFF, WOFF2 or a font collection                                                                                                                                                                                          |
+| `font-not-embeddable`  | the licence or the fsType forbids embedding                                                                                                                                                                               |
+| `too-large`            | the SVG passes `maxOutputBytes`, a text passes `maxTextLength`, components nest deeper than 64 levels                                                                                                                     |
+| `font-family-mismatch` | warning: the asset family differs from the family inside the font                                                                                                                                                         |
 
 ## Report
 

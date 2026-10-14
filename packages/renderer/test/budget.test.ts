@@ -157,3 +157,40 @@ test("limit overrides that are not finite, non-negative numbers are ignored", ()
   }
   expect(renderSvg(design, { limits: { maxOutputBytes: 10 } })).toMatchObject({ ok: false });
 });
+
+test("expression work of the whole render is bounded, also for copies an if drops", () => {
+  const items = Array.from({ length: 1000 }, (_, index) => index);
+  const heavy = `{{ (s${" | upper | lower".repeat(4)}) == "" }}` as const;
+  const design: Design = {
+    version: 0,
+    canvas: { width: 10, height: 10 },
+    layers: [
+      {
+        type: "group",
+        repeat: { each: "{{ items }}", as: "row" },
+        children: [
+          { type: "rect", width: 1, height: 1, if: heavy, repeat: { each: "{{ items }}" } },
+        ],
+      },
+    ],
+  };
+  const started = performance.now();
+  const result = renderSvg(design, { data: { items, s: "a".repeat(10_000) } });
+  expect(performance.now() - started).toBeLessThan(2000);
+  expect(result).toMatchObject({ ok: false, issues: [{ code: "binding" }] });
+  expect(result.ok ? "" : result.issues[0]?.message).toContain("(budget)");
+});
+
+test("the step budget is shared by the render and can be lowered", () => {
+  const design: Design = {
+    version: 0,
+    canvas: { width: 10, height: 10 },
+    layers: [{ type: "rect", width: "{{ w }}", height: 1, repeat: { each: "{{ list }}" } }],
+  };
+  const data = { w: 2, list: [1, 2, 3, 4, 5] };
+  expect(renderSvg(design, { data }).ok).toBe(true);
+  const lowered = renderSvg(design, { data, limits: { maxExpressionSteps: 8 } });
+  expect(lowered).toMatchObject({ ok: false, issues: [{ code: "binding" }] });
+  expect(lowered.ok ? "" : lowered.issues[0]?.message).toContain("(budget)");
+  expect(RenderLimits.maxExpressionSteps).toBe(5_000_000);
+});
