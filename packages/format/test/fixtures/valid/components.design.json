@@ -1,0 +1,57 @@
+{
+  "version": 0,
+  "canvas": { "width": 240, "height": 60 },
+  "assets": {
+    "fonts": {
+      "sans": { "family": "Sans", "src": "fonts/Sans.TTF", "licence": { "embedding": "allowed" } }
+    }
+  },
+  "styles": { "label": { "font": "sans", "fontSize": 11 } },
+  "components": {
+    "dot": {
+      "props": { "tint": { "type": "color", "default": "#ff0000" } },
+      "layers": [{ "type": "ellipse", "width": 6, "height": 6, "fill": "{{props.tint}}" }]
+    },
+    "stat": {
+      "description": "A label with a value and a status dot.",
+      "width": 100,
+      "height": 20,
+      "props": {
+        "label": { "type": "string", "required": true },
+        "value": { "type": "number", "default": 0 },
+        "live": { "type": "boolean", "default": true },
+        "tint": { "type": "color" }
+      },
+      "layers": [
+        {
+          "type": "component",
+          "id": "status",
+          "ref": "dot",
+          "props": { "tint": "{{props.tint}}" }
+        },
+        {
+          "type": "text",
+          "id": "text",
+          "x": 10,
+          "content": "{{props.label}}: {{props.value}}",
+          "style": "label"
+        }
+      ]
+    }
+  },
+  "layers": [
+    {
+      "type": "component",
+      "id": "stars",
+      "ref": "stat",
+      "props": { "label": "Stars", "value": 12, "tint": "#e3b341" }
+    },
+    {
+      "type": "component",
+      "id": "forks",
+      "y": 30,
+      "ref": "stat",
+      "props": { "label": "Forks", "value": "{{repo.forks}}", "live": false }
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "version": 0,
+  "canvas": {
+    "width": 100,
+    "height": 100
+  },
+  "layers": [
+    {
+      "type": "rect",
+      "width": 10,
+      "height": 10,
+      "fill": {
+        "type": "linear",
+        "stops": [
+          {
+            "offset": 0,
+            "color": "#000"
+          }
+        ]
+      }
+    }
+  ]
+}

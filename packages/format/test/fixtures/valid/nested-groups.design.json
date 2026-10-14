@@ -1,0 +1,40 @@
+{
+  "version": 0,
+  "canvas": { "width": 300, "height": 120 },
+  "layers": [
+    {
+      "type": "group",
+      "id": "row",
+      "width": 300,
+      "height": 120,
+      "clip": true,
+      "layout": { "type": "stack", "direction": "row", "gap": 8, "align": "center" },
+      "children": [
+        {
+          "type": "group",
+          "id": "grid",
+          "layout": { "type": "grid", "columns": 3, "gap": 4 },
+          "children": [
+            { "type": "rect", "id": "a", "width": 10, "height": 10 },
+            { "type": "rect", "id": "b", "width": 10, "height": 10, "opacity": 0.5 },
+            { "type": "rect", "id": "c", "width": 10, "height": 10, "rotation": -45 }
+          ]
+        },
+        {
+          "type": "group",
+          "id": "free",
+          "layout": { "type": "absolute" },
+          "children": [
+            {
+              "type": "group",
+              "id": "column",
+              "visible": false,
+              "layout": { "type": "stack", "direction": "column" },
+              "children": [{ "type": "ellipse", "width": 4, "height": 4 }]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

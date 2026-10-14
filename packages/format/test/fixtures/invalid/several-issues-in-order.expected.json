@@ -1,0 +1,18 @@
+[
+  {
+    "path": "/layers/0/fill",
+    "code": "pattern"
+  },
+  {
+    "path": "/layers/0/opacity",
+    "code": "range"
+  },
+  {
+    "path": "/layers/1/children",
+    "code": "missing-property"
+  },
+  {
+    "path": "/title",
+    "code": "type"
+  }
+]
