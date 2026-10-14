@@ -28,11 +28,14 @@ export function formatPercent(value: number, decimals: number, locale: LocaleDat
  * `decimals` fraction digits and no trailing zeros. A value that rounds up to 1000 of a unit moves
  * to the next unit (999950 is `1M`, not `1000K`).
  */
+/** 1000 to the power of the unit, written out: `**` is only approximated by the ECMAScript spec. */
+const unitSizes: readonly number[] = [1, 1e3, 1e6, 1e9, 1e12];
+
 export function formatCompact(value: number, decimals: number, locale: LocaleData): string {
   if (Math.abs(value) >= exponentThreshold) return String(value);
   const magnitude = Math.abs(value);
   let unit = 0;
-  while (unit < 4 && magnitude >= 1000 ** (unit + 1)) unit++;
+  while (unit < 4 && magnitude >= (unitSizes[unit + 1] ?? Infinity)) unit++;
   let fixed = trimZeros(scale(magnitude, unit).toFixed(decimals));
   if (unit < 4 && Number(fixed) >= 1000) {
     unit++;
@@ -44,7 +47,7 @@ export function formatCompact(value: number, decimals: number, locale: LocaleDat
 }
 
 function scale(magnitude: number, unit: number): number {
-  return unit === 0 ? magnitude : magnitude / 1000 ** unit;
+  return unit === 0 ? magnitude : magnitude / (unitSizes[unit] ?? 1);
 }
 
 /** Writes the output of `toFixed` with the locale's decimal and group separators. */
