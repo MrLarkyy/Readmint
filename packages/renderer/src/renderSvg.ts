@@ -1,5 +1,6 @@
 import { createBudget, createScope } from "@readmint/expr";
 import { ValueRanges, type Design } from "@readmint/format";
+import { countImageUses } from "./countImageUses.js";
 import { escapeText } from "./escapeXml.js";
 import { expandLayers } from "./expandLayers.js";
 import { formatNumber } from "./formatNumber.js";
@@ -65,6 +66,7 @@ function render(context: RenderContext, options: RenderOptions): RenderResult {
   );
   const background = resolvePaint(context, canvas.background, "/canvas/background", scope);
   const nodes = expandLayers(context, design.layers, "/layers", scope);
+  countImageUses(context, nodes);
   // A frame has no CSS; the animated SVG names its rules after all of them, so they are known before any is drawn.
   const prefix = context.time === undefined ? sealAnimations(context, nodes) : undefined;
   const root = prefix === undefined ? "" : ` class="${prefix}"`;

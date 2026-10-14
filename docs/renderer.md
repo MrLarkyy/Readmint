@@ -125,6 +125,14 @@ Drawn in document order, first at the back. Layer `id` and `name` are not emitte
   descriptors, APNG `acTL`, WebP `ANMF`).
 - `fit`: `contain` (default) = `preserveAspectRatio="xMidYMid meet"`, `cover` = `xMidYMid slice`, `fill` = `none`.
   `alt` becomes `aria-label`.
+- An image drawn once is an `<image>` holding its data URI. Image data drawn more than once (a `repeat`, several
+  layers, or several assets with the same bytes) is written once: an `<image id="i<hash>">` at its own pixel size in
+  `<defs>`, one `<symbol id="s<hash>">` per `fit` that shows it (its `viewBox` and `preserveAspectRatio` do what the
+  inline image does, its viewport clips like `cover`), and per layer a `<use>` with the layer's `x y width height`,
+  opacity and rotation. A `<use>` with an `alt` gets `role="img"` beside its `aria-label`, so it keeps the accessible
+  name an `<image>` has. Animation classes and transform groups apply to the `<use>` as to an `<image>`. An image
+  with EXIF data (JPEG APP1 `Exif`, PNG `eXIf`, WebP `EXIF`) is never shared and stays an inline `<image>` at every
+  use, because browsers apply its orientation, which a symbol sized from the stored pixels would not follow.
 - An animated GIF, APNG or WebP is inlined as is; browsers play it, rasterizers draw the first frame. The Node golden
   rasterizer (resvg-js 2.6.2) cannot decode WebP, so WebP has unit tests but no golden image.
 
@@ -185,13 +193,22 @@ throws a `RangeError`.
 
 `<svg xmlns width height viewBox role="img">` (an animated SVG adds `class="r<hash>"`, the prefix of its animation
 names), then `<title>` / `<desc>` from the design's `title` / `description`, then
-`<defs>` (the style with fonts and animation rules, gradients `g0, g1, ...`, clip paths `c0, c1, ...`, ids and
-animation names allocated per render in creation order), then the canvas background and the layers.
+`<defs>` (the style with fonts and animation rules, then gradients, clip paths, shared images and their symbols), then
+the canvas background and the layers.
+
+- Every definition is written once however often it is used: identical gradients (fills, strokes, text fills, the
+  canvas background), clip paths of one size and image data drawn more than once each share one element. Its id is a
+  letter (`g` gradient, `c` clip path, `i` image, `s` image symbol) and a 7-character base-36 FNV-1a hash of its
+  markup, so the same definition gets the same id in every render and every document, whatever the order of use;
+  two different definitions of one document whose hashes clash get `-1`, `-2`, ... in order of use. Two different
+  Readmint SVGs inlined into one page therefore only share an id where both define the same thing (up to a 32-bit
+  hash clash); a per-document id prefix is not written yet.
 
 - No `<script>`, no event attributes, no `foreignObject`, no external reference: every `href` is a `data:image/...`
-  URI, every `url()` a `#fragment` or (in the style) a `data:font/...` URI. Every string from the design or the data
-  is XML-escaped, after removing the code points XML 1.0 does not allow: the C0 controls except tab, line feed and
-  carriage return, lone surrogates, U+FFFE and U+FFFF (GitHub free texts such as a bio may hold them).
+  URI or a `#fragment` of the same document, every `url()` a `#fragment` or (in the style) a `data:font/...` URI;
+  every fragment names an id the document defines. Every string from the design or the data is XML-escaped, after
+  removing the code points XML 1.0 does not allow: the C0 controls except tab, line feed and carriage return, lone
+  surrogates, U+FFFE and U+FFFF (GitHub free texts such as a bio may hold them).
 - Path data whitespace SVG does not know (vertical tab, form feed, no-break space, line separator, ...) is written as
   a space; the path keeps its meaning and its box.
 - Numbers are rounded to 3 decimals (`-0` printed as `0`), computed only with exactly specified arithmetic (no
@@ -213,12 +230,13 @@ animation names allocated per render in creation order), then the canvas backgro
 | `maxRepeatCopies`       | 100000  | copies made by every `repeat` of the render together, including copies an `if` or `visible: false` drops             | `too-large`          |
 | `maxAnimationKeyframes` | 100000  | keyframes of every animation track of the render together, every repeat copy counted, in a frame too                 | `too-large`          |
 
-The output size is counted while the SVG is written, and every layer reserves the least markup of its kind before it
-is built (a path also its data, a text its filled-in content, before either is measured), so a huge or nested `repeat`
-stops early instead of building everything. Animation CSS counts toward `maxOutputBytes` like any markup, and every
-animated transform reserves its group (a `draw` its dash attributes) before the layer is built. Opacity and colour
-tracks write nothing of their own and the CSS is written only once every track is built, so `maxAnimationKeyframes`
-bounds that work: each track charges its keyframes before any is resolved. Fixed limits: 10000 items per `repeat` (expr, `binding` at
+The output size is counted while the SVG is written (a shared definition once, when its first use writes it), and
+every layer reserves the least markup of its kind before it is built (a path also its data, a text its filled-in
+content, before either is measured), so a huge or nested `repeat` stops early instead of building everything.
+Animation CSS counts toward `maxOutputBytes` like any markup, and every animated transform reserves its group (a
+`draw` its dash attributes) before the layer is built. Opacity and colour tracks write nothing of their own and the CSS
+is written only once every track is built, so `maxAnimationKeyframes` bounds that work: each track charges its
+keyframes before any is resolved. Fixed limits: 10000 items per `repeat` (expr, `binding` at
 `repeat/each`) and 64 levels of nested component instances (`too-large`).
 
 ## Issues
@@ -240,5 +258,7 @@ bounds that work: each track charges its keyframes before any is resolved. Fixed
 ## Report
 
 A successful render reports `bytes` (UTF-8 size of the SVG), `limit` (the `maxOutputBytes` used) and, in first-use
-order, `fonts` and `images` as `{ asset, bytes }`: the bytes each asset adds to the SVG (an image used twice counts
-twice). A design with a timeline also reports `animation: { duration, loop }`, what `frameTimes` takes.
+order, `fonts` and `images` as `{ asset, bytes }`: the bytes each asset adds to the SVG. The data of an image counts
+once however often it is drawn (an image with EXIF data, inline at every use, once per use), and 0 for an asset whose
+bytes an earlier asset already wrote, so the image bytes add up to what the SVG holds. A design with a timeline also reports `animation: { duration, loop }`, what `frameTimes`
+takes.

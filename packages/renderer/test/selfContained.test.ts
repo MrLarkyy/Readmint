@@ -82,6 +82,9 @@ describe("the safety check itself", () => {
       "style url(https://x.example/f.ttf)",
     ],
     ['<svg><a href="javascript:alert(1)"/></svg>', "href=javascript:alert(1)"],
+    ['<svg><use href="#s1"/></svg>', "href names no id: #s1"],
+    ['<svg><rect id="g1"/><rect fill="url(#g2)"/></svg>', "url() in fill names no id: #g2"],
+    ['<svg><use href="#a b"/></svg>', "href=#a b"],
   ])("flags %s", (svg, problem) => {
     expect(svgSafetyProblems(svg)).toContain(problem);
   });

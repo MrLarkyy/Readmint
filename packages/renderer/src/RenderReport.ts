@@ -1,6 +1,9 @@
 export interface RenderAssetUsage {
   readonly asset: string;
-  /** Bytes the asset adds to the SVG (its data URIs, every use counted). */
+  /**
+   * Bytes the asset adds to the SVG: its data URI, written once however often it is drawn (an image with EXIF data
+   * stays inline, once per use); 0 for an image whose identical bytes an earlier asset already wrote.
+   */
   readonly bytes: number;
 }
 

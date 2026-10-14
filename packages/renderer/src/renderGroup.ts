@@ -6,7 +6,7 @@ import { renderLayer } from "./renderLayer.js";
 
 /**
  * A `<g>` translated to the group's position, so children use the group's coordinates; a clip is a rectangle of
- * the group box in those coordinates (the clip path follows the group's transform).
+ * the group box in those coordinates (the clip path follows the group's transform), so groups of one size share it.
  */
 export function renderGroup(context: RenderContext, node: GroupNode, extra = ""): void {
   const writer = context.writer;
@@ -16,9 +16,11 @@ export function renderGroup(context: RenderContext, node: GroupNode, extra = "")
       : `translate(${formatNumber(node.x)} ${formatNumber(node.y)})`;
   let clip = "";
   if (node.clip) {
-    const id = writer.id("c");
-    writer.define(
-      `<clipPath id="${id}"><rect width="${formatNumber(node.width)}" height="${formatNumber(node.height)}"/></clipPath>`,
+    const width = formatNumber(node.width);
+    const height = formatNumber(node.height);
+    const id = writer.share(
+      "c",
+      (clipId) => `<clipPath id="${clipId}"><rect width="${width}" height="${height}"/></clipPath>`,
     );
     clip = ` clip-path="url(#${id})"`;
   }

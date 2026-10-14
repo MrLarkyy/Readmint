@@ -24,7 +24,7 @@ import { echo, isBinding, resolveBoolean, resolveOptionalNumber } from "./resolv
 
 /**
  * The least markup each kind of node produces without its variable parts (`<g></g>`, a `<rect>` with its four
- * numbers, `<path d=""/>`, ...); reserved per node against the output budget, so a huge expansion stops long before
+ * numbers, `<path d=""/>`, the `<use>` of an image drawn more than once, ...); reserved per node against the output budget, so a huge expansion stops long before
  * it is built. A path also reserves its data and a text its filled-in content.
  */
 export const minimumNodeBytes: Readonly<Record<LayerType, number>> = {
@@ -34,7 +34,7 @@ export const minimumNodeBytes: Readonly<Record<LayerType, number>> = {
   ellipse: 37,
   path: 12,
   text: 60,
-  image: 60,
+  image: 56,
 };
 
 /** Component instances inside component instances; validated designs have no cycles, this bounds the rest. */

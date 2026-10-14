@@ -6,6 +6,11 @@ export interface ImageInfo {
   readonly height: number;
   /** 1 for a still image; counting stops one past `maxFrames`. */
   readonly frames: number;
+  /**
+   * Carries EXIF data (JPEG APP1 `Exif`, PNG `eXIf`, WebP `EXIF`): browsers apply its orientation to the pixels, so
+   * the stored width and height may not be the drawn ones.
+   */
+  readonly exif: boolean;
 }
 
 export type SniffResult =
@@ -99,9 +104,15 @@ function looksLikeMarkup(data: Uint8Array): boolean {
   return false;
 }
 
-function found(mime: ImageMime, width: number, height: number, frames = 1): SniffResult {
+function found(
+  mime: ImageMime,
+  width: number,
+  height: number,
+  frames: number,
+  exif: boolean,
+): SniffResult {
   if (width === 0 || height === 0) return { ok: false, message: "the image declares a zero size" };
-  return { ok: true, info: { mime, width, height, frames } };
+  return { ok: true, info: { mime, width, height, frames, exif } };
 }
 
 function sniffPng(bytes: Bytes, maxFrames: number): SniffResult {
@@ -109,40 +120,71 @@ function sniffPng(bytes: Bytes, maxFrames: number): SniffResult {
   const width = bytes.u32be(16);
   const height = bytes.u32be(20);
   let frames = 1;
+  let exif = false;
   let offset = 8;
   for (;;) {
     const length = bytes.u32be(offset);
     const type = bytes.ascii(offset + 4, 4);
     if (type === "acTL") frames = Math.min(bytes.u32be(offset + 8), maxFrames + 1);
+    if (type === "eXIf") exif = true;
     if (type === "IDAT" || type === "IEND") break;
     offset += 12 + length;
   }
-  return found("image/png", width, height, frames);
+  return found("image/png", width, height, frames, exif || pngExifAfter(bytes, offset));
+}
+
+/** An `eXIf` chunk after the image data: some decoders read it there too. A cut-off walk just ends. */
+function pngExifAfter(bytes: Bytes, start: number): boolean {
+  let offset = start;
+  while (offset + 8 <= bytes.data.length) {
+    const type = bytes.ascii(offset + 4, 4);
+    if (type === "eXIf") return true;
+    if (type === "IEND") return false;
+    offset += 12 + bytes.u32be(offset);
+  }
+  return false;
 }
 
 function isFrameHeader(marker: number): boolean {
   return marker >= 0xc0 && marker <= 0xcf && marker !== 0xc4 && marker !== 0xc8 && marker !== 0xcc;
 }
 
+/**
+ * Walks the segments up to the image data: the size from the frame header, EXIF from any APP1 `Exif` segment before
+ * the scan (decoders read every marker up to it). Past the frame header a broken or cut-off walk just ends.
+ */
 function sniffJpeg(bytes: Bytes): SniffResult {
   let offset = 2;
-  for (;;) {
-    if (bytes.u8(offset) !== 0xff)
-      return { ok: false, message: "JPEG segment does not start with 0xFF" };
-    while (bytes.u8(offset) === 0xff) offset++;
-    const marker = bytes.u8(offset);
-    offset++;
-    if (marker === 0x01 || (marker >= 0xd0 && marker <= 0xd8)) continue;
-    if (marker === 0xd9 || marker === 0xda) {
-      return { ok: false, message: "JPEG has no frame header before its image data" };
+  let size: readonly [width: number, height: number] | undefined;
+  let exif = false;
+  let problem = "JPEG has no frame header before its image data";
+  try {
+    for (;;) {
+      if (bytes.u8(offset) !== 0xff) {
+        problem = "JPEG segment does not start with 0xFF";
+        break;
+      }
+      while (bytes.u8(offset) === 0xff) offset++;
+      const marker = bytes.u8(offset);
+      offset++;
+      if (marker === 0x01 || (marker >= 0xd0 && marker <= 0xd8)) continue;
+      if (marker === 0xd9 || marker === 0xda) break;
+      const length = bytes.u16be(offset);
+      if (length < 2) {
+        problem = "JPEG segment length is invalid";
+        break;
+      }
+      if (marker === 0xe1 && length >= 8 && bytes.ascii(offset + 2, 6) === "Exif\0\0") exif = true;
+      if (size === undefined && isFrameHeader(marker)) {
+        size = [bytes.u16be(offset + 5), bytes.u16be(offset + 3)];
+      }
+      offset += length;
     }
-    const length = bytes.u16be(offset);
-    if (length < 2) return { ok: false, message: "JPEG segment length is invalid" };
-    if (isFrameHeader(marker)) {
-      return found("image/jpeg", bytes.u16be(offset + 5), bytes.u16be(offset + 3));
-    }
-    offset += length;
+  } catch (error) {
+    if (!(error instanceof Truncated) || size === undefined) throw error;
   }
+  if (size === undefined) return { ok: false, message: problem };
+  return found("image/jpeg", size[0], size[1], 1, exif);
 }
 
 function skipSubBlocks(bytes: Bytes, start: number): number {
@@ -184,7 +226,7 @@ function sniffGif(bytes: Bytes, maxFrames: number): SniffResult {
     if (!(error instanceof Truncated) || frames === 0) throw error;
   }
   if (frames === 0) return { ok: false, message: "GIF holds no image" };
-  return found("image/gif", width, height, frames);
+  return found("image/gif", width, height, frames, false);
 }
 
 function sniffWebp(bytes: Bytes, maxFrames: number): SniffResult {
@@ -193,24 +235,29 @@ function sniffWebp(bytes: Bytes, maxFrames: number): SniffResult {
     if (bytes.u8(23) !== 0x9d || bytes.u8(24) !== 0x01 || bytes.u8(25) !== 0x2a) {
       return { ok: false, message: "WebP VP8 start code is missing" };
     }
-    return found("image/webp", bytes.u16le(26) & 0x3fff, bytes.u16le(28) & 0x3fff);
+    return found("image/webp", bytes.u16le(26) & 0x3fff, bytes.u16le(28) & 0x3fff, 1, false);
   }
   if (first === "VP8L") {
     if (bytes.u8(20) !== 0x2f) return { ok: false, message: "WebP VP8L signature is missing" };
     const bits = bytes.u32le(21);
-    return found("image/webp", (bits & 0x3fff) + 1, ((bits >>> 14) & 0x3fff) + 1);
+    return found("image/webp", (bits & 0x3fff) + 1, ((bits >>> 14) & 0x3fff) + 1, 1, false);
   }
   if (first !== "VP8X") return { ok: false, message: "unknown WebP chunk" };
   const width = bytes.u24le(24) + 1;
   const height = bytes.u24le(27) + 1;
-  if ((bytes.u8(20) & 0x02) === 0) return found("image/webp", width, height);
+  const flags = bytes.u8(20);
+  // The EXIF flag of VP8X, or an EXIF chunk even where the flag is missing.
+  let exif = (flags & 0x08) !== 0;
   let frames = 0;
   let offset = 12;
   while (offset + 8 <= bytes.data.length && frames <= maxFrames) {
-    if (bytes.ascii(offset, 4) === "ANMF") frames++;
+    const type = bytes.ascii(offset, 4);
+    if (type === "ANMF") frames++;
+    if (type === "EXIF") exif = true;
     const size = bytes.u32le(offset + 4);
     offset += 8 + size + (size % 2);
   }
+  if ((flags & 0x02) === 0) return found("image/webp", width, height, 1, exif);
   if (frames === 0) return { ok: false, message: "animated WebP holds no frame" };
-  return found("image/webp", width, height, frames);
+  return found("image/webp", width, height, frames, exif);
 }

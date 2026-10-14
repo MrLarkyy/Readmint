@@ -1,16 +1,22 @@
+import { fnv1a } from "./fnv1a.js";
 import { RenderFailure } from "./RenderFailure.js";
 import { utf8Length } from "./utf8Length.js";
 
 /**
  * Collects the SVG in three parts (style rules, definitions, body) and keeps a running UTF-8 size, so a render
- * stops as soon as it passes the output budget instead of building an unbounded string. Ids are allocated per
- * writer, that is per render, in creation order.
+ * stops as soon as it passes the output budget instead of building an unbounded string.
+ *
+ * Definitions shared by reference (gradients, clip paths, images) are written once per distinct markup under an id
+ * derived from that markup, not from the order of use: the same definition gets the same id in every render and in
+ * every document, so two Readmint SVGs inlined into one page only share an id where the definitions are equal.
  */
 export class SvgWriter {
   private readonly styleParts: string[] = [];
   private readonly defParts: string[] = [];
   private readonly bodyParts: string[] = [];
-  private readonly counters = new Map<string, number>();
+  /** Letter -> markup of a shared definition without its id -> the id it was written under. */
+  private readonly shared = new Map<string, Map<string, string>>();
+  private readonly sharedIds = new Set<string>();
   private bytes = 0;
   private reserved = 0;
 
@@ -43,11 +49,27 @@ export class SvgWriter {
     if (total > this.limit) this.overflow(total);
   }
 
-  /** `prefix` + the next number for that prefix: `g0`, `g1`, ... */
-  id(prefix: string): string {
-    const next = this.counters.get(prefix) ?? 0;
-    this.counters.set(prefix, next + 1);
-    return `${prefix}${String(next)}`;
+  /**
+   * The id of a shared definition, written into `<defs>` (and counted) at its first request only. `build(id)` gives
+   * the markup with that id; `build("")` is the key, so it must differ only in the id. The id is `letter` + the
+   * hash of the key; a different key with the same hash in this document gets `-1`, `-2`, ... in request order.
+   */
+  share(letter: string, build: (id: string) => string): string {
+    const key = build("");
+    let ids = this.shared.get(letter);
+    if (ids === undefined) {
+      ids = new Map();
+      this.shared.set(letter, ids);
+    }
+    const known = ids.get(key);
+    if (known !== undefined) return known;
+    const hashed = `${letter}${fnv1a(key)}`;
+    let id = hashed;
+    for (let clash = 1; this.sharedIds.has(id); clash++) id = `${hashed}-${String(clash)}`;
+    ids.set(key, id);
+    this.sharedIds.add(id);
+    this.define(build(id));
+    return id;
   }
 
   /** The document: `open` (root start tag and leading children), definitions, body, closing tag. */

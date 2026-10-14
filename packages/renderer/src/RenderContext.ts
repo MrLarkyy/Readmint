@@ -22,8 +22,17 @@ export class RenderContext {
   readonly images = new Map<string, LoadedImage>();
   /** Compiled expressions by source text; a design string is compiled once per render. */
   readonly templates = new Map<string, ExprResult<Template>>();
-  /** Bytes each image adds to the output, every use counted. */
+  /** Bytes each image asset adds to the output: its data URI where it is written, which is once per distinct data. */
   readonly imageBytes = new Map<string, number>();
+  /** Distinct image data URIs by length and hash, so assets with identical bytes share one string and one key. */
+  readonly imageData = new Map<string, string[]>();
+  /** Image nodes per `dataKey`, counted before drawing: data used more than once is defined once and referenced. */
+  readonly imageUses = new Map<string, number>();
+  /**
+   * `dataKey` -> id of its shared `<image>` definition, looked up before `SvgWriter.share` so megabytes of image
+   * markup are built and hashed once per distinct data, not once per use.
+   */
+  readonly sharedImages = new Map<string, string>();
   /** Bounds of path data by layer pointer: `d` is never bound, so every repeat copy of a layer shares them. */
   readonly pathBounds = new Map<string, Bounds | undefined>();
   /** Lengths of path data drawn on by a `draw` track, by layer pointer, like `pathBounds`. */
