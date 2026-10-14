@@ -22,22 +22,35 @@ test("output over the budget fails with too-large naming the limit", () => {
   expect(result.ok ? "" : result.issues[0]?.message).toContain("100000 bytes");
 });
 
-test("a huge nested repeat from data stops early instead of building everything", () => {
-  // 10000 is the most items one repeat takes (expr); nested, that is 10^8 possible rects.
-  const items = new Array<number>(10_000).fill(1);
-  const design: Design = {
-    version: 0,
-    canvas: { width: 100, height: 100 },
-    layers: [
-      {
-        type: "group",
-        repeat: { each: "{{items}}", as: "row" },
-        children: [{ type: "rect", width: 1, height: 1, repeat: { each: "{{items}}" } }],
-      },
-    ],
-  };
+// 10000 is the most items one repeat takes (expr); nested, that is 10^8 possible rects.
+const hugeItems = new Array<number>(10_000).fill(1);
+const hugeNestedRepeat: Design = {
+  version: 0,
+  canvas: { width: 100, height: 100 },
+  layers: [
+    {
+      type: "group",
+      repeat: { each: "{{items}}", as: "row" },
+      children: [{ type: "rect", width: 1, height: 1, repeat: { each: "{{items}}" } }],
+    },
+  ],
+};
+
+test("a huge nested repeat stops at the output budget before building everything", () => {
+  // The copy limit lifted, only the bytes each node reserves before it is built stop the expansion.
   const started = performance.now();
-  const result = renderSvg(design, { data: { items } });
+  const result = renderSvg(hugeNestedRepeat, {
+    data: { items: hugeItems },
+    limits: { maxRepeatCopies: 1e9 },
+  });
+  expect(result).toMatchObject({ ok: false, issues: [{ path: "", code: "too-large" }] });
+  expect(result.ok ? "" : result.issues[0]?.message).toContain("5242880 bytes");
+  expect(performance.now() - started).toBeLessThan(2000);
+});
+
+test("a huge nested repeat stops at the copy limit first by default", () => {
+  const started = performance.now();
+  const result = renderSvg(hugeNestedRepeat, { data: { items: hugeItems } });
   // The copy limit (10000 outer + 10000 per outer item) is passed at outer item 9, before the output budget.
   expect(result).toMatchObject({
     ok: false,
@@ -137,7 +150,8 @@ test.each([
   const started = performance.now();
   const result = renderSvg(design, { data: { items, long } });
   const elapsed = performance.now() - started;
-  expect(result).toMatchObject({ ok: false, issues: [{ code: "too-large" }] });
+  // The output budget (a path reserves its data, a text its content) trips long before the copy limit.
+  expect(result).toMatchObject({ ok: false, issues: [{ path: "", code: "too-large" }] });
   expect(elapsed).toBeLessThan(500);
 });
 
