@@ -65,6 +65,16 @@ describe("normalizeSvg", () => {
     expect(a.match(/sha256=[0-9a-f]{64}/)?.[0]).not.toBe(b.match(/sha256=[0-9a-f]{64}/)?.[0]);
   });
 
+  test("replaces data URIs inside a style element (embedded fonts)", () => {
+    const svg = (payload: string) =>
+      `<svg><style>@font-face{font-family:&quot;F&quot;;src:url(data:font/ttf;base64,${payload});font-weight:500}</style></svg>`;
+    const a = normalizeSvg(svg("AAEAAA+/=="));
+    expect(a).toMatch(/src:url\(data:font\/ttf;sha256=[0-9a-f]{64}\);font-weight:500/);
+    expect(a).not.toContain("AAEAAA");
+    expect(normalizeSvg(a)).toBe(a);
+    expect(normalizeSvg(svg("BBEAAA+/=="))).not.toBe(a);
+  });
+
   test("ignores comments and CDATA when looking for tags", () => {
     const svg =
       '<svg><!-- <rect id="x" x="1.23456"/> --><style><![CDATA[ a > b { x: 1.23456 } ]]></style><rect id="y"/></svg>';
