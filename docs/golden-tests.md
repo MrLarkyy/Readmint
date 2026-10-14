@@ -37,7 +37,9 @@ the sources, so no build is needed before `pnpm test`.
 
 resvg loads no system fonts, so a fixture with `<text>` needs `fonts: [paths to TTF/OTF files]` in the suite;
 without them the rasterizer throws "SVG has text but the suite supplies no fonts" instead of drawing nothing. Use
-only fonts whose licence allows redistribution when committing them next to the suite.
+paths are used as given, so they are relative to the working directory of the test run (the repository root under
+`pnpm test`); build absolute ones from `import.meta.dirname`. A missing file is an error naming the path. A font
+committed to the repository must be redistributable and its licence file must sit beside it.
 
 ## Normalized SVG
 

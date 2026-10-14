@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import { Resvg } from "@resvg/resvg-js";
 
 /** Renders an SVG to PNG bytes without system fonts, so the result does not depend on the machine. */
@@ -8,6 +9,9 @@ export function rasterizeSvg(svg: string, scale = 1, fonts: readonly string[] = 
   }
   if (fonts.length === 0 && /<text[\s>/]/.test(svg)) {
     throw new Error("SVG has text but the suite supplies no fonts");
+  }
+  for (const font of fonts) {
+    if (!existsSync(font)) throw new Error(`golden font file not found: ${font}`);
   }
   const resvg = new Resvg(svg, {
     fitTo: { mode: "zoom", value: scale },

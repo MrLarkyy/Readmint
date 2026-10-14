@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, expect, test } from "vitest";
@@ -51,6 +51,13 @@ test("text without suite fonts is refused with a clear message", () => {
   expect(() => rasterizeSvg(text)).toThrow(/text but the suite supplies no fonts/);
 });
 
+test("a missing font file is an error naming the path", () => {
+  const text = `${open}<text x="1" y="10">Hi</text></svg>`;
+  expect(() => rasterizeSvg(text, 1, [join(dir, "nope.ttf")])).toThrow(
+    /font file not found: .*nope.ttf/,
+  );
+});
+
 test("a rendered PNG over the size cap is a problem in both modes and nothing is written", async () => {
   const wide = {
     ...box,
@@ -59,12 +66,12 @@ test("a rendered PNG over the size cap is a problem in both modes and nothing is
       '<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="400"><rect width="9" height="9"/></svg>',
   };
   const big = { ...suite, fixtures: [wide] };
+  const before = readFileSync(store.pngPath("box"));
   for (const mode of ["check", "update"] as const) {
     const result = await checkNodeFixture(big, wide, store, mode);
     expect(result.problems.join("\n")).toContain("4800x1600");
   }
-  expect(existsSync(store.pngPath("box"))).toBe(true);
-  expect(existsSync(join(store.goldenDir, "wide.png"))).toBe(false);
+  expect(readFileSync(store.pngPath("box")).equals(before)).toBe(true);
 });
 
 test("a corrupt golden PNG fails naming the file and writes the actual image", async () => {
