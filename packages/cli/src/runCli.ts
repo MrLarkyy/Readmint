@@ -66,7 +66,7 @@ async function report(error: unknown, io: CliIo): Promise<ExitCode> {
   try {
     await printLines(io.stderr, lines);
   } catch {
-    return ExitCode.internal;
+    // standard error is closed too (a broken pipe): the computed code still says what happened
   }
   return exitCode;
 }

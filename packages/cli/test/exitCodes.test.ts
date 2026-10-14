@@ -208,6 +208,16 @@ describe("a failed write to standard output", () => {
     });
   });
 
+  test.each([["render"], ["validate"]])(
+    "%s: standard error closed as well stays exit code 3",
+    async (name: string) => {
+      const broken = () =>
+        Promise.reject(Object.assign(new Error("write EPIPE"), { code: "EPIPE" }));
+      const run = await tree.run([name, "plain.json"], { stdout: broken, stderr: broken });
+      expect(run.code).toBe(ExitCode.input);
+    },
+  );
+
   test("an error without a system code stays internal", async () => {
     const run = await tree.run(["validate", "plain.json"], {
       stdout: () => Promise.reject(new Error("stdout broke")),
@@ -232,8 +242,11 @@ describe("exit code 70", () => {
     });
   });
 
-  test("a standard error writer that throws as well", async () => {
-    const run = await tree.run(["render", "nothing.json"], {
+  test("a standard error writer that throws as well keeps the computed code", async () => {
+    const run = await tree.run(["render", "plain.json"], {
+      stdout: () => {
+        throw new Error("stdout closed");
+      },
       stderr: () => {
         throw new Error("stderr closed");
       },
