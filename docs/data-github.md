@@ -34,19 +34,19 @@ ttlSeconds)` stores it.
 
 ### Options
 
-| option                | default    | range         | meaning                                                                      |
-| --------------------- | ---------- | ------------- | ---------------------------------------------------------------------------- |
-| `token`               | (required) | visible ASCII | the user's token; sent only in the `Authorization` header                    |
-| `login`               | the viewer | GitHub login  | the user to load; without it the token's owner is resolved first             |
-| `pageSize`            | 100        | 1–100         | repositories per request                                                     |
-| `maxRepositories`     | 300        | 1–1000        | repositories loaded at most                                                  |
-| `requestTimeoutMs`    | 30000      | 1000–120000   | per request, body included                                                   |
-| `maxRetryWaitSeconds` | 60         | 0–900         | the longest secondary rate-limit wait accepted                               |
-| `cacheTtlSeconds`     | 3600       | 1–604800      | lifetime of a cache entry                                                    |
-| `cache`               | none       |               | a `GitHubCache`                                                              |
-| `fetch`               | `fetch`    |               | `(url, init) => Promise<Response>`, injectable for tests                     |
-| `sleep`               | timer      |               | `(milliseconds) => Promise<void>` for retry waits; the default ends on abort |
-| `signal`              | none       |               | an `AbortSignal` that cancels the load, retry waits included (as `timeout`)  |
+| option                | default    | range         | meaning                                                                                                          |
+| --------------------- | ---------- | ------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `token`               | (required) | visible ASCII | the user's token; sent only in the `Authorization` header                                                        |
+| `login`               | the viewer | GitHub login  | the user to load; without it the token's owner is loaded. Required with an app or Actions token (`GITHUB_TOKEN`) |
+| `pageSize`            | 100        | 1–100         | repositories per request                                                                                         |
+| `maxRepositories`     | 300        | 1–1000        | repositories loaded at most                                                                                      |
+| `requestTimeoutMs`    | 30000      | 1000–120000   | per request, body included                                                                                       |
+| `maxRetryWaitSeconds` | 60         | 0–900         | the longest secondary rate-limit wait accepted                                                                   |
+| `cacheTtlSeconds`     | 3600       | 1–604800      | lifetime of a cache entry                                                                                        |
+| `cache`               | none       |               | a `GitHubCache`                                                                                                  |
+| `fetch`               | `fetch`    |               | `(url, init) => Promise<Response>`, injectable for tests                                                         |
+| `sleep`               | timer      |               | `(milliseconds) => Promise<void>` for retry waits; the default ends on abort                                     |
+| `signal`              | none       |               | an `AbortSignal` that cancels the load, retry waits included (as `timeout`)                                      |
 
 A value outside its range fails with `invalid-option` before any request.
 
@@ -173,21 +173,21 @@ Every failure is a `GitHubDataError`. A GraphQL `errors` entry fails the whole l
 returned. Messages never contain the token. An `invalid-response` message names only the JSON path that failed, never
 the value; a `graphql` message quotes GitHub's own error messages, redacted and shortened.
 
-| code                     | when                                                                                    |
-| ------------------------ | --------------------------------------------------------------------------------------- |
-| `missing-token`          | no token, or only whitespace                                                            |
-| `invalid-option`         | an option out of range, an invalid `login`, or a token with whitespace or control bytes |
-| `unauthorized`           | HTTP 401: the token is wrong or expired                                                 |
-| `forbidden`              | HTTP 403 that is not a rate limit (for example a missing scope)                         |
-| `not-found`              | no user with that login                                                                 |
-| `rate-limited`           | the primary rate limit is exhausted; `resetAt` says when it resets                      |
-| `secondary-rate-limited` | a secondary rate limit outlasted the allowed wait or attempts; `retryAfterSeconds`      |
-| `http`                   | any other non-2xx status (a 502, 503 or 504 after one retry)                            |
-| `network`                | the API could not be reached; `causeCode` such as `ECONNRESET` when known               |
-| `timeout`                | `requestTimeoutMs` passed, or `signal` aborted                                          |
-| `invalid-response`       | a body that is not JSON or does not match the expected shape, types or ranges           |
-| `graphql`                | GitHub answered with GraphQL errors (up to 3 types and messages, redacted, shortened)   |
-| `too-large`              | a response body over 8 MiB                                                              |
+| code                     | when                                                                                                                                              |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `missing-token`          | no token, or only whitespace                                                                                                                      |
+| `invalid-option`         | an option out of range, an invalid `login`, a token with whitespace or control bytes, or no `login` with an app or Actions token (`GITHUB_TOKEN`) |
+| `unauthorized`           | HTTP 401: the token is wrong or expired                                                                                                           |
+| `forbidden`              | HTTP 403 that is not a rate limit (for example a missing scope)                                                                                   |
+| `not-found`              | no user with that login                                                                                                                           |
+| `rate-limited`           | the primary rate limit is exhausted; `resetAt` says when it resets                                                                                |
+| `secondary-rate-limited` | a secondary rate limit outlasted the allowed wait or attempts; `retryAfterSeconds`                                                                |
+| `http`                   | any other non-2xx status (a 502, 503 or 504 after one retry)                                                                                      |
+| `network`                | the API could not be reached; `causeCode` such as `ECONNRESET` when known                                                                         |
+| `timeout`                | `requestTimeoutMs` passed, or `signal` aborted                                                                                                    |
+| `invalid-response`       | a body that is not JSON or does not match the expected shape, types or ranges                                                                     |
+| `graphql`                | GitHub answered with GraphQL errors (up to 3 types and messages, redacted, shortened)                                                             |
+| `too-large`              | a response body over 8 MiB                                                                                                                        |
 
 Every value is validated before use: types, non-negative integer counts, dates and timestamps, a calendar without gaps
 whose weekdays match the dates and whose day counts add up to the total, `https://` URLs, and `#rrggbb` colours.
