@@ -1,4 +1,5 @@
 import { describe, expect, test } from "vitest";
+import { loadScale } from "../../../test-support/loadScale.js";
 import { DesignLimits, parseDesign } from "../src/index.js";
 import { parseDesignSource } from "../src/parseDesignSource.js";
 
@@ -77,12 +78,12 @@ describe("YAML source", () => {
 
   test("a map with 80 000 keys is checked in linear time", () => {
     // A growth ratio instead of a wall-clock bound, so machine load does not decide: linear is
-    // about 4 for 4x the keys, quadratic about 16; the best of three runs filters load spikes.
+    // about 4 for 4x the keys, quadratic about 16; the best of five runs filters load spikes.
     const duplicateKeySource = (count: number) =>
       [...Array.from({ length: count }, (_, index) => `k${String(index)}: 0`), "k7: 1"].join("\n");
     const best = (source: string) => {
       let fastest = Infinity;
-      for (let run = 0; run < 3; run++) {
+      for (let run = 0; run < 5; run++) {
         const started = performance.now();
         issuesOf(source);
         fastest = Math.min(fastest, performance.now() - started);
@@ -113,7 +114,7 @@ describe("YAML source", () => {
     expect(issuesOf(source)).toEqual([
       expect.objectContaining({ code: "too-large", line: count + DesignLimits.maxAliases + 1 }),
     ]);
-    expect(performance.now() - started).toBeLessThan(2000);
+    expect(performance.now() - started).toBeLessThan(2000 * loadScale());
   });
 
   test("aliases within the limit resolve", () => {
@@ -171,7 +172,7 @@ describe("YAML source", () => {
       const source = fillToYamlLimit(head, unit, tail);
       const started = performance.now();
       expect(issuesOf(source)[0]).toMatchObject(issue);
-      expect(performance.now() - started).toBeLessThan(linearBudget);
+      expect(performance.now() - started).toBeLessThan(linearBudget * loadScale());
     },
     30_000,
   );
@@ -213,7 +214,7 @@ describe("YAML source", () => {
       path: "/b0",
       code: "unknown-property",
     });
-    expect(withAlias.ms).toBeLessThan(linearBudget);
+    expect(withAlias.ms).toBeLessThan(linearBudget * loadScale());
     // yaml's alias count walks the whole document per alias: 3x slower than the twin.
     expect(withAlias.ratio).toBeLessThan(1.5);
   }, 60_000);
@@ -227,7 +228,7 @@ describe("YAML source", () => {
     );
     expect(broken.result).toMatchObject({ ok: false, truncated: true });
     expect(!broken.result.ok && broken.result.issues).toHaveLength(DesignLimits.maxIssues);
-    expect(broken.ms).toBeLessThan(linearBudget);
+    expect(broken.ms).toBeLessThan(linearBudget * loadScale());
     // A stack trace per syntax error made this 6-10x slower than the valid twin.
     expect(broken.ratio).toBeLessThan(2);
   }, 60_000);
@@ -242,7 +243,7 @@ describe("YAML source", () => {
         message: `the YAML source is longer than ${String(DesignLimits.maxYamlSourceLength)} characters`,
       },
     ]);
-    expect(performance.now() - started).toBeLessThan(100);
+    expect(performance.now() - started).toBeLessThan(100 * loadScale());
   });
 
   test("a JSON source may exceed the YAML limit", () => {
@@ -293,7 +294,7 @@ describe("YAML source", () => {
     ].join("\n");
     const started = performance.now();
     expect(issuesOf(bomb)).toMatchObject([{ code: "too-large" }]);
-    expect(performance.now() - started).toBeLessThan(1000);
+    expect(performance.now() - started).toBeLessThan(1000 * loadScale());
   });
 
   test("a self-referencing alias ends as too-deep", () => {

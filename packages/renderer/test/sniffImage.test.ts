@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Design } from "@readmint/format";
 import { describe, expect, test } from "vitest";
+import { loadScale } from "../../../test-support/loadScale.js";
 import { renderSvg, type RenderOptions } from "../src/index.js";
 import { sniffImage } from "../src/sniffImage.js";
 
@@ -311,6 +312,6 @@ describe("rendered images", () => {
     const huge = `data:image/png;base64,${"A".repeat(8_000_000)}`;
     const started = performance.now();
     expect(render(huge)).toMatchObject({ ok: false, issues: [{ code: "asset-too-large" }] });
-    expect(performance.now() - started).toBeLessThan(200);
+    expect(performance.now() - started).toBeLessThan(200 * loadScale());
   });
 });

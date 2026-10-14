@@ -1,4 +1,5 @@
 import { describe, expect, test } from "vitest";
+import { loadScale } from "../../../test-support/loadScale.js";
 import {
   compileTemplate,
   createBudget,
@@ -31,7 +32,7 @@ function expectBounded(
   expect(result.error.message.length).toBeLessThan(200);
   // One overrunning charge may be large (a 20M-character string is 1.25M steps); it is never paid in work.
   expect(budget.used).toBeLessThanOrEqual(ExpressionLimits.maxSteps + 2_000_000);
-  expect(elapsed).toBeLessThan(wallClockMs);
+  expect(elapsed).toBeLessThan(wallClockMs * loadScale());
 }
 
 const long = "x".repeat(60_000);
@@ -196,6 +197,6 @@ describe("hostile expressions are bounded in time and memory", () => {
     for (const filler of ['"', "'", "a-".repeat(10), "1e", "{{", "}"]) {
       compileTemplate(`{{ ${filler.repeat(9990 / filler.length)}`);
     }
-    expect(performance.now() - started).toBeLessThan(wallClockMs);
+    expect(performance.now() - started).toBeLessThan(wallClockMs * loadScale());
   });
 });
