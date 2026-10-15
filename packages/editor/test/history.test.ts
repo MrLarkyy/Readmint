@@ -97,6 +97,13 @@ describe("only design edits are history entries", () => {
     ["fixture data", base, (s) => loadFixture(s, JSON.stringify({ repo: { name: "x" } }))],
     ["a font check", base, checkFonts],
     ["an attached file", image, (s) => attachAsset(s, "images", "logo", testImages.png.bytes)],
+    ["a drag that rounds to no move", base, (s) => moveLayer(s, "/layers/0", 0.3, -0.2)],
+    [
+      "a resize to the same box",
+      base,
+      (s) => resizeLayer(s, "/layers/0", { x: 20, y: 20, width: 120, height: 60 }),
+    ],
+    ["a property set to its value", base, (s) => setLayerProperty(s, "/layers/0", "x", 20)],
   ])("%s records nothing", (_name, state, command) => {
     const history = createHistory();
     const next = run({ history, state }, command);

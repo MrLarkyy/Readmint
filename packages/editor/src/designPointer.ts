@@ -45,8 +45,9 @@ export function getAt(root: unknown, pointer: string): unknown {
 
 /**
  * A copy of `root` with `value` at `pointer` (`undefined` removes an object key); every object and array on the way
- * is copied, nothing of `root` changes. Undefined when the pointer is malformed or its parent does not exist, or an
- * array index is out of range.
+ * is copied, nothing of `root` changes. `root` itself when the value is already there (the same value, or no key to
+ * remove), so an edit that changes nothing is no change: undo records none. Undefined when the pointer is malformed
+ * or its parent does not exist, or an array index is out of range.
  */
 export function setAt<T>(root: T, pointer: string, value: unknown): T | undefined {
   const tokens = parsePointer(pointer);
@@ -63,14 +64,19 @@ function update(node: unknown, tokens: readonly string[], value: unknown): unkno
     const next = update(node[index], rest, value);
     if (next === undefined)
       return rest.length === 0 ? node.filter((_, at) => at !== index) : undefined;
+    if (Object.is(next, node[index])) return node;
     return node.map((item: unknown, at) => (at === index ? next : item));
   }
   if (!isRecord(node)) return undefined;
+  const has = Object.hasOwn(node, token);
   if (rest.length > 0) {
-    const next = update(child(node, token), rest, value);
-    return next === undefined ? undefined : withKey(node, token, next);
+    const current = child(node, token);
+    const next = update(current, rest, value);
+    if (next === undefined) return undefined;
+    return Object.is(next, current) ? node : withKey(node, token, next);
   }
-  return value === undefined ? withoutKey(node, token) : withKey(node, token, value);
+  if (value === undefined) return has ? withoutKey(node, token) : node;
+  return has && Object.is(node[token], value) ? node : withKey(node, token, value);
 }
 
 function child(node: unknown, token: string): unknown {

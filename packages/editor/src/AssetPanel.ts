@@ -1,5 +1,5 @@
 import type { FontAsset } from "@readmint/format";
-import { decodeDataUri } from "./base64.js";
+import { assetSourceKind } from "./assetSourceKind.js";
 import { clear, element, takeFile } from "./dom.js";
 import type { EditorState } from "./EditorState.js";
 import type { FontAssetChange } from "./setFontAsset.js";
@@ -13,7 +13,8 @@ export interface AssetActions {
 
 /**
  * The design's fonts with their licence, its embedded images, and every asset whose `src` is a path: those need the
- * file for the preview (the CLI reads it from the path); the design keeps the path.
+ * file for the preview (the CLI reads it from the path); the design keeps the path. Embedded or path is decided by the
+ * CLI's rule (`assetSourceKind`), from the `src` prefix alone: nothing is decoded on a change, the preview checks it.
  */
 export class AssetPanel {
   readonly root: HTMLElement;
@@ -37,20 +38,22 @@ export class AssetPanel {
     const assets = state.design.assets;
     for (const [id, asset] of Object.entries(assets?.fonts ?? {})) this.font(state, id, asset);
     for (const [id, asset] of Object.entries(assets?.images ?? {})) {
-      if (asset.src.startsWith("{{")) {
-        element(this.body, "p", {
-          className: "rm-note",
-          text: `image ${id}: bound to data; the editor never fetches it (the CLI and the Action do)`,
-        });
-      } else if (asset.src.startsWith("data:")) {
-        // Listed by its prefix alone: decoding megabytes on every change would buy nothing, the preview checks it.
-        element(this.body, "p", {
-          className: "rm-note",
-          text: `image ${id}: embedded in the design`,
-          attributes: { "data-image": id },
-        });
-      } else {
-        this.pathAsset(state, "images", id, asset.src, this.body);
+      switch (assetSourceKind(asset.src)) {
+        case "bound":
+          element(this.body, "p", {
+            className: "rm-note",
+            text: `image ${id}: bound to data; the editor never fetches it (the CLI and the Action do)`,
+          });
+          break;
+        case "embedded":
+          element(this.body, "p", {
+            className: "rm-note",
+            text: `image ${id}: embedded in the design`,
+            attributes: { "data-image": id },
+          });
+          break;
+        case "path":
+          this.pathAsset(state, "images", id, asset.src, this.body);
       }
     }
   }
@@ -63,7 +66,7 @@ export class AssetPanel {
     const weight = asset.weight === undefined ? "" : ` ${String(asset.weight)}`;
     const style = asset.style === "italic" ? " italic" : "";
     element(box, "legend", { text: `${id}: ${asset.family}${weight}${style}` });
-    if (decodeDataUri(asset.src) === undefined) this.pathAsset(state, "fonts", id, asset.src, box);
+    if (assetSourceKind(asset.src) === "path") this.pathAsset(state, "fonts", id, asset.src, box);
     const check = Object.hasOwn(state.fontChecks, id) ? state.fontChecks[id] : undefined;
     const locked = check?.embeddable === false;
     const label = element(box, "label", { text: "embedding " });

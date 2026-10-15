@@ -125,8 +125,13 @@ export function mountEditor(root: HTMLElement, options: MountEditorOptions = {})
     client.render(state);
     show();
   };
-  const track = (work: Promise<unknown>) => {
-    const done = work.finally(() => pending.delete(done));
+  /** Waits for `work` in `settled()`; a failure (a file that cannot be read, a chunk that does not load) is an issue. */
+  const track = (work: Promise<unknown>, source: EditorIssue["source"], failure: string) => {
+    const done = work
+      .catch((error: unknown) => {
+        report(source, `${failure}: ${error instanceof Error ? error.message : String(error)}`);
+      })
+      .finally(() => pending.delete(done));
     pending.add(done);
   };
   const report = (source: EditorIssue["source"], message: string) => {
@@ -173,6 +178,8 @@ export function mountEditor(root: HTMLElement, options: MountEditorOptions = {})
             report("export", "a raster export is already running; wait for it to finish");
         }
       }),
+      "export",
+      `the ${format} export failed`,
     );
   };
   const withFonts = () => {
@@ -180,6 +187,8 @@ export function mountEditor(root: HTMLElement, options: MountEditorOptions = {})
       import("./checkFonts.js").then(({ checkFonts }) => {
         dispatch(checkFonts);
       }),
+      "font",
+      "the fonts could not be checked",
     );
   };
 
@@ -217,6 +226,8 @@ export function mountEditor(root: HTMLElement, options: MountEditorOptions = {})
             apply((current) => ({ ...createEditorState(result.value), data: current.data }), true);
             withFonts();
           }),
+        "import",
+        "the design file could not be read",
       );
     },
     undo: () => {
@@ -234,6 +245,8 @@ export function mountEditor(root: HTMLElement, options: MountEditorOptions = {})
           if (result.ok) saveDesign({ name: "design.yaml", text: result.text }, "application/yaml");
           else report("export", result.message);
         }),
+        "export",
+        "the YAML export failed",
       );
     },
     exportPng: () => {
@@ -261,6 +274,8 @@ export function mountEditor(root: HTMLElement, options: MountEditorOptions = {})
             }
           },
         ),
+        "font",
+        `font ${JSON.stringify(file.name.slice(0, 128))} could not be read`,
       );
     },
     uploadImage: (file) => {
@@ -282,6 +297,8 @@ export function mountEditor(root: HTMLElement, options: MountEditorOptions = {})
             );
           }
         }),
+        "image",
+        `image ${JSON.stringify(file.name.slice(0, 128))} could not be read`,
       );
     },
     loadFixture: (file) => {
@@ -296,6 +313,8 @@ export function mountEditor(root: HTMLElement, options: MountEditorOptions = {})
         file.text().then((text) => {
           dispatch((current) => loadFixture(current, text));
         }),
+        "fixture",
+        "fixture data could not be read",
       );
     },
     zoom: (zoom) => {
@@ -336,6 +355,8 @@ export function mountEditor(root: HTMLElement, options: MountEditorOptions = {})
           dispatch((current) => attachAsset(current, kind, id, bytes));
           if (kind === "fonts") withFonts();
         }),
+        "asset",
+        `the file for ${kind === "fonts" ? "font" : "image"} ${JSON.stringify(id)} could not be read`,
       );
     },
   });
@@ -384,7 +405,7 @@ export function mountEditor(root: HTMLElement, options: MountEditorOptions = {})
 
   const keydown = (event: KeyboardEvent) => {
     if (!(event.ctrlKey || event.metaKey) || event.altKey || editable(event.target)) return;
-    const key = event.key.toLowerCase();
+    const key = shortcutLetter(event);
     const move = key === "z" ? (event.shiftKey ? redo : undo) : key === "y" ? redo : undefined;
     if (move === undefined) return;
     event.preventDefault();
@@ -431,6 +452,16 @@ function selectedGroup(state: EditorState): string | undefined {
   return selected !== undefined && findLayer(state.design, selected)?.type === "group"
     ? selected
     : undefined;
+}
+
+/**
+ * The letter a shortcut names: the key's own when it is a Latin letter (so Ctrl+Z follows the layout, QWERTZ
+ * included), else the key's place on the keyboard, which a non-Latin layout (Cyrillic, Greek) still reports.
+ */
+function shortcutLetter(event: KeyboardEvent): string {
+  const key = event.key.toLowerCase();
+  if (/^[a-z]$/u.test(key)) return key;
+  return /^Key[A-Z]$/u.test(event.code) ? event.code.slice(3).toLowerCase() : key;
 }
 
 /** Whether a key goes to a field that has its own undo: the editor's shortcuts leave it alone. */

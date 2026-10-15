@@ -46,12 +46,15 @@ what the layer calls width and height.
 ## Undo and redo
 
 Ctrl+Z (Cmd+Z) undoes the newest edit of the design; Ctrl+Shift+Z or Ctrl+Y (Cmd+Shift+Z, Cmd+Y) redoes it, as do the
-toolbar's Undo and Redo buttons, which are disabled when there is nothing to step to. In a text field, a select or
-editable content the keys are the field's own: the editor's undo never takes them there.
+toolbar's Undo and Redo buttons, which are disabled when there is nothing to step to. The letter is the one the layout
+types; on a layout without Latin letters (Cyrillic, Greek) it is the key in the Z or Y place. In a text field, a select
+or editable content the keys are the field's own: the editor's undo never takes them there.
 
 Every command that changes the design is one entry (a drag is one, recorded when the pointer is released; an upload
-adds its asset and layer as one); a refused command, a selection, loading fixture data, attaching a file for a
-path-sourced asset and reading font licences are not entries. Undo and redo restore the design and the layer selected
+adds its asset and layer as one); a refused command, an edit that changes nothing (a drag that rounds to no move, a
+value set to what it is), a selection, loading fixture data, attaching a file for a path-sourced asset and reading
+font licences are not entries. When the design changes during a drag (an undo, a redo, an upload finishing), the drag
+is dropped: releasing the pointer changes nothing. Undo and redo restore the design and the layer selected
 with it, and clear the issue list; fixture data, attached files and font checks are inputs of the session and stay as
 they are. A new edit after an undo drops what could have been redone. The history holds the last
 `EditorLimits.maxHistory` (100) edits, the oldest dropped first; entries share the unchanged parts of the design, so
@@ -126,22 +129,32 @@ up, to fit a canvas of literal size, in whole pixels. It goes into the selected 
 selected. The asset id is made from the file name (`image` when nothing of it is left), the layer takes the same id when
 it is free. Undo removes the asset and the layer together.
 
-The editor accepts exactly what the renderer and so the CLI render, checked in the renderer's order before anything is
-added:
+Before anything is added, the file goes through the checks the renderer runs on one image asset, in its order, with
+its bounds (`readImageFile`):
 
 - a file larger than `EditorLimits.maxImageBytes` (the renderer's `maxImageBytes`, 4 MiB) is refused before it is read;
 - the format is sniffed from the bytes: PNG, JPEG, GIF or WebP; anything else, SVG included (it can carry scripts), or a
-  malformed or truncated file is refused with the sniffer's reason;
+  malformed or truncated file is refused with the sniffer's reason. A JPEG's image data is walked to its Huffman
+  symbols, never decoded to pixels ([renderer.md](renderer.md#images)): data the browsers and resvg would draw apart
+  is refused, as is a file past the check's step bound;
 - a side longer than the renderer's `maxImageSide` (8192 pixels) or more animation frames than its
   `maxAnimationFrames` (1000) is refused, naming the limit;
 - an image that would make the exported file longer than `DesignLimits.maxSourceLength` is refused, naming both
   lengths. Base64 makes the data URI a third larger than the file, so this bounds an upload to about 3 MiB in practice,
   less what the design already holds.
 
-A refused image leaves the design unchanged, with an `image` issue saying why. The sniffer loads on the first upload,
-never with the page; it reads headers only and decodes no pixels. The asset panel lists embedded images as embedded in
-the design, without decoding them; the renderer checks them on every render, as it checks those of an imported design.
-A golden fixture (`session-image`) and a CLI test pin that an uploaded image previews as the CLI renders it.
+A refused image leaves the design unchanged, with an `image` issue saying why; so does a file that cannot be read or a
+check that fails to load. The check loads on the first upload, never with the page, and runs on the page's thread: it
+decodes no pixels, but a JPEG's symbol walk takes about 0.1 s for a 3 MB baseline file, 0.2 s for a progressive one.
+
+The upload checks the file alone. What a render bounds over the whole design is the preview's to report, as for an
+imported design, with the design kept: the JPEG data of all its images together (`maxRenderEntropySteps`), the SVG's
+`maxOutputBytes` (5 MiB; an image's data URI is written once however many layers show it), and for a raster export
+the image pixels it decodes (`RasterLimits.maxImagePixels`, [raster.md](raster.md)). The asset panel lists a `data:`
+image or font as embedded in the design, by the CLI's rule (a `data:` source is the renderer's to decode, a
+`{{binding}}` is fetched, anything else is a path), without decoding it: a malformed one is the preview's issue, never
+a file to attach. A golden fixture (`session-image`) and a CLI test pin that an uploaded image previews as the CLI
+renders it.
 
 ## Assets given by path
 
@@ -173,7 +186,8 @@ page itself needs neither.
 ## Bundle
 
 The initial chunk holds the editor and the format's validation (about 20 kB gzip, budget 120 kB). The YAML parser
-(reading and writing), the font parser and the image sniffer load on first use; the renderer lives only in the two workers: the preview
+(reading and writing), the font parser and the image check (the renderer's sniffer, without the renderer) load on
+first use; the renderer lives only in the two workers: the preview
 worker (budget 250 kB gzip) and the raster worker, which also holds the rasterizer and the encoders (about 184 kB gzip,
 budget 230 kB). The two WebAssembly files (resvg 2.5 MB, libwebp 0.5 MB) are separate assets, never inlined, fetched
 only by a raster export. A test bundles the app and checks the budgets, which chunk holds what, that the rasterizer is
