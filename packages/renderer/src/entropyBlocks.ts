@@ -17,7 +17,8 @@ export const maxDequantized = 4096;
  * times its column's sum at most) and adds and subtracts those of columns u and u + 4 in 16 bits in the second pass, so nothing overflows below
  * a pair of 5906. Measured on x86-64 Chromium against resvg with 8x8 blocks scaled to a given pair: alike up to 5888,
  * apart from 6008 on. Genuine encodings reach 3430 (Pillow, libjpeg-turbo: high-contrast and worst-case patterns at
- * quality 1-100, grey, 4:4:4 and 4:2:0, baseline and progressive); an 8-bit block at quality 100 3504 at most.
+ * quality 1-100, grey, 4:4:4 and 4:2:0, baseline and progressive); a search over 8-bit blocks found 4080 with the
+ * standard tables (chroma, quality 1-10), and an 8-bit block at quality 100 stays within 4096.
  */
 export const maxColumnPairSum = 4608;
 
