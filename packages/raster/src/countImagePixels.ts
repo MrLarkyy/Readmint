@@ -64,7 +64,8 @@ export function countImagePixels(svg: string, frames: number): ImageWork {
   let images = 0;
   let totalDraws = 0;
   const webp = new Set<string>();
-  // One JPEG symbol-check budget for every image of the export, as the render has.
+  // One JPEG symbol-check budget for every image of the export, as the render has. A JPEG the render already checked
+  // comes from the renderer's sniff cache, charged the same steps, so it is not checked again.
   const budget = new EntropyBudget();
   for (const match of svg.matchAll(imageElement)) {
     const element = match[0];

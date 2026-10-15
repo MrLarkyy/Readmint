@@ -1,16 +1,14 @@
-import type { ComponentPropValue } from "@readmint/format";
-import type { ProfileSection, ProfileTemplate } from "../src/index.js";
+/** One root prop value of a design: a text, a number, a flag or a list of them. */
+export type ExampleProp = string | number | boolean | readonly (string | number | boolean)[];
 
 /**
- * The personal texts of the approved prototype, set as the root props of each section, as a user fills them in. They
- * live only here: the template files have empty defaults and no example value (the no-literal test). The example
- * goldens and the example repository render with them.
+ * The personal texts of the approved prototype, set as the root props of each section, as a user fills them in, by
+ * template folder and section (file name without `.json`). They live only here: the template files have empty
+ * defaults and no example value (the no-literal test). The example goldens and the example repository render with
+ * them.
  */
 export const profileExampleProps: Readonly<
-  Record<
-    ProfileTemplate,
-    Partial<Record<ProfileSection, Readonly<Record<string, ComponentPropValue>>>>
-  >
+  Record<string, Readonly<Record<string, Readonly<Record<string, ExampleProp>>>>>
 > = {
   "year-ring": {
     header: {

@@ -5,6 +5,29 @@ import { wrapParagraphs, wrapText } from "../src/wrapText.js";
 /** Every code point is 1 wide, so widths are character counts. */
 const count = (text: string) => Array.from(text).length;
 
+describe("wrapText space variants", () => {
+  test.each(["\u2009", "\u3000", "\u2003", "\u205f"])(
+    "space variant %# breaks and is dropped at a soft break",
+    (space) => {
+      expect(wrapText(`aa${space}bb${space}cc`, 5, count)).toEqual(["aa" + space + "bb", "cc"]);
+      expect(wrapText(`aa${space}bb`, 3, count)).toEqual(["aa", "bb"]);
+    },
+  );
+
+  test("the separator is measured with its own width", () => {
+    const wide = (text: string) =>
+      Array.from(text).reduce((sum, c) => sum + (c === "\u3000" ? 3 : 1), 0);
+    expect(wrapText("a\u3000b", 4, wide)).toEqual(["a", "b"]);
+    expect(wrapText("a\u3000b", 5, wide)).toEqual(["a\u3000b"]);
+    expect(wrapText("a b", 3, wide)).toEqual(["a b"]);
+  });
+
+  test.each(["\u00a0", "\u2007", "\u202f"])("no-break variant %# never breaks", (space) => {
+    expect(wrapText(`aa${space}bb`, 3, count)).toEqual(["aa" + space, "bb"]);
+    expect(wrapText(`aa${space}bb cc`, 5, count)).toEqual([`aa${space}bb`, "cc"]);
+  });
+});
+
 describe("wrapText", () => {
   test("greedy wrapping at spaces drops the space at a soft break", () => {
     expect(wrapText("aa bb cc dd", 5, count)).toEqual(["aa bb", "cc dd"]);

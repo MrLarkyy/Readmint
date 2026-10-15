@@ -33,7 +33,8 @@ jobs:
             readmint/designs/languages.yaml
 ```
 
-Use an exact release tag (`vX.Y.Z`); see [Releases](#releases). Then put the printed snippet (below) into your README.
+Use an exact release tag (`vX.Y.Z`); see [Releases](#releases). The [examples repository](https://github.com/MrLarkyy/readmint-template-test) runs the profile
+templates as working workflows ([components.md](components.md#the-examples-repository)). Then put the printed snippet (below) into your README.
 
 ## Inputs
 

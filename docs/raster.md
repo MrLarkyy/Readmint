@@ -130,7 +130,9 @@ swapped; the same text in a data-bound text stays text. The WebP structure is re
 anything is decoded (size, the renderer's `maxImageSide` and `maxAnimationFrames`); a malformed file is `raster-image`.
 Every image's header is read again before drawing (`sniffImage`); the JPEG symbol check of all images of the export
 together has one budget of 134217728 decoding steps (the renderer's per-render bound), crossing it is
-`raster-too-many-image-pixels`.
+`raster-too-many-image-pixels`. A JPEG whose bytes the render already checked in the same module instance comes from
+the renderer's sniff cache, charged the steps its check took, so it is not checked again ([renderer.md](renderer.md),
+Images).
 GIF and APNG images draw their first frame, as resvg does.
 
 ## API

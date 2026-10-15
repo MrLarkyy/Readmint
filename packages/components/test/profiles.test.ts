@@ -15,7 +15,7 @@ import {
   renderProfile,
   type ProfileTheme,
 } from "./profileDesigns.js";
-import { profileExampleProps } from "./profileExampleProps.js";
+import { profileExampleProps } from "@readmint/examples/props";
 import { sampleGitHubData } from "./sampleGitHubData.js";
 import {
   otherProfileData,
@@ -796,8 +796,19 @@ describe.each(names)("%s personal texts", (template) => {
         if (fallback !== undefined) expect(prop.default, name).toBe(fallback);
         else expect(prop.default, `${section} ${name}`).toEqual(prop.type === "array" ? [] : "");
       }
-      for (const name of Object.keys(profileExampleProps[template][section] ?? {}))
+      for (const name of Object.keys(profileExampleProps[template]?.[section] ?? {}))
         expect(Object.keys(declared), `${section} ${name}`).toContain(name);
+    }
+  });
+});
+
+describe("profile example props", () => {
+  test("every template and section they name exists", () => {
+    for (const [template, sections] of Object.entries(profileExampleProps)) {
+      expect(Object.keys(profileTemplates), template).toContain(template);
+      const known: readonly string[] = profileTemplates[template as ProfileTemplate];
+      for (const section of Object.keys(sections))
+        expect(known, `${template}/${section}`).toContain(section);
     }
   });
 });

@@ -1,7 +1,7 @@
 import { parseDesign, type Design } from "@readmint/format";
 import { renderSvg, type RenderLimits } from "@readmint/renderer";
 import type { ProfileSection, ProfileTemplate } from "../src/index.js";
-import { profileExampleProps } from "./profileExampleProps.js";
+import { profileExampleProps } from "@readmint/examples/props";
 
 export type ProfileTheme = "light" | "dark";
 
@@ -66,7 +66,7 @@ export function loadExampleProfile(
   theme: ProfileTheme = "light",
 ): Design {
   const design = loadProfile(template, section, theme);
-  const props = profileExampleProps[template][section];
+  const props = profileExampleProps[template]?.[section];
   const [root, ...rest] = design.layers;
   if (props === undefined || root?.type !== "component") return design;
   return { ...design, layers: [{ ...root, props: { ...root.props, ...props } }, ...rest] };

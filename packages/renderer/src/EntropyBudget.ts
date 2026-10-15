@@ -8,6 +8,8 @@ export const maxRenderEntropySteps = 134_217_728;
 /**
  * What is left of `maxRenderEntropySteps` for the images still to be checked. `sniffImage` charges it; once a JPEG
  * crossed it, `exhausted` is set and that sniff failed, which the caller reports as too much work, not a bad image.
+ * A JPEG whose result comes from `sniffCache` charges the steps its first check took, so the budget runs out at the
+ * same image whether the cache is empty or not.
  */
 export class EntropyBudget {
   remaining = maxRenderEntropySteps;

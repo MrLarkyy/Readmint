@@ -206,7 +206,7 @@ Drawn in document order, first at the back. Layer `id` and `name` are not emitte
   U+2011 (Text, Space and hyphen fallbacks). No vertical text, no variable-font axes,
   no fallback shaping for fonts without layout tables (Arabic presentation forms). Characters of one word in different
   fonts do not join or attach across the font change.
-- A line break in the content is a hard break. With a `width`, words (split at spaces) fill each line greedily; a word
+- A line break in the content is a hard break. With a `width`, words (split at breakable spaces: U+0020, U+2000-2006, U+2008-200A, U+205F, U+3000; U+00A0, U+2007 and U+202F never break) fill each line greedily; a word
   wider than the line breaks between clusters, never inside one (a ligature, a letter with its marks, a conjunct). Word widths include kerning inside the word; kerning across a space
   is left out of the wrapping decision (it is in the final positions). The space at a soft break is dropped, every
   other space is kept (`xml:space="preserve"`).
@@ -456,7 +456,12 @@ budget?, maxBytes? })`, `encodeWoff`, `decodeWoff`, `glyphClosure`, `OutlineBudg
   Measured with built files of exact symbols and the gradient, `progressive.jpg` and `sof3-8bit-rgb.jpg` broken in
   place, every kind pinned in both outputs (`packages/renderer/test/jpegEntropyCases.ts`: Chromium 156, resvg-wasm
   2.6.2). The check is bounded (see Limits) and takes about 100 ms for a 3 MB baseline file, 200 ms for a progressive
-  one.
+  one. An accepted JPEG's result is kept by its bytes for the module instance (at most 64 images and 32 MiB of image
+  data, the least recently used dropped first; a hit needs the bytes equal byte for byte, so a hash collision is a
+  miss; refused files are checked every time), so a repeated render, every frame of an animation and the raster pass
+  skip the check for bytes already checked: a hit costs a hash and a comparison of the bytes, some 17 ms for a 3.5 MB
+  file. The copy the SVG holds (orientation upright, colour data removed) is kept too, with what its check finds,
+  derived from the original's check. Results and output never depend on the cache (see Limits).
 
 - Lossy pixel values the two decoders round apart are bounded by a pinned tolerance: at most 2 levels per channel
   (`jpegChannelTolerance`, `packages/raster/test/jpegDecoderTolerance.ts`), as libjpeg-turbo (Chromium) and
@@ -510,7 +515,8 @@ refused:` and the reason (`a JFIF segment`, `Adobe transform 1`, `component ids 
   embedded ICC profile and PNG colour chunks, resvg ignores them, so the preview would draw other colours than the
   raster output (a Display P3 or Adobe RGB profile, a P3 cICP or cHRM, gAMA 1.0 alone: 40 to 73 levels per channel
   apart). Removed, as whole segments or chunks, where decoders read them: JPEG APP2 `ICC_PROFILE\0` segments before
-  the first SOS (every part of a split profile; another APP2, such as `MPF`, stays); PNG `iCCP`, `sRGB`, `gAMA`,
+  the first SOS, with the 0xFF fill bytes before the marker, so the copy's walk meets the same markers where stray
+  bytes follow the segment (every part of a split profile; another APP2, such as `MPF`, stays); PNG `iCCP`, `sRGB`, `gAMA`,
   `cHRM`, `cICP`, `mDCV` and `cLLI` before the first `IDAT` (no decoder reads later copies); WebP `ICCP` chunks inside
   the RIFF payload (bytes after it are left alone), with the VP8X ICC flag (0x20) cleared, with or without a chunk,
   and the RIFF size lowered by the bytes removed. Every
@@ -662,8 +668,11 @@ history and column-pair sums (128 MiB at most) are checked before any is allocat
 raster output takes. Per render, every image asset together (each asset is checked, even one whose bytes another
 asset shares): the same 134217728 steps (`maxRenderEntropySteps`, like the shaping bound), so copies of a crafted file
 cost no more than the costliest single one (a 10 KB progressive file can take some 7 million steps); crossing it fails
-as `asset-too-large` at the image asset that crossed it, naming the limit. Raster export checks the images of its
-SVG again against a budget of its own of that size (`raster-too-many-image-pixels`).
+as `asset-too-large` at the image asset that crossed it, naming the limit. A JPEG whose result is cached (see Images)
+charges the steps its first check took, and one the budget no longer holds fails as that check would have, so the
+same design fails at the same asset with the same issue, and renders the same SVG, whatever was checked before. Raster
+export checks the images of its SVG again against a budget of its own of that size (`raster-too-many-image-pixels`),
+charged alike, the images the render checked found in the cache.
 
 ## Issues
 
