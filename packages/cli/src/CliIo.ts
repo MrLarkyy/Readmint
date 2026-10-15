@@ -15,8 +15,9 @@ export interface CliIo {
   /** `fetch` for `--fetch-images` and `--github`, the only network use of the CLI; the global one when absent. */
   readonly fetch?: ImageFetch;
   /**
-   * The environment: `GH_TOKEN`, else `GITHUB_TOKEN`, is the token of `--github`, read only with it. Both are also
-   * redacted from standard error. No other variable is read.
+   * The environment: `GH_TOKEN`, else `GITHUB_TOKEN`, is the token of `--github`; the GitHub load reads it only with
+   * `--github`. `runCli` reads both in every run only to redact them from standard error and the preview page. No
+   * other variable is read.
    */
   readonly env?: Readonly<Record<string, string | undefined>>;
 }

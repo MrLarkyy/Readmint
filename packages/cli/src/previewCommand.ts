@@ -30,9 +30,10 @@ type PreviewArgs = Extract<CliCommand, { name: "preview" }>;
  * GitHub requests.
  */
 export async function previewCommand(args: PreviewArgs, io: CliIo): Promise<ExitCode> {
+  const { loadData } = liveData(args, io, io.signal);
   let live: { readonly data?: Record<string, unknown> };
   try {
-    live = await liveData(args, io, io.signal);
+    live = loadData === undefined ? {} : { data: await loadData() };
   } catch (error) {
     if (io.signal?.aborted === true) return ExitCode.ok;
     throw error;

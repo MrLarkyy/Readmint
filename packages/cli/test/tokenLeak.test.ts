@@ -1,5 +1,7 @@
+import { request } from "node:http";
+import { setTimeout as sleep } from "node:timers/promises";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
-import { ExitCode, type ImageFetch } from "../src/index.js";
+import { ExitCode, type ImageFetch, runCli } from "../src/index.js";
 import { boundDesign, type CliRun, type CliTree, makeCliTree, png } from "./cliTree.js";
 import { CANARY, echoing, githubReplay, secretForms } from "./githubFetch.js";
 
@@ -142,4 +144,59 @@ test("--github --fetch-images sends no credential with an image request", async 
     }
   }
   expectNoToken(run);
+});
+
+function previewStatus(port: number): Promise<{ ok: boolean; issues: string[] }> {
+  return new Promise((resolve, reject) => {
+    const req = request({ host: "127.0.0.1", port, path: "/status", agent: false }, (response) => {
+      let body = "";
+      response.setEncoding("utf8");
+      response.on("data", (chunk: string) => (body += chunk));
+      response.on("end", () => {
+        resolve(JSON.parse(body) as { ok: boolean; issues: string[] });
+      });
+    });
+    req.on("error", reject);
+    req.end();
+  });
+}
+
+test("the preview page's issues never show the token", async () => {
+  await tree.file("leaky.json", {
+    version: 0,
+    canvas: { width: 40, height: 24 },
+    assets: { images: { leak: { src: `http://example.com/${CANARY}.png` } } },
+    layers: [{ type: "image", asset: "leak", x: 4, y: 4, width: 16, height: 16 }],
+  });
+  const controller = new AbortController();
+  let stderr = "";
+  const exit = runCli(["preview", "leaky.json", "--github", "--fetch-images", "--port", "0"], {
+    stdout: () => undefined,
+    stderr: (text) => {
+      stderr += text;
+    },
+    cwd: tree.root,
+    signal: controller.signal,
+    pollIntervalMs: 20,
+    env,
+    fetch: githubReplay().fetch,
+  });
+  try {
+    const deadline = Date.now() + 10_000;
+    let port = 0;
+    let issues: string[] = [];
+    while (issues.length === 0) {
+      if (Date.now() > deadline) throw new Error("timed out waiting for the preview");
+      port ||= Number(/preview: http:\/\/127\.0\.0\.1:(\d+)\//.exec(stderr)?.[1] ?? 0);
+      if (port > 0) ({ issues } = await previewStatus(port));
+      await sleep(10);
+    }
+    const page = JSON.stringify(issues);
+    expect(page).toContain("***");
+    for (const form of secretForms(CANARY)) expect(page).not.toContain(form);
+  } finally {
+    controller.abort();
+  }
+  expect(await exit).toBe(ExitCode.ok);
+  expectNoToken({ code: 0, stdout: "", stderr });
 });

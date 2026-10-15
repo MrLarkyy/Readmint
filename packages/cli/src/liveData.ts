@@ -6,24 +6,31 @@ import { githubToken } from "./githubToken.js";
 import { loadLiveData } from "./loadLiveData.js";
 
 /**
- * The `loadRenderInput` data option of `--github`: the GitHub data loaded with the token from `io.env`. Without
- * `--github` it reads no environment variable and makes no request. `stop` ends the load early (the preview's signal).
+ * The `loadRenderInput` `loadData` option of `--github`: loads the GitHub data with the token from `io.env` when
+ * called, so `loadRenderInput` calls it only once the design and its assets are valid (a broken design costs no
+ * request and is not hidden by a token problem). Without `--github` there is no option: no environment variable is
+ * read and no request made. `stop` ends the load early (the preview's signal).
  */
-export async function liveData(
+export function liveData(
   args: DesignArgs,
   io: CliIo,
   stop?: AbortSignal,
-): Promise<{ readonly data?: Record<string, unknown> }> {
+): { readonly loadData?: () => Promise<Record<string, unknown>> } {
   if (args.github !== true) return {};
-  const token = githubToken(io.env ?? {});
-  if (token === undefined) {
-    throw new CliError(ExitCode.data, "--github needs a token in GH_TOKEN or GITHUB_TOKEN");
-  }
-  const data = await loadLiveData({
-    token,
-    ...(args.login === undefined ? {} : { login: args.login }),
-    fetch: io.fetch ?? globalThis.fetch,
-    ...(stop === undefined ? {} : { signal: stop }),
-  });
-  return { data };
+  return {
+    loadData: () => {
+      const token = githubToken(io.env ?? {});
+      if (token === undefined) {
+        return Promise.reject(
+          new CliError(ExitCode.data, "--github needs a token in GH_TOKEN or GITHUB_TOKEN"),
+        );
+      }
+      return loadLiveData({
+        token,
+        ...(args.login === undefined ? {} : { login: args.login }),
+        fetch: io.fetch ?? globalThis.fetch,
+        ...(stop === undefined ? {} : { signal: stop }),
+      });
+    },
+  };
 }

@@ -113,6 +113,42 @@ describe("render and validate --github", () => {
     },
   );
 
+  test.each([
+    ["no token", {}, ExitCode.invalid, "broken.json", /^broken\.json:1:\d+: error parse at \/: /],
+    ["a bad token", { GH_TOKEN: CANARY }, ExitCode.invalid, "broken.json", /^broken\.json:1:/],
+    [
+      "no token",
+      {},
+      ExitCode.input,
+      "missing.json",
+      /^design file "missing\.json" does not exist\n$/,
+    ],
+    [
+      "no token",
+      {},
+      ExitCode.invalid,
+      "lost/design.json",
+      /error asset at \/assets\/images\/logo\/src: /,
+    ],
+  ])(
+    "a design that fails to load (%s, %s) fails first, without a request",
+    async (_name, env, code, design, message) => {
+      await tree.file("broken.json", '{ "version": 0,');
+      await tree.file("lost/design.json", boundDesign("{{ github.following }}"));
+      const replay = githubReplay(echoing(401));
+      const global = vi.spyOn(globalThis, "fetch");
+      for (const name of ["render", "validate"]) {
+        const run = await tree.run([name, design, "--github"], { env, fetch: replay.fetch });
+        expect(run.code).toBe(code);
+        expect(run.stderr).toMatch(message);
+        expect(run.stderr).not.toContain("GitHub data");
+        expect(run.stderr).not.toContain("GH_TOKEN");
+      }
+      expect(replay.requests).toEqual([]);
+      expect(global).not.toHaveBeenCalled();
+    },
+  );
+
   test("a 401 exits with 4 and the GitHubDataError code", async () => {
     const replay = githubReplay(echoing(401));
     const run = await tree.run(["render", "bound/design.json", "--github"], {
@@ -137,7 +173,7 @@ describe("render and validate --github", () => {
 });
 
 describe("liveData and loadLiveData", () => {
-  test("without --github the environment is never read", async () => {
+  test("without --github the environment is never read, with it only once the load starts", () => {
     const env = new Proxy(
       {},
       {
@@ -146,9 +182,12 @@ describe("liveData and loadLiveData", () => {
         },
       },
     );
-    await expect(
-      liveData({ design: "d.json" }, { stdout: vi.fn(), stderr: vi.fn(), cwd: ".", env }),
-    ).resolves.toEqual({});
+    const io = { stdout: vi.fn(), stderr: vi.fn(), cwd: ".", env };
+    expect(liveData({ design: "d.json" }, io)).toEqual({});
+    // With --github the environment is read only when the load starts, after the design loaded.
+    const { loadData } = liveData({ design: "d.json", github: true }, io);
+    expect(loadData).toBeTypeOf("function");
+    expect(() => loadData?.()).toThrow("env read");
   });
 
   test("loadLiveData binds the data as { github } and maps a failure to exit code 4 without a cause", async () => {

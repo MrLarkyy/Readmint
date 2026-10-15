@@ -10,8 +10,8 @@ import { printLines } from "./printLines.js";
 import { renderInput } from "./renderInput.js";
 
 /**
- * Checks the design and loads its assets; with `--data` also renders it (output discarded), since
- * without data every binding would fail.
+ * Checks the design and loads its assets; with data (`--data` or `--github`) also renders it (output discarded),
+ * since without data every binding would fail.
  */
 export async function validateCommand(
   args: Extract<CliCommand, { name: "validate" }>,
@@ -19,7 +19,7 @@ export async function validateCommand(
 ): Promise<ExitCode> {
   const input = await loadRenderInput(args, {
     cwd: io.cwd,
-    ...(await liveData(args, io)),
+    ...liveData(args, io),
     ...imageFetching(args, io),
   });
   const name = input.file.name;

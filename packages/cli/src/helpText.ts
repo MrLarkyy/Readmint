@@ -3,7 +3,7 @@ export const helpText = `Usage: readmint <command> <design> [options]
 
 Commands:
   render <design>     Render the design to SVG (standard output or --out) or to a raster image (--out)
-  validate <design>   Check the design and load its assets; with --data also render it
+  validate <design>   Check the design and load its assets; with --data or --github also render it
   preview <design>    Serve a live preview on http://127.0.0.1:<port>/ (this computer only)
   help                Show this help
 

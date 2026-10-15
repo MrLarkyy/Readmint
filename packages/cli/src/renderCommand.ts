@@ -24,7 +24,7 @@ export async function renderCommand(
 ): Promise<ExitCode> {
   const input = await loadRenderInput(args, {
     cwd: io.cwd,
-    ...(await liveData(args, io)),
+    ...liveData(args, io),
     ...imageFetching(args, io),
   });
   const name = input.file.name;
