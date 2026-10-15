@@ -36,6 +36,8 @@ export default defineConfig(({ mode }) => ({
     env: goldenEnvironment(mode),
     // Only a hang detector: the wall-clock bounds that matter are asserted, scaled by load, inside the tests.
     testTimeout: 60_000,
+    // Hooks that spawn git (a temp repository per test) starve under the full suite just as the tests do.
+    hookTimeout: 60_000,
     projects: [
       {
         extends: true,

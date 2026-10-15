@@ -132,7 +132,8 @@ export async function makeActionTree(): Promise<ActionTree> {
     },
     git: (...args) => gitIn(root, args),
     originGit: (...args) => gitIn(base, ["--git-dir", origin, ...args]),
-    remove: () => rm(base, { recursive: true, force: true }),
+    // Retries: a git child or a scanner can still hold a file for a moment (ENOTEMPTY / EBUSY).
+    remove: () => rm(base, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 }),
   };
   return tree;
 }
