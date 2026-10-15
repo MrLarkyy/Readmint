@@ -1,4 +1,5 @@
 dist
+dist-app
 coverage
 pnpm-lock.yaml
 packages/format/schema/*.schema.json
