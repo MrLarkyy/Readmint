@@ -1,15 +1,15 @@
 {
   "$schema": "https://raw.githubusercontent.com/MrLarkyy/Readmint/main/packages/format/schema/design-v0.schema.json",
   "version": 0,
-  "title": "Contact",
-  "description": "Where to find the author, set as an editor status bar with the date of the data.",
+  "title": "Footer",
+  "description": "A closing line, a note and how to reach the person, with the date of this render.",
   "canvas": {
     "width": 840,
-    "height": 64
+    "height": 150
   },
   "assets": {
     "fonts": {
-      "sans": {
+      "g": {
         "family": "Geist",
         "src": "fonts/Geist-Regular.ttf",
         "weight": 400,
@@ -18,7 +18,7 @@
           "name": "OFL-1.1"
         }
       },
-      "sansB": {
+      "gs": {
         "family": "Geist",
         "src": "fonts/Geist-SemiBold.ttf",
         "weight": 600,
@@ -35,120 +35,136 @@
           "embedding": "allowed",
           "name": "OFL-1.1"
         }
-      },
-      "monoM": {
-        "family": "Geist Mono",
-        "src": "fonts/GeistMono-Medium.ttf",
-        "weight": 500,
-        "licence": {
-          "embedding": "allowed",
-          "name": "OFL-1.1"
-        }
       }
     }
   },
   "components": {
     "card": {
-      "description": "The section: a rounded panel in the theme's colours; the theme prop is the only switch between light and dark.",
       "props": {
         "theme": {
           "type": "enum",
           "values": ["light", "dark"],
           "default": "light"
+        },
+        "headline": {
+          "type": "string",
+          "default": ""
+        },
+        "note": {
+          "type": "string",
+          "default": ""
+        },
+        "contactLabel": {
+          "type": "string",
+          "default": ""
+        },
+        "contactText": {
+          "type": "string",
+          "default": ""
         }
       },
       "layers": [
         {
           "type": "rect",
-          "x": 0.5,
-          "y": 0.5,
-          "width": 839,
-          "height": 63,
-          "radius": 8,
-          "fill": "{{ props.theme == \"dark\" ? \"#3c3f41\" : \"#f7f8fa\" }}",
-          "stroke": "{{ props.theme == \"dark\" ? \"#323232\" : \"#ebecf0\" }}",
-          "strokeWidth": 1
+          "x": 0,
+          "y": 0,
+          "width": 840,
+          "height": 1,
+          "fill": "{{ props.theme == \"dark\" ? \"#26272B\" : \"#E4E4E7\" }}"
         },
         {
           "type": "group",
-          "x": 20,
-          "y": 22,
-          "width": 230,
-          "height": 18,
+          "x": 0,
+          "y": 20,
+          "width": 560,
+          "height": 56,
           "clip": true,
+          "if": "{{ props.headline }}",
           "children": [
             {
-              "type": "text",
+              "type": "group",
               "x": 0,
-              "y": 0,
-              "content": "{{ \"github.com/\" + (github.login | truncate(24)) }}",
-              "font": "sansB",
-              "fontSize": 13,
-              "fill": "{{ props.theme == \"dark\" ? \"#a9b7c6\" : \"#080808\" }}"
+              "y": -20,
+              "children": [
+                {
+                  "type": "text",
+                  "x": -1,
+                  "y": 33.44,
+                  "content": "{{ props.headline }}",
+                  "font": "gs",
+                  "fontSize": 32,
+                  "letterSpacing": -0.96,
+                  "fill": "{{ props.theme == \"dark\" ? \"#EDEDED\" : \"#0A0A0A\" }}"
+                }
+              ]
             }
           ]
         },
         {
           "type": "group",
-          "x": 270,
-          "y": 22,
-          "width": 250,
-          "height": 18,
+          "x": 0,
+          "y": 76,
+          "width": 560,
+          "height": 26,
           "clip": true,
+          "if": "{{ props.note }}",
           "children": [
             {
-              "type": "text",
+              "type": "group",
               "x": 0,
-              "y": 0,
-              "content": "{{ github.websiteUrl | truncate(34) }}",
-              "font": "sans",
-              "fontSize": 13,
-              "fill": "{{ props.theme == \"dark\" ? \"#4a88c7\" : \"#3574f0\" }}"
+              "y": -76,
+              "children": [
+                {
+                  "type": "text",
+                  "x": 0,
+                  "y": 78.72,
+                  "content": "{{ props.note }}",
+                  "font": "g",
+                  "fontSize": 16,
+                  "fill": "{{ props.theme == \"dark\" ? \"#8B8B94\" : \"#71717A\" }}"
+                }
+              ]
             }
-          ],
-          "if": "{{ github.websiteUrl }}"
+          ]
         },
         {
-          "type": "group",
-          "x": 530,
-          "y": 22,
-          "width": 140,
-          "height": 18,
-          "clip": true,
-          "children": [
-            {
-              "type": "text",
-              "x": 0,
-              "y": 0,
-              "content": "{{ \"@\" + (github.twitterUsername | truncate(18)) }}",
-              "font": "sans",
-              "fontSize": 13,
-              "fill": "{{ props.theme == \"dark\" ? \"#a9b7c6\" : \"#080808\" }}"
-            }
-          ],
-          "if": "{{ github.twitterUsername }}"
+          "type": "text",
+          "x": 580,
+          "width": 260,
+          "align": "end",
+          "y": 49.495,
+          "content": "{{ props.contactLabel || \"github\" | truncate(30) }}",
+          "font": "mono",
+          "fontSize": 11,
+          "fill": "{{ props.theme == \"dark\" ? \"#8B8B94\" : \"#71717A\" }}"
         },
         {
-          "type": "group",
-          "x": 660,
-          "y": 22,
-          "width": 160,
-          "height": 18,
-          "clip": true,
-          "children": [
-            {
-              "type": "text",
-              "x": 0,
-              "y": 0,
-              "content": "{{ \"as of \" + (github.contributions.to | date(\"MMM d, yyyy\")) }}",
-              "font": "sans",
-              "fontSize": 12,
-              "fill": "{{ props.theme == \"dark\" ? \"#808080\" : \"#6c707e\" }}",
-              "width": 160,
-              "align": "end"
-            }
-          ],
-          "if": "{{ github.contributions.to }}"
+          "type": "text",
+          "x": 540,
+          "width": 300,
+          "align": "end",
+          "y": 72.63,
+          "content": "{{ (props.contactText || \"github.com/\" + github.login) | truncate(34) }}",
+          "font": "mono",
+          "fontSize": 14,
+          "fill": "{{ props.theme == \"dark\" ? \"#EDEDED\" : \"#0A0A0A\" }}"
+        },
+        {
+          "type": "rect",
+          "x": "{{ 840 - ((props.contactText || \"github.com/\" + github.login) | truncate(34) | length) * 8.4 }}",
+          "y": 92.25,
+          "width": "{{ ((props.contactText || \"github.com/\" + github.login) | truncate(34) | length) * 8.4 }}",
+          "height": 1.5,
+          "fill": "{{ props.theme == \"dark\" ? \"#FF6369\" : \"#E5484D\" }}"
+        },
+        {
+          "type": "text",
+          "x": 0,
+          "y": 127.972,
+          "content": "{{ \"rendered by readmint · \" + (github.contributions.to | date(\"d MMM yyyy\") | lower) }}",
+          "font": "mono",
+          "fontSize": 10.5,
+          "fill": "{{ props.theme == \"dark\" ? \"#5B5B63\" : \"#A1A1AA\" }}"
         }
       ]
     }
