@@ -2,7 +2,8 @@
  * The first marker in the entropy-coded data from `start` and the offset just past its code, or undefined when the data
  * ends first. One pass as libjpeg reads it: `FF 00` is a stuffed zero, 0xFF fill bytes may precede a marker, and with
  * `restarts` the RST0-7 markers inside the data are passed over too. Marker 0 stands for fill bytes before a stuffed
- * zero (`FF FF 00`): libjpeg reads it as a data byte, jpeg-decoder 0.3.1 fails on it (huffman.rs:147).
+ * zero (`FF FF 00`): libjpeg reads it as a data byte, jpeg-decoder 0.3.1 fails on it (huffman.rs:147). The symbols
+ * of the data are checked by `JpegEntropy`, a pass of their own.
  */
 export function skipEntropyData(
   data: Uint8Array,

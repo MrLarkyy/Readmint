@@ -2,6 +2,7 @@ import { describe, expect, test } from "vitest";
 import { sniffImage } from "../src/sniffImage.js";
 import gradientJpeg from "./assets/gradient.jpg?inline";
 import { dataUriBytes, toDataUri } from "./exifImages.js";
+import { jpegEntropyCases } from "./jpegEntropyCases.js";
 import { jpegFrameFixtures } from "./jpegFrameTypes.js";
 import { type DrawnOutcome, drawnOutcome, jpegStructureCases } from "./jpegStructureCases.js";
 import { acceptedJpegs, refusedJpegs } from "./jpegMarkers.js";
@@ -136,8 +137,11 @@ describe("Chromium and the sniffer agree on lossless JPEGs", () => {
   );
 });
 
-/** What Chromium draws of `bytes`, the whole image through a canvas. */
-async function chromiumDrawing(bytes: Uint8Array): Promise<DrawnOutcome> {
+/** What Chromium draws of `bytes`, the whole image through a canvas, pinned at pixel `at`. */
+async function chromiumDrawing(
+  bytes: Uint8Array,
+  at?: readonly [number, number],
+): Promise<DrawnOutcome> {
   const image = new Image();
   image.src = toDataUri("image/jpeg", bytes);
   await image.decode().catch(() => undefined);
@@ -148,7 +152,7 @@ async function chromiumDrawing(bytes: Uint8Array): Promise<DrawnOutcome> {
   const context = canvas.getContext("2d");
   if (context === null) throw new Error("no 2d canvas");
   context.drawImage(image, 0, 0);
-  return drawnOutcome(context.getImageData(0, 0, canvas.width, canvas.height).data);
+  return drawnOutcome(context.getImageData(0, 0, canvas.width, canvas.height).data, at);
 }
 
 describe("what Chromium draws of the JPEG structure cases", () => {
@@ -158,6 +162,16 @@ describe("what Chromium draws of the JPEG structure cases", () => {
 
   test.each(pinned)("%s", async (_name, bytes, outcome) => {
     expect(await chromiumDrawing(bytes)).toEqual(outcome);
+  });
+});
+
+describe("what Chromium draws of the JPEG entropy cases", () => {
+  const pinned = jpegEntropyCases(jpeg).flatMap((row) =>
+    row.chromium === undefined ? [] : [[row.name, row] as const],
+  );
+
+  test.each(pinned)("%s", async (_name, row) => {
+    expect(await chromiumDrawing(row.bytes, row.at)).toEqual(row.chromium);
   });
 });
 
