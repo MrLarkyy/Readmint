@@ -1,17 +1,18 @@
 # Year Ring
 
-A calm, cobalt profile set in Archivo. The year is a rotating 3D ring with a line for every day, as tall as the square root of its commits, with your longest streak in the accent colour and the total counted up.
+A calm, cobalt profile set in Archivo. The year is a slowly turning 3D ring with a line for every day, as tall as the square root of its commits, the longest streak marked along its base and the total counted up in its middle. The repositories draw their own 52-week lines.
 
 Every section is a design of the public design format, drawn in a light and a dark variant (`<section>.json` and
-`<section>.dark.json`, which differ only in the root prop `theme`). Nothing in them names a person: the text comes from
-the `github.*` data of the account the Action runs for.
+`<section>.dark.json`, which differ only in the root prop `theme`). Nothing in them names a person: the data comes
+from the `github.*` object of the account the Action runs for, and your own texts go into the root props below.
 
 ## Use it
 
 1. Copy this folder, with its `fonts/`, to `readmint/designs/year-ring/` in your profile repository.
-2. Add the workflow below. Only the light designs are listed; the Action finds each `.dark.json` next to its light
+2. Fill in your texts (below) in each light design and the same in its `.dark.json`.
+3. Add the workflow below. Only the light designs are listed; the Action finds each `.dark.json` next to its light
    design and writes both.
-3. Paste the snippets below into your profile `README.md`, with your own login and repository addresses.
+4. Paste the snippet below into your profile `README.md`, with your own login and repository addresses.
 
 ```yaml
 name: Readmint
@@ -36,19 +37,43 @@ jobs:
             readmint/designs/year-ring/year.json
             readmint/designs/year-ring/index.json
             readmint/designs/year-ring/recent.json
+            readmint/designs/year-ring/work.json
             readmint/designs/year-ring/repo-1.json
             readmint/designs/year-ring/repo-2.json
             readmint/designs/year-ring/repo-3.json
             readmint/designs/year-ring/repo-4.json
+            readmint/designs/year-ring/repo-5.json
+            readmint/designs/year-ring/repo-6.json
             readmint/designs/year-ring/footer.json
 ```
 
-The repository slots show `github.pinned` when the data has it, else the first `github.repositories`, in the order the
-data gives (stars descending). Change which repository a slot shows by changing the root prop `slot` of its design (0 to 3).
+The repository slots show `github.pinned` in the order the data gives. Change which repository a slot shows by changing the root prop `slot` of its design (0 to 5).
+
+## Your texts
+
+The personal texts are root props of each section: the `props` of the one layer in `layers`, next to `theme`. They
+are empty in this folder, and an empty text hides its block. Write the same props in the light design and its twin.
+
+| section  | prop             | type   | what it shows                                                                | example                                         |
+| -------- | ---------------- | ------ | ---------------------------------------------------------------------------- | ----------------------------------------------- |
+| `header` | `intro`          | string | two lines under the name; empty: the GitHub bio                              | `I build developer tools and write about them.` |
+| `index`  | `labels`         | array  | the row labels, in order                                                     | `["Focus", "Tools"]`                            |
+| `index`  | `values`         | array  | the row texts, one per label                                                 | `["Developer tooling", "Git, Make, Neovim"]`    |
+| `index`  | `languagesAfter` | number | the Languages row (top three by bytes) comes after this many rows; default 2 | `1`                                             |
+| `footer` | `headline`       | string | the closing line                                                             | `Open to new projects.`                         |
+| `footer` | `note`           | string | one line under it                                                            | `Tooling, infrastructure and documentation.`    |
+| `footer` | `contactLabel`   | string | the label over the contact; empty: GitHub                                    | `Email`                                         |
+| `footer` | `contactText`    | string | the contact; empty: your GitHub address                                      | `hello@example.com`                             |
+
+For example, in `header.json` (and `header.dark.json` with `"theme": "dark"`):
+
+```json
+"layers": [{ "type": "component", "ref": "card", "props": {"theme":"light","intro":"I build developer tools and write about them."} }]
+```
 
 ## The README
 
-SVG links do not work inside an `<img>`, so each repository and the contact footer sit in a link around the image.
+SVG links do not work inside an `<img>`, so each repository and the contact footer sit in a link around the image. The repository cards sit two to a row, as two linked images of 49 % width.
 
 <!-- prettier-ignore -->
 ```html
@@ -59,12 +84,12 @@ SVG links do not work inside an `<img>`, so each repository and the contact foot
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="readmint/year.dark.svg">
-  <img alt="The last year as a ring" src="readmint/year.svg">
+  <img alt="The last twelve months as a ring" src="readmint/year.svg">
 </picture>
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="readmint/index.dark.svg">
-  <img alt="Index and languages" src="readmint/index.svg">
+  <img alt="Index" src="readmint/index.svg">
 </picture>
 
 <picture>
@@ -72,39 +97,61 @@ SVG links do not work inside an `<img>`, so each repository and the contact foot
   <img alt="Recent work" src="readmint/recent.svg">
 </picture>
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="readmint/work.dark.svg">
+  <img alt="Selected work" src="readmint/work.svg">
+</picture>
+
+<p>
 <a href="https://github.com/YOUR-LOGIN/YOUR-REPOSITORY-1">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="readmint/repo-1.dark.svg">
-    <img alt="Repository 1" src="readmint/repo-1.svg">
-  </picture>
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="readmint/repo-1.dark.svg">
+  <img alt="Repository 1" src="readmint/repo-1.svg" width="49%">
+</picture>
 </a>
-
 <a href="https://github.com/YOUR-LOGIN/YOUR-REPOSITORY-2">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="readmint/repo-2.dark.svg">
-    <img alt="Repository 2" src="readmint/repo-2.svg">
-  </picture>
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="readmint/repo-2.dark.svg">
+  <img alt="Repository 2" src="readmint/repo-2.svg" width="49%">
+</picture>
 </a>
+</p>
 
+<p>
 <a href="https://github.com/YOUR-LOGIN/YOUR-REPOSITORY-3">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="readmint/repo-3.dark.svg">
-    <img alt="Repository 3" src="readmint/repo-3.svg">
-  </picture>
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="readmint/repo-3.dark.svg">
+  <img alt="Repository 3" src="readmint/repo-3.svg" width="49%">
+</picture>
 </a>
-
 <a href="https://github.com/YOUR-LOGIN/YOUR-REPOSITORY-4">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="readmint/repo-4.dark.svg">
-    <img alt="Repository 4" src="readmint/repo-4.svg">
-  </picture>
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="readmint/repo-4.dark.svg">
+  <img alt="Repository 4" src="readmint/repo-4.svg" width="49%">
+</picture>
 </a>
+</p>
+
+<p>
+<a href="https://github.com/YOUR-LOGIN/YOUR-REPOSITORY-5">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="readmint/repo-5.dark.svg">
+  <img alt="Repository 5" src="readmint/repo-5.svg" width="49%">
+</picture>
+</a>
+<a href="https://github.com/YOUR-LOGIN/YOUR-REPOSITORY-6">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="readmint/repo-6.dark.svg">
+  <img alt="Repository 6" src="readmint/repo-6.svg" width="49%">
+</picture>
+</a>
+</p>
 
 <a href="https://github.com/YOUR-LOGIN">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="readmint/footer.dark.svg">
-    <img alt="Contact" src="readmint/footer.svg">
-  </picture>
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="readmint/footer.dark.svg">
+  <img alt="Contact" src="readmint/footer.svg">
+</picture>
 </a>
 ```
 
@@ -113,10 +160,9 @@ SVG links do not work inside an `<img>`, so each repository and the contact foot
 Every section reads the `github.*` object of the [GitHub data source](../../../../../docs/data-github.md). Some fields are
 not loaded yet; a design reads them as optional (a missing property is `null`) and shows a plain line where they are
 missing, so it renders with today's data too. Until the loader provides them, pass a data file with them
-(`data-file`): `github.pushes[]` (last push, recent work), `github.pinned[]` (else `github.repositories[]`) with `weeklyCommits[52]` (the 52-week lines). [docs/components.md](../../../../../docs/components.md#profile-templates) lists the fields and their shape.
+(`data-file`): `github.status`, `github.pushes[]` and `github.pinned[]` with `weeklyCommits[52]`.
+[docs/components.md](../../../../../docs/components.md#profile-templates) lists the fields and their shape.
 
 ## Motion
 
-The year sections animate once when the image loads (the ring turns once, the number counts up, lines draw) and then
-rest in their final state; the same final state is what a PNG export and a reader who asks for less motion see. Only
-the tickers of Horizon loop.
+The header's ring and the year's ring turn without end (one turn a minute), the dots pulse and the last push types itself out; the index, recent work and repository lines grow or draw in once. A minute in, the one-shots of a turning section play again with the loop. A PNG export and a reader who asks for less motion see the final state.
