@@ -315,7 +315,7 @@
           "children": [
             {
               "type": "path",
-              "d": "M0 0 V{{ 0 - (((day.count | min(64)) <= 1 ? (day.count | min(64)) : ((day.count | min(64)) <= 4 ? 1 + ((day.count | min(64)) - 1) / 3 : ((day.count | min(64)) <= 16 ? 2 + ((day.count | min(64)) - 4) / 6 : 4 + ((day.count | min(64)) - 16) / 12))) * 7.5) }}",
+              "d": "M0 0 V{{ 0 - (((day.count | min(64)) <= 1 ? (day.count | min(64)) : ((day.count | min(64)) <= 4 ? 1 + ((day.count | min(64)) - 1) / 3 : ((day.count | min(64)) <= 16 ? 2 + ((day.count | min(64)) - 4) / 6 : 4 + ((day.count | min(64)) - 16) / 12))) * 4) }}",
               "fill": "none",
               "stroke": "{{ [(props.theme == \"dark\" ? \"#3c4a63\" : \"#d9e3fb\"), (props.theme == \"dark\" ? \"#466a96\" : \"#a6c0f7\"), (props.theme == \"dark\" ? \"#4a88c7\" : \"#6f9af3\"), (props.theme == \"dark\" ? \"#6aaaf0\" : \"#3574f0\"), (props.theme == \"dark\" ? \"#9fcbff\" : \"#1d4fc4\")][day.level] }}",
               "strokeWidth": 1.6
@@ -323,7 +323,7 @@
             {
               "type": "ellipse",
               "x": -3,
-              "y": "{{ 0 - (((day.count | min(64)) <= 1 ? (day.count | min(64)) : ((day.count | min(64)) <= 4 ? 1 + ((day.count | min(64)) - 1) / 3 : ((day.count | min(64)) <= 16 ? 2 + ((day.count | min(64)) - 4) / 6 : 4 + ((day.count | min(64)) - 16) / 12))) * 7.5) - 3 }}",
+              "y": "{{ 0 - (((day.count | min(64)) <= 1 ? (day.count | min(64)) : ((day.count | min(64)) <= 4 ? 1 + ((day.count | min(64)) - 1) / 3 : ((day.count | min(64)) <= 16 ? 2 + ((day.count | min(64)) - 4) / 6 : 4 + ((day.count | min(64)) - 16) / 12))) * 4) - 3 }}",
               "width": 6,
               "height": 6,
               "fill": "{{ [(props.theme == \"dark\" ? \"#3c4a63\" : \"#d9e3fb\"), (props.theme == \"dark\" ? \"#466a96\" : \"#a6c0f7\"), (props.theme == \"dark\" ? \"#4a88c7\" : \"#6f9af3\"), (props.theme == \"dark\" ? \"#6aaaf0\" : \"#3574f0\"), (props.theme == \"dark\" ? \"#9fcbff\" : \"#1d4fc4\")][day.level] }}"
@@ -331,7 +331,7 @@
             {
               "type": "ellipse",
               "x": -5.5,
-              "y": "{{ 0 - (((day.count | min(64)) <= 1 ? (day.count | min(64)) : ((day.count | min(64)) <= 4 ? 1 + ((day.count | min(64)) - 1) / 3 : ((day.count | min(64)) <= 16 ? 2 + ((day.count | min(64)) - 4) / 6 : 4 + ((day.count | min(64)) - 16) / 12))) * 7.5) - 5.5 }}",
+              "y": "{{ 0 - (((day.count | min(64)) <= 1 ? (day.count | min(64)) : ((day.count | min(64)) <= 4 ? 1 + ((day.count | min(64)) - 1) / 3 : ((day.count | min(64)) <= 16 ? 2 + ((day.count | min(64)) - 4) / 6 : 4 + ((day.count | min(64)) - 16) / 12))) * 4) - 5.5 }}",
               "width": 11,
               "height": 11,
               "fill": "none",
@@ -341,7 +341,7 @@
             }
           ],
           "x": "{{ 44 + day.week * 14.2 + day.weekday * 4 }}",
-          "y": "{{ 150 + day.weekday * 38 }}",
+          "y": "{{ 160 + day.weekday * 37 }}",
           "repeat": {
             "each": "{{ github.contributions.days }}",
             "as": "day",

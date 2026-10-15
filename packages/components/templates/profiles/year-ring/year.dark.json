@@ -95,7 +95,7 @@
                   "children": [
                     {
                       "type": "path",
-                      "d": "M1 1 V{{ 1 - (1 + ((day.count | min(64)) <= 1 ? (day.count | min(64)) : ((day.count | min(64)) <= 4 ? 1 + ((day.count | min(64)) - 1) / 3 : ((day.count | min(64)) <= 16 ? 2 + ((day.count | min(64)) - 4) / 6 : 4 + ((day.count | min(64)) - 16) / 12))) * 13) }}",
+                      "d": "M1 1 V{{ 1 - (1 + ((day.count | min(64)) <= 1 ? (day.count | min(64)) : ((day.count | min(64)) <= 4 ? 1 + ((day.count | min(64)) - 1) / 3 : ((day.count | min(64)) <= 16 ? 2 + ((day.count | min(64)) - 4) / 6 : 4 + ((day.count | min(64)) - 16) / 12))) * 6) }}",
                       "fill": "none",
                       "stroke": "{{ github.contributions.streaks.longest.length > 0 && day.date >= github.contributions.streaks.longest.start && day.date <= github.contributions.streaks.longest.end ? (props.theme == \"dark\" ? \"#6b8cff\" : \"#1f4fe0\") : (props.theme == \"dark\" ? \"#56659b\" : \"#8a97c4\") }}",
                       "strokeWidth": 2.4,
@@ -104,7 +104,7 @@
                     {
                       "type": "ellipse",
                       "x": -4,
-                      "y": "{{ 0 - (1 + ((day.count | min(64)) <= 1 ? (day.count | min(64)) : ((day.count | min(64)) <= 4 ? 1 + ((day.count | min(64)) - 1) / 3 : ((day.count | min(64)) <= 16 ? 2 + ((day.count | min(64)) - 4) / 6 : 4 + ((day.count | min(64)) - 16) / 12))) * 13) - 4 }}",
+                      "y": "{{ 0 - (1 + ((day.count | min(64)) <= 1 ? (day.count | min(64)) : ((day.count | min(64)) <= 4 ? 1 + ((day.count | min(64)) - 1) / 3 : ((day.count | min(64)) <= 16 ? 2 + ((day.count | min(64)) - 4) / 6 : 4 + ((day.count | min(64)) - 16) / 12))) * 6) - 4 }}",
                       "width": 10,
                       "height": 10,
                       "fill": "{{ props.theme == \"dark\" ? \"#6b8cff\" : \"#1f4fe0\" }}",

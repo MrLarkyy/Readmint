@@ -238,13 +238,23 @@
           "clip": true,
           "children": [
             {
-              "type": "text",
+              "type": "group",
               "x": 0,
               "y": 0,
-              "content": "{{ github.pushes[0].repository | truncate(14) }}",
-              "font": "semi",
-              "fontSize": 15,
-              "fill": "{{ props.theme == \"dark\" ? \"#e9eeff\" : \"#0b1230\" }}"
+              "width": 132,
+              "height": 24,
+              "clip": true,
+              "children": [
+                {
+                  "type": "text",
+                  "x": 0,
+                  "y": 0,
+                  "content": "{{ github.pushes[0].repository | truncate(14) }}",
+                  "font": "semi",
+                  "fontSize": 15,
+                  "fill": "{{ props.theme == \"dark\" ? \"#e9eeff\" : \"#0b1230\" }}"
+                }
+              ]
             },
             {
               "type": "text",
