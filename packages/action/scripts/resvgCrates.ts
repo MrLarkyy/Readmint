@@ -441,11 +441,25 @@ async function standardLibrary(): Promise<
     })),
   );
   const version = `${release}-nightly (rustc ${commit.slice(0, 12)}, standard library)`;
+  // std_detect lives in the rust-lang/stdarch submodule, with licence files of its own.
+  const stdarch = (await (
+    await get(`https://api.github.com/repos/rust-lang/rust/contents/library/stdarch?ref=${commit}`)
+  ).json()) as { sha: string };
+  const stdDetectTexts = await Promise.all(
+    ["LICENSE-APACHE", "LICENSE-MIT"].map(async (file) => ({
+      file: `stdarch ${stdarch.sha.slice(0, 12)} crates/std_detect/${file}`,
+      text: await (
+        await get(
+          `https://raw.githubusercontent.com/rust-lang/stdarch/${stdarch.sha}/crates/std_detect/${file}`,
+        )
+      ).text(),
+    })),
+  );
   const rows = standardPathCrates.map((name) => ({
     name,
     version,
     licence: "MIT OR Apache-2.0",
-    texts,
+    texts: name === "std_detect" ? stdDetectTexts : texts,
   }));
   const named = new Map(
     [...wasm.matchAll(/\/rust\/deps\/([A-Za-z0-9_-]+?)-(\d+\.\d+\.\d+)\//g)].map((match) => [

@@ -135,3 +135,16 @@ test("every crate the resvg binary names, the standard library included, is a ro
   expect(named.size).toBeGreaterThanOrEqual(40);
   for (const name of named) expect(rows.has(name), name).toBe(true);
 });
+
+test("std_detect carries the stdarch licence with its copyright line, not rust-lang/rust's", () => {
+  const list = readFileSync(
+    join(import.meta.dirname, "..", "scripts", "licences", "resvg-wasm-crates.txt"),
+    "utf8",
+  );
+  const heading = /^----- [^\n]*std_detect [^\n]*crates\/std_detect\/LICENSE-MIT\) -----$/m.exec(
+    list,
+  );
+  expect(heading).not.toBeNull();
+  const text = list.slice((heading?.index ?? 0) + (heading?.[0].length ?? 0)).trimStart();
+  expect(text.startsWith("Copyright (c) 2017 The Rust Project Developers")).toBe(true);
+});
