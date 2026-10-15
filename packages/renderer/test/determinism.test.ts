@@ -3,6 +3,8 @@ import { expect, test } from "vitest";
 import { renderSvg } from "../src/index.js";
 import { animationDesigns } from "./animationDesigns.js";
 import { renderFixture } from "./renderFixture.js";
+import fontFormats from "./renderer-fonts-formats.golden.js";
+import fonts from "./renderer-fonts.golden.js";
 import layout from "./renderer-layout.golden.js";
 import shapes from "./renderer-shapes.golden.js";
 import text from "./renderer-text.golden.js";
@@ -38,6 +40,17 @@ test.each(animationDesigns.map(({ name, input }) => [name, input] as const))(
     renderFixture(input);
     expect(renderFixture(input)).toBe(first);
     expect(renderFixture({ ...input, time: 333.3 })).toBe(frame);
+  },
+);
+
+test.each(
+  [...fonts.fixtures, ...fontFormats.fixtures].map(({ name, input }) => [name, input] as const),
+)(
+  "font fixture %s gives the same bytes after other fonts were subset in the same process",
+  (_name, input) => {
+    const first = renderFixture(input);
+    for (const other of fonts.fixtures) renderFixture(other.input);
+    expect(renderFixture(input)).toBe(first);
   },
 );
 

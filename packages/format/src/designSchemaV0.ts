@@ -255,6 +255,9 @@ const defs = new Map<string, SchemaNode>([
         embedding: enumOf(["allowed", "restricted"]),
         "name?": string("a licence name", { minLength: 1, maxLength: 128 }),
       }),
+      "drawAs?": enumOf(["font", "paths"]),
+      "fallback?": array("a list of fallback font ids", id, { minItems: 1, maxItems: 8 }),
+      "kerning?": boolean(),
     }),
   ],
   [

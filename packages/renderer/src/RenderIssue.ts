@@ -9,6 +9,7 @@ export type RenderIssueCode =
   | "font-not-embeddable"
   | "too-large"
   | "font-family-mismatch"
+  | "missing-glyph"
   | "animation-cut";
 
 /** Why a render failed, or a warning about a successful one. */

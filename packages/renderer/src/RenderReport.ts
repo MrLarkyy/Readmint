@@ -1,3 +1,5 @@
+import type { RenderFontUsage } from "./RenderFontUsage.js";
+
 export interface RenderAssetUsage {
   readonly asset: string;
   /**
@@ -13,7 +15,8 @@ export interface RenderReport {
   readonly bytes: number;
   /** The `maxOutputBytes` the render ran with. */
   readonly limit: number;
-  readonly fonts: readonly RenderAssetUsage[];
+  /** Fonts that drew at least one glyph. */
+  readonly fonts: readonly RenderFontUsage[];
   readonly images: readonly RenderAssetUsage[];
   /** The design's timeline, when it has one: what `frameTimes` takes. */
   readonly animation?: { readonly duration: number; readonly loop: boolean };

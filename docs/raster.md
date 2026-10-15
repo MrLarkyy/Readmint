@@ -92,9 +92,11 @@ frame (every `<use>` that reaches it) times the frames, plus one decode of each 
 resvg loads no system font. It draws text with the fonts the SVG embeds, read only from the `@font-face` rules of its
 `<style>` (as the renderer writes them; a data-bound text holding `url(data:font/...)` is text and is never read as a
 font), plus any a caller of `exportRaster` passes; the CLI and the Action pass none, so a font the renderer refused to
-embed (restricted by its licence) is never drawn. TTF and OTF are drawn as they are; WOFF 1.0 is decoded first (its
-header and table directory checked against the file, no table stored larger than it is, all tables together at most
-the renderer's `maxFontBytes` before anything inflates, each table inflating to exactly its declared size). WOFF2,
+embed (restricted by its licence) is never drawn: the renderer draws such text as paths, which resvg draws like any
+path. The renderer embeds WOFF subsets of the glyphs it draws. TTF and OTF are drawn as they are; WOFF 1.0 is decoded
+first by `@readmint/fonts` (its header and table directory checked against the file, no table stored larger than it
+is, all tables together at most the renderer's `maxFontBytes` before anything inflates, each table inflating to
+exactly its declared size). WOFF2,
 a broken font, or text with no font at all is `raster-font`: raster export never writes blank text.
 
 resvg matches a text's `font-family` against the family name inside the font file (name 16, else 1), while the

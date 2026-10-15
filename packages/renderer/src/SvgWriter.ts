@@ -28,6 +28,11 @@ export class SvgWriter {
 
   constructor(readonly limit: number) {}
 
+  /** Bytes the budget still allows after what is written. */
+  get remaining(): number {
+    return this.limit - this.bytes;
+  }
+
   /** Body markup, in drawing order. */
   write(markup: string): void {
     this.bodyParts.push(markup);
@@ -49,9 +54,18 @@ export class SvgWriter {
   /** Accounts for output that is certain to come (a lower bound), so huge expansions stop before they are built. */
   reserve(bytes: number): void {
     this.reserved += bytes;
-    // Reservations happen while layers are resolved, before any of their markup is written, so the bytes written
-    // so far (embedded fonts) and the reservations never count the same output twice.
+    // Reservations happen while layers are resolved, before any markup is written (fonts are embedded after every
+    // text is laid out), so the bytes written and the reservations never count the same output twice.
     const total = this.reserved + this.bytes;
+    if (total > this.limit) this.overflow(total);
+  }
+
+  /**
+   * Stops the render when markup still being built (`pending` bytes, about to be written) would pass the budget
+   * with what is written already; for long markup built piece by piece, such as text drawn as paths.
+   */
+  ensureRoom(pending: number): void {
+    const total = this.bytes + pending;
     if (total > this.limit) this.overflow(total);
   }
 

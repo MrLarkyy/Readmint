@@ -16,7 +16,7 @@ export function svgSafetyProblems(svg: string): string[] {
     for (const url of css.matchAll(/url\(([^)]*)\)/gu)) {
       const target = url[1] ?? "";
       if (target.startsWith("#")) fragment(target, "style url()");
-      else if (!/^data:font\/(?:ttf|otf);base64,[A-Za-z0-9+/=]+$/u.test(target)) {
+      else if (!/^data:font\/woff;base64,[A-Za-z0-9+/=]+$/u.test(target)) {
         problems.push(`style url(${target.slice(0, 40)})`);
       }
     }

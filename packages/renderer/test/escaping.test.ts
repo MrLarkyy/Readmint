@@ -105,7 +105,7 @@ describe("rendered strings", () => {
     expect(style).toContain(
       "font-family:&quot;M\\22 };}\\3c /style\\3e \\3c script\\3e alert\\28 5\\29 ",
     );
-    expect(style).not.toMatch(/@import|url\((?!data:font\/ttf;base64,)/u);
+    expect(style).not.toMatch(/@import|url\((?!data:font\/woff;base64,)/u);
     expect(svg).toContain('font-family="&#39;M\\22 };}\\3c /style\\3e ');
   });
 
