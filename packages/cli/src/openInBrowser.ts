@@ -9,15 +9,18 @@ export interface OpenInBrowserOptions {
   readonly env?: Readonly<Record<string, string | undefined>>;
 }
 
-/** The only shapes `preview` prints: plain, and under the 43-character session secret. */
+/**
+ * The only shapes `preview --open` opens: the plain address, and the one-time launch address (43 characters, no
+ * trailing slash). The secret address (`/<43>/`) is refused: it must never reach an opener's command line.
+ */
 const previewAddress = new RegExp(
-  String.raw`^http://127\.0\.0\.1:\d{1,5}/(?:[A-Za-z0-9_-]{${String(previewSecretLength)}}/)?$`,
+  String.raw`^http://127\.0\.0\.1:\d{1,5}/(?:[A-Za-z0-9_-]{${String(previewSecretLength)}})?$`,
 );
 
 /**
  * Hands a preview address to the default browser: no shell, detached, output ignored, the address one argument.
  * Resolves once the opener started (its exit status is ignored: xdg-open can wait for the browser), rejects when
- * it cannot start. Never logs, and the rejection never holds the address (it may hold the session secret).
+ * it cannot start. Never logs, and the rejection never holds the address (it may hold the launch token).
  */
 export function openInBrowser(url: string, options: OpenInBrowserOptions = {}): Promise<void> {
   if (!previewAddress.test(url)) return Promise.reject(new Error("not a preview address"));
