@@ -8,11 +8,19 @@ import { renderSvg, RenderLimits } from "@readmint/renderer";
 import { describe, expect, test } from "vitest";
 import { profileTemplates, type ProfileSection, type ProfileTemplate } from "../src/index.js";
 import { embeddedFonts } from "../../renderer/test/embeddedFonts.js";
-import { loadProfile, profileSource, renderProfile, type ProfileTheme } from "./profileDesigns.js";
+import {
+  loadExampleProfile,
+  loadProfile,
+  profileSource,
+  renderProfile,
+  type ProfileTheme,
+} from "./profileDesigns.js";
+import { profileExampleProps } from "./profileExampleProps.js";
 import { sampleGitHubData } from "./sampleGitHubData.js";
 import {
   otherProfileData,
   sampleProfileData,
+  sparseProfileData,
   worstCaseProfileData,
   type ProfileData,
 } from "./sampleProfileData.js";
@@ -41,6 +49,17 @@ function fileJson(template: ProfileTemplate, file: string): unknown {
   return JSON.parse(readFileSync(join(folders, template, file), "utf8"));
 }
 
+/** The sections with a motion that never ends (tickers, pulses, the turning ring, the ripple, a blinking caret). */
+const loops: Readonly<Record<ProfileTemplate, readonly ProfileSection[]>> = {
+  "year-ring": ["header", "year", "repo-1", "repo-2", "repo-3", "repo-4", "repo-5", "repo-6"],
+  horizon: ["header", "ticker", "year", "worked"],
+  pinscreen: ["header", "year", "log"],
+};
+
+/** The personal texts of the example (test/profileExampleProps.ts): no template file may hold one. */
+const exampleValues =
+  /MrLarkyy|Tade[aá][sš]|Ganzwohl|aquatic|Hoplite|Minebox|Cobblemon|Mineclub|MrBeast|SpeedSilver|DiamondXR|Minecraft|KRepo|KEvent|KLocale|KRegistry/iu;
+
 /** The text a section shows where the data it reads is missing (no status, pushes or repositories). */
 const fallbackText: Readonly<Record<ProfileTemplate, Partial<Record<ProfileSection, string>>>> = {
   "year-ring": {
@@ -50,7 +69,7 @@ const fallbackText: Readonly<Record<ProfileTemplate, Partial<Record<ProfileSecti
     "repo-4": "No repository in slot 4.",
   },
   horizon: {
-    header: "No commits to show yet.",
+    ticker: "No commits to show yet.",
     "repo-1": "No repository in slot 1.",
     "repo-4": "No repository in slot 4.",
   },
@@ -84,7 +103,9 @@ describe.each(cases)("%s %s", (template, section) => {
   test("has a transparent canvas and a theme enum on its one root instance", () => {
     const design = loadProfile(template, section);
     expect(design.canvas.background).toBeUndefined();
-    expect(design.canvas.width).toBe(840);
+    // the repository cards of year-ring and pinscreen sit two to a row (README), horizon's rows are full width
+    const narrow = section.startsWith("repo-") && template !== "horizon";
+    expect(design.canvas.width).toBe(narrow ? 412 : 840);
     expect(design.layers).toHaveLength(1);
     const [root] = design.layers;
     if (root?.type !== "component") throw new Error("the root layer is not a component");
@@ -120,13 +141,14 @@ describe.each(cases)("%s %s", (template, section) => {
     expect(design.description).not.toBe(design.title);
   });
 
-  test("contains no login, name or address of any user", () => {
+  test("contains no login, name, address or personal text of any user", () => {
     for (const theme of themes) {
       const body = JSON.parse(profileSource(template, section, theme)) as Record<string, unknown>;
       delete body["$schema"];
       expect(JSON.stringify(body)).not.toMatch(
         /https?:|MrLarkyy|readmint-sample|other-dev|Sample Developer|Other Developer/iu,
       );
+      expect(JSON.stringify(body)).not.toMatch(exampleValues);
     }
   });
 
@@ -200,10 +222,9 @@ describe.each(cases)("%s %s", (template, section) => {
     pixelsEqual(frame(0), frame(timeline.duration));
   });
 
-  test("the timeline loops exactly where the section is a ticker", () => {
+  test("the timeline loops exactly where the section moves without end", () => {
     const timeline = loadProfile(template, section).animation;
-    const ticker = template === "horizon" && (section === "header" || section === "stack");
-    if (ticker) expect(timeline).toMatchObject({ loop: true });
+    if (loops[template].includes(section)) expect(timeline).toMatchObject({ loop: true });
     else if (timeline !== undefined) expect(timeline.loop).toBe(false);
   });
 });
@@ -250,7 +271,9 @@ describe.each(names)("%s fonts", (template) => {
       const file = join(folders, template, src);
       expect(existsSync(file), src).toBe(true);
       expect(readme, src).toContain(sha256(readFileSync(file)));
-      expect(family).toMatch(/^(Archivo|Archivo Condensed|Geist|Geist Mono)$/u);
+      expect(family).toMatch(
+        /^(Archivo|Archivo SemiExpanded|Archivo SemiCondensed|Archivo ExtraCondensed|Geist|Geist Mono)$/u,
+      );
     }
     for (const theme of themes) {
       for (const section of profileTemplates[template]) {
@@ -373,9 +396,9 @@ describe("the animation of the profile sections", () => {
   });
 
   test.each([
-    ["year-ring", 54, 62],
-    ["horizon", 110, 112],
-    ["pinscreen", 28, 34],
+    ["year-ring", 58, 65],
+    ["horizon", 100, 112],
+    ["pinscreen", 48, 54],
   ] as const)("the odometer of %s reads the total in its first frame", (template, size, row) => {
     const svg = render(template, "year", 0);
     const digits = [
@@ -419,17 +442,17 @@ describe("the animation of the profile sections", () => {
     },
   );
 
-  test.each([
-    ["year-ring", "Oct 16, 2024 to Oct 15, 2025"],
-    ["horizon", "Oct 16, 2024 - Oct 15, 2025"],
-  ] as const)("the date range of %s names the year of both ends", (template, range) => {
-    const sample = sampleProfileData();
-    const data = withPatch(sample, {
-      contributions: { ...sample.github.contributions, from: "2024-10-16", to: "2025-10-15" },
-    });
-    const svg = renderProfile({ template, design: loadProfile(template, "year"), data });
-    expect(svg).toContain(`>${range}<`);
-  });
+  test.each([["year-ring", "OCT 2024 — OCT 2025"]] as const)(
+    "the date range of %s names the year of both ends",
+    (template, range) => {
+      const sample = sampleProfileData();
+      const data = withPatch(sample, {
+        contributions: { ...sample.github.contributions, from: "2024-10-16", to: "2025-10-15" },
+      });
+      const svg = renderProfile({ template, design: loadProfile(template, "year"), data });
+      expect(svg).toContain(`>${range}<`);
+    },
+  );
 
   test("a streak of one day reads '1 day'", () => {
     const sample = sampleProfileData();
@@ -442,7 +465,7 @@ describe("the animation of the profile sections", () => {
     });
     const text = (template: ProfileTemplate) =>
       renderProfile({ template, design: loadProfile(template, "year"), data });
-    expect(text("year-ring")).toContain(">1 day<");
+    expect(text("year-ring")).toContain(">Longest streak, 1 day<");
     expect(text("horizon")).toContain(">1 DAY<");
     expect(text("year-ring")).not.toContain("1 days");
   });
@@ -461,7 +484,7 @@ describe("the animation of the profile sections", () => {
     for (const [template, section] of [
       ["year-ring", "header"],
       ["year-ring", "recent"],
-      ["horizon", "header"],
+      ["horizon", "ticker"],
       ["pinscreen", "header"],
       ["pinscreen", "log"],
     ] as const) {
@@ -505,5 +528,170 @@ describe.each(names)("%s example README", (template) => {
       (match) => match[1],
     );
     expect(listed).toEqual(sections.map((section) => `${template}/${section}.json`));
+  });
+});
+
+/** The terrain faces of a horizon year frame: four corners, fill and stroke, in drawing order. */
+function terrainFaces(svg: string) {
+  return [...svg.matchAll(/<path d="M([^"]+)Z"([^>]*)\/>/gu)]
+    .filter(([, , attributes]) => / stroke-width="0\.5"/u.test(attributes ?? ""))
+    .map(([, d, attributes]) => ({
+      corners: (d ?? "")
+        .split(/[ML]/u)
+        .map((pair) => pair.trim())
+        .filter((pair) => pair !== "")
+        .map((pair) => pair.split(/[ ,]+/u).map(Number) as [number, number]),
+      fill: / fill="(#[0-9a-f]{6})"/u.exec(attributes ?? "")?.[1] ?? "",
+      stroke: / stroke="(#[0-9a-f]{6})"/u.exec(attributes ?? "")?.[1] ?? "",
+    }));
+}
+
+/** Whether p lies inside or on the convex quad q (either winding). */
+function inQuad(p: readonly [number, number], q: readonly (readonly [number, number])[]): boolean {
+  const signs = q.map((a, i) => {
+    const b = q[(i + 1) % q.length] ?? a;
+    return (b[0] - a[0]) * (p[1] - a[1]) - (b[1] - a[1]) * (p[0] - a[0]);
+  });
+  return signs.every((v) => v >= -1e-6) || signs.every((v) => v <= 1e-6);
+}
+
+describe("the horizon terrain", () => {
+  const sample = sampleProfileData();
+  const frame = (data: ProfileData) =>
+    renderProfile({ template: "horizon", design: loadProfile("horizon", "year"), data, time: 0 });
+
+  test.each([364, 365, 366, 367, 368, 369, 370, 371])(
+    "covers its grid row by row from back to front on a calendar of %s days",
+    (length) => {
+      const base = sample.github.contributions.days;
+      const days = Array.from({ length }, (_, index) => ({
+        ...(base[index % base.length] as (typeof base)[number]),
+        count: 0,
+        level: 0 as const,
+      }));
+      const faces = terrainFaces(
+        frame(withPatch(sample, { contributions: { ...sample.github.contributions, days } })),
+      );
+      expect(faces).toHaveLength(624);
+      const rows = Array.from({ length: 12 }, (_, row) => faces.slice(row * 52, row * 52 + 52));
+      const meanY = rows.map(
+        (row) =>
+          row.flatMap((face) => face.corners.map(([, y]) => y)).reduce((a, b) => a + b, 0) /
+          (row.length * 4),
+      );
+      for (let row = 1; row < 12; row++)
+        expect(meanY[row], `row ${String(row)}`).toBeGreaterThan(meanY[row - 1] ?? 0);
+      const front = Math.max(...faces.flatMap((face) => face.corners.map(([, y]) => y)));
+      for (const face of faces)
+        for (const [, y] of face.corners) expect(y).toBeLessThanOrEqual(front);
+      // the back edge, the front edge and the sides bound the grid; every point inside lies in a face
+      const corner = (row: number, column: number, index: number) =>
+        rows[row]?.[column]?.corners[index] ?? [0, 0];
+      const backLeft = corner(0, 0, 0),
+        backRight = corner(0, 51, 1);
+      const frontRight = corner(11, 51, 2),
+        frontLeft = corner(11, 0, 3);
+      const lerp = (a: readonly number[], b: readonly number[], t: number) =>
+        [
+          (a[0] ?? 0) + ((b[0] ?? 0) - (a[0] ?? 0)) * t,
+          (a[1] ?? 0) + ((b[1] ?? 0) - (a[1] ?? 0)) * t,
+        ] as const;
+      for (let v = 0.01; v < 1; v += 0.0245) {
+        for (let u = 0.004; u < 1; u += 0.0097) {
+          const point = lerp(lerp(backLeft, backRight, u), lerp(frontLeft, frontRight, u), v);
+          expect(
+            faces.some((face) => inQuad(point, face.corners)),
+            `${point[0].toFixed(1)},${point[1].toFixed(1)}`,
+          ).toBe(true);
+        }
+      }
+    },
+  );
+
+  test("is shaded on a sparse, spiky calendar: many fills, few accent faces, every face outlined", () => {
+    const faces = terrainFaces(frame(sparseProfileData()));
+    expect(faces).toHaveLength(624);
+    expect(new Set(faces.map((face) => face.fill)).size).toBeGreaterThanOrEqual(6);
+    // the light accent #E8590C pulls red far above blue; the ink greys keep them equal
+    const accent = faces.filter(({ fill }) => {
+      const [r, , b] = [1, 3, 5].map((i) => parseInt(fill.slice(i, i + 2), 16));
+      return (r ?? 0) - (b ?? 0) > 15;
+    });
+    expect(accent.length).toBeLessThanOrEqual(624 * 0.15);
+    for (const face of faces) expect(face.stroke).not.toBe(face.fill);
+  });
+});
+
+describe("the year sections on a sparse, spiky calendar", () => {
+  test.each(names)(
+    "%s renders it in both themes within the budget and half the limits",
+    (template) => {
+      for (const theme of themes) {
+        const svg = renderProfile({
+          template,
+          design: loadProfile(template, "year", theme),
+          data: sparseProfileData(),
+          limits: halvedLimits,
+        });
+        expect(utf8Bytes(svg)).toBeLessThanOrEqual(sizeBudget);
+      }
+    },
+  );
+});
+
+/** Texts each section shows only with the example's personal texts set. */
+const personalTexts: Readonly<Record<ProfileTemplate, Partial<Record<ProfileSection, string>>>> = {
+  "year-ring": {
+    header: "Backend engineer working in Kotlin",
+    index: ">Backend systems and internal tooling<",
+    footer: ">Open to long-term collaborations.<",
+  },
+  horizon: {
+    header: ">Messaging systems,<",
+    stack: ">RabbitMQ<",
+    worked: ">HOPLITE<",
+    footer: ">COLLABORATIONS.<",
+  },
+  pinscreen: {
+    header: ">Backend engineer. Kotlin, the JVM and messaging systems.<",
+    stack: ">redis, rabbitmq, nats<",
+    footer: ">Open to long-term collaborations.<",
+  },
+};
+
+describe.each(names)("%s personal texts", (template) => {
+  const sections = Object.keys(personalTexts[template]) as ProfileSection[];
+
+  test.each(sections)("%s shows them as root props and hides them when empty", (section) => {
+    const filled = renderProfile({
+      template,
+      design: loadExampleProfile(template, section),
+      data: sampleProfileData(),
+    });
+    expect(filled).toContain(personalTexts[template][section]);
+    const empty = renderProfile({
+      template,
+      design: loadProfile(template, section),
+      data: withPatch(sampleProfileData(), { bio: null }),
+    });
+    expect(empty).not.toContain(personalTexts[template][section]);
+    expect(empty).not.toMatch(/>[^<]*\b(undefined|null)\b[^<]*</u);
+  });
+
+  test("every root prop a section declares has an empty default, and the example sets only declared props", () => {
+    for (const section of profileTemplates[template]) {
+      const design = loadProfile(template, section);
+      const [root] = design.layers;
+      if (root?.type !== "component") throw new Error("the root layer is not a component");
+      const declared = design.components?.[root.ref]?.props ?? {};
+      for (const [name, prop] of Object.entries(declared)) {
+        if (name === "theme" || name === "slot") continue;
+        const fallback = name === "branch" ? "main" : name === "languagesAfter" ? 2 : undefined;
+        if (fallback !== undefined) expect(prop.default, name).toBe(fallback);
+        else expect(prop.default, `${section} ${name}`).toEqual(prop.type === "array" ? [] : "");
+      }
+      for (const name of Object.keys(profileExampleProps[template][section] ?? {}))
+        expect(Object.keys(declared), `${section} ${name}`).toContain(name);
+    }
   });
 });

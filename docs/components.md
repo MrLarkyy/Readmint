@@ -144,44 +144,61 @@ Five complete designs that show what the format can do; each is an ordinary desi
 
 ## Profile templates
 
-Three full README profiles, each a folder of designs under `@readmint/components/templates/profiles/<name>/`:
+Three full README profiles, each a folder of designs under `@readmint/components/templates/profiles/<name>/`, built
+section by section to the approved prototype (version 6):
 
-| template    | look                                                                                                     | fonts (SIL OFL 1.1)           | year visual                                            |
-| ----------- | -------------------------------------------------------------------------------------------------------- | ----------------------------- | ------------------------------------------------------ |
-| `year-ring` | calm and cobalt; header with a typed last push, index table, recent work, repositories with 52-week line | Archivo                       | a rotating 3D ring, one line per day, streak in cobalt |
-| `horizon`   | an orange poster: name in large type, commit ticker, ranked repositories, stack columns and a ticker     | Archivo Condensed, Geist Mono | a lit 3D terrain with a peak per day                   |
-| `pinscreen` | an IDE: status bar header, repositories as Kotlin objects, a terminal git log, a build script stack      | Geist, Geist Mono             | a pin screen with a ripple from today                  |
+| template    | look                                                                                                     | fonts (SIL OFL 1.1)                                         | year visual                                                    |
+| ----------- | -------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- | -------------------------------------------------------------- |
+| `year-ring` | calm and cobalt; a typed last push, an index table, recent work, repository cards with a 52-week line    | Archivo (normal and SemiExpanded)                           | a turning 3D ring, one line per day, the longest streak marked |
+| `horizon`   | an orange poster: the name full width, a commit ticker, repositories ranked by stars, stack, worked with | Archivo (ExtraCondensed, SemiCondensed, normal), Geist Mono | a lit, shaded 3D terrain whose peaks turn orange               |
+| `pinscreen` | an editor: a status bar, repositories as Kotlin objects, a terminal git log, a build script stack        | Geist, Geist Mono                                           | a wall of pins with a ripple running out from today            |
 
 `profileTemplates` from `@readmint/components` maps each name to its sections (`ProfileTemplate`, `ProfileSection`).
 A folder holds, per section, `<section>.json` and its dark twin `<section>.dark.json`, an example `README.md` and
 `fonts/` (the TTF files the designs name, the licence of each family and the sha256 of every file):
 
-| template    | sections                                                            |
-| ----------- | ------------------------------------------------------------------- |
-| `year-ring` | `header`, `year`, `index`, `recent`, `repo-1` to `repo-4`, `footer` |
-| `horizon`   | `header`, `year`, `repo-1` to `repo-4`, `stack`, `footer`           |
-| `pinscreen` | `header`, `year`, `repo-1` to `repo-4`, `log`, `stack`, `footer`    |
+| template    | sections                                                                              |
+| ----------- | ------------------------------------------------------------------------------------- |
+| `year-ring` | `header`, `year`, `index`, `recent`, `work`, `repo-1` to `repo-6`, `footer`           |
+| `horizon`   | `header`, `ticker`, `year`, `work`, `repo-1` to `repo-6`, `stack`, `worked`, `footer` |
+| `pinscreen` | `header`, `year`, `work`, `repo-1` to `repo-6`, `log`, `stack`, `footer`              |
 
-- **One design per section.** Every section is a design of 840 pixels width with a transparent canvas that draws its
-  own panel, so each is an image of its own in the README. The Action writes `readmint/<section>.svg` and
+- **One design per section.** Every section is an image of its own in the README, 840 pixels wide (the repository
+  cards of `year-ring` and `pinscreen` 412, two to a row: the example `README.md` sets two linked images of 49 % width
+  side by side). The canvas is transparent and the sections draw no card: they sit on the page like the prototype,
+  in the GitHub page colours of the theme; only the Pinscreen panels (status bar, code, terminal) have a surface.
+  `work` is the heading strip above the repositories. The Action writes `readmint/<section>.svg` and
   `readmint/<section>.dark.svg` and prints the `<picture>` snippet that switches on `prefers-color-scheme`
   ([action.md](action.md#outputs-on-disk-and-the-dark-variant)): list only the light designs. The dark twin is the
   light file with the root prop `theme` set to `"dark"`, nothing else (a test compares them); the colours are chosen
   from that prop inside the design.
 - **Links.** SVG links do not work inside an `<img>`, so a clickable element is a link around the image: the example
   `README.md` wraps each repository and the contact footer.
-- **Repository slots.** `repo-1` to `repo-4` are the same design with the root prop `slot` 0 to 3 (a test pins that
-  they differ in nothing else). A slot shows `github.pinned[slot]`, else `github.repositories[slot]` (stars
-  descending); a slot past the list shows a plain "No repository in slot n." line.
-- **No user in a design.** No design contains a login, name or address; every text comes from `github.*`, so another
-  account's data needs no edit. The "data as of" date is `github.contributions.to`: a render reads no clock.
-- **Fonts.** Archivo, Archivo Condensed (Omnibus-Type), Geist and Geist Mono (Vercel) are SIL OFL 1.1 static TTFs, byte
-  copies of the upstream files (origin, version and sha256 in each `fonts/README.md`), none with a Reserved Font Name
-  and all with OS/2 `fsType` 0, so the renderer embeds a subset of the glyphs a section draws. Only the files a
-  template names are in its folder, with the licence text beside them. Archivo and Archivo Condensed have no Cyrillic
-  and none of the four families has emoji or CJK glyphs: such a name or commit message is not drawn and the render
-  warns `missing-glyph` ([renderer](renderer.md)). Add a font asset that has them and list it in the `fallback` of the
-  design's fonts ([design format](design-format.md#assets)), and mind the size budget below.
+- **Repository slots.** `repo-1` to `repo-6` are the same design with the root prop `slot` 0 to 5 (a test pins that
+  they differ in nothing else). In `year-ring` and `pinscreen` a slot shows `github.pinned[slot]`; `horizon` ranks the
+  pinned repositories by stars (ties keep their order) and slot n shows the n-th. A slot past the list shows a plain
+  "No repository in slot n." line (`pinscreen`: an empty file).
+- **Personal texts are root props.** What only a person can say (an introduction, a role, index rows, stack groups,
+  the people worked with, the footer and the contact) is a prop of the root instance, declared per section with an
+  empty default; an empty prop hides its block (an empty introduction falls back to `github.bio`, an empty contact to
+  the GitHub address). A prop is set in the light design and the same in its twin. Array props hold strings only, so a
+  table is two arrays of the same length (`labels`, `values`), and a multi-line item is one string with line breaks.
+  Each template's `README.md` lists its props with neutral examples. The canvas height cannot read a prop, so the
+  sections whose rows come from props have a fixed height (the `year-ring` index takes up to 8 rows, the `pinscreen`
+  build file up to 15 lines); the sections whose rows come from data (recent work, the git log) grow with them.
+- **No user in a design.** No design contains a login, name, address or personal text; every other text comes from
+  `github.*`, so another account's data needs no edit. The render date is `github.contributions.to`: a render reads no
+  clock, so times are days ("today", "yesterday", "3 days ago", read from the calendar's own dates), never hours.
+- **Fonts.** Archivo (Omnibus-Type), Geist and Geist Mono (Vercel) are SIL OFL 1.1 static TTFs, byte copies of the
+  upstream files (origin, version and sha256 in each `fonts/README.md`), none with a Reserved Font Name and all with
+  OS/2 `fsType` 0, so the renderer embeds a subset of the glyphs a section draws. The renderer reads static faces, not
+  variable axes, so the prototype's Archivo widths are the static width instances: stretch 62-70 % is ExtraCondensed,
+  90 % SemiCondensed, 108-116 % SemiExpanded, 100 % the normal width. Only the files a template names are in its
+  folder, with the licence text beside them. Archivo has no Cyrillic and none of the families has emoji or CJK glyphs:
+  such a name or commit message is not drawn and the render warns `missing-glyph` ([renderer](renderer.md)). Add a
+  font asset that has them and list it in the `fallback` of the design's fonts
+  ([design format](design-format.md#assets)), and mind the size budget below. Archivo has no arrow or star glyph
+  either: the contact arrow and the worked-with stars are paths.
 
 ### Data the templates read
 
@@ -197,8 +214,9 @@ yet, so a template reads them as optional (a missing property reads as `null`, s
 | `github.pushes[].repository`, `.hash`     | string         | repository name and short hash of the push                              |
 | `github.pushes[].message`                 | string         | commit message                                                          |
 | `github.pushes[].additions`, `.deletions` | number         | lines added and removed                                                 |
+| `github.pushes[].date`                    | ISO date       | "today", "yesterday", "n days ago" against the calendar's last day      |
 | `github.pinned[]`                         | array          | the pinned repositories, same items as `github.repositories[]`          |
-| `github.repositories[].weeklyCommits`     | number[52]     | the 52-week line (`year-ring`) and bar code (`horizon`) of a repository |
+| `github.pinned[].weeklyCommits`           | number[52]     | the 52-week line (`year-ring`) and bar code (`horizon`) of a repository |
 
 Without these, `year-ring` shows "No recent push yet." and "No recent pushes yet.", `horizon` "No commits to show yet."
 and `pinscreen` "no pushes yet" and "no commits yet"; the sections that do not read them render in full.
@@ -206,23 +224,40 @@ and `pinscreen` "no pushes yet" and "no commits yet"; the sections that do not r
 ### Writing a template like these
 
 - **The first frame is the final state.** The raster export draws frame 0, and so do a viewer that ignores CSS and a
-  reader who asks for less motion. A one-shot track (odometer, typewriter wipe, bar growth, line drawing) therefore
-  lists its keyframes as `[final@0, initial@0, ..., final@1]`: the equal offsets make a jump, so the static attribute
-  and frame 0 are the final value, and a browser shows the start for the instant after it. A delay would hold the
-  first value (the final one), so a one-shot that starts later holds `initial` for a keyframe instead; a reveal that
-  runs line by line is one panel-coloured cover whose `y` steps (at most 15 steps in the 32 keyframes of a track).
-  Motions that never need a start (the turning ring, a ticker, the pulse, the ripple) start and end in their rest pose,
-  and a test compares frame 0 with the frame at the end of every section.
-- **One timeline per design.** The three footers and the Pinscreen repository slots are static; the other sections
-  but two play once over 60000 ms (the format maximum; the ring turns once per view and rests), `loop: false`. The
-  Horizon header and stack are tickers: `loop: true`, the row drawn several times and moved by exactly one set of items.
+  reader who asks for less motion. A one-shot track (odometer, typewriter wipe, bar growth, line drawing, fade) lists
+  its keyframes as `[final@0, initial@0, ..., final@1]`: the equal offsets make a jump, so the static attribute and
+  frame 0 are the final value, and a browser shows the start for the instant after it. A delay holds the first value
+  (the final one), so a one-shot that starts later sits in a group whose own track lasts exactly the delay and holds
+  the child's start look until then (opacity 0, or the odometer column on "0"); the delay may then come from data or a
+  repeat index. A test compares frame 0 with the frame at the end of every section.
+- **One timeline per design.** The heading strips and footers are static. A section whose motion never ends (the
+  turning ring, a ticker, a pulsing dot, the ripple, a blinking caret) loops (`loop: true`, 60000 ms; the Pinscreen year
+  54000 ms, six ripples), and its one-shots play again once per loop; every other section plays once, `loop: false`. A
+  loop whose period is shorter than the timeline needs more keyframes than a track holds (32), so it is a few copies of
+  its layer (a `repeat` over a short list with `stagger`), each playing a window of whole periods and invisible outside
+  it; every period divides the timeline, so the loop is seamless.
+- **Tickers without measuring.** A ticker gives each item a slot as wide as its estimated text (characters times an
+  average advance; Geist Mono exactly 0.6 em), clipped to the slot, so the width of one run is known in the design and
+  the band moves by whole runs per timeline.
 - **A 3D ring without trigonometry.** A point of an ellipse with semi-axes `R1 + R2` and `R1 - R2` is the sum of two
   counter-rotating circles. Each day is three nested groups, each only a rotation (outer `phi`, middle `-2 phi` turning
   twice as fast the other way, inner `phi` so the line stays upright), so all 365 copies share three animation rules
-  and differ only in their static rotations.
-- **Square root without a filter.** The expression language has no square root: heights use chords of the square root
-  through 0, 1, 4, 16 and 64 (clamped at 64 a day; a chord is at most 6 % below the root).
-- **Text without measuring.** Geist Mono advances 0.6 em, so a token of the Pinscreen editor sits at `columns x 8.4`
+  and differ only in their static rotations. The ellipse is the one the prototype's perspective ring draws; the far
+  half fades under a veil of the page colour, and the month labels fade in and out with a cosine looked up in a table.
+- **Perspective without a camera.** The Horizon terrain and the Pinscreen pins project each point with the prototype's
+  camera as plain arithmetic (`x = cx + f X / z`, `y = cy - f Y / z` after one fixed tilt), per vertex in bindings.
+  The terrain is 52 weeks by 12 rows of quads, anchored at the calendar's last day (its column is the last; a day's
+  row is its `weekday`), so any calendar of 364 to 371 days fills the grid; each weekday row is smoothed along the
+  weeks (two passes of 1-2-1), every second row is the mean of two weekdays, the quads are drawn back to front, shaded
+  by their slope against a light from the upper left, tinted with the accent above half the height, and outlined a few
+  shades off their fill. A test checks the rows' order and that the grid has no hole for every length from 364 to 371.
+- **Square root without a filter.** The expression language has no square root: day counts use chords of the root
+  through the squares 0, 1, 4, 9, 16, 36, 64, 100, 169, 256, 400, 1024, 4096 and 16384; the terrain's smoothed values
+  look the root up in a table of sixteenths.
+- **Values computed once.** A one-item `repeat` binds a value for everything below it (`"each": "{{ [expr] }}"`). A
+  binding holds at most 2048 characters, so long work (the largest count of a year, the weekday sums) is split into a
+  chain of such bindings.
+- **Text without measuring.** Geist Mono advances 0.6 em, so a token of the Pinscreen code sits at `columns x 6.9`
   pixels; free text is cut with `truncate` and held in a `clip` group. A clip group (or other layer of its own) lying
   wholly off the canvas draws nothing there; the renderer leaves it out ([renderer.md](renderer.md#layers)), so such a
   design still renders and rasterizes. A few far layers are still written (a stroke whose joins are padded by twice its
@@ -232,31 +267,34 @@ and `pinscreen` "no pushes yet" and "no commits yet"; the sections that do not r
 
 ### Bytes per section
 
-UTF-8 bytes of the animated SVG on the sample data of the tests and on the worst-case data (1024-character texts, counts
-of 10^15, 600 pushes, a 54-column calendar at 1000000 a day); every section is within the budget below.
+UTF-8 bytes of the animated SVG of the files as published, on the sample data of the tests and on the worst-case data
+(1024-character texts, counts of 10^15, 600 pushes, a 54-column calendar at 1000000 a day); every section is within
+the budget below. The repository slots weigh alike; `work` is 5 to 7 KB.
 
 | template    | section | sample | worst case |
 | ----------- | ------- | ------ | ---------- |
-| `year-ring` | header  | 31 KB  | 29 KB      |
-| `year-ring` | year    | 163 KB | 204 KB     |
-| `year-ring` | index   | 21 KB  | 20 KB      |
-| `year-ring` | recent  | 22 KB  | 18 KB      |
-| `year-ring` | repo-1  | 13 KB  | 12 KB      |
-| `year-ring` | footer  | 10 KB  | 9 KB       |
-| `horizon`   | header  | 36 KB  | 31 KB      |
-| `horizon`   | year    | 90 KB  | 86 KB      |
-| `horizon`   | repo-1  | 17 KB  | 15 KB      |
-| `horizon`   | stack   | 28 KB  | 41 KB      |
+| `year-ring` | header  | 219 KB | 232 KB     |
+| `year-ring` | year    | 241 KB | 259 KB     |
+| `year-ring` | index   | 10 KB  | 34 KB      |
+| `year-ring` | recent  | 28 KB  | 88 KB      |
+| `year-ring` | repo-1  | 16 KB  | 26 KB      |
+| `year-ring` | footer  | 10 KB  | 10 KB      |
+| `horizon`   | header  | 16 KB  | 24 KB      |
+| `horizon`   | ticker  | 34 KB  | 31 KB      |
+| `horizon`   | year    | 121 KB | 112 KB     |
+| `horizon`   | repo-1  | 45 KB  | 53 KB      |
+| `horizon`   | stack   | 10 KB  | 9 KB       |
+| `horizon`   | worked  | 3 KB   | 3 KB       |
 | `horizon`   | footer  | 8 KB   | 8 KB       |
-| `pinscreen` | header  | 19 KB  | 18 KB      |
-| `pinscreen` | year    | 117 KB | 115 KB     |
-| `pinscreen` | repo-1  | 15 KB  | 14 KB      |
-| `pinscreen` | log     | 24 KB  | 22 KB      |
-| `pinscreen` | stack   | 22 KB  | 22 KB      |
-| `pinscreen` | footer  | 7 KB   | 7 KB       |
+| `pinscreen` | header  | 23 KB  | 30 KB      |
+| `pinscreen` | year    | 184 KB | 198 KB     |
+| `pinscreen` | repo-1  | 12 KB  | 12 KB      |
+| `pinscreen` | log     | 27 KB  | 27 KB      |
+| `pinscreen` | stack   | 13 KB  | 13 KB      |
+| `pinscreen` | footer  | 5 KB   | 5 KB       |
 
-The ring of the Year Ring prototype was about 390 KB; sharing the three rotation rules between the days and leaving
-out the days without commits brings it to 163 KB.
+The ring of the Year Ring prototype was about 390 KB; sharing the three rotation rules between the days brings it to
+241 KB with a dot for every day without commits, under the 256 KiB the ring is held to on the sample data.
 
 ## Size budget
 
