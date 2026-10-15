@@ -98,7 +98,7 @@ function required(font: SfntFont, tag: string): Uint8Array {
 }
 
 function patched(table: Uint8Array, change: (view: DataView) => void): Uint8Array {
-  const copy = table.slice();
+  const copy = new Uint8Array(table);
   change(new DataView(copy.buffer));
   return copy;
 }
@@ -153,7 +153,7 @@ function withoutInstructions(data: Uint8Array, newId: ReadonlyMap<number, number
       .bytes(reader.slice(rest, data.length - rest))
       .result();
   }
-  const copy = data.slice();
+  const copy = new Uint8Array(data);
   const target = new DataView(copy.buffer);
   let offset = 10;
   let flags = moreComponents;
