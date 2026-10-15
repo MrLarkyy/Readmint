@@ -2,7 +2,7 @@ import type { Bytes } from "./Bytes.js";
 import type { EntropyBudget } from "./EntropyBudget.js";
 import { HuffmanTable } from "./HuffmanTable.js";
 import { type EntropyScan, JpegEntropy } from "./JpegEntropy.js";
-import { entropyRefusal, resvgDiffers, undrawable } from "./jpegRefusals.js";
+import { entropyRefusal, failClosed, resvgDiffers, undrawable } from "./jpegRefusals.js";
 import type { LosslessJpeg } from "./LosslessJpeg.js";
 import { nextJpegMarker } from "./nextJpegMarker.js";
 import { skipEntropyData } from "./skipEntropyData.js";
@@ -21,8 +21,11 @@ interface Component {
   readonly h: number;
   readonly v: number;
   readonly table: number;
-  /** The coefficients 0-63 a scan with no successive approximation left to do has delivered. */
-  readonly done: boolean[];
+  /**
+   * The point transform (Al) the latest scan of each coefficient 0-63 left, -1 before any: 0 where no successive
+   * approximation is left to do.
+   */
+  readonly lowBits: number[];
   /** The definition of its quantization table its first scan saw: libjpeg keeps it, jpeg-decoder takes the latest. */
   latched: number | undefined;
 }
@@ -101,13 +104,12 @@ export class JpegStructure {
     for (let index = 0; index < count; index++) {
       const at = offset + 8 + 3 * index;
       const sampling = bytes.u8(at + 1);
-      const done = new Array<boolean>(64).fill(false);
       this.components.push({
         id: bytes.u8(at),
         h: sampling >> 4,
         v: sampling & 0x0f,
         table: bytes.u8(at + 2),
-        done,
+        lowBits: new Array<number>(64).fill(-1),
         latched: undefined,
       });
     }
@@ -332,9 +334,13 @@ export class JpegStructure {
         );
       }
       // jpeg-decoder skips a scan of a component it has completed; libjpeg applies it.
-      if (component.done.every(Boolean)) {
+      if (component.lowBits.every((left) => left === 0)) {
         return resvgDiffers(`scan of component ${String(id)} after it is complete`);
       }
+      const orderProblem = progressive
+        ? progressionProblem(component, band[0] ?? 0, band[1] ?? 0, high, low)
+        : undefined;
+      if (orderProblem !== undefined) return orderProblem;
       scanned.push(component);
     }
     if (count > 1 && scanned.reduce((blocks, { h, v }) => blocks + h * v, 0) > 10) {
@@ -342,7 +348,7 @@ export class JpegStructure {
     }
     for (const component of scanned) {
       component.latched ??= this.quantTables.get(component.table);
-      if (low === 0) component.done.fill(true, band[0], (band[1] ?? 0) + 1);
+      component.lowBits.fill(low, band[0], (band[1] ?? 0) + 1);
     }
     return undefined;
   }
@@ -407,7 +413,7 @@ export class JpegStructure {
   private endProblem(): string | undefined {
     for (const component of this.components) {
       // libjpeg draws what the scans delivered, jpeg-decoder nothing for a component it has not completed.
-      if (!component.done.every(Boolean)) {
+      if (!component.lowBits.every((left) => left === 0)) {
         return resvgDiffers(
           `file whose component ${String(component.id)} is never completely scanned`,
         );
@@ -447,6 +453,32 @@ function progressiveProblem(
           `${String(high)}/${String(low)}`,
       )
     : undefined;
+}
+
+/**
+ * Why a progressive scan of `component`'s coefficients `start`-`end` at successive approximation `high`/`low` is
+ * refused for its place in the progression, or undefined. A first scan (high 0) must find each coefficient unscanned and
+ * a refinement must refine each from the point transform its latest scan left: libjpeg only warns on either (jdphuff.c
+ * start_pass_phuff_decoder) and jpeg-decoder checks neither, so a refinement that jumps bits adds a correction past
+ * what the first scan's value allows, and the dequantized-value rule's bound (`entropyBlocks`) holds only in order.
+ */
+function progressionProblem(
+  component: Component,
+  start: number,
+  end: number,
+  high: number,
+  low: number,
+): string | undefined {
+  for (let k = start; k <= end; k++) {
+    const previous = component.lowBits[k] ?? -1;
+    if (high === 0 ? previous === -1 : previous === high) continue;
+    return failClosed(
+      `progressive scan ${String(high)}/${String(low)} of coefficient ${String(k)} of component ` +
+        `${String(component.id)} out of progression order (its previous scan: ` +
+        `${previous === -1 ? "none" : `point transform ${String(previous)}`})`,
+    );
+  }
+  return undefined;
 }
 
 /** libjpeg-turbo 3.1 jdapimin.c default_decompress_parms, 3 components, from the markers before the first scan. */

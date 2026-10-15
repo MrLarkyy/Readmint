@@ -418,7 +418,12 @@ budget?, maxBytes? })`, `encodeWoff`, `decodeWoff`, `glyphClosure`, `OutlineBudg
   make it (`((|v| + 1) << Al) - 1`, a new refinement coefficient `(2 << Al) - 1`): an 8-bit encoder writes at most
   about 1024 plus half the entry, and the two drew such files alike up to 4096 and apart from 8192 on (DC 1024 at
   entry 8, AC 1000 at 16, AC 200 at 64, AC 600 at 255: libjpeg-turbo's 16-bit arithmetic overflows where
-  jpeg-decoder's 32-bit one does not); lossless data has no quantization and no such rule; a non-interleaved scan
+  jpeg-decoder's 32-bit one does not); lossless data has no quantization and no such rule; a progressive scan out of
+  progression order, as that bound holds only in order: per component and coefficient (DC and AC alike), a first scan
+  (`Ah` 0) of a coefficient an earlier scan already holds, or a refinement (`Ah` > 0) whose `Ah` is not the `Al` of
+  the coefficient's latest scan, a refinement before any first scan included (libjpeg only warns and applies it,
+  jpeg-decoder checks nothing; a refinement that jumps from bit 1 to bit 5 adds 32 to a coefficient of 2, which at
+  entry 255 Chromium draws black and resvg white); a non-interleaved scan
   whose blocks the two count differently (a component sampled 2 under a largest 4: libjpeg
   rounds the component's width up to blocks, jpeg-decoder pads it to whole MCUs; from the source, not drawable in the
   32x16 probe). Accepted, as both draw them alike: padding bits other than ones, bytes after the last block up to the

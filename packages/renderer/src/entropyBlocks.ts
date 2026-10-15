@@ -25,7 +25,8 @@ export type BlockFault = "code" | "dc-category" | "value" | "ac-run" | "eob-run"
 
 /**
  * True where a coefficient of `magnitude` at point transform `low` may end past `maxDequantized` with `entry`: the
- * refinement scans still to come can add up to 2^low - 1.
+ * refinement scans still to come can add up to 2^low - 1. That holds only for refinements in order, one bit below the
+ * last each time: `JpegStructure` refuses a scan out of progression order before its data is walked.
  */
 const tooLarge = (magnitude: number, low: number, entry: number | undefined) =>
   ((magnitude + 1) * (1 << low) - 1) * (entry ?? 1) > maxDequantized;

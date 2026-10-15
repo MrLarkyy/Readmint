@@ -186,15 +186,26 @@ function progressiveJpeg(
     },
     { start: 0, end: 0, high: 1, low: 0, data: (bits) => bits.put("10101010") },
   ];
+  return progressionJpeg(
+    [1, ...new Array<number>(63).fill(acQuantization)],
+    scans.map((scan, index) => (edit?.index === index ? { ...scan, data: edit.data } : scan)),
+  );
+}
+
+/** A progressive 32x16 grey JPEG built here of `scans` in that order, its DQT of `quantization` (64 entries). */
+function progressionJpeg(
+  quantization: readonly number[],
+  scans: readonly ProgressiveScan[],
+): Uint8Array {
   return new Uint8Array([
     0xff,
     0xd8,
-    ...segment(0xdb, [0, 1, ...new Array<number>(63).fill(acQuantization)]),
+    ...segment(0xdb, [0, ...quantization]),
     ...segment(0xc2, [8, 0, 16, 0, 32, 1, 1, 0x11, 0]),
     ...segment(0xc4, [...dcTable.body, ...acTable.body]),
-    ...scans.flatMap((scan, index) => {
+    ...scans.flatMap((scan) => {
       const bits = new Bits();
-      (edit?.index === index ? edit.data : scan.data)(bits);
+      scan.data(bits);
       return [
         ...segment(0xda, [1, 1, 0x00, scan.start, scan.end, (scan.high << 4) | scan.low]),
         ...bits.bytes(),
@@ -204,6 +215,36 @@ function progressiveJpeg(
     0xd9,
   ]);
 }
+
+/**
+ * A progressive grey file of `scans` at quantization `quantization`: every scan an end-of-band run over the eight
+ * blocks unless it brings its own data, block 0 first. Rows for the order of the progression.
+ */
+const progression = (
+  quantization: number,
+  scans: readonly (readonly [
+    start: number,
+    end: number,
+    high: number,
+    low: number,
+    data?: (bits: Bits) => void,
+  ])[],
+) =>
+  progressionJpeg(
+    new Array<number>(64).fill(quantization),
+    scans.map(([start, end, high, low, data]) => ({
+      start,
+      end,
+      high,
+      low,
+      data:
+        data ??
+        ((bits: Bits) => {
+          if (start === 0) range(8).forEach(() => (high > 0 ? bits.put("0") : bits.dc(0)));
+          else bits.eob(3, 0);
+        }),
+    })),
+  );
 
 /**
  * An accepted progressive 1024x512 grey JPEG of about 10 KB that costs the symbol check about 6.7 million steps: a DC
@@ -358,6 +399,26 @@ export function jpegEntropyCases(gradient: Uint8Array): JpegEntropyCase[] {
         bits.eob();
       },
     });
+  /** AC 1-5 at point transform 1 with coefficient 1 of block 0 at 1, its refinement adding `bit` to it. */
+  const acOne = (bits: Bits) => bits.ac(0, 1).eob().eob(2, 3);
+  const refineOne = (bit: string) => (bits: Bits) => bits.eob(3, 0).put(bit);
+  /** DC 0 at point transform 1, then `jump` (a refinement scan that sets bit 10 of block 0's DC) and the refinement. */
+  const dcProgression = (jump: boolean) =>
+    progression(8, [
+      [0, 0, 0, 1],
+      [1, 63, 0, 0],
+      ...(jump ? [[0, 0, 11, 10, (bits: Bits) => bits.put("10000000")] as const] : []),
+      [0, 0, 1, 0],
+    ]);
+  /** AC 1-5 at point transform 1, then `jump` (a refinement from bit 6 to 5 that adds 32) and the refinement. */
+  const acProgression = (quantization: number, jump: boolean) =>
+    progression(quantization, [
+      [0, 0, 0, 0],
+      [1, 5, 0, 1, acOne],
+      [6, 63, 0, 0],
+      ...(jump ? [[1, 5, 6, 5, refineOne("1")] as const] : []),
+      [1, 5, 1, 0, refineOne("0")],
+    ]);
   const rows: JpegEntropyCase[] = [
     // (k) Controls: the built files decode cleanly.
     { name: "the grey file", bytes: greyJpeg(), chromium: [78, 78, 78], resvg: [78, 78, 78] },
@@ -749,6 +810,83 @@ export function jpegEntropyCases(gradient: Uint8Array): JpegEntropyCase[] {
       bytes: greyJpeg({ quantization: 16, values: [2000, 4000, 2000, 0, 25, 18, 6, -6] }),
       message: "dequantized value may pass 4096",
       chromium: [32, 32, 32],
+      resvg: [255, 255, 255],
+    },
+    // (n) The order of the progression: libjpeg warns and applies a scan out of order, jpeg-decoder checks nothing, and
+    // a refinement that jumps bits lifts a coefficient past what its first scan's value allows.
+    {
+      name: "a progressive file refined in order, quantization 8",
+      bytes: acProgression(8, false),
+      chromium: [131, 131, 131],
+      resvg: [131, 131, 131],
+    },
+    {
+      name: "a progressive file refined in order, quantization 255",
+      bytes: acProgression(255, false),
+      chromium: [216, 216, 216],
+      resvg: [216, 216, 216],
+    },
+    {
+      name: "a progressive file refined from bit 6 after point transform 1, quantization 8",
+      bytes: acProgression(8, true),
+      message: "progressive scan 6/5 of coefficient 1 of component 1 out of progression order",
+      chromium: [175, 175, 175],
+      resvg: [175, 175, 175],
+    },
+    {
+      name: "a progressive file refined from bit 6 after point transform 1, quantization 255",
+      bytes: acProgression(255, true),
+      message: "out of progression order (its previous scan: point transform 1)",
+      chromium: [0, 0, 0],
+      resvg: [255, 255, 255],
+    },
+    {
+      name: "a progressive file whose DC is refined in order",
+      bytes: dcProgression(false),
+      chromium: [128, 128, 128],
+      resvg: [128, 128, 128],
+    },
+    {
+      name: "a progressive file whose DC is refined from bit 11 after point transform 1",
+      bytes: dcProgression(true),
+      message: "progressive scan 11/10 of coefficient 0 of component 1 out of progression order",
+      chromium: [0, 0, 0],
+      resvg: [255, 255, 255],
+    },
+    {
+      name: "a progressive file that refines AC 1-5 before any first scan of them",
+      bytes: progression(8, [
+        [0, 0, 0, 0],
+        [1, 5, 1, 0, acOne],
+        [6, 63, 0, 0],
+      ]),
+      message:
+        "progressive scan 1/0 of coefficient 1 of component 1 out of progression order (its previous scan: none)",
+      chromium: [129, 129, 129],
+      resvg: [129, 129, 129],
+    },
+    {
+      name: "a progressive file that refines DC before any first scan of it",
+      bytes: progression(8, [
+        [0, 0, 1, 0, (bits) => bits.put("10000000")],
+        [1, 63, 0, 0],
+      ]),
+      message:
+        "progressive scan 1/0 of coefficient 0 of component 1 out of progression order (its previous scan: none)",
+      chromium: [129, 129, 129],
+      resvg: [129, 129, 129],
+    },
+    {
+      name: "a progressive file with a second first scan of AC 1-5",
+      bytes: progression(8, [
+        [0, 0, 0, 0],
+        [1, 5, 0, 1, acOne],
+        [1, 5, 0, 1, (bits) => bits.ac(0, 100).eob().eob(2, 3)],
+        [6, 63, 0, 0],
+        [1, 5, 1, 0, refineOne("0")],
+      ]),
+      message: "progressive scan 0/1 of coefficient 1 of component 1 out of progression order",
+      chromium: [255, 255, 255],
       resvg: [255, 255, 255],
     },
     // (j) Bytes and bits after the last block.
