@@ -5,7 +5,7 @@ import { describe, expect, test } from "vitest";
 import { loadScale } from "../../../test-support/loadScale.js";
 import { renderSvg, type RenderOptions } from "../src/index.js";
 import { sniffImage } from "../src/sniffImage.js";
-import { jpegWithExif, orientationTiff, pngWithExif } from "./exifImages.js";
+import { jpegWithExif, orientationTiff, pngWithExif, vp8x, webpWithExif } from "./exifImages.js";
 
 const assets = join(import.meta.dirname, "assets");
 const read = (name: string) => new Uint8Array(readFileSync(join(assets, name)));
@@ -136,20 +136,6 @@ const pngIend = png.length - 12;
 const exifJpeg = spliced(jpeg, 2, app1(exifPayload));
 const exifPng = spliced(png, 33, pngChunk("eXIf", exifPayload.subarray(6)));
 
-function vp8x(flags: number, ...chunks: Uint8Array[]): Uint8Array {
-  return bytes(
-    "RIFF",
-    u32le(0),
-    "WEBP",
-    "VP8X",
-    u32le(10),
-    [flags, 0, 0, 0],
-    u24le(9),
-    u24le(9),
-    ...chunks.map((chunk) => [...chunk]),
-  );
-}
-
 describe("EXIF data", () => {
   test.each([
     ["jpeg with an Exif APP1 first", exifJpeg, true],
@@ -185,9 +171,6 @@ describe("EXIF data", () => {
 });
 
 describe("EXIF orientation", () => {
-  const webpWithExif = (...blocks: Uint8Array[]) =>
-    vp8x(0x08, ...blocks.map((block) => bytes("EXIF", u32le(block.length), [...block])));
-
   test.each([1, 3, 6, 8])("orientation %i", (orientation) => {
     const block = orientationTiff(orientation);
     for (const data of [
@@ -202,6 +185,33 @@ describe("EXIF orientation", () => {
         info: { exif: true, orientation, orientationFields: [{ orientation }] },
       });
     }
+  });
+
+  test.each([
+    ["a sixth Exif prefix byte other than 0", { sixthByte: 1 }],
+    ["an Exif segment after stray bytes behind the frame header", { afterFrame: [0, 0x2a, 0] }],
+    ["both", { sixthByte: 0xff, afterFrame: [1] }],
+  ])("a JPEG with %s is read as Chromium reads it", (_name, options) => {
+    expect(sniffImage(jpegWithExif(jpeg, orientationTiff(6), options), 1000)).toMatchObject({
+      ok: true,
+      info: { width: 32, height: 16, exif: true, orientation: 6, orientationFields: [{}] },
+    });
+  });
+
+  test("stray bytes before the frame header are still refused", () => {
+    // After the first segment (before the frame header), so the magic bytes still say JPEG.
+    const second = 4 + (((jpeg[4] ?? 0) << 8) | (jpeg[5] ?? 0));
+    expect(jpegScan).toBeGreaterThan(second);
+    const data = spliced(jpeg, second, bytes([0x2a]));
+    expect(sniffImage(data, 1000)).toMatchObject({
+      ok: false,
+      message: "JPEG segment does not start with 0xFF",
+    });
+  });
+
+  test("stray bytes up to the end after the frame header end the walk", () => {
+    const data = bytes([...jpeg.subarray(0, jpegScan)], new Array<number>(5000).fill(0x2a));
+    expect(sniffImage(data, 1000)).toMatchObject({ ok: true, info: { width: 32, height: 16 } });
   });
 
   test("stored width and height stay as they are", () => {

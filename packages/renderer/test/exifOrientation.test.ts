@@ -36,6 +36,11 @@ describe("exifOrientation", () => {
       littleEndian: false,
       entries: [36],
     });
+    // Decoders check only `Exif\0`: the sixth byte may be anything.
+    data[25] = 0x2a;
+    expect(exifOrientation(data, 20, data.length)).toMatchObject({ orientation: 6, entries: [36] });
+    data[24] = 0x2a;
+    expect(exifOrientation(data, 20, data.length)).toMatchObject({ orientation: 1, entries: [] });
   });
 
   test.each([

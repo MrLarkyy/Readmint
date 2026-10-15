@@ -202,9 +202,12 @@ Drawn in document order, first at the back. Layer `id` and `name` are not emitte
   recomputed); the asset's own bytes are never changed. The `<image>` then sits at `x="0" y="0"` with the layer's width
   and height (swapped for orientations 5-8) and `transform="matrix(...)"` maps that box onto the layer's, so `fit`
   works on the upright picture; a layer `rotation` comes first in the `transform` list and turns the result around the
-  layer's centre. Orientation 1 (or none) draws exactly as before. The first EXIF block holding an Orientation entry
+  layer's centre. Orientation 1 (or none) draws exactly as before.
+- Which EXIF counts follows what Chromium reads: a JPEG APP1 segment is EXIF by its first five bytes `Exif\0` (the
+  sixth may be anything), and past the frame header stray bytes before the next marker are skipped, as libjpeg does; a
+  PNG or WebP block may start with the same six-byte prefix. The first EXIF block holding an Orientation entry
   decides, its first entry of type SHORT with count 1; a value outside 1-8, another type or count, an entry only in
-  IFD1, or a block whose header or IFD0 lies outside it counts as 1 and is never an error.
+  IFD1, or a block whose TIFF header or IFD0 lies outside it counts as 1 and is never an error.
 - `fit`: `contain` (default) = `preserveAspectRatio="xMidYMid meet"`, `cover` = `xMidYMid slice`, `fill` = `none`.
   `alt` becomes `aria-label`.
 - An image drawn once is an `<image>` holding its data URI. Image data drawn more than once (a `repeat`, several

@@ -97,15 +97,71 @@ export function pngWithExif(
   return concat(png.subarray(0, offset), pngChunk("eXIf", block), png.subarray(offset));
 }
 
-/** `jpeg` with an APP1 `Exif` segment holding `block` right after SOI. */
-export function jpegWithExif(jpeg: Uint8Array, block: Uint8Array): Uint8Array {
+export interface JpegExifOptions {
+  /** The sixth byte of the `Exif` prefix, 0 in a well-formed file. */
+  readonly sixthByte?: number;
+  /** Put the segment right after the frame header, behind these stray bytes, instead of right after SOI. */
+  readonly afterFrame?: readonly number[];
+}
+
+/** Where the first frame header segment (SOFn) of `jpeg` ends; the walk assumes well-formed segments up to it. */
+function frameHeaderEnd(jpeg: Uint8Array): number {
+  let offset = 2;
+  for (;;) {
+    const marker = jpeg[offset + 1] ?? 0xd9;
+    const length = ((jpeg[offset + 2] ?? 0) << 8) | (jpeg[offset + 3] ?? 0);
+    if (marker === 0xd9 || marker === 0xda) throw new Error("no frame header");
+    offset += 2 + length;
+    if (marker >= 0xc0 && marker <= 0xcf && ![0xc4, 0xc8, 0xcc].includes(marker)) return offset;
+  }
+}
+
+/** `jpeg` with an APP1 `Exif` segment holding `block`, by default right after SOI. */
+export function jpegWithExif(
+  jpeg: Uint8Array,
+  block: Uint8Array,
+  options: JpegExifOptions = {},
+): Uint8Array {
   const length = 2 + 6 + block.length;
+  const at = options.afterFrame === undefined ? 2 : frameHeaderEnd(jpeg);
   return concat(
-    jpeg.subarray(0, 2),
+    jpeg.subarray(0, at),
+    options.afterFrame ?? [],
     [0xff, 0xe1, length >> 8, length & 255],
-    ascii("Exif\0\0"),
+    ascii("Exif\0"),
+    [options.sixthByte ?? 0],
     block,
-    jpeg.subarray(2),
+    jpeg.subarray(at),
+  );
+}
+
+const u32le = (value: number): number[] => [
+  value & 255,
+  (value >>> 8) & 255,
+  (value >>> 16) & 255,
+  (value >>> 24) & 255,
+];
+
+/** A WebP made of a VP8X header (10x10, `flags`) and `chunks`, without image data: enough for the sniffer. */
+export function vp8x(flags: number, ...chunks: Uint8Array[]): Uint8Array {
+  return concat(
+    ascii("RIFF"),
+    u32le(0),
+    ascii("WEBPVP8X"),
+    u32le(10),
+    [flags, 0, 0, 0],
+    [9, 0, 0, 9, 0, 0],
+    ...chunks,
+  );
+}
+
+/** A VP8X WebP with the EXIF flag and an `EXIF` chunk (padded to even length) per block, in order. */
+export function webpWithExif(...blocks: Uint8Array[]): Uint8Array {
+  return vp8x(
+    0x08,
+    ...blocks.map((block) =>
+      concat(ascii("EXIF"), u32le(block.length), block, block.length % 2 === 0 ? [] : [0]),
+    ),
   );
 }
 

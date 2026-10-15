@@ -10,6 +10,7 @@ import {
   orientationTiff,
   pngWithExif,
   tiff,
+  webpWithExif,
 } from "./exifImages.js";
 
 const assets = join(import.meta.dirname, "assets");
@@ -46,16 +47,34 @@ function entry(data: Uint8Array, offset: number, littleEndian: boolean) {
 
 const twoEntries = tiff([orientationEntry(6), orientationEntry(8, 4, 2)]);
 
+type Case = readonly [name: string, data: Uint8Array];
+
+/** Each format with orientations 3, 6 and 8, in big- and little-endian blocks. */
+const formats = [3, 6, 8].flatMap((orientation): Case[] =>
+  [false, true].flatMap((littleEndian) => {
+    const block = orientationTiff(orientation, littleEndian);
+    const name = `${String(orientation)}, ${littleEndian ? "II" : "MM"}`;
+    return [
+      [`png ${name}`, pngWithExif(png, block)],
+      [`jpeg ${name}`, jpegWithExif(jpeg, block)],
+      [`webp ${name}`, webpWithExif(block)],
+    ];
+  }),
+);
+
 describe("uprightImage", () => {
-  test.each([
+  test.each<Case>([
     ["png, eXIf before the data", pngWithExif(png, orientationTiff(6))],
     ["png, eXIf after the data", pngWithExif(png, orientationTiff(8), "after-data")],
     ["png, two eXIf chunks", pngWithExif(pngWithExif(png, twoEntries, "after-data"), twoEntries)],
     ["jpeg, big-endian", jpegWithExif(jpeg, orientationTiff(3))],
+    ["jpeg, sixth Exif prefix byte 1", jpegWithExif(jpeg, orientationTiff(6), { sixthByte: 1 })],
     [
-      "jpeg, little-endian",
-      jpegWithExif(jpeg, tiff([orientationEntry(6)], { littleEndian: true })),
+      "jpeg, Exif after stray bytes behind the frame header",
+      jpegWithExif(jpeg, orientationTiff(8, true), { afterFrame: [0, 0x2a] }),
     ],
+    ["webp, two EXIF chunks", webpWithExif(twoEntries, orientationTiff(3, true))],
+    ...formats,
   ])("%s: every Orientation entry says SHORT 1", (_name, data) => {
     const before = data.slice();
     const sniffed = info(data);

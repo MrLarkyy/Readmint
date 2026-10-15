@@ -10,6 +10,7 @@ import {
   orientationTiff,
   pngWithExif,
   toDataUri,
+  webpWithExif,
 } from "./exifImages.js";
 
 const assets = join(import.meta.dirname, "assets");
@@ -18,6 +19,13 @@ const jpeg = new Uint8Array(readFileSync(join(assets, "gradient.jpg")));
 
 const orientedPng = (orientation: number) =>
   toDataUri("image/png", pngWithExif(png, orientationTiff(orientation)));
+
+const oriented: Readonly<Record<string, (orientation: number) => string>> = {
+  png: orientedPng,
+  jpeg: (orientation) =>
+    toDataUri("image/jpeg", jpegWithExif(jpeg, orientationTiff(orientation, true))),
+  webp: (orientation) => toDataUri("image/webp", webpWithExif(orientationTiff(orientation))),
+};
 
 function render(src: string, layer: Partial<ImageLayer> = {}, copies = 1): string {
   const design: Design = {
@@ -47,22 +55,19 @@ const images = (svg: string): string[] =>
   [...svg.matchAll(/<image [^>]*\/>/gu)].map(([element]) => element.replace(/ href="[^"]*"/u, ""));
 
 describe("EXIF orientation on an inline image", () => {
-  test.each([
-    [1, `<image x="5" y="7" width="30" height="20" preserveAspectRatio="xMidYMid meet"/>`],
-    [
-      3,
-      `<image x="0" y="0" width="30" height="20" preserveAspectRatio="xMidYMid meet" transform="matrix(-1 0 0 -1 35 27)"/>`,
-    ],
-    [
-      6,
-      `<image x="0" y="0" width="20" height="30" preserveAspectRatio="xMidYMid meet" transform="matrix(0 1 -1 0 35 7)"/>`,
-    ],
-    [
-      8,
-      `<image x="0" y="0" width="20" height="30" preserveAspectRatio="xMidYMid meet" transform="matrix(0 -1 1 0 5 27)"/>`,
-    ],
-  ])("orientation %i, contain", (orientation, expected) => {
-    expect(images(render(orientedPng(orientation)))).toEqual([expected]);
+  const contained: Readonly<Record<number, string>> = {
+    1: `<image x="5" y="7" width="30" height="20" preserveAspectRatio="xMidYMid meet"/>`,
+    3: `<image x="0" y="0" width="30" height="20" preserveAspectRatio="xMidYMid meet" transform="matrix(-1 0 0 -1 35 27)"/>`,
+    6: `<image x="0" y="0" width="20" height="30" preserveAspectRatio="xMidYMid meet" transform="matrix(0 1 -1 0 35 7)"/>`,
+    8: `<image x="0" y="0" width="20" height="30" preserveAspectRatio="xMidYMid meet" transform="matrix(0 -1 1 0 5 27)"/>`,
+  };
+
+  test.each(
+    ["png", "jpeg", "webp"].flatMap((format) =>
+      [1, 3, 6, 8].map((orientation) => [format, orientation] as const),
+    ),
+  )("%s, orientation %i, contain", (format, orientation) => {
+    expect(images(render(oriented[format]?.(orientation) ?? ""))).toEqual([contained[orientation]]);
   });
 
   test.each([
@@ -76,8 +81,11 @@ describe("EXIF orientation on an inline image", () => {
     ]);
   });
 
-  test("a JPEG is oriented the same way", () => {
-    const src = toDataUri("image/jpeg", jpegWithExif(jpeg, orientationTiff(6, true)));
+  test.each([
+    ["a sixth Exif prefix byte other than 0", { sixthByte: 1 }],
+    ["stray bytes before its Exif segment, after the frame header", { afterFrame: [0, 0x2a] }],
+  ])("a JPEG with %s is oriented, as Chromium does", (_name, options) => {
+    const src = toDataUri("image/jpeg", jpegWithExif(jpeg, orientationTiff(6), options));
     expect(images(render(src, { fit: "fill" }))).toEqual([
       `<image x="0" y="0" width="20" height="30" preserveAspectRatio="none" transform="matrix(0 1 -1 0 35 7)"/>`,
     ]);

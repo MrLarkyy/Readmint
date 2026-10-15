@@ -14,20 +14,22 @@ export interface OrientationField {
 
 const orientationTag = 0x0112;
 const shortType = 3;
-const exifPrefix = [0x45, 0x78, 0x69, 0x66, 0, 0];
+/** `Exif` and a zero byte; the sixth byte of the prefix, meant to be 0, is not checked, as decoders do not. */
+const exifPrefix = [0x45, 0x78, 0x69, 0x66, 0];
+const exifPrefixLength = 6;
 
 /**
- * Reads IFD0 of the EXIF block at `start` up to `end` (clamped to the data; an `Exif\0\0` prefix is skipped, as some
- * writers put it in PNG and WebP too). Every read stays inside the block, so a broken or crafted block just yields
+ * Reads IFD0 of the EXIF block at `start` up to `end` (clamped to the data; a six-byte `Exif\0` prefix is skipped, as
+ * some writers put it in PNG and WebP too). Every read stays inside the block, so a broken or crafted block just yields
  * orientation 1 and the entries found within bounds, never an error; IFD0 is walked once, its entries bounded by the
  * block's size.
  */
 export function exifOrientation(data: Uint8Array, start: number, end: number): OrientationField {
   const limit = Math.min(end, data.length);
-  const prefixed = exifPrefix.every(
-    (byte, index) => start + index < limit && data[start + index] === byte,
-  );
-  const tiff = prefixed ? start + exifPrefix.length : start;
+  const prefixed =
+    start + exifPrefixLength <= limit &&
+    exifPrefix.every((byte, index) => data[start + index] === byte);
+  const tiff = prefixed ? start + exifPrefixLength : start;
   const none: OrientationField = { orientation: 1, littleEndian: false, entries: [] };
   if (tiff + 8 > limit) return none;
   const order = String.fromCharCode(data[tiff] ?? 0, data[tiff + 1] ?? 0);

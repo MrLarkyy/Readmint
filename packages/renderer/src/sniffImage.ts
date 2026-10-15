@@ -191,7 +191,8 @@ function isFrameHeader(marker: number): boolean {
 
 /**
  * Walks the segments up to the image data: the size from the frame header, EXIF from any APP1 `Exif` segment before
- * the scan (decoders read every marker up to it). Past the frame header a broken or cut-off walk just ends.
+ * the scan (decoders read every marker up to it). Past the frame header stray bytes between segments are skipped, as
+ * libjpeg does, and a broken or cut-off walk just ends; every step advances, so the walk is one pass at most.
  */
 function sniffJpeg(bytes: Bytes): SniffResult {
   let offset = 2;
@@ -202,8 +203,12 @@ function sniffJpeg(bytes: Bytes): SniffResult {
   try {
     for (;;) {
       if (bytes.u8(offset) !== 0xff) {
-        problem = "JPEG segment does not start with 0xFF";
-        break;
+        if (size === undefined) {
+          problem = "JPEG segment does not start with 0xFF";
+          break;
+        }
+        // Past the frame header libjpeg skips stray bytes to the next marker and still reads it.
+        while (bytes.u8(offset) !== 0xff) offset++;
       }
       while (bytes.u8(offset) === 0xff) offset++;
       const marker = bytes.u8(offset);
@@ -215,7 +220,8 @@ function sniffJpeg(bytes: Bytes): SniffResult {
         problem = "JPEG segment length is invalid";
         break;
       }
-      if (marker === 0xe1 && length >= 8 && bytes.ascii(offset + 2, 6) === "Exif\0\0") {
+      // Decoders check only `Exif\0`; the sixth byte, meant to be 0, may be anything.
+      if (marker === 0xe1 && length >= 8 && bytes.ascii(offset + 2, 5) === "Exif\0") {
         exif = true;
         blocks.push(exifOrientation(bytes.data, offset + 8, offset + length));
       }
