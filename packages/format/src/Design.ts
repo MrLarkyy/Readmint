@@ -233,8 +233,17 @@ export type AssetSource = string;
 export interface FontLicence {
   /** Declared by the author; the renderer also honours the font's OS/2 fsType (stricter wins). */
   readonly embedding: "allowed" | "restricted";
-  /** SPDX identifier, e.g. `OFL-1.1`. */
+  /**
+   * SPDX identifier, e.g. `OFL-1.1`; `OFL-1.1-RFN` and `OFL-1.1-no-RFN` (also 1.0) say whether a Reserved Font Name
+   * applies.
+   */
   readonly name?: string;
+  /**
+   * Whether the font has a Reserved Font Name (SIL Open Font License). Such a font is never embedded as a subset (a
+   * Modified Version, which may not use the name): its text is drawn as paths. Set, it wins over `name` and over what
+   * the font's own name table states; `false` covers written permission from the holder of the name.
+   */
+  readonly reservedFontName?: boolean;
 }
 
 export interface FontAsset {

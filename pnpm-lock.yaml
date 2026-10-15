@@ -72,9 +72,16 @@ importers:
       '@readmint/renderer':
         specifier: workspace:*
         version: link:../renderer
+    devDependencies:
+      '@readmint/golden':
+        specifier: workspace:*
+        version: link:../golden
 
   packages/components:
     devDependencies:
+      '@readmint/data-github':
+        specifier: workspace:*
+        version: link:../data-github
       '@readmint/format':
         specifier: workspace:*
         version: link:../format

@@ -7,6 +7,7 @@ export type RenderIssueCode =
   | "asset-too-large"
   | "unsupported-font"
   | "font-not-embeddable"
+  | "font-reserved-name"
   | "too-large"
   | "font-family-mismatch"
   | "missing-glyph"

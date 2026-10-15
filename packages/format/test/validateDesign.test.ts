@@ -177,6 +177,24 @@ describe("asset sources", () => {
   });
 });
 
+describe("font licence (RM-45)", () => {
+  const withLicence = (licence: Record<string, unknown>) => ({
+    ...base(),
+    assets: { fonts: { x: { family: "X", src: "fonts/x.ttf", licence } } },
+  });
+
+  test.each([true, false])("reservedFontName %s is a valid v0 licence option", (value) => {
+    const design = withLicence({ embedding: "allowed", name: "OFL-1.1", reservedFontName: value });
+    expect(validateDesign(design)).toEqual({ ok: true, value: design });
+  });
+
+  test.each(["yes", 1, null])("reservedFontName %j is a type issue at the option", (value) => {
+    expect(
+      issuesOf(withLicence({ embedding: "allowed", reservedFontName: value })).issues,
+    ).toMatchObject([{ path: "/assets/fonts/x/licence/reservedFontName", code: "type" }]);
+  });
+});
+
 describe("limits", () => {
   test("more than maxLayers layers fail", () => {
     const layers = Array.from({ length: DesignLimits.maxLayers + 1 }, () => rect());

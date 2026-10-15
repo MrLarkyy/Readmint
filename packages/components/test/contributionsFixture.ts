@@ -1,8 +1,10 @@
+import type { GitHubContributionLevel } from "@readmint/data-github";
+
 /** One day of `github.contributions.days` (docs/data-github.md). */
 export interface ContributionDay {
   readonly date: string;
   readonly count: number;
-  readonly level: number;
+  readonly level: GitHubContributionLevel;
   readonly weekday: number;
   readonly week: number;
 }
@@ -18,7 +20,11 @@ export interface Contributions {
 
 const dayMs = 86_400_000;
 
-function contributions(first: number, counts: readonly number[], level: (count: number) => number) {
+function contributions(
+  first: number,
+  counts: readonly number[],
+  level: (count: number) => GitHubContributionLevel,
+) {
   const start = new Date(first).getUTCDay();
   const days = counts.map((count, index): ContributionDay => {
     const date = new Date(first + index * dayMs);
@@ -45,7 +51,7 @@ function contributions(first: number, counts: readonly number[], level: (count: 
 }
 
 /** GitHub's quartile levels for this fixture's counts. */
-function quartile(count: number): number {
+function quartile(count: number): GitHubContributionLevel {
   if (count === 0) return 0;
   if (count <= 2) return 1;
   if (count <= 5) return 2;

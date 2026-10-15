@@ -1,0 +1,499 @@
+{
+  "$schema": "https://raw.githubusercontent.com/MrLarkyy/Readmint/main/packages/format/schema/design-v0.schema.json",
+  "version": 0,
+  "title": "Profile card",
+  "description": "GitHub profile card with name, stats, contribution calendar and streaks.",
+  "canvas": {
+    "width": 840,
+    "height": 384
+  },
+  "assets": {
+    "fonts": {
+      "body": {
+        "family": "Montserrat",
+        "src": "fonts/Montserrat-Medium.ttf",
+        "weight": 500,
+        "licence": {
+          "embedding": "allowed",
+          "name": "OFL-1.1"
+        }
+      },
+      "bold": {
+        "family": "Montserrat",
+        "src": "fonts/Montserrat-ExtraBold.ttf",
+        "weight": 800,
+        "licence": {
+          "embedding": "allowed",
+          "name": "OFL-1.1"
+        }
+      }
+    }
+  },
+  "components": {
+    "stat": {
+      "description": "One statistic: its label at the start, its value at the end of the row.",
+      "props": {
+        "label": {
+          "type": "string",
+          "default": ""
+        },
+        "value": {
+          "type": "string",
+          "default": ""
+        },
+        "width": {
+          "type": "number",
+          "default": 176
+        },
+        "theme": {
+          "type": "enum",
+          "values": ["light", "dark"],
+          "default": "light"
+        }
+      },
+      "layers": [
+        {
+          "type": "text",
+          "content": "{{ props.label }}",
+          "font": "body",
+          "fontSize": 13,
+          "fill": "{{ props.theme == \"dark\" ? \"#9198a1\" : \"#59636e\" }}"
+        },
+        {
+          "type": "text",
+          "content": "{{ props.value }}",
+          "font": "bold",
+          "fontSize": 13,
+          "fill": "{{ props.theme == \"dark\" ? \"#e6edf3\" : \"#1f2328\" }}",
+          "width": "{{ props.width }}",
+          "align": "end"
+        }
+      ]
+    },
+    "streak": {
+      "description": "A streak box: its label, its length in days and the dates it spans, or 'No streak'.",
+      "props": {
+        "label": {
+          "type": "string",
+          "default": ""
+        },
+        "length": {
+          "type": "number",
+          "default": 0
+        },
+        "start": {
+          "type": "string",
+          "default": ""
+        },
+        "end": {
+          "type": "string",
+          "default": ""
+        },
+        "width": {
+          "type": "number",
+          "default": 124
+        },
+        "theme": {
+          "type": "enum",
+          "values": ["light", "dark"],
+          "default": "light"
+        }
+      },
+      "layers": [
+        {
+          "type": "rect",
+          "x": 0.5,
+          "y": 0.5,
+          "width": "{{ props.width - 1 }}",
+          "height": 73,
+          "radius": 6,
+          "stroke": "{{ props.theme == \"dark\" ? \"#30363d\" : \"#d0d7de\" }}",
+          "strokeWidth": 1,
+          "fill": "none"
+        },
+        {
+          "type": "text",
+          "content": "{{ props.label }}",
+          "font": "body",
+          "fontSize": 11,
+          "fill": "{{ props.theme == \"dark\" ? \"#9198a1\" : \"#59636e\" }}",
+          "x": 12,
+          "y": 10
+        },
+        {
+          "type": "text",
+          "content": "{{ props.length | number }} {{ props.length == 1 ? \"day\" : \"days\" }}",
+          "font": "bold",
+          "fontSize": 18,
+          "fill": "{{ props.theme == \"dark\" ? \"#e6edf3\" : \"#1f2328\" }}",
+          "x": 12,
+          "y": 27,
+          "if": "{{ props.length > 0 }}"
+        },
+        {
+          "type": "text",
+          "content": "{{ props.start | date(\"MMM d\") }} - {{ props.end | date(\"MMM d\") }}",
+          "font": "body",
+          "fontSize": 11,
+          "fill": "{{ props.theme == \"dark\" ? \"#9198a1\" : \"#59636e\" }}",
+          "x": 12,
+          "y": 54,
+          "if": "{{ props.length > 0 }}"
+        },
+        {
+          "type": "text",
+          "content": "No streak",
+          "font": "bold",
+          "fontSize": 16,
+          "fill": "{{ props.theme == \"dark\" ? \"#9198a1\" : \"#59636e\" }}",
+          "x": 12,
+          "y": 30,
+          "if": "{{ props.length == 0 }}"
+        }
+      ]
+    },
+    "calendar": {
+      "description": "A contribution calendar: one cell instance per day of github.contributions, placed by orientation and projection, coloured by level. Replace components.cell to change how a day looks.",
+      "props": {
+        "cellSize": {
+          "type": "number",
+          "default": 11
+        },
+        "gap": {
+          "type": "number",
+          "default": 3
+        },
+        "radius": {
+          "type": "number",
+          "default": 2
+        },
+        "orientation": {
+          "type": "enum",
+          "values": ["horizontal", "vertical"],
+          "default": "horizontal"
+        },
+        "projection": {
+          "type": "enum",
+          "values": ["flat", "isometric"],
+          "default": "flat"
+        },
+        "weeks": {
+          "type": "number",
+          "default": 53
+        },
+        "maxCount": {
+          "type": "number",
+          "default": 20
+        },
+        "maxHeight": {
+          "type": "number",
+          "default": 24
+        },
+        "level0": {
+          "type": "color",
+          "default": "#ebedf0"
+        },
+        "level1": {
+          "type": "color",
+          "default": "#9be9a8"
+        },
+        "level2": {
+          "type": "color",
+          "default": "#40c463"
+        },
+        "level3": {
+          "type": "color",
+          "default": "#30a14e"
+        },
+        "level4": {
+          "type": "color",
+          "default": "#216e39"
+        }
+      },
+      "layers": [
+        {
+          "type": "component",
+          "ref": "cell",
+          "repeat": {
+            "each": "{{ github.contributions.days }}",
+            "as": "day",
+            "index": "i"
+          },
+          "if": "{{ (day.week - (github.contributions.weeks - props.weeks | max(0))) >= 0 }}",
+          "x": "{{ props.projection == \"isometric\" ? ((day.week - (github.contributions.weeks - props.weeks | max(0))) - day.weekday + 6) * (props.cellSize + props.gap) : (props.orientation == \"vertical\" ? day.weekday : (day.week - (github.contributions.weeks - props.weeks | max(0)))) * (props.cellSize + props.gap) }}",
+          "y": "{{ props.projection == \"isometric\" ? ((day.week - (github.contributions.weeks - props.weeks | max(0))) + day.weekday) * (props.cellSize + props.gap) / 2 + props.maxHeight : (props.orientation == \"vertical\" ? (day.week - (github.contributions.weeks - props.weeks | max(0))) : day.weekday) * (props.cellSize + props.gap) }}",
+          "props": {
+            "level": "{{ day.level }}",
+            "count": "{{ day.count }}",
+            "date": "{{ day.date }}",
+            "index": "{{ i }}",
+            "week": "{{ (day.week - (github.contributions.weeks - props.weeks | max(0))) }}",
+            "weekday": "{{ day.weekday }}",
+            "size": "{{ props.cellSize }}",
+            "radius": "{{ props.radius }}",
+            "height": "{{ props.projection == \"isometric\" ? ((day.count | min(props.maxCount)) / props.maxCount * props.maxHeight | round(2)) : 0 }}",
+            "color": "{{ [props.level0, props.level1, props.level2, props.level3, props.level4][day.level] | default(props.level0) }}"
+          }
+        }
+      ]
+    },
+    "cell": {
+      "description": "An isometric pillar: two side faces shaded by dark overlays (only when the day has a height) under a top face in the day's colour.",
+      "props": {
+        "level": {
+          "type": "number",
+          "default": 0
+        },
+        "count": {
+          "type": "number",
+          "default": 0
+        },
+        "date": {
+          "type": "string",
+          "default": ""
+        },
+        "index": {
+          "type": "number",
+          "default": 0
+        },
+        "week": {
+          "type": "number",
+          "default": 0
+        },
+        "weekday": {
+          "type": "number",
+          "default": 0
+        },
+        "size": {
+          "type": "number",
+          "default": 11
+        },
+        "radius": {
+          "type": "number",
+          "default": 2
+        },
+        "height": {
+          "type": "number",
+          "default": 0
+        },
+        "color": {
+          "type": "color",
+          "default": "#ebedf0"
+        }
+      },
+      "layers": [
+        {
+          "type": "path",
+          "if": "{{ props.height > 0 }}",
+          "d": "M0 {{ props.size / 2 - props.height | round(2) }} L{{ props.size }} {{ props.size - props.height | round(2) }} L{{ props.size * 2 }} {{ props.size / 2 - props.height | round(2) }} V{{ props.size / 2 | round(2) }} L{{ props.size }} {{ props.size }} L0 {{ props.size / 2 | round(2) }} Z",
+          "fill": "{{ props.color }}"
+        },
+        {
+          "type": "path",
+          "if": "{{ props.height > 0 }}",
+          "d": "M0 {{ props.size / 2 - props.height | round(2) }} L{{ props.size }} {{ props.size - props.height | round(2) }} V{{ props.size }} L0 {{ props.size / 2 | round(2) }} Z",
+          "fill": "#00000026"
+        },
+        {
+          "type": "path",
+          "if": "{{ props.height > 0 }}",
+          "d": "M{{ props.size }} {{ props.size - props.height | round(2) }} L{{ props.size * 2 }} {{ props.size / 2 - props.height | round(2) }} V{{ props.size / 2 | round(2) }} L{{ props.size }} {{ props.size }} Z",
+          "fill": "#00000047"
+        },
+        {
+          "type": "path",
+          "d": "M{{ props.size }} {{ -props.height }} L{{ props.size * 2 }} {{ props.size / 2 - props.height | round(2) }} L{{ props.size }} {{ props.size - props.height | round(2) }} L0 {{ props.size / 2 - props.height | round(2) }} Z",
+          "fill": "{{ props.color }}"
+        }
+      ]
+    },
+    "card": {
+      "description": "The card: a rounded panel in the theme's colours holding the content; the theme prop is the only switch between light and dark.",
+      "props": {
+        "theme": {
+          "type": "enum",
+          "values": ["light", "dark"],
+          "default": "light"
+        }
+      },
+      "layers": [
+        {
+          "type": "rect",
+          "x": 0.5,
+          "y": 0.5,
+          "width": 839,
+          "height": 383,
+          "radius": 6,
+          "fill": "{{ props.theme == \"dark\" ? \"#0d1117\" : \"#ffffff\" }}",
+          "stroke": "{{ props.theme == \"dark\" ? \"#30363d\" : \"#d0d7de\" }}",
+          "strokeWidth": 1
+        },
+        {
+          "type": "text",
+          "content": "{{ (github.name || github.login) | truncate(26) }}",
+          "font": "bold",
+          "fontSize": 20,
+          "fill": "{{ props.theme == \"dark\" ? \"#e6edf3\" : \"#1f2328\" }}",
+          "x": 24,
+          "y": 22
+        },
+        {
+          "type": "text",
+          "content": "@{{ github.login | truncate(40) }}",
+          "font": "body",
+          "fontSize": 13,
+          "fill": "{{ props.theme == \"dark\" ? \"#9198a1\" : \"#59636e\" }}",
+          "x": 24,
+          "y": 50
+        },
+        {
+          "type": "group",
+          "x": 24,
+          "y": 90,
+          "layout": {
+            "type": "stack",
+            "direction": "column",
+            "gap": 9
+          },
+          "children": [
+            {
+              "type": "component",
+              "ref": "stat",
+              "props": {
+                "label": "Total stars",
+                "value": "{{ github.counts.stars | compact }}",
+                "width": 260,
+                "theme": "{{ props.theme }}"
+              }
+            },
+            {
+              "type": "component",
+              "ref": "stat",
+              "props": {
+                "label": "Commits (year)",
+                "value": "{{ github.contributions.commits | compact }}",
+                "width": 260,
+                "theme": "{{ props.theme }}"
+              }
+            },
+            {
+              "type": "component",
+              "ref": "stat",
+              "props": {
+                "label": "Pull requests",
+                "value": "{{ github.contributions.pullRequests | compact }}",
+                "width": 260,
+                "theme": "{{ props.theme }}"
+              }
+            },
+            {
+              "type": "component",
+              "ref": "stat",
+              "props": {
+                "label": "Issues",
+                "value": "{{ github.contributions.issues | compact }}",
+                "width": 260,
+                "theme": "{{ props.theme }}"
+              }
+            },
+            {
+              "type": "component",
+              "ref": "stat",
+              "props": {
+                "label": "Reviews",
+                "value": "{{ github.contributions.reviews | compact }}",
+                "width": 260,
+                "theme": "{{ props.theme }}"
+              }
+            },
+            {
+              "type": "component",
+              "ref": "stat",
+              "props": {
+                "label": "Followers",
+                "value": "{{ github.followers | compact }}",
+                "width": 260,
+                "theme": "{{ props.theme }}"
+              }
+            },
+            {
+              "type": "component",
+              "ref": "stat",
+              "props": {
+                "label": "Repositories",
+                "value": "{{ github.counts.repositories | compact }}",
+                "width": 260,
+                "theme": "{{ props.theme }}"
+              }
+            }
+          ]
+        },
+        {
+          "type": "component",
+          "ref": "streak",
+          "x": 24,
+          "y": 278,
+          "props": {
+            "label": "Current streak",
+            "length": "{{ github.contributions.streaks.current.length }}",
+            "start": "{{ github.contributions.streaks.current.start | default(\"\") }}",
+            "end": "{{ github.contributions.streaks.current.end | default(\"\") }}",
+            "width": 124,
+            "theme": "{{ props.theme }}"
+          }
+        },
+        {
+          "type": "component",
+          "ref": "streak",
+          "x": 160,
+          "y": 278,
+          "props": {
+            "label": "Longest streak",
+            "length": "{{ github.contributions.streaks.longest.length }}",
+            "start": "{{ github.contributions.streaks.longest.start | default(\"\") }}",
+            "end": "{{ github.contributions.streaks.longest.end | default(\"\") }}",
+            "width": 124,
+            "theme": "{{ props.theme }}"
+          }
+        },
+        {
+          "type": "text",
+          "content": "{{ github.contributions.total | number }} contributions in the last year",
+          "font": "bold",
+          "fontSize": 14,
+          "fill": "{{ props.theme == \"dark\" ? \"#4493f8\" : \"#0969da\" }}",
+          "x": 324,
+          "y": 90,
+          "width": 492
+        },
+        {
+          "type": "component",
+          "ref": "calendar",
+          "props": {
+            "projection": "isometric",
+            "cellSize": 6,
+            "gap": 2,
+            "maxHeight": 16,
+            "radius": 1,
+            "level0": "{{ props.theme == \"dark\" ? \"#161b22\" : \"#ebedf0\" }}",
+            "level1": "{{ props.theme == \"dark\" ? \"#0e4429\" : \"#9be9a8\" }}",
+            "level2": "{{ props.theme == \"dark\" ? \"#006d32\" : \"#40c463\" }}",
+            "level3": "{{ props.theme == \"dark\" ? \"#26a641\" : \"#30a14e\" }}",
+            "level4": "{{ props.theme == \"dark\" ? \"#39d353\" : \"#216e39\" }}"
+          },
+          "x": 324,
+          "y": 114
+        }
+      ]
+    }
+  },
+  "layers": [
+    {
+      "type": "component",
+      "ref": "card",
+      "props": {
+        "theme": "light"
+      }
+    }
+  ]
+}
