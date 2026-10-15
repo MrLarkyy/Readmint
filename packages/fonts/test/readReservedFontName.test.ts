@@ -82,6 +82,17 @@ describe("the Reserved Font Name hint of a name table", () => {
     expect(fork({ 0: several }, "Rfn Sans").reservedFontName).toBe(true);
   });
 
+  test.each([
+    "Copyright 2026 The Authors, with Reserved Font Name: Rfn",
+    'Copyright 2026, with Reserved Font Name: "Rfn" for the original version.',
+    "Copyright 2026, with Reserved Font Name Rfn\r\nCopyright 2027 Other Authors.",
+    "Copyright 2026, with Reserved Font Name Rfn and trailing words",
+  ])("trailing words, a colon or a following line do not hide a used name: %s", (copyright) => {
+    expect(fontWith({ 0: copyright }).reservedFontName).toBe(true);
+    const fork = parse(buildTestFont({ family: "Forked Sans", glyphs, names: { 0: copyright } }));
+    expect(fork.reservedFontName).toBe(false);
+  });
+
   test("a statement whose names cannot be read counts as used", () => {
     const vague = (copyright: string) =>
       parse(buildTestFont({ family: "Forked", glyphs, names: { 0: copyright } }));
