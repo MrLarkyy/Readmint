@@ -18,9 +18,10 @@ const maxBytes: Readonly<Record<AssetKind, number>> = {
 /**
  * Reads every asset of the design whose `src` is a path, used or not, through `readAsset` with the
  * renderer's per-kind byte limit; `data:` sources are left to the renderer. Fonts first, then
- * images, ids in sorted order. Assets of one kind that resolve to the same file (by device and
- * inode, however the path is spelled: `a.ttf`, `./a.ttf`, a link) share one read and one array,
- * so the renderer decodes a font once. A refusal throws `CliError` (exit code 1) naming the asset.
+ * images, ids in sorted order. Assets of one kind that resolve to the same real path (however the
+ * path is spelled: `a.ttf`, `./a.ttf`, a symlink) share one read and one array, so the renderer
+ * decodes a font once; not device and inode, which some file systems report as 0 for every file.
+ * A refusal throws `CliError` (exit code 1) naming the asset.
  */
 export async function loadDesignAssets(file: DesignFile): Promise<RenderAssets> {
   return {
@@ -38,10 +39,10 @@ async function loadKind(file: DesignFile, kind: AssetKind): Promise<Record<strin
     if (src === undefined || src.startsWith("data:")) continue;
     try {
       const resolved = await resolveAsset(file.designDir, src);
-      const identity = `${String(resolved.dev)}:${String(resolved.ino)}`;
       const bytes =
-        read.get(identity) ?? (await readResolvedAsset(resolved, { maxBytes: maxBytes[kind] }));
-      read.set(identity, bytes);
+        read.get(resolved.path) ??
+        (await readResolvedAsset(resolved, { maxBytes: maxBytes[kind] }));
+      read.set(resolved.path, bytes);
       entries.push([id, bytes]);
     } catch (error) {
       if (!(error instanceof AssetPathError)) throw folderError(file, error);

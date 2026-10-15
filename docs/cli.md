@@ -83,7 +83,7 @@ The design file must lie inside `--root` (default: the current folder), checked 
 read as UTF-8 (at most 12 MiB, the format's source limit); `.json` is read as JSON, `.yaml` and `.yml` as YAML, any other
 extension by its first character. Its assets resolve against the design file's folder through `readAsset`, with the
 renderer's limits (`maxFontBytes`, `maxImageBytes`); `data:` sources are left to the renderer. Assets that resolve to
-the same file (same device and inode, however the path is spelled: `a.ttf`, `./a.ttf`, a link) are read once and
+the same real path (however it is spelled: `a.ttf`, `./a.ttf`, a symlink) are read once and
 share one byte array, so the renderer decodes such a font once and counts it once against `maxTotalFontBytes` (it also
 recognises equal bytes in different arrays). The Action loads assets the same way.
 
