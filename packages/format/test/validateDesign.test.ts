@@ -149,6 +149,34 @@ describe("path data templates", () => {
   });
 });
 
+describe("asset sources", () => {
+  test("an over-long relative path fails length, not pattern", () => {
+    const font = {
+      ...base(),
+      assets: {
+        fonts: {
+          f: { family: "F", src: `${"a".repeat(1021)}.ttf`, licence: { embedding: "allowed" } },
+        },
+      },
+    };
+    expect(issuesOf(font).issues).toEqual([
+      {
+        path: "/assets/fonts/f/src",
+        code: "length",
+        message: "must be at most 1024 characters",
+      },
+    ]);
+    const image = { ...base(), assets: { images: { i: { src: `${"a".repeat(1021)}.png` } } } };
+    expect(issuesOf(image).issues).toEqual([
+      {
+        path: "/assets/images/i/src",
+        code: "length",
+        message: "must be at most 1024 characters",
+      },
+    ]);
+  });
+});
+
 describe("limits", () => {
   test("more than maxLayers layers fail", () => {
     const layers = Array.from({ length: DesignLimits.maxLayers + 1 }, () => rect());
