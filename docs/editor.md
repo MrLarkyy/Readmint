@@ -23,6 +23,8 @@ workspace and no UI framework: the DOM views are small classes that dispatch com
   number or a `{{binding}}`; a paint takes `#rrggbb`, `none`, a binding or a gradient as JSON; a text's `content` may
   hold placeholders. An invalid value is refused with the format's issue; the design is unchanged.
 - **Fonts**: upload a TTF, OTF, WOFF or WOFF2 file (see below).
+- **Images**: upload a PNG, JPEG, GIF or WebP file; it is embedded in the design with an image layer showing it
+  ([below](#images)).
 - **Fixture data**: load a JSON file of data namespaces, as the CLI's `--data` file; bindings render against it.
 - **Import and export**: import a JSON or YAML design file (validated with the format's limits); export the design as
   `design.json` (two-space JSON, a final line feed, the same bytes for the same design), as `design.yaml` (YAML 1.2,
@@ -30,8 +32,9 @@ workspace and no UI framework: the DOM views are small classes that dispatch com
   YAML reader's 1 MiB, then export JSON), or as `design.png` / `design.webp` ([below](#raster-export)). A file export
   re-imports to the same design; an image is what the CLI renders.
 
-Not in this version: undo, animation editing (animated designs import and preview, their timeline is not edited),
-image upload, APNG or GIF export, and scale, frame rate or quality settings for the raster export.
+Every edit of the design can be undone and redone ([below](#undo-and-redo)). Not in this version: animation editing
+(animated designs import and preview, their timeline is not edited), APNG or GIF export, and scale, frame rate or
+quality settings for the raster export.
 
 Dragging writes whole numbers. It never changes a coordinate or size bound to data, nor the place of a layer a stack
 or grid layout positions (its `x`/`y` are offsets in its slot; the property panel says so): such a drag is refused with
@@ -39,6 +42,20 @@ an issue. A path keeps its size (its data is its shape); a text's handles set it
 drag is turned back into the group's coordinates, so the layer follows the pointer. Resize handles appear only on a
 layer that neither it nor any group around it turns (whole turns aside): turns that cancel out on the canvas still swap
 what the layer calls width and height.
+
+## Undo and redo
+
+Ctrl+Z (Cmd+Z) undoes the newest edit of the design; Ctrl+Shift+Z or Ctrl+Y (Cmd+Shift+Z, Cmd+Y) redoes it, as do the
+toolbar's Undo and Redo buttons, which are disabled when there is nothing to step to. In a text field, a select or
+editable content the keys are the field's own: the editor's undo never takes them there.
+
+Every command that changes the design is one entry (a drag is one, recorded when the pointer is released; an upload
+adds its asset and layer as one); a refused command, a selection, loading fixture data, attaching a file for a
+path-sourced asset and reading font licences are not entries. Undo and redo restore the design and the layer selected
+with it, and clear the issue list; fixture data, attached files and font checks are inputs of the session and stay as
+they are. A new edit after an undo drops what could have been redone. The history holds the last
+`EditorLimits.maxHistory` (100) edits, the oldest dropped first; entries share the unchanged parts of the design, so
+they cost little. New and Import start an empty history.
 
 ## Preview
 
@@ -100,6 +117,32 @@ weight and style come from the font (the file name when it names no family); the
   own inflate once. The fonts from it on are not locked in the panel, and the renderer still never embeds a font whose
   fsType forbids it. An upload reads one file of at most `maxFontBytes`.
 
+## Images
+
+An uploaded image becomes an image asset whose `src` is a base64 `data:` URI of the type its bytes are (sniffed, never
+taken from the file name), so the design file carries it, and an image layer at the canvas's top-left corner shows it:
+at its pixel size as it is shown (EXIF orientations that turn it a quarter swap width and height), scaled down, never
+up, to fit a canvas of literal size, in whole pixels. It goes into the selected group, else to the top level, and is
+selected. The asset id is made from the file name (`image` when nothing of it is left), the layer takes the same id when
+it is free. Undo removes the asset and the layer together.
+
+The editor accepts exactly what the renderer and so the CLI render, checked in the renderer's order before anything is
+added:
+
+- a file larger than `EditorLimits.maxImageBytes` (the renderer's `maxImageBytes`, 4 MiB) is refused before it is read;
+- the format is sniffed from the bytes: PNG, JPEG, GIF or WebP; anything else, SVG included (it can carry scripts), or a
+  malformed or truncated file is refused with the sniffer's reason;
+- a side longer than the renderer's `maxImageSide` (8192 pixels) or more animation frames than its
+  `maxAnimationFrames` (1000) is refused, naming the limit;
+- an image that would make the exported file longer than `DesignLimits.maxSourceLength` is refused, naming both
+  lengths. Base64 makes the data URI a third larger than the file, so this bounds an upload to about 3 MiB in practice,
+  less what the design already holds.
+
+A refused image leaves the design unchanged, with an `image` issue saying why. The sniffer loads on the first upload,
+never with the page; it reads headers only and decodes no pixels. The asset panel lists embedded images as embedded in
+the design, without decoding them; the renderer checks them on every render, as it checks those of an imported design.
+A golden fixture (`session-image`) and a CLI test pin that an uploaded image previews as the CLI renders it.
+
 ## Assets given by path
 
 An imported design may name font or image files by path. The asset panel lists them as needing a file; a file picked
@@ -112,8 +155,8 @@ handles a token. The renderer's `missing-asset` issue is shown instead.
 ## Limits
 
 `EditorLimits`: `maxFixtureBytes` 8 MiB (the CLI's), `maxFontBytes` and `maxImageBytes` 4 MiB and
-`maxTotalFontBytes` 16 MiB (the renderer's), `renderTimeoutMs` 10 000, `rasterTimeoutMs` 120 000. Every file the user picks is size-checked before
-it is read. Design files are bounded by `DesignLimits` on import and on every edit: an edit that would make the exported
+`maxTotalFontBytes` 16 MiB (the renderer's), `maxHistory` 100 edits, `renderTimeoutMs` 10 000, `rasterTimeoutMs`
+120 000. Every file the user picks is size-checked before it is read. Design files are bounded by `DesignLimits` on import and on every edit: an edit that would make the exported
 file longer than `maxSourceLength` is refused.
 
 ## Content Security Policy
@@ -130,7 +173,7 @@ page itself needs neither.
 ## Bundle
 
 The initial chunk holds the editor and the format's validation (about 20 kB gzip, budget 120 kB). The YAML parser
-(reading and writing) and the font parser load on first use; the renderer lives only in the two workers: the preview
+(reading and writing), the font parser and the image sniffer load on first use; the renderer lives only in the two workers: the preview
 worker (budget 250 kB gzip) and the raster worker, which also holds the rasterizer and the encoders (about 184 kB gzip,
 budget 230 kB). The two WebAssembly files (resvg 2.5 MB, libwebp 0.5 MB) are separate assets, never inlined, fetched
 only by a raster export. A test bundles the app and checks the budgets, which chunk holds what, that the rasterizer is
@@ -147,6 +190,7 @@ import {
   renderPreview,
   exportDesign,
   uploadFont,
+  uploadImage,
   EditorLimits,
 } from "@readmint/editor";
 
@@ -156,9 +200,14 @@ const editor = mountEditor(document.getElementById("app")!, {
   saveImage: ({ name, mimeType, bytes }) => store(name, bytes), // optional, default a download (design.png, design.webp)
 });
 editor.dispatch((state) => moveLayer(state, "/layers/0", 10, 0));
+editor.dispatch((state) => uploadImage(state, { name: "logo.png", bytes })); // bytes: Uint8Array
+editor.undo(); // as Ctrl+Z; editor.redo() as Ctrl+Shift+Z
 ```
 
 The state (`EditorState`: design, selection, fixture data, session assets, font checks, issues) is immutable; every
 command (`addLayer`, `moveLayer`, `resizeLayer`, `setLayerProperty`, `reorderLayer`, `removeLayer`, `selectLayer`,
-`uploadFont`, `setFontAsset`, `attachAsset`, `loadFixture`) is a pure function returning a new state whose design
-passes `validateDesign`, or the same design with the issues saying why not.
+`uploadFont`, `uploadImage`, `setFontAsset`, `attachAsset`, `loadFixture`) is a pure function returning a new state
+whose design passes `validateDesign`, or the same design with the issues saying why not. `readImageFile(bytes)` is
+the check an upload runs. The history (`EditorHistory`) is an immutable value of its own, kept by `mountEditor` beside
+the state: `recordEdit(history, before, after)` records a design change, `undo(history, state)` and `redo(...)` return
+the next history and state (undefined when there is nothing to step to), `canUndo` and `canRedo` say whether there is.

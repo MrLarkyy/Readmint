@@ -7,9 +7,11 @@ import {
   resizeLayer,
   setLayerProperty,
   uploadFont,
+  uploadImage,
   type EditorState,
 } from "../src/index.js";
 import { testFonts } from "./testFonts.js";
+import { testImages } from "./testImages.js";
 
 /** Applies a command and fails loudly when it was refused, so a session never silently skips a step. */
 function step(state: EditorState, command: (state: EditorState) => EditorState): EditorState {
@@ -65,4 +67,15 @@ export function appSession(): EditorState {
     (s) => addLayer(s, "text"),
   ];
   return commands.reduce(step, createEditorState(newDesign()));
+}
+
+/** An uploaded PNG beside a rect, resized to twice its height through the editor's commands. */
+export function imageSession(): EditorState {
+  const commands: ((state: EditorState) => EditorState)[] = [
+    (s) => setLayerProperty(s, "/canvas", "background", "#ffffff"),
+    (s) => addLayer(s, "rect"),
+    (s) => uploadImage(s, testImages.png),
+    (s) => resizeLayer(s, "/layers/1", { x: 170, y: 20, width: 120, height: 80 }),
+  ];
+  return commands.reduce(step, createEditorState(newDesign(320, 120)));
 }

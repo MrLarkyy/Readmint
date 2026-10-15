@@ -1,6 +1,6 @@
 import { defineGoldenSuite } from "@readmint/golden";
 import { renderPreview, type PreviewInput } from "../src/index.js";
-import { editorSession } from "./editorSession.js";
+import { editorSession, imageSession } from "./editorSession.js";
 import { goldenFonts } from "./testFonts.js";
 
 /** The editor's preview render of a design made through its commands; a failed render fails the test. */
@@ -17,5 +17,6 @@ export default defineGoldenSuite<PreviewInput>({
   fixtures: [
     { name: "session-font", input: editorSession(), scale: 2 },
     { name: "session-restricted-font", input: editorSession(true), scale: 2 },
+    { name: "session-image", input: imageSession(), scale: 2 },
   ],
 });

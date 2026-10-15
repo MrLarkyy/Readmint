@@ -12,8 +12,8 @@ export interface AssetActions {
 }
 
 /**
- * The design's fonts with their licence, and every asset whose `src` is a path: those need the file for the preview
- * (the CLI reads it from the path); the design keeps the path.
+ * The design's fonts with their licence, its embedded images, and every asset whose `src` is a path: those need the
+ * file for the preview (the CLI reads it from the path); the design keeps the path.
  */
 export class AssetPanel {
   readonly root: HTMLElement;
@@ -42,7 +42,14 @@ export class AssetPanel {
           className: "rm-note",
           text: `image ${id}: bound to data; the editor never fetches it (the CLI and the Action do)`,
         });
-      } else if (decodeDataUri(asset.src) === undefined) {
+      } else if (asset.src.startsWith("data:")) {
+        // Listed by its prefix alone: decoding megabytes on every change would buy nothing, the preview checks it.
+        element(this.body, "p", {
+          className: "rm-note",
+          text: `image ${id}: embedded in the design`,
+          attributes: { "data-image": id },
+        });
+      } else {
         this.pathAsset(state, "images", id, asset.src, this.body);
       }
     }

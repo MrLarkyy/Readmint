@@ -3,6 +3,17 @@ export const packageName = "@readmint/editor";
 export { addLayer, type NewLayerType } from "./addLayer.js";
 export { attachAsset } from "./attachAsset.js";
 export { checkFonts } from "./checkFonts.js";
+export {
+  canRedo,
+  canUndo,
+  createHistory,
+  type EditorHistory,
+  type HistoryEntry,
+  type HistoryStep,
+  recordEdit,
+  redo,
+  undo,
+} from "./EditorHistory.js";
 export type { EditorIssue, EditorIssueSource } from "./EditorIssue.js";
 export { EditorLimits } from "./EditorLimits.js";
 export { createEditorState, type EditorState } from "./EditorState.js";
@@ -38,6 +49,7 @@ export {
 } from "./RasterClient.js";
 export type { RasterFile, RasterRequest, RasterResponse } from "./RasterMessage.js";
 export { removeLayer } from "./removeLayer.js";
+export { readImageFile, type ImageFileResult } from "./readImageFile.js";
 export { renderPreview, type PreviewInput } from "./renderPreview.js";
 export { reorderLayer } from "./reorderLayer.js";
 export { resizeLayer, type LayerResize } from "./resizeLayer.js";
@@ -45,3 +57,4 @@ export { selectLayer } from "./selectLayer.js";
 export { setFontAsset, type FontAssetChange } from "./setFontAsset.js";
 export { setLayerProperty } from "./setLayerProperty.js";
 export { type FontFile, uploadFont } from "./uploadFont.js";
+export { type ImageFile, uploadImage } from "./uploadImage.js";

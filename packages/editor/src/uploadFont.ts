@@ -1,4 +1,5 @@
 import type { FontAsset } from "@readmint/format";
+import { assetIdBase } from "./assetIdBase.js";
 import { encodeBase64 } from "./base64.js";
 import { commitDesign, refuse } from "./commitDesign.js";
 import { setAt } from "./designPointer.js";
@@ -29,7 +30,7 @@ export function uploadFont(state: EditorState, file: FontFile): EditorState {
   const { font, check } = read;
   const stem = file.name.replace(/\.[^.]*$/u, "");
   const fonts = state.design.assets?.fonts ?? {};
-  const id = uniqueId(assetIdBase(stem), new Set(Object.keys(fonts)), "-");
+  const id = uniqueId(assetIdBase(stem, "font"), new Set(Object.keys(fonts)), "-");
   const family = (font.familyName === "" ? stem : font.familyName).slice(0, 128) || id;
   const os2 = font.table("OS/2");
   const fsSelection =
@@ -51,10 +52,4 @@ export function uploadFont(state: EditorState, file: FontFile): EditorState {
     { fontChecks: { ...state.fontChecks, [id]: check } },
     "font",
   );
-}
-
-/** A valid asset id from a file name: letters, digits, `_` and `-`, starting with a letter. */
-function assetIdBase(stem: string): string {
-  const cleaned = stem.replace(/[^A-Za-z0-9_-]+/gu, "-").replace(/^[^A-Za-z]+/u, "");
-  return (cleaned === "" ? "font" : cleaned).slice(0, 56);
 }

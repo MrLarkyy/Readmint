@@ -59,6 +59,7 @@ const rasterWorker = (outputs: readonly Output[]) =>
 const yamlMarker = /YAMLParseError|class Composer/u;
 const rendererMarker = /function renderSvg\b/u;
 const fontParserMarker = /function parseSfnt\b/u;
+const imageSnifferMarker = /function sniffImage\b/u;
 const rasterMarker = /function exportRaster\b|__wbindgen/u;
 
 test("the initial chunk of the editor library leaves out the YAML parser", async () => {
@@ -67,14 +68,14 @@ test("the initial chunk of the editor library leaves out the YAML parser", async
   expect(outputs.filter((output) => yamlMarker.test(text(output)))).toHaveLength(1);
 });
 
-test("the app loads the YAML parser and the font parser on demand and renders only in the workers", async () => {
+test("the app loads the YAML parser, the font parser and the image sniffer on demand and renders only in the workers", async () => {
   const outputs = await bundle(fileURLToPath(new URL("../src/main.ts", import.meta.url)), false);
   const main = entry(outputs);
   const render = worker(outputs);
   expect(main).toBeDefined();
   expect(render).toBeDefined();
   if (main === undefined || render === undefined) return;
-  for (const marker of [yamlMarker, rendererMarker, fontParserMarker]) {
+  for (const marker of [yamlMarker, rendererMarker, fontParserMarker, imageSnifferMarker]) {
     expect(text(main)).not.toMatch(marker);
   }
   expect(text(render)).toMatch(rendererMarker);
@@ -85,6 +86,16 @@ test("the app loads the YAML parser and the font parser on demand and renders on
   expect(outputs.some((output) => output !== render && fontParserMarker.test(text(output)))).toBe(
     true,
   );
+  // The image upload's chunk takes the sniffer alone from the renderer, not the renderer with it.
+  const sniffer = outputs.filter(
+    (output) =>
+      output.type === "chunk" &&
+      output !== render &&
+      output !== rasterWorker(outputs) &&
+      imageSnifferMarker.test(text(output)),
+  );
+  expect(sniffer).toHaveLength(1);
+  expect(text(sniffer[0] ?? main)).not.toMatch(rendererMarker);
 });
 
 test("the app stays within its gzip budgets: main chunk 120 kB, preview worker 250 kB", async () => {

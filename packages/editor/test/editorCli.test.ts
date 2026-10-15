@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { ExitCode, runCli } from "@readmint/cli";
 import { afterEach, beforeEach, expect, test } from "vitest";
 import { exportDesign, importDesign, renderPreview } from "../src/index.js";
-import { editorSession } from "./editorSession.js";
+import { editorSession, imageSession } from "./editorSession.js";
 
 let folder: string;
 
@@ -63,4 +63,15 @@ test("the exported design re-imports to the same design", async () => {
   const state = editorSession();
   const imported = await importDesign(exportDesign(state.design));
   expect(imported).toEqual({ ok: true, value: state.design });
+});
+
+test("the exported design with an uploaded image renders in the CLI to the preview bytes", async () => {
+  const state = imageSession();
+  const preview = renderPreview(state);
+  expect(preview.ok).toBe(true);
+  if (!preview.ok) return;
+  const { svg } = await cliRender(exportDesign(state.design), state.data);
+  expect(svg).toBe(preview.svg);
+  expect(svg).toContain('href="data:image/png;base64,');
+  expect(await importDesign(exportDesign(state.design))).toEqual({ ok: true, value: state.design });
 });

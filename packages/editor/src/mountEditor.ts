@@ -7,6 +7,16 @@ import { refuse } from "./commitDesign.js";
 import { createPreviewWorker } from "./createPreviewWorker.js";
 import { createRasterWorker } from "./createRasterWorker.js";
 import { element, readCapped } from "./dom.js";
+import {
+  canRedo,
+  canUndo,
+  createHistory,
+  recordEdit,
+  redo,
+  undo,
+  type EditorHistory,
+  type HistoryStep,
+} from "./EditorHistory.js";
 import type { EditorIssue } from "./EditorIssue.js";
 import { EditorLimits } from "./EditorLimits.js";
 import { createEditorState, type EditorState } from "./EditorState.js";
@@ -65,8 +75,12 @@ export interface EditorHandle {
   readonly state: EditorState;
   /** The SVG the preview shows, byte for byte. */
   readonly svg: string | undefined;
-  /** Applies a command to the state and updates the views and the preview. */
+  /** Applies a command to the state and updates the views and the preview; a design change can be undone. */
   dispatch(command: (state: EditorState) => EditorState): void;
+  /** Steps back to the design and selection before the newest edit; nothing when there is none. */
+  undo(): void;
+  /** Steps forward to the design and selection the newest undo left; nothing when there is none. */
+  redo(): void;
   /** Resolves once file reads, lazy loads and preview renders started so far have settled. */
   settled(): Promise<void>;
   destroy(): void;
@@ -78,14 +92,17 @@ export interface EditorHandle {
  */
 export function mountEditor(root: HTMLElement, options: MountEditorOptions = {}): EditorHandle {
   let state = createEditorState(options.initial ?? newDesign());
+  let history: EditorHistory = createHistory();
   let previewIssues: readonly EditorIssue[] = [];
   let svg: string | undefined;
   const pending = new Set<Promise<unknown>>();
   const shell = element(root, "div", { className: "rm-editor" });
 
-  const dispatch = (command: (current: EditorState) => EditorState) => {
+  /** Applies `command`; its design change becomes an undo entry, or, with `fresh`, the history starts over. */
+  const apply = (command: (current: EditorState) => EditorState, fresh: boolean) => {
     const before = state;
     state = command(state);
+    history = fresh ? createHistory() : recordEdit(history, before, state);
     if (
       state.design !== before.design ||
       state.data !== before.data ||
@@ -93,6 +110,19 @@ export function mountEditor(root: HTMLElement, options: MountEditorOptions = {})
     ) {
       client.render(state);
     }
+    show();
+  };
+  const dispatch = (command: (current: EditorState) => EditorState) => {
+    apply(command, false);
+  };
+  const step = (
+    move: (history: EditorHistory, current: EditorState) => HistoryStep | undefined,
+  ) => {
+    const result = move(history, state);
+    if (result === undefined) return;
+    history = result.history;
+    state = result.state;
+    client.render(state);
     show();
   };
   const track = (work: Promise<unknown>) => {
@@ -153,9 +183,9 @@ export function mountEditor(root: HTMLElement, options: MountEditorOptions = {})
     );
   };
 
-  new Toolbar(shell, {
+  const toolbar = new Toolbar(shell, {
     newDesign: () => {
-      dispatch((current) => ({ ...createEditorState(newDesign()), data: current.data }));
+      apply((current) => ({ ...createEditorState(newDesign()), data: current.data }), true);
     },
     importFile: (file) => {
       if (file.size > DesignLimits.maxSourceLength * 3) {
@@ -184,10 +214,16 @@ export function mountEditor(root: HTMLElement, options: MountEditorOptions = {})
               }));
               return;
             }
-            dispatch((current) => ({ ...createEditorState(result.value), data: current.data }));
+            apply((current) => ({ ...createEditorState(result.value), data: current.data }), true);
             withFonts();
           }),
       );
+    },
+    undo: () => {
+      step(undo);
+    },
+    redo: () => {
+      step(redo);
     },
     exportDesign: () => {
       saveDesign({ name: "design.json", text: exportDesign(state.design) }, "application/json");
@@ -207,12 +243,7 @@ export function mountEditor(root: HTMLElement, options: MountEditorOptions = {})
       exportImage("webp");
     },
     addLayer: (type: NewLayerType) => {
-      dispatch((current) => {
-        const selected = current.selection;
-        const group =
-          selected !== undefined && findLayer(current.design, selected)?.type === "group";
-        return addLayer(current, type, group ? selected : undefined);
-      });
+      dispatch((current) => addLayer(current, type, selectedGroup(current)));
     },
     uploadFont: (file) => {
       if (file.size > EditorLimits.maxFontBytes) {
@@ -230,6 +261,27 @@ export function mountEditor(root: HTMLElement, options: MountEditorOptions = {})
             }
           },
         ),
+      );
+    },
+    uploadImage: (file) => {
+      if (file.size > EditorLimits.maxImageBytes) {
+        report(
+          "image",
+          `image ${JSON.stringify(file.name.slice(0, 128))} is ${String(file.size)} bytes, more than the ${String(EditorLimits.maxImageBytes)} an image may have`,
+        );
+        return;
+      }
+      track(
+        Promise.all([
+          readCapped(file, EditorLimits.maxImageBytes),
+          import("./uploadImage.js"),
+        ]).then(([bytes, { uploadImage }]) => {
+          if (bytes !== undefined) {
+            dispatch((current) =>
+              uploadImage(current, { name: file.name, bytes }, selectedGroup(current)),
+            );
+          }
+        }),
       );
     },
     loadFixture: (file) => {
@@ -307,6 +359,7 @@ export function mountEditor(root: HTMLElement, options: MountEditorOptions = {})
   const issues = new IssueList(shell, select);
 
   const show = () => {
+    toolbar.update(canUndo(history), canRedo(history));
     tree.update(state);
     assets.update(state);
     canvas.update(state);
@@ -329,6 +382,16 @@ export function mountEditor(root: HTMLElement, options: MountEditorOptions = {})
     },
   });
 
+  const keydown = (event: KeyboardEvent) => {
+    if (!(event.ctrlKey || event.metaKey) || event.altKey || editable(event.target)) return;
+    const key = event.key.toLowerCase();
+    const move = key === "z" ? (event.shiftKey ? redo : undo) : key === "y" ? redo : undefined;
+    if (move === undefined) return;
+    event.preventDefault();
+    step(move);
+  };
+  root.ownerDocument.addEventListener("keydown", keydown);
+
   client.render(state);
   show();
   if (options.initial !== undefined) withFonts();
@@ -341,18 +404,39 @@ export function mountEditor(root: HTMLElement, options: MountEditorOptions = {})
       return svg;
     },
     dispatch,
+    undo: () => {
+      step(undo);
+    },
+    redo: () => {
+      step(redo);
+    },
     settled: async () => {
       while (pending.size > 0) await Promise.allSettled([...pending]);
       await client.idle();
       while (pending.size > 0) await Promise.allSettled([...pending]);
     },
     destroy: () => {
+      root.ownerDocument.removeEventListener("keydown", keydown);
       raster.dispose();
       client.dispose();
       canvas.dispose();
       shell.remove();
     },
   };
+}
+
+/** The selected layer when it is a group, which a new layer goes into. */
+function selectedGroup(state: EditorState): string | undefined {
+  const selected = state.selection;
+  return selected !== undefined && findLayer(state.design, selected)?.type === "group"
+    ? selected
+    : undefined;
+}
+
+/** Whether a key goes to a field that has its own undo: the editor's shortcuts leave it alone. */
+function editable(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  return target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName);
 }
 
 /** What the issue list shows for a preview: the render's issues or warnings, or why there is no render. */
