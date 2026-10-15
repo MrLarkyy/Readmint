@@ -27,11 +27,12 @@ jobs:
           grep -q "@license Unicode-3.0" packages/action/dist/action.js
           grep -q "^ \* Package: yaml@" packages/action/dist/action.js
           grep -q "^ \* Package: @resvg/resvg-wasm@" packages/action/dist/action.js
-          grep -q "^ \* Package: @jsquash/webp@" packages/action/dist/action.js
+          grep -q "^ \* Package: wasm-webp@" packages/action/dist/action.js
+          grep -q "Rust crates compiled into @resvg/resvg-wasm" packages/action/dist/action.js
+          grep -q "Copyright (c) 2010, Google Inc" packages/action/dist/action.js
           grep -q "^ \* Package: gifenc@" packages/action/dist/action.js
           test -f packages/action/dist/wasm/resvg.wasm
-          test -f packages/action/dist/wasm/webp_enc_simd.wasm
-          test -f packages/action/dist/wasm/webp_dec.wasm
+          test -f packages/action/dist/wasm/webp.wasm
           work="$RUNNER_TEMP/readmint-smoke"
           cp -r packages/action/test/fixtures/smoke "$work"
           env "INPUT_DESIGNS=card.json" "INPUT_DATA-FILE=data.json" "INPUT_DRY-RUN=true" \

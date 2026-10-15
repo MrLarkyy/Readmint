@@ -59,7 +59,7 @@ test("a comment end inside a licence text cannot close the banner", async () => 
   expect(banner.indexOf("*/")).toBe(banner.length - 2);
 });
 
-test("a package that publishes no licence file gets the text this repository supplies", async () => {
+test("a package gets the licence texts this repository supplies after its own", async () => {
   const resvg = join(dir, "node_modules", "@resvg", "resvg-wasm");
   await mkdir(resvg, { recursive: true });
   await writeFile(
@@ -69,18 +69,21 @@ test("a package that publishes no licence file gets the text this repository sup
   const banner = licenceBanner([join(resvg, "index.mjs")]);
   expect(banner).toContain(" * Package: @resvg/resvg-wasm@2.6.2 (MPL-2.0)");
   expect(banner).toContain(" * Mozilla Public License Version 2.0");
+  expect(banner).toContain(" * Rust crates compiled into @resvg/resvg-wasm 2.6.2");
+  expect(banner).toMatch(/ * tiny-skia +0.10.0 +BSD-3-Clause/);
 });
 
-test("a licence a package keeps in a subfolder is bundled too", async () => {
-  const webp = join(dir, "node_modules", "@jsquash", "webp");
-  await mkdir(join(webp, "codec"), { recursive: true });
+test("libwebp's notice follows wasm-webp's own licence", async () => {
+  const webp = join(dir, "node_modules", "wasm-webp");
+  await mkdir(webp, { recursive: true });
   await writeFile(
     join(webp, "package.json"),
-    JSON.stringify({ name: "@jsquash/webp", version: "1.5.0", license: "Apache-2.0" }),
+    JSON.stringify({ name: "wasm-webp", version: "0.1.0", license: "MIT" }),
   );
-  await writeFile(join(webp, "LICENSE"), "Apache text");
-  await writeFile(join(webp, "codec", "LICENSE.codec.md"), "libwebp BSD text");
-  const banner = licenceBanner([join(webp, "codec", "enc", "webp_enc_simd.js")]);
-  expect(banner).toContain(" * Apache text");
-  expect(banner).toContain(" * libwebp BSD text");
+  await writeFile(join(webp, "LICENSE"), "MIT text of wasm-webp");
+  const banner = licenceBanner([join(webp, "dist", "esm", "webp-wasm.js")]);
+  expect(banner.indexOf(" * MIT text of wasm-webp")).toBeLessThan(
+    banner.indexOf(" * Copyright (c) 2010, Google Inc. All rights reserved."),
+  );
+  expect(banner).toContain(" * Additional IP Rights Grant (Patents)");
 });
