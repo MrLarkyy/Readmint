@@ -106,10 +106,50 @@ shape, colour and height. Path data follows the data through a `d` template, rou
 }
 ```
 
+## Starter templates
+
+Five complete designs that show what the format can do; each is an ordinary design file you copy and change.
+
+| template         | file                                                        | look                                                      | reads                                                            |
+| ---------------- | ----------------------------------------------------------- | --------------------------------------------------------- | ---------------------------------------------------------------- |
+| `stats-card`     | `@readmint/components/templates/stats-card.design.json`     | name and seven totals in two columns                      | `name`, `login`, `counts`, `followers`, `contributions.*` totals |
+| `isometric-card` | `@readmint/components/templates/isometric-card.design.json` | the year's total over the isometric calendar              | `contributions.total`, `weeks`, `days[]`                         |
+| `banner`         | `@readmint/components/templates/banner.design.json`         | a wide banner: name in a display font, bio under it       | `name`, `login`, `bio`                                           |
+| `language-bars`  | `@readmint/components/templates/language-bars.design.json`  | the six biggest languages as bars in their colours        | `languages[]` (`name`, `color`, `share`)                         |
+| `profile-card`   | `@readmint/components/templates/profile-card.design.json`   | the showcase: name, stats, isometric calendar and streaks | all of the above plus `contributions.streaks`                    |
+
+`starterTemplates` from `@readmint/components` lists these names. Each file reads `github.*` of the
+[GitHub data source](data-github.md) and nothing else; the numbers are formatted with the `compact`, `number`,
+`percent` and `date` filters, and a missing name, bio or language colour falls back with `default()`.
+
+- **Light and dark.** The canvas has no `background`, so the card sits on whatever page shows it. The one instance in
+  `layers` carries the enum prop `theme` (`"light"`, the default, or `"dark"`); the colours are chosen from it
+  inside the components, in GitHub's palettes: light panel `#ffffff` with border `#d0d7de`, text `#1f2328`, muted
+  `#59636e`; dark panel `#0d1117` with border `#30363d`, text `#e6edf3`, muted `#9198a1`; the calendar levels
+  follow the theme too. Set `"props": { "theme": "dark" }` on the root instance to switch; any other value is an
+  `enum` issue. A canvas cannot read props, which is why the theme is not a `background`.
+- **The calendar.** `isometric-card` and `profile-card` carry the `calendar` and `cell` components of the
+  calendar templates above unchanged (a test compares them); only the instance's props differ.
+- **Fonts.** Text needs a font asset. The templates use Montserrat Medium and ExtraBold from `templates/fonts/`
+  (SIL Open Font License 1.1, `OFL.txt` and the sha256 of each file beside them); their `src` is the relative path
+  `fonts/Montserrat-Medium.ttf`, resolved against the design file by the CLI and the Action. The banner names its
+  headline font `display`: replace its `src`, `family` and `licence` (keep `embedding: "allowed"` only for a font
+  you may embed) to set the banner in your own font.
+- **Long and missing data.** Names are cut with `truncate`, counts shortened with `compact`, the language list shows
+  six rows (`repeat` with `if: {{ i < 6 }}`; a dropped copy takes no slot) or a "No language data yet." line, and a
+  streak of 0 days shows "No streak". Golden images pin the light and dark look of every template and the
+  worst-case data (1024-character strings, 10^15 counts).
+- **The sample data** the goldens render is synthetic (an invented account, `readmint-sample`), shaped like the
+  data-github object.
+
 ## Size budget
 
-Every template, and a custom cell like the one above, renders the worst-case calendar (54 columns of 7 days, every
+Every calendar template, and a custom cell like the one above, renders the worst-case calendar (54 columns of 7 days, every
 count 1000000) within **256 KiB** (262144 bytes of UTF-8) and within half the default `maxExpressionSteps` and
 `maxRepeatCopies`, so a calendar leaves room for the rest of a README graphic. A test pins it; a template over budget
 gets lighter markup, the budget is never raised to let it pass. Today the heatmap and the dots take about 37 KB, the
 isometric template about 123 KB.
+
+The starter templates render the worst-case GitHub data (1024-character name, login and bio, 600 languages with
+1024-character names, counts of 10^15, a 54-column calendar at 1000000) within **512 KiB** and the same half work
+limits; a test pins it too.

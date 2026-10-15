@@ -1,0 +1,174 @@
+{
+  "$schema": "https://raw.githubusercontent.com/MrLarkyy/Readmint/main/packages/format/schema/design-v0.schema.json",
+  "version": 0,
+  "title": "Top languages",
+  "description": "The six languages with the most code over the user's own repositories, each as a bar in the language's colour with its share, light or dark through the theme prop of the root instance, on a transparent canvas.",
+  "canvas": {
+    "width": 420,
+    "height": 340
+  },
+  "assets": {
+    "fonts": {
+      "body": {
+        "family": "Montserrat",
+        "src": "fonts/Montserrat-Medium.ttf",
+        "weight": 500,
+        "licence": {
+          "embedding": "allowed",
+          "name": "OFL-1.1"
+        }
+      },
+      "bold": {
+        "family": "Montserrat",
+        "src": "fonts/Montserrat-ExtraBold.ttf",
+        "weight": 800,
+        "licence": {
+          "embedding": "allowed",
+          "name": "OFL-1.1"
+        }
+      }
+    }
+  },
+  "components": {
+    "language": {
+      "description": "One language: its name and share over a bar in the language's colour.",
+      "props": {
+        "name": {
+          "type": "string",
+          "default": ""
+        },
+        "color": {
+          "type": "color",
+          "default": "#8b949e"
+        },
+        "share": {
+          "type": "number",
+          "default": 0
+        },
+        "width": {
+          "type": "number",
+          "default": 372
+        },
+        "theme": {
+          "type": "enum",
+          "values": ["light", "dark"],
+          "default": "light"
+        }
+      },
+      "layers": [
+        {
+          "type": "text",
+          "content": "{{ props.name }}",
+          "font": "body",
+          "fontSize": 13,
+          "fill": "{{ props.theme == \"dark\" ? \"#e6edf3\" : \"#1f2328\" }}"
+        },
+        {
+          "type": "text",
+          "content": "{{ props.share | percent(1) }}",
+          "font": "body",
+          "fontSize": 13,
+          "fill": "{{ props.theme == \"dark\" ? \"#9198a1\" : \"#59636e\" }}",
+          "width": "{{ props.width }}",
+          "align": "end"
+        },
+        {
+          "type": "rect",
+          "y": 22,
+          "width": "{{ props.width }}",
+          "height": 8,
+          "radius": 4,
+          "fill": "{{ props.theme == \"dark\" ? \"#21262d\" : \"#eaeef2\" }}"
+        },
+        {
+          "type": "rect",
+          "y": 22,
+          "width": "{{ props.share * props.width | clamp(1, props.width) }}",
+          "height": 8,
+          "radius": 4,
+          "fill": "{{ props.color }}"
+        }
+      ]
+    },
+    "card": {
+      "description": "The card: a rounded panel in the theme's colours holding the content; the theme prop is the only switch between light and dark.",
+      "props": {
+        "theme": {
+          "type": "enum",
+          "values": ["light", "dark"],
+          "default": "light"
+        }
+      },
+      "layers": [
+        {
+          "type": "rect",
+          "x": 0.5,
+          "y": 0.5,
+          "width": 419,
+          "height": 339,
+          "radius": 6,
+          "fill": "{{ props.theme == \"dark\" ? \"#0d1117\" : \"#ffffff\" }}",
+          "stroke": "{{ props.theme == \"dark\" ? \"#30363d\" : \"#d0d7de\" }}",
+          "strokeWidth": 1
+        },
+        {
+          "type": "text",
+          "content": "Top languages",
+          "font": "bold",
+          "fontSize": 16,
+          "fill": "{{ props.theme == \"dark\" ? \"#4493f8\" : \"#0969da\" }}",
+          "x": 24,
+          "y": 22
+        },
+        {
+          "type": "text",
+          "content": "No language data yet.",
+          "font": "body",
+          "fontSize": 13,
+          "fill": "{{ props.theme == \"dark\" ? \"#9198a1\" : \"#59636e\" }}",
+          "x": 24,
+          "y": 64,
+          "if": "{{ !github.languages }}"
+        },
+        {
+          "type": "group",
+          "x": 24,
+          "y": 64,
+          "layout": {
+            "type": "stack",
+            "direction": "column",
+            "gap": 14
+          },
+          "children": [
+            {
+              "type": "component",
+              "ref": "language",
+              "repeat": {
+                "each": "{{ github.languages }}",
+                "as": "lang",
+                "index": "i"
+              },
+              "if": "{{ i < 6 }}",
+              "props": {
+                "name": "{{ lang.name | truncate(22) }}",
+                "color": "{{ lang.color | default(\"#8b949e\") }}",
+                "share": "{{ lang.share }}",
+                "width": 372,
+                "theme": "{{ props.theme }}"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "layers": [
+    {
+      "type": "component",
+      "ref": "card",
+      "props": {
+        "theme": "light"
+      }
+    }
+  ]
+}

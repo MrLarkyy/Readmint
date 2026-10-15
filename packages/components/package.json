@@ -19,6 +19,7 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "devDependencies": {
+    "@readmint/data-github": "workspace:*",
     "@readmint/format": "workspace:*",
     "@readmint/golden": "workspace:*",
     "@readmint/renderer": "workspace:*"

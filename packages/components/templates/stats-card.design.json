@@ -1,0 +1,218 @@
+{
+  "$schema": "https://raw.githubusercontent.com/MrLarkyy/Readmint/main/packages/format/schema/design-v0.schema.json",
+  "version": 0,
+  "title": "GitHub stats card",
+  "description": "A GitHub stats card: stars, commits, pull requests, issues, reviews, followers and repositories of github.*, light or dark through the theme prop of the root instance, on a transparent canvas.",
+  "canvas": {
+    "width": 420,
+    "height": 184
+  },
+  "assets": {
+    "fonts": {
+      "body": {
+        "family": "Montserrat",
+        "src": "fonts/Montserrat-Medium.ttf",
+        "weight": 500,
+        "licence": {
+          "embedding": "allowed",
+          "name": "OFL-1.1"
+        }
+      },
+      "bold": {
+        "family": "Montserrat",
+        "src": "fonts/Montserrat-ExtraBold.ttf",
+        "weight": 800,
+        "licence": {
+          "embedding": "allowed",
+          "name": "OFL-1.1"
+        }
+      }
+    }
+  },
+  "components": {
+    "stat": {
+      "description": "One statistic: its label at the start, its value at the end of the row.",
+      "props": {
+        "label": {
+          "type": "string",
+          "default": ""
+        },
+        "value": {
+          "type": "string",
+          "default": ""
+        },
+        "width": {
+          "type": "number",
+          "default": 176
+        },
+        "theme": {
+          "type": "enum",
+          "values": ["light", "dark"],
+          "default": "light"
+        }
+      },
+      "layers": [
+        {
+          "type": "text",
+          "content": "{{ props.label }}",
+          "font": "body",
+          "fontSize": 13,
+          "fill": "{{ props.theme == \"dark\" ? \"#9198a1\" : \"#59636e\" }}"
+        },
+        {
+          "type": "text",
+          "content": "{{ props.value }}",
+          "font": "bold",
+          "fontSize": 13,
+          "fill": "{{ props.theme == \"dark\" ? \"#e6edf3\" : \"#1f2328\" }}",
+          "width": "{{ props.width }}",
+          "align": "end"
+        }
+      ]
+    },
+    "card": {
+      "description": "The card: a rounded panel in the theme's colours holding the content; the theme prop is the only switch between light and dark.",
+      "props": {
+        "theme": {
+          "type": "enum",
+          "values": ["light", "dark"],
+          "default": "light"
+        }
+      },
+      "layers": [
+        {
+          "type": "rect",
+          "x": 0.5,
+          "y": 0.5,
+          "width": 419,
+          "height": 183,
+          "radius": 6,
+          "fill": "{{ props.theme == \"dark\" ? \"#0d1117\" : \"#ffffff\" }}",
+          "stroke": "{{ props.theme == \"dark\" ? \"#30363d\" : \"#d0d7de\" }}",
+          "strokeWidth": 1
+        },
+        {
+          "type": "text",
+          "content": "{{ github.name | default(github.login) | truncate(20) }}",
+          "font": "bold",
+          "fontSize": 16,
+          "fill": "{{ props.theme == \"dark\" ? \"#4493f8\" : \"#0969da\" }}",
+          "x": 24,
+          "y": 20
+        },
+        {
+          "type": "text",
+          "content": "GitHub stats",
+          "font": "body",
+          "fontSize": 12,
+          "fill": "{{ props.theme == \"dark\" ? \"#9198a1\" : \"#59636e\" }}",
+          "x": 24,
+          "y": 42
+        },
+        {
+          "type": "group",
+          "x": 24,
+          "y": 70,
+          "layout": {
+            "type": "stack",
+            "direction": "column",
+            "gap": 9
+          },
+          "children": [
+            {
+              "type": "component",
+              "ref": "stat",
+              "props": {
+                "label": "Total stars",
+                "value": "{{ github.counts.stars | compact }}",
+                "width": 168,
+                "theme": "{{ props.theme }}"
+              }
+            },
+            {
+              "type": "component",
+              "ref": "stat",
+              "props": {
+                "label": "Commits (year)",
+                "value": "{{ github.contributions.commits | compact }}",
+                "width": 168,
+                "theme": "{{ props.theme }}"
+              }
+            },
+            {
+              "type": "component",
+              "ref": "stat",
+              "props": {
+                "label": "Pull requests",
+                "value": "{{ github.contributions.pullRequests | compact }}",
+                "width": 168,
+                "theme": "{{ props.theme }}"
+              }
+            },
+            {
+              "type": "component",
+              "ref": "stat",
+              "props": {
+                "label": "Issues",
+                "value": "{{ github.contributions.issues | compact }}",
+                "width": 168,
+                "theme": "{{ props.theme }}"
+              }
+            }
+          ]
+        },
+        {
+          "type": "group",
+          "x": 228,
+          "y": 70,
+          "layout": {
+            "type": "stack",
+            "direction": "column",
+            "gap": 9
+          },
+          "children": [
+            {
+              "type": "component",
+              "ref": "stat",
+              "props": {
+                "label": "Reviews",
+                "value": "{{ github.contributions.reviews | compact }}",
+                "width": 168,
+                "theme": "{{ props.theme }}"
+              }
+            },
+            {
+              "type": "component",
+              "ref": "stat",
+              "props": {
+                "label": "Followers",
+                "value": "{{ github.followers | compact }}",
+                "width": 168,
+                "theme": "{{ props.theme }}"
+              }
+            },
+            {
+              "type": "component",
+              "ref": "stat",
+              "props": {
+                "label": "Repositories",
+                "value": "{{ github.counts.repositories | compact }}",
+                "width": 168,
+                "theme": "{{ props.theme }}"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "layers": [
+    {
+      "type": "component",
+      "ref": "card",
+      "props": {
+        "theme": "light"
+      }
+    }
+  ]
+}

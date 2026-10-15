@@ -75,6 +75,9 @@ importers:
 
   packages/components:
     devDependencies:
+      '@readmint/data-github':
+        specifier: workspace:*
+        version: link:../data-github
       '@readmint/format':
         specifier: workspace:*
         version: link:../format

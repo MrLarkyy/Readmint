@@ -1,0 +1,146 @@
+{
+  "$schema": "https://raw.githubusercontent.com/MrLarkyy/Readmint/main/packages/format/schema/design-v0.schema.json",
+  "version": 0,
+  "title": "Profile banner",
+  "description": "A wide banner with the account name in a display font, the bio under it and a gradient backdrop, light or dark through the theme prop. The headline uses the font asset `display`: replace its src, family and licence in assets.fonts.display (and keep embedding allowed only for a font whose licence permits it) to set the banner in your own font.",
+  "canvas": {
+    "width": 840,
+    "height": 160
+  },
+  "assets": {
+    "fonts": {
+      "body": {
+        "family": "Montserrat",
+        "src": "fonts/Montserrat-Medium.ttf",
+        "weight": 500,
+        "licence": {
+          "embedding": "allowed",
+          "name": "OFL-1.1"
+        }
+      },
+      "display": {
+        "family": "Montserrat",
+        "src": "fonts/Montserrat-ExtraBold.ttf",
+        "weight": 800,
+        "licence": {
+          "embedding": "allowed",
+          "name": "OFL-1.1"
+        }
+      }
+    }
+  },
+  "components": {
+    "card": {
+      "description": "The banner: a gradient panel with three soft discs, the headline in the display font and the bio under it.",
+      "props": {
+        "theme": {
+          "type": "enum",
+          "values": ["light", "dark"],
+          "default": "light"
+        }
+      },
+      "layers": [
+        {
+          "type": "rect",
+          "x": 0.5,
+          "y": 0.5,
+          "width": 839,
+          "height": 159,
+          "radius": 12,
+          "fill": {
+            "type": "linear",
+            "x1": 0,
+            "y1": 0,
+            "x2": 1,
+            "y2": 1,
+            "stops": [
+              {
+                "offset": 0,
+                "color": "{{ props.theme == \"dark\" ? \"#0d1117\" : \"#ffffff\" }}"
+              },
+              {
+                "offset": 1,
+                "color": "{{ props.theme == \"dark\" ? \"#161b22\" : \"#ddf4ff\" }}"
+              }
+            ]
+          },
+          "stroke": "{{ props.theme == \"dark\" ? \"#30363d\" : \"#d0d7de\" }}",
+          "strokeWidth": 1
+        },
+        {
+          "type": "ellipse",
+          "x": 640,
+          "y": -40,
+          "width": 200,
+          "height": 200,
+          "fill": "{{ props.theme == \"dark\" ? \"#4493f8\" : \"#0969da\" }}",
+          "opacity": 0.12
+        },
+        {
+          "type": "ellipse",
+          "x": 720,
+          "y": 60,
+          "width": 150,
+          "height": 150,
+          "fill": "{{ props.theme == \"dark\" ? \"#bc8cff\" : \"#8250df\" }}",
+          "opacity": 0.12
+        },
+        {
+          "type": "ellipse",
+          "x": 580,
+          "y": 90,
+          "width": 90,
+          "height": 90,
+          "fill": "{{ props.theme == \"dark\" ? \"#3fb950\" : \"#1a7f37\" }}",
+          "opacity": 0.12
+        },
+        {
+          "type": "text",
+          "content": "{{ github.name | default(github.login) | truncate(22) }}",
+          "font": "display",
+          "x": 32,
+          "y": 30,
+          "fontSize": "{{ (github.name | default(github.login) | length) <= 12 ? 48 : ((github.name | default(github.login) | length) <= 16 ? 36 : 28) }}",
+          "letterSpacing": 1,
+          "width": 776,
+          "fill": {
+            "type": "linear",
+            "x1": 0,
+            "y1": 0,
+            "x2": 1,
+            "y2": 0,
+            "stops": [
+              {
+                "offset": 0,
+                "color": "{{ props.theme == \"dark\" ? \"#58a6ff\" : \"#0969da\" }}"
+              },
+              {
+                "offset": 1,
+                "color": "{{ props.theme == \"dark\" ? \"#bc8cff\" : \"#8250df\" }}"
+              }
+            ]
+          }
+        },
+        {
+          "type": "text",
+          "content": "{{ github.bio | default(\"\") | truncate(80) }}",
+          "font": "body",
+          "fontSize": 16,
+          "fill": "{{ props.theme == \"dark\" ? \"#9198a1\" : \"#59636e\" }}",
+          "x": 32,
+          "y": 98,
+          "width": 776
+        }
+      ]
+    }
+  },
+  "layers": [
+    {
+      "type": "component",
+      "ref": "card",
+      "props": {
+        "theme": "light"
+      }
+    }
+  ]
+}
