@@ -174,10 +174,19 @@ class Walker {
     const longest = Math.max(
       ...strings.map((option) => (option.kind === "string" ? option.maxLength : Infinity)),
     );
+    const shortest = Math.min(
+      ...strings.map((option) => (option.kind === "string" ? option.minLength : 0)),
+    );
     if (binding !== undefined && typeof value === "string" && value.startsWith("{{"))
       this.visit(binding, value, path);
     else if (typeof value !== "string" || strings.length === 0)
       this.add(path, "type", `expected ${label}`);
+    else if (value.length < shortest)
+      this.add(
+        path,
+        "length",
+        shortest === 1 ? "must not be empty" : `must be at least ${String(shortest)} characters`,
+      );
     else if (value.length > longest)
       this.add(path, "length", `must be at most ${String(longest)} characters`);
     else this.add(path, "pattern", `${quoteInput(value)} is not ${label}`);
