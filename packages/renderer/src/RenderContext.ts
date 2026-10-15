@@ -75,9 +75,12 @@ export class RenderContext {
    * markup are built and hashed once per distinct data, not once per use.
    */
   readonly sharedImages = new Map<string, string>();
-  /** Bounds of path data by layer pointer: `d` is never bound, so every repeat copy of a layer shares them. */
+  /**
+   * Bounds of path data by `pathDataKey`: the layer pointer for a literal `d`, which every repeat copy of the layer
+   * shares, the resolved data for a template `d`, so each copy gets the bounds of its own data.
+   */
   readonly pathBounds = new Map<string, Bounds | undefined>();
-  /** Lengths of path data drawn on by a `draw` track, by layer pointer, like `pathBounds`. */
+  /** Lengths of path data drawn on by a `draw` track, by `pathDataKey`, like `pathBounds`. */
   readonly pathLengths = new Map<string, number>();
   /** Track pointers that already warned `animation-cut`: one warning per track, however many copies. */
   readonly cutTracks = new Set<string>();

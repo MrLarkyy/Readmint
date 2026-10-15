@@ -1,6 +1,7 @@
 import { DESIGN_FORMAT_VERSION } from "./designMigrations.js";
 import { designLocales } from "./designLocales.js";
 import { DesignLimits } from "./DesignLimits.js";
+import { PathData } from "./PathData.js";
 import { ValueRanges, type ValueRange } from "./ValueRanges.js";
 import {
   array,
@@ -188,11 +189,18 @@ const defs = new Map<string, SchemaNode>([
       layer("rect", "ShapeAnimation", { width: size, height: size, "radius?": length, ...shape }),
       layer("ellipse", "ShapeAnimation", { width: size, height: size, ...shape }),
       layer("path", "PathAnimation", {
-        d: string("SVG path data (commands, numbers, separators)", {
-          minLength: 1,
-          maxLength: 100_000,
-          pattern: "^[MmLlHhVvCcSsQqTtAaZz0-9eE.,+\\s-]+$",
-        }),
+        d: choice(
+          string("SVG path data (commands, numbers, separators)", {
+            minLength: 1,
+            maxLength: PathData.maxLength,
+            pattern: PathData.pattern,
+          }),
+          string("path data with {{ }} placeholders", {
+            minLength: 5,
+            maxLength: PathData.maxTemplateLength,
+            pattern: PathData.templatePattern,
+          }),
+        ),
         ...shape,
       }),
       layer("text", "TextAnimation", {
@@ -292,6 +300,7 @@ const defs = new Map<string, SchemaNode>([
         maxLength: DesignLimits.maxSourceLength,
         pattern: dataUri("image/(?:png|jpeg|gif|webp)"),
       }),
+      ref(bindingDef),
     ),
   ],
   [

@@ -177,7 +177,10 @@ export interface EllipseLayer extends LayerBase, ShapeProps {
 
 export interface PathLayer extends LayerBase, ShapeProps {
   readonly type: "path";
-  /** SVG path data; only commands, numbers, separators and whitespace. */
+  /**
+   * SVG path data (only commands, numbers, separators and whitespace), or a template with `{{ }}` placeholders that
+   * the renderer evaluates as text and holds to the same rules.
+   */
   readonly d: string;
   readonly animate?: PathAnimation;
 }
@@ -252,7 +255,11 @@ export interface FontAsset {
 }
 
 export interface ImageAsset {
-  readonly src: AssetSource;
+  /**
+   * An asset source, or a `{{binding}}` evaluated against the root of the render data (never a repeat item) that
+   * yields an https URL; the CLI (`--fetch-images`) and the Action fetch, check and supply its bytes.
+   */
+  readonly src: Bindable<AssetSource>;
   readonly width?: number;
   readonly height?: number;
 }

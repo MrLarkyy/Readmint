@@ -95,7 +95,7 @@ describe.each(Object.entries(montserrat))("mutated Montserrat %s", (name, bytes)
       try {
         exercise(mutated);
       } catch (error) {
-        throw new Error(`round ${String(round)} threw ${String(error)}`);
+        throw new Error(`round ${String(round)} threw ${String(error)}`, { cause: error });
       }
       slowest = Math.max(slowest, performance.now() - started);
     }

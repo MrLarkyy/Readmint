@@ -150,7 +150,13 @@ Every layer has `type` (required) and these optional properties:
   `{ "type": "stack", "direction": "row" | "column", gap?: B<length>, align?: "start" | "center" | "end" }` or
   `{ "type": "grid", "columns": B<integer 1..1000>, gap?: B<length> }`.
 - `d` of a path: SVG path data of at most 100000 characters, made only of path commands, digits, `e`/`E`, `.`, `,`,
-  `+`, `-` and whitespace.
+  `+`, `-` and whitespace; or a template of at most 10000 characters with `{{...}}` placeholders between such
+  characters (`"M0 {{ 24 - props.height }} h8 V24 h-8 Z"`), so a shape can follow the data. A placeholder here ends at
+  its first `}}`. The renderer writes the placeholders in as text
+  ([expressions](expressions.md#placeholders-and-text)) and holds the result to the same rules: empty, longer than
+  100000 characters or with any other character is a `range` issue at `d` and nothing is drawn. A `d` that is exactly
+  one placeholder (`"{{ shape }}"`) takes a data string whole, so its length is checked only there; text built from
+  several placeholders stops earlier, at the 100000 characters an expression may produce (`binding`).
 - `content` of a text: at most 10000 characters; `{{...}}` placeholders may appear anywhere in it and are written into
   the text ([expressions](expressions.md#placeholders-and-text)).
 - A text needs a font: its own `font` or one from its `style`.
@@ -180,9 +186,14 @@ render: [renderer.md](renderer.md).
 - a relative path: no scheme, no leading `/`, no `\`, no `..` segment, no `:`, `?`, `#` or `%`, at most 1024 characters,
   ending in `.ttf`, `.otf`, `.woff` or `.woff2` (fonts) or `.png`, `.jpg`, `.jpeg`, `.gif` or `.webp` (images), in any
   letter case; resolved against the design file by the CLI and the Action; or
-- a base64 data URI: `data:font/ttf|otf|woff|woff2;base64,...` or `data:image/png|jpeg|gif|webp;base64,...`.
+- a base64 data URI: `data:font/ttf|otf|woff|woff2;base64,...` or `data:image/png|jpeg|gif|webp;base64,...`; or
+- for an image only, a `{{binding}}` such as `"{{ github.avatarUrl }}"`, evaluated against the root of the render data
+  (never a repeat item, so every copy of a repeated layer shows the same image). It must give an https URL on an
+  allowed host; the CLI (`--fetch-images`) and the Action fetch it before the render and inline the bytes like a file
+  asset's, the renderer never fetches. Without supplied bytes the render fails `missing-asset`. A font `src` binding
+  is invalid. The fetch rules: [asset-loading.md](asset-loading.md#images-bound-from-data).
 
-`http(s):` and `file:` URLs are rejected, because the output must not reference anything outside itself, and so are SVG
+A literal `http(s):` or `file:` URL is rejected, because the output must not reference anything outside itself, and so are SVG
 images, because an inlined SVG can carry scripts or external references. The bytes behind a source are checked (size,
 format sniffing) when they are loaded, not here. A relative path accepted here can still be refused when it is loaded,
 for example for a Windows device name (`CON.png`), a segment ending in a dot or space, or a symlink leaving the design's
@@ -273,7 +284,8 @@ the timeline's), `delay` and `stagger` (`B<integer 0..60000>` ms, default 0), `e
   `ease-in`, `ease-out`, `ease-in-out` (the CSS curves) or `{ x1, y1, x2, y2 }`, a CSS `cubic-bezier` with `x1`, `x2` in
   [0, 1] and `y1`, `y2` in [-10, 10]; outside [0, 1] the value overshoots its keyframes (opacity and colours are clamped).
 - `draw` needs path data without `A`/`a` commands (`pattern` at `.../animate/draw`): an arc's exact length needs
-  trigonometry, which the renderer never uses ([renderer.md](renderer.md#animation)).
+  trigonometry, which the renderer never uses ([renderer.md](renderer.md#animation)). In a template `d` the text
+  outside the placeholders is checked here; an arc the placeholders give is a `range` issue at the track when rendering.
 
 How the timeline becomes CSS animation and static frames: [renderer.md](renderer.md#animation).
 

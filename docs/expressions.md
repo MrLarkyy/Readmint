@@ -155,7 +155,7 @@ cannot silently change an existing pattern. A pattern has at most 64 characters.
 
 | limit         | value                                                                           | error code  |
 | ------------- | ------------------------------------------------------------------------------- | ----------- |
-| source        | 10000 UTF-16 code units per compiled string, checked before scanning            | `too-long`  |
+| source        | 10000 code points per compiled string (as the format counts), before scanning   | `too-long`  |
 | nesting       | 64 levels of parentheses, brackets, unary operators, `? :` and filter arguments | `too-deep`  |
 | steps         | 100000 per evaluation, or a shared budget (see API)                             | `budget`    |
 | strings       | 100000 UTF-16 code units for any string produced                                | `too-large` |

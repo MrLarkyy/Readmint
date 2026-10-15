@@ -9,6 +9,8 @@ export interface DesignArgs {
   /** Fixture data file (`--data`). */
   readonly data?: string;
   readonly locale?: string;
+  /** `--fetch-images`: fetch the images whose `src` is bound to data; without it the CLI never fetches. */
+  readonly fetchImages?: boolean;
 }
 
 /** `readmint render` beyond the design arguments. */

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 import { loadScale } from "../../../test-support/loadScale.js";
-import { DesignLimits, designJsonSchema, validateDesign } from "../src/index.js";
+import { DesignLimits, designJsonSchema, PathData, validateDesign } from "../src/index.js";
 import { maximalDesign } from "./maximalDesign.js";
 
 const base = () => ({ version: 0, canvas: { width: 10, height: 10 }, layers: [] as unknown[] });
@@ -108,6 +108,71 @@ describe("validateDesign", () => {
     ]);
     expect(issuesOf({ ...base(), layers: [rect({ opacity: "{{x" })] }).issues).toMatchObject([
       { path: "/layers/0/opacity", code: "pattern" },
+    ]);
+  });
+});
+
+describe("path data templates", () => {
+  const path = (d: string) => ({ ...base(), layers: [{ type: "path", d }] });
+
+  test("a d with placeholders around path data is valid", () => {
+    expect(validateDesign(path("M0 {{ props.y | round(2) }} L{{ 10 }} 0 Z")).ok).toBe(true);
+    expect(validateDesign(path("{{ props.d }}")).ok).toBe(true);
+  });
+
+  test("a non-path character outside the placeholders fails pattern", () => {
+    expect(issuesOf(path('M0 {{ 1 }} <rect x="0"/>')).issues).toMatchObject([
+      { path: "/layers/0/d", code: "pattern" },
+    ]);
+  });
+
+  test("a template longer than an expression text may be fails length", () => {
+    const long = `M0 {{ 1 }}${" L1 1".repeat(2000)}`;
+    expect(long.length).toBeGreaterThan(PathData.maxTemplateLength);
+    expect(issuesOf(path(long)).issues).toEqual([
+      { path: "/layers/0/d", code: "length", message: "must be at most 10000 characters" },
+    ]);
+  });
+
+  test("a d over maxLength characters fails length, a template too", () => {
+    const literal = "M".padEnd(PathData.maxLength + 1, "0");
+    expect(issuesOf(path(literal)).issues).toMatchObject([{ path: "/layers/0/d", code: "length" }]);
+    expect(issuesOf(path(`{{ 1 }}${literal}`)).issues).toMatchObject([
+      { path: "/layers/0/d", code: "length" },
+    ]);
+  });
+
+  test("an empty d still fails length", () => {
+    expect(issuesOf(path("")).issues).toEqual([
+      { path: "/layers/0/d", code: "length", message: "must not be empty" },
+    ]);
+  });
+});
+
+describe("asset sources", () => {
+  test("an over-long relative path fails length, not pattern", () => {
+    const font = {
+      ...base(),
+      assets: {
+        fonts: {
+          f: { family: "F", src: `${"a".repeat(1021)}.ttf`, licence: { embedding: "allowed" } },
+        },
+      },
+    };
+    expect(issuesOf(font).issues).toEqual([
+      {
+        path: "/assets/fonts/f/src",
+        code: "length",
+        message: "must be at most 1024 characters",
+      },
+    ]);
+    const image = { ...base(), assets: { images: { i: { src: `${"a".repeat(1021)}.png` } } } };
+    expect(issuesOf(image).issues).toEqual([
+      {
+        path: "/assets/images/i/src",
+        code: "length",
+        message: "must be at most 1024 characters",
+      },
     ]);
   });
 });
@@ -261,6 +326,30 @@ describe("hostile strings", () => {
       expect(validateDesign(design).ok).toBe(false);
       expect(performance.now() - started).toBeLessThan(200 * loadScale());
     }
+  });
+});
+
+describe("an asset src bound to data (RM-28)", () => {
+  const font = (src: string) => ({ family: "F", src, licence: { embedding: "allowed" } });
+  const withImage = (src: string) => ({
+    ...base(),
+    assets: { images: { avatar: { src } } },
+    layers: [{ type: "image", asset: "avatar", width: 8, height: 8 }],
+  });
+
+  test("an image src may be a binding", () => {
+    expect(validateDesign(withImage("{{ github.avatarUrl }}")).ok).toBe(true);
+  });
+
+  test("an unclosed image src binding is refused at the src", () => {
+    expect(issuesOf(withImage("{{ github.avatarUrl")).issues).toMatchObject([
+      { path: "/assets/images/avatar/src", code: "pattern" },
+    ]);
+  });
+
+  test("a font src may not be a binding", () => {
+    const design = { ...base(), assets: { fonts: { f: font("{{ github.fontUrl }}") } } };
+    expect(issuesOf(design).issues).toMatchObject([{ path: "/assets/fonts/f/src" }]);
   });
 });
 

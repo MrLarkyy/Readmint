@@ -3,6 +3,7 @@ import { CliError } from "./CliError.js";
 import type { CliIo } from "./CliIo.js";
 import { ExitCode } from "./ExitCode.js";
 import { formatIssue } from "./formatIssue.js";
+import { imageFetching } from "./imageFetching.js";
 import { loadRenderInput } from "./loadRenderInput.js";
 import { printLines } from "./printLines.js";
 import { renderInput } from "./renderInput.js";
@@ -15,7 +16,7 @@ export async function validateCommand(
   args: Extract<CliCommand, { name: "validate" }>,
   io: CliIo,
 ): Promise<ExitCode> {
-  const input = await loadRenderInput(args, { cwd: io.cwd });
+  const input = await loadRenderInput(args, { cwd: io.cwd, ...imageFetching(args, io) });
   const name = input.file.name;
   if (input.data !== undefined) {
     const result = renderInput(input, args);

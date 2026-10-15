@@ -6,6 +6,7 @@ export type { CliCommand, DesignArgs, RenderArgs } from "./CliCommand.js";
 export { CliError } from "./CliError.js";
 export type { CliIo } from "./CliIo.js";
 export { escapeForLog } from "./escapeForLog.js";
+export { fetchBoundImages } from "./fetchBoundImages.js";
 export { ExitCode } from "./ExitCode.js";
 export { formatIssue } from "./formatIssue.js";
 export { loadDesignAssets } from "./loadDesignAssets.js";
@@ -16,6 +17,14 @@ export { localeProblem } from "./localeProblem.js";
 export { type OutputFormat, outputExtension, outputFormats } from "./OutputFormat.js";
 export { quoteForLog } from "./quoteForLog.js";
 export { readAsset, readResolvedAsset, type AssetReadLimits } from "./readAsset.js";
+export { RemoteImageError, type RemoteImageErrorCode } from "./RemoteImageError.js";
+export {
+  defaultImageHosts,
+  type ImageFetch,
+  type RemoteImageCache,
+  RemoteImageLimits,
+  type RemoteImageOptions,
+} from "./RemoteImageOptions.js";
 export { renderInput } from "./renderInput.js";
 export {
   type RenderedOutput,

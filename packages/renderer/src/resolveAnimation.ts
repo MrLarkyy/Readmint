@@ -1,8 +1,10 @@
 import {
+  isPathTemplate,
   ValueRanges,
   type AnimationTrack,
   type Easing,
   type Layer,
+  type PathLayer,
   type ValueRange,
 } from "@readmint/format";
 import type { Scope } from "@readmint/expr";
@@ -18,6 +20,7 @@ import {
 } from "./NodeAnimation.js";
 import { ownEntry } from "./ownEntry.js";
 import { pathLength } from "./pathLength.js";
+import { pathDataKey } from "./pathDataKey.js";
 import { pointer } from "./pointer.js";
 import type { RenderContext } from "./RenderContext.js";
 import type { RenderNode } from "./RenderNode.js";
@@ -93,8 +96,8 @@ export function resolveAnimation(
     const track = ownEntry(animate, property);
     if (track === undefined || !accepted[node.kind].has(property)) continue;
     if (property === "draw") {
-      if (node.kind !== "path") continue;
-      dash = dashLength(context, node.d, path, pointer(animatePath, property));
+      if (node.kind !== "path" || layer.type !== "path") continue;
+      dash = dashLength(context, layer, node.d, path, pointer(animatePath, property));
     }
     const trackPath = pointer(animatePath, property);
     const keyframes = resolveTrack(
@@ -236,15 +239,34 @@ function checkLiteral(
   return value;
 }
 
+const arcCommand = /[Aa]/u;
+
 /** Longest stroke a `draw` track takes, so the dash numbers print without an exponent. */
 const maxDash = 1e9;
 
-/** Dash and gap of a stroke drawn on: the longest subpath (chords run a little short) plus a margin. */
-function dashLength(context: RenderContext, d: string, path: string, trackPath: string): number {
-  let length = context.pathLengths.get(path);
+/**
+ * Dash and gap of a stroke drawn on: the longest subpath (chords run a little short) plus a margin. The format
+ * refuses an arc under a `draw` track in literal data, so an arc a template gives is refused here.
+ */
+function dashLength(
+  context: RenderContext,
+  layer: PathLayer,
+  d: string,
+  path: string,
+  trackPath: string,
+): number {
+  const key = pathDataKey(layer, path, d);
+  let length = context.pathLengths.get(key);
   if (length === undefined) {
+    if (isPathTemplate(layer.d) && arcCommand.test(d)) {
+      context.fail(
+        trackPath,
+        "range",
+        "a draw track needs path data without arc commands (A or a)",
+      );
+    }
     length = pathLength(d);
-    context.pathLengths.set(path, length);
+    context.pathLengths.set(key, length);
   }
   const dash = Math.ceil((length * 1.01 + 1) * 1000) / 1000;
   if (!(dash <= maxDash)) {

@@ -1,9 +1,19 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
+    "lib": ["ES2023", "DOM"],
     "composite": false,
     "noEmit": true,
-    "types": ["node"]
+    "types": ["node"],
+    "paths": {
+      "@readmint/expr": ["../expr/src/index.ts"],
+      "@readmint/format": ["../format/src/index.ts"],
+      "@readmint/fonts": ["../fonts/src/index.ts"],
+      "@readmint/renderer": ["../renderer/src/index.ts"],
+      "@readmint/golden": ["../golden/src/index.ts"],
+      "@readmint/golden/node": ["../golden/src/node/index.ts"],
+      "@readmint/golden/browser": ["../golden/src/browser/index.ts"]
+    }
   },
   "include": ["src", "test"]
 }

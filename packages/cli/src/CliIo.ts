@@ -1,3 +1,5 @@
+import type { ImageFetch } from "./RemoteImageOptions.js";
+
 /** What the CLI talks to; `bin.ts` wires it to the process, tests to buffers. */
 export interface CliIo {
   /** Standard output: receives the SVG bytes unchanged, and help, version and `ok` lines. */
@@ -10,4 +12,6 @@ export interface CliIo {
   readonly signal?: AbortSignal;
   /** How often `preview` checks its input files for changes, in milliseconds; default 300. */
   readonly pollIntervalMs?: number;
+  /** `fetch` for `--fetch-images`, the only network use of the CLI; the global one when absent. */
+  readonly fetch?: ImageFetch;
 }

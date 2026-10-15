@@ -6,6 +6,7 @@ import { loadScale } from "../../../test-support/loadScale.js";
 import { renderSvg, type RenderOptions } from "../src/index.js";
 import { sniffImage } from "../src/sniffImage.js";
 import { jpegWithExif, orientationTiff, pngWithExif, vp8x, webpWithExif } from "./exifImages.js";
+import { acceptedJpegs, refusedJpegs } from "./jpegMarkers.js";
 
 const assets = join(import.meta.dirname, "assets");
 const read = (name: string) => new Uint8Array(readFileSync(join(assets, name)));
@@ -198,10 +199,6 @@ describe("EXIF orientation", () => {
     ["a stray byte before FF 00", { afterFrame: [0, 0xff, 0] }],
     ["FF 00 twice", { afterFrame: [0xff, 0, 0xff, 0] }],
     ["stray, fill and FF 00 mixed", { afterFrame: [0x12, 0xff, 0xff, 0xff, 0, 0x34] }],
-    ["an RST0 marker, which has no length", { afterFrame: [0xff, 0xd0] }],
-    ["a TEM marker, which has no length", { afterFrame: [0xff, 0x01] }],
-    ["a COM segment of length 0", { afterFrame: [0xff, 0xfe, 0, 0] }],
-    ["an APP2 segment of length 1", { afterFrame: [0xff, 0xe2, 0, 1] }],
   ])("a JPEG with %s is read as Chromium reads it", (_name, options) => {
     expect(sniffImage(jpegWithExif(jpeg, orientationTiff(6), options), 1000)).toMatchObject({
       ok: true,
@@ -299,6 +296,43 @@ describe("EXIF orientation", () => {
   });
 });
 
+const refusedJpegRows = refusedJpegs(jpeg);
+const refusedJpeg = (name: string) => {
+  const row = refusedJpegRows.find((candidate) => candidate.name === name);
+  if (row === undefined) throw new Error(`no refused JPEG "${name}"`);
+  return row.bytes;
+};
+
+describe("JPEG marker rules", () => {
+  test.each(refusedJpegRows.map((row) => [row.name, row.bytes, row.message] as const))(
+    "a JPEG with %s is refused",
+    (_name, data, message) => {
+      const result = sniffImage(data, 1000);
+      expect(result.ok).toBe(false);
+      expect(result.ok ? "" : result.message).toContain(message);
+    },
+  );
+
+  test.each(acceptedJpegs(jpeg).map((row) => [row.name, row.bytes] as const))(
+    "%s is read at its header size",
+    (_name, data) => {
+      expect(sniffImage(data, 1000)).toMatchObject({
+        ok: true,
+        info: { mime: "image/jpeg", width: 32, height: 16 },
+      });
+    },
+  );
+
+  test("a frame header cut off at its sample precision is truncated", () => {
+    const frame = jpeg.findIndex((byte, index) => byte === 0xff && jpeg[index + 1] === 0xc0);
+    expect(frame).toBeGreaterThan(0);
+    expect(sniffImage(jpeg.subarray(0, frame + 4), 1000)).toEqual({
+      ok: false,
+      message: "the image data is truncated",
+    });
+  });
+});
+
 describe("refused input", () => {
   test.each([
     ["svg markup", bytes('  <svg xmlns="http://www.w3.org/2000/svg"/>'), "SVG images are refused"],
@@ -355,6 +389,20 @@ describe("rendered images", () => {
     ["mime mismatch", uri("image/png", jpeg), {}, "/assets/images/i/src", "asset-format"],
     ["svg bytes", uri("image/png", bytes("<svg/>")), {}, "/assets/images/i/src", "asset-format"],
     [
+      "jpeg with a second SOI after its frame header",
+      uri("image/jpeg", refusedJpeg("a second SOI after the frame header")),
+      {},
+      "/assets/images/i/src",
+      "asset-format",
+    ],
+    [
+      "jpeg with FF 02 after its frame header",
+      uri("image/jpeg", refusedJpeg("FF 02 after the frame header")),
+      {},
+      "/assets/images/i/src",
+      "asset-format",
+    ],
+    [
       "over the byte cap",
       uri("image/png", png),
       { limits: { maxImageBytes: 100 } },
@@ -381,6 +429,24 @@ describe("rendered images", () => {
     ["path without bytes", "img/a.png", {}, "/assets/images/i/src", "missing-asset"],
   ] as const)("%s", (_name, src, options, path, code) => {
     expect(render(src, options)).toMatchObject({ ok: false, issues: [{ path, code }] });
+  });
+
+  test("a src bound to data without bytes names who supplies them (RM-28)", () => {
+    const result = render("{{ github.avatarUrl }}", { data: { github: { avatarUrl: "x" } } });
+    expect(result).toMatchObject({
+      ok: false,
+      issues: [{ path: "/assets/images/i/src", code: "missing-asset" }],
+    });
+    expect(!result.ok && result.issues[0]?.message).toBe(
+      'image asset "i" takes its src from data ("{{ github.avatarUrl }}"); its bytes must be supplied (the CLI fetches them with --fetch-images, the Action always)',
+    );
+  });
+
+  test("bytes supplied for a bound src render exactly as for a path (RM-28)", () => {
+    const bound = render("{{ github.avatarUrl }}", { assets: { images: { i: png } } });
+    const file = render("img/a.png", { assets: { images: { i: png } } });
+    expect(bound.ok && bound.svg).toMatch(/href="data:image\/png;base64,/u);
+    expect(bound.ok && bound.svg).toBe(file.ok && file.svg);
   });
 
   test("supplied bytes win over the path and are capped too", () => {

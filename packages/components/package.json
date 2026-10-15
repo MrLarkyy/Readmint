@@ -7,10 +7,20 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
-    }
+    },
+    "./templates/*": "./templates/*"
   },
+  "files": [
+    "dist",
+    "templates"
+  ],
   "scripts": {
     "build": "tsc -b tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json"
+  },
+  "devDependencies": {
+    "@readmint/format": "workspace:*",
+    "@readmint/golden": "workspace:*",
+    "@readmint/renderer": "workspace:*"
   }
 }

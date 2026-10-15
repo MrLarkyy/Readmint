@@ -19,16 +19,14 @@ import { typeName } from "./typeName.js";
  */
 export function compileTemplate(text: string): ExprResult<Template> {
   const whole = { start: 0, end: text.length };
-  if (text.length > ExpressionLimits.maxSourceLength) {
+  const overflow = overflowAt(text);
+  if (overflow !== undefined) {
     const limit = String(ExpressionLimits.maxSourceLength);
     return failWith(
       { source: text, segment: whole },
       "too-long",
       `text is longer than ${limit} characters`,
-      {
-        start: ExpressionLimits.maxSourceLength,
-        end: text.length,
-      },
+      { start: overflow, end: text.length },
     );
   }
   const parts: TemplatePart[] = [];
@@ -116,4 +114,24 @@ function evaluateParts(
     output += written;
   }
   return { ok: true, value: output };
+}
+
+/**
+ * The UTF-16 offset where the code point after the first `maxSourceLength` starts, or undefined for a text within
+ * the limit. Counting stops there, so a huge text is refused as fast as a long one.
+ */
+function overflowAt(text: string): number | undefined {
+  const max = ExpressionLimits.maxSourceLength;
+  if (text.length <= max) return undefined;
+  let count = 0;
+  for (let index = 0; index < text.length; index++) {
+    if (count === max) return index;
+    const unit = text.charCodeAt(index);
+    if (unit >= 0xd800 && unit <= 0xdbff) {
+      const next = text.charCodeAt(index + 1);
+      if (next >= 0xdc00 && next <= 0xdfff) index++;
+    }
+    count++;
+  }
+  return undefined;
 }

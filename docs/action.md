@@ -47,7 +47,7 @@ Use an exact release tag (`vX.Y.Z`); see [Releases](#releases). Then put the pri
 | `quality`        | none                             | lossy WebP at this quality, a whole number in 1..100, as the CLI `--quality`; `webp` must be listed in `formats`; none: lossless                                                                                                                                |
 | `token`          | `${{ github.token }}`            | token for the GitHub data; not used with `data-file`; never printed and never given to git                                                                                                                                                                      |
 | `login`          | `${{ github.repository_owner }}` | the GitHub user whose data is loaded; needed with `GITHUB_TOKEN`, which belongs to no user                                                                                                                                                                      |
-| `data-file`      | none                             | fixture data JSON (the CLI `--data` format) used instead of loading GitHub data: no token, no network                                                                                                                                                           |
+| `data-file`      | none                             | fixture data JSON (the CLI `--data` format) used instead of loading GitHub data: no token, no GitHub API (only images bound to data are fetched)                                                                                                                |
 | `locale`         | none                             | BCP 47 tag for the `number`, `compact`, `percent` and `date` filters, checked as the CLI `--locale` (`en`, `de`, `fr`, `es`, `cs` or a region tag of one); none: the design's `locale`, else `en`                                                               |
 | `commit-message` | `Update Readmint graphics`       | message of the commit; at most 4096 characters                                                                                                                                                                                                                  |
 | `branch`         | the checked-out branch           | branch the commit is pushed to, without `refs/`; the checkout must be this branch at its latest commit on `origin` (see [Pushing](#pushing))                                                                                                                    |
@@ -127,7 +127,12 @@ an organisation login fails to load.
 
 The token is used for the GitHub data only. It is never printed: log lines, errors and step outputs are redacted (also
 its base64 forms), and the GitHub loader never puts it into an error. It is never given to git, neither as an
-argument nor in git's environment.
+argument nor in git's environment, and never sent to an image host.
+
+A design whose image `src` is bound to data (`"{{ github.avatarUrl }}"`) has that image fetched before the render,
+in both data modes, with its own request: no token, cookie or other credential, no redirect, https on an allowed host
+only (`avatars.githubusercontent.com`), each URL once per run (so a dark twin shares the fetch), at most 32. The bytes
+are inlined in the SVG. The rules and error codes: [asset-loading.md](asset-loading.md#images-bound-from-data).
 
 ## Pushing
 
@@ -162,8 +167,9 @@ A failed run exits with 1 and prints one `::error::` line per problem, each nami
 - inputs: a missing or invalid input (all at once);
 - data: the fixture file's problem, or `GitHub data (<code>): <message>` with the code of
   [data-github.md](data-github.md#errors);
-- render: the design's issues, as `readmint render` prints them, or a raster export over a limit (the measured value,
-  the limit and a fix);
+- render: the design's issues, as `readmint render` prints them (an image bound to data that cannot be fetched as
+  `<design>: error image-<reason> at /assets/images/<id>/src: <message>`), or a raster export over a limit (the
+  measured value, the limit and a fix);
 - output: an output folder outside the workspace, an output that is not a regular file, a file that cannot be written;
 - git: the git command that failed and the last 20 lines of what it printed.
 

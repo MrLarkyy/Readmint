@@ -32,7 +32,7 @@ const valueOptions: ReadonlySet<string> = new Set<ValueOption>([
   "frame-rate",
   "quality",
 ]);
-const flagOptions: ReadonlySet<string> = new Set(["help", "version"]);
+const flagOptions: ReadonlySet<string> = new Set(["help", "version", "fetch-images"]);
 
 // No host option, ever: the preview listens on 127.0.0.1 only.
 const allowed: Readonly<Record<DesignCommand, ReadonlySet<ValueOption>>> = {
@@ -71,6 +71,7 @@ export function parseCliArgs(argv: readonly string[]): CliCommand {
       ...Object.fromEntries([...valueOptions].map((name) => [name, { type: "string" as const }])),
       help: { type: "boolean", short: "h" },
       version: { type: "boolean" },
+      "fetch-images": { type: "boolean" },
     },
     allowPositionals: true,
     strict: false,
@@ -112,6 +113,7 @@ export function parseCliArgs(argv: readonly string[]): CliCommand {
     ...optional("root", values.get("root")),
     ...optional("data", values.get("data")),
     ...optional("locale", checkLocale(values.get("locale"))),
+    ...(flags.has("fetch-images") ? { fetchImages: true } : {}),
   };
   const time = values.get("time");
   const timeArgs = time === undefined ? {} : { time: parseTime(time) };

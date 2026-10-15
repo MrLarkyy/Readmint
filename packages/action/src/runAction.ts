@@ -53,6 +53,8 @@ export async function runAction(env: Env, deps: ActionDeps): Promise<number> {
       scale: config.scale,
       ...(config.frameRate === undefined ? {} : { frameRate: config.frameRate }),
       ...(config.quality === undefined ? {} : { quality: config.quality }),
+      // Its own request init, never the GitHub loader's: the token goes to api.github.com only.
+      images: { fetch: deps.fetch ?? globalThis.fetch, cache: new Map() },
     });
     for (const warning of rendered.warnings) log.warning(warning);
     const written = await writeOutputs(workspace, config.outputDir, rendered.files);

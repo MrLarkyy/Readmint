@@ -8,10 +8,12 @@ import {
 import type { Scope } from "@readmint/expr";
 import { resolvePaint } from "./paint.js";
 import { pathBounds } from "./pathBounds.js";
+import { pathDataKey } from "./pathDataKey.js";
 import { pointer } from "./pointer.js";
 import type { RenderContext } from "./RenderContext.js";
 import type { EllipseNode, PathNode, RectNode, ShapeStyle } from "./RenderNode.js";
 import { resolveBase } from "./resolveBase.js";
+import { resolvePathData } from "./resolvePathData.js";
 import { resolveStyle } from "./resolveStyle.js";
 import { resolveNumber, resolveOptionalNumber } from "./resolveValue.js";
 
@@ -84,24 +86,21 @@ export function resolveEllipse(
   };
 }
 
-/** Whitespace the format's `\s` accepts but SVG path data does not (VT, FF, NBSP, U+2028, U+FEFF, ...). */
-const nonSvgWhitespace = /[^\S \t\n\r]/gu;
-
-/**
- * The layout box of a path runs from its origin to the furthest point of its data. Whitespace SVG does not know
- * becomes a space: one UTF-16 unit for one, so the data keeps its meaning, its bounds and its reserved length.
- */
+/** The layout box of a path runs from its origin to the furthest point of its data. */
 export function resolvePath(
   context: RenderContext,
   layer: PathLayer,
   path: string,
   scope: Scope,
 ): PathNode {
-  const d = layer.d.replace(nonSvgWhitespace, " ");
-  let bounds = context.pathBounds.get(path);
-  if (!context.pathBounds.has(path)) {
+  const d = resolvePathData(context, layer, path, scope);
+  // The data is written whole (escaping only lengthens it), so it is reserved before its bounds are computed.
+  context.writer.reserve(d.length);
+  const key = pathDataKey(layer, path, d);
+  let bounds = context.pathBounds.get(key);
+  if (!context.pathBounds.has(key)) {
     bounds = pathBounds(d);
-    context.pathBounds.set(path, bounds);
+    context.pathBounds.set(key, bounds);
   }
   return {
     kind: "path",

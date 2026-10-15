@@ -25,8 +25,8 @@ type RenderResult =
   binding gives against the ranges of the format (`ValueRanges`, shared with the schema), not the structure.
 - The render is pure and synchronous: it reads no file, no clock, no randomness and no host locale. Asset bytes are keyed
   by asset id; the caller resolves paths (and keeps them inside the design's folder). An asset given in
-  `options.assets` wins over its `src`; a `data:` URI `src` is decoded by the renderer; a path without bytes is
-  `missing-asset`.
+  `options.assets` wins over its `src`; a `data:` URI `src` is decoded by the renderer; a path, or an image `src` bound
+  to data (`{{binding}}`, fetched by the CLI with `--fetch-images` and by the Action), without bytes is `missing-asset`.
 - The render stops at the first issue, in document order. Issues and warnings carry a JSON Pointer into the design.
 - `time` must be a number of milliseconds in [0, 86400000] (else `range` at `""`); a design without `animation` ignores
   it and renders the same bytes at any time.
@@ -75,6 +75,9 @@ Drawn in document order, first at the back. Layer `id` and `name` are not emitte
   row is as tall as its tallest child. In a stack or grid a child's own `x`/`y` is an offset inside its slot.
 - **rotation** turns a layer around the centre of its box and does not change the layout. **opacity** applies to the
   layer and everything in it. **clip** on a group clips to the group box.
+- **Path data template**: a `d` with `{{...}}` placeholders is evaluated per copy like a text, then checked as the
+  format checks a literal `d` (not empty, at most 100000 characters, path data characters only; else `range` at `d`).
+  Each copy gets the box and the `draw` length of its own data; a literal `d` is measured once per layer.
 - **style**: a layer's own property wins over the one of its `style`.
 - **Paint**: colours are written as `#rrggbb` plus `fill-opacity` / `stroke-opacity` / `stop-opacity` for alpha (the
   widest supported form). Gradient coordinates are fractions of the painted element's bounding box (defaults: linear
@@ -253,6 +256,15 @@ budget?, maxBytes? })`, `encodeWoff`, `decodeWoff`, `glyphClosure`, `OutlineBudg
 - Checked before anything is decoded: size, then dimensions from the header, then animation frames (GIF image
   descriptors, APNG `acTL`, WebP `ANMF`). `sniffImage(bytes, maxFrames)`, exported, is that check (format, size, frames, EXIF
   and its orientation from the header alone); raster export sizes its image decoding budget with it.
+- A JPEG not every output draws is `asset-format`: Chromium (libjpeg) draws nothing for the markers it rejects, and
+  resvg (jpeg-decoder) draws nothing for RST0-7, TEM, DNL, DAC and a segment shorter than its two length bytes, so the
+  asset is refused with the marker named instead of an empty box in one output or both. Up to the image data (SOS),
+  before or after the frame header, the markers read on are DHT, DQT, DRI, APP0-15 and COM (skipped by their length, at
+  least 2). Refused, the message naming the marker: RSTn, TEM, DNL, DAC, a segment length below 2, a second SOI, EOI before the image data, a second
+  frame header, and any other code (`02`-`BF`, `DE`, `DF`, `F0`-`FD`). Only SOF0, SOF1 and SOF2 (baseline, extended
+  and progressive Huffman) with 8-bit samples are accepted: SOF5-7, `C8` and SOF13-15 libjpeg does not draw, and SOF3 and
+  SOF9-11 (lossless, arithmetic) or 12- and 16-bit samples are refused because no output is shown to draw them alike.
+  A frame header whose length is not 8 plus 3 per component, or which has no component, is refused too.
 - EXIF orientation (tag `0x0112` in IFD0 of a JPEG APP1 `Exif` segment, a PNG `eXIf` chunk before or after the image
   data, or a WebP `EXIF` chunk) is applied by the renderer, never by the decoder: browsers honour the tag and resvg
   does not, so leaving it to them would draw the preview and the raster output differently. The inlined copy has every
@@ -264,9 +276,7 @@ budget?, maxBytes? })`, `encodeWoff`, `decodeWoff`, `glyphClosure`, `OutlineBudg
 - Which EXIF counts follows what Chromium reads: a JPEG APP1 segment is EXIF by its first five bytes `Exif\0` (the
   sixth may be anything). Before the frame header the segments must follow each other exactly (stray bytes, `FF 00`
   included, are `asset-format`); past it markers are read as libjpeg's `next_marker` reads them: bytes up to a 0xFF
-  are skipped, then 0xFF fill bytes, `FF 00` is a stuffed zero and the scan goes on, RSTn and TEM carry no length,
-  and a segment length below 2 skips just the two length bytes. A marker libjpeg rejects there (a second SOI, an
-  unknown code) makes Chromium draw nothing at all, EXIF or not. A PNG or WebP block may start with the same six-byte
+  are skipped, then 0xFF fill bytes, `FF 00` is a stuffed zero and the scan goes on. A PNG or WebP block may start with the same six-byte
   prefix. The first EXIF block holding an Orientation entry
   decides, its first entry of type SHORT with count 1; a value outside 1-8, another type or count, an entry only in
   IFD1, or a block whose TIFF header or IFD0 lies outside it counts as 1 and is never an error.
@@ -326,7 +336,7 @@ Output:
   dash pattern again at every subpath (each `M`, and the segment after a `Z`), so every subpath draws from its own start
   at the pace of the longest one, and shorter subpaths are complete earlier. The length is computed (lines exactly,
   curves as 32 chords each, `+ - * /` and `Math.sqrt` only), because resvg ignores `pathLength`. Paths with arcs cannot
-  `draw` (their length needs trigonometry).
+  `draw` (their length needs trigonometry); an arc a template `d` gives under a `draw` track is `range` at the track.
 - `x`, `y`, `rotation` and `scale` each get a `<g>` of their own around the element, outermost first in that order,
   whose CSS animates only that group's `transform` (the element keeps its own `transform` for its static `rotation`).
   With a rotation or scale the groups sit in `<g transform="translate(cx cy)">` and the element is drawn moved by
@@ -384,8 +394,8 @@ the canvas background and the layers.
 | `maxAnimationKeyframes` | 100000   | keyframes of every animation track of the render together, every repeat copy counted, in a frame too                                      | `too-large`          |
 
 The output size is counted while the SVG is written (a shared definition once, when its first use writes it), and
-every layer reserves the least markup of its kind before it is built (a path also its data, a text its filled-in
-content, before either is measured), so a huge or nested `repeat` stops early instead of building everything. Font
+every layer reserves the least markup of its kind before it is built (a path also its data, a template `d` once
+evaluated, a text its filled-in content, before either is measured), so a huge or nested `repeat` stops early instead of building everything. Font
 subsets are written once every text is laid out and count like any markup; text drawn as paths checks its path data
 against the budget glyph by glyph while it is built.
 Animation CSS counts toward `maxOutputBytes` like any markup, and every animated transform reserves its group (a
@@ -402,8 +412,8 @@ in the font's layout tables and the run's length (see Fonts, untrusted fonts): a
 | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `binding`              | an expression failed to compile or evaluate, the step budget ran out, a repeat `each` is not a list or has more than 10000 items, or its `as`/`index` names are unreadable or equal (the message names expr's error code)                                 |
 | `type`                 | a value of the wrong kind (also a prop of the wrong type, a list or object written into text)                                                                                                                                                             |
-| `range`                | a number outside the format's range, a keyframe offset below the one before it, a `time` outside [0, 86400000]                                                                                                                                            |
-| `missing-asset`        | an asset path without supplied bytes, or a reference to no asset                                                                                                                                                                                          |
+| `range`                | a number outside the format's range, a keyframe offset below the one before it, a `time` outside [0, 86400000], a template `d` that gives empty, over-long (100000) or non-path data (at `d`), an arc a template `d` gives under `draw` (at the track)    |
+| `missing-asset`        | an asset path or an image `src` bound to data (`{{binding}}`) without supplied bytes, or a reference to no asset                                                                                                                                          |
 | `asset-format`         | not an accepted image or a malformed font (also one found broken when its glyphs, layout tables or subset are read, one whose layout tables pass a shaping cap, or a table that decompresses past its declared size); a data URI type that does not match |
 | `asset-too-large`      | over a byte, side or frame limit; a font past its outline budget or whose subset could not fit the output budget                                                                                                                                          |
 | `unsupported-font`     | a font collection (TTC, or WOFF2 with several fonts), CFF2 outlines or a CFF FontMatrix other than 1/unitsPerEm                                                                                                                                           |

@@ -13,7 +13,7 @@ export const githubLoadTimeoutMs = 300_000;
 
 /**
  * The data every design of the run reads, loaded once: the fixture file of `data-file` (no token,
- * no network), else the GitHub data of `login` bound as `{ github: data }`. A failure becomes
+ * no GitHub API), else the GitHub data of `login` bound as `{ github: data }`. A failure becomes
  * `ActionError` (data) carrying the loader's message only: `GitHubDataError` keeps no cause and
  * redacts the token, `CliError` names the file and the reason.
  */
