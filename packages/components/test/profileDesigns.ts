@@ -103,3 +103,11 @@ export function renderProfile({ template, design, data, limits, time }: ProfileR
     throw new Error(`render warned: ${JSON.stringify(result.warnings)}`);
   return result.svg;
 }
+
+/** The animated SVG (no `time`) of a section, embedded font data replaced by its length: the snapshot pins the structure and the CSS, the golden suites pin the fonts. */
+export function stripFontData(svg: string): string {
+  return svg.replace(
+    /data:font\/(\w+);base64,[A-Za-z0-9+/=]+/gu,
+    (match, type: string) => `data:font/${type};base64-length=${String(match.length)}`,
+  );
+}

@@ -1,9 +1,9 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { normalizeSvg } from "@readmint/golden/node";
 import { renderSvg } from "@readmint/renderer";
 import { describe, expect, test } from "vitest";
 import { profileTemplates } from "../../components/src/index.js";
+import { stripFontData } from "../../components/test/profileDesigns.js";
 import { sampleProfileData } from "../../components/test/sampleProfileData.js";
 import { loadDesignAssets, loadDesignFile } from "../src/index.js";
 
@@ -41,9 +41,9 @@ describe.each(cases)("%s %s %s", (template, section, theme) => {
     const svg = render();
     expect(render()).toBe(svg);
     const golden = readFileSync(
-      join(components, "test", "golden", `profiles-${template}`, `${section}-${theme}.svg`),
+      join(components, "test", "golden", `profiles-${template}-svg`, `${section}-${theme}.svg`),
       "utf8",
     );
-    expect(normalizeSvg(svg)).toBe(golden);
+    expect(stripFontData(svg)).toBe(golden);
   });
 });

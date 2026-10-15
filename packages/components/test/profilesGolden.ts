@@ -9,6 +9,11 @@ import {
 } from "./profileDesigns.js";
 import { sampleProfileData, worstCaseProfileData } from "./sampleProfileData.js";
 
+/** Chromium and resvg place the 13 px monospaced terminal text of the pinscreen log a sub-pixel apart: about 1.3 % of the pixels. */
+const browserTolerances: Readonly<Partial<Record<ProfileTemplate, { maxDiffRatio: number }>>> = {
+  pinscreen: { maxDiffRatio: 0.02 },
+};
+
 const themes: readonly ProfileTheme[] = ["light", "dark"];
 
 /** The sections whose worst-case data (1024-character texts, 10^15 counts, 600 pushes) is pinned by a golden. */
@@ -36,6 +41,7 @@ export function profileGoldenSuite(template: ProfileTemplate): GoldenSuite<Profi
     template,
     design: loadProfile(template, section, theme),
     data,
+    time: 0,
     ...extra,
   });
   const [frameSection, frameTime] = frames[template];
@@ -43,9 +49,9 @@ export function profileGoldenSuite(template: ProfileTemplate): GoldenSuite<Profi
     name: `profiles-${template}`,
     render: renderProfile,
     fontsFromSvg: embeddedFonts,
-    // Chromium draws the animated SVG a moment after it starts, with the one-shot reveals at their first state, while
-    // the PNG golden is the final one (frame 0): the browser leg tolerates that share of pixels, the Node leg none.
-    browserTolerance: { maxDiffRatio: 0.05 },
+    ...(browserTolerances[template] === undefined
+      ? {}
+      : { browserTolerance: browserTolerances[template] }),
     fixtures: [
       ...profileTemplates[template].flatMap((section) =>
         themes.map((theme) => ({ name: `${section}-${theme}`, input: render(section, theme) })),
