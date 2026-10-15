@@ -11,7 +11,10 @@ function firstMapped(font: SfntFont, characters: string): number {
   return 0;
 }
 
-/** Advance in font units of a space variant the font lacks (HarfBuzz `_hb_ot_shape_fallback_spaces`), integers only. */
+/**
+ * Advance in font units of a space variant the font lacks (HarfBuzz `_hb_ot_shape_fallback_spaces`), integers only;
+ * `spaceAdvance` is the advance of the glyph drawn for it (the space glyph, or what GSUB made of it).
+ */
 export function fallbackSpaceAdvance(
   font: SfntFont,
   fallback: SpaceFallback,

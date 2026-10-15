@@ -2,6 +2,7 @@ import { describe, expect, test } from "vitest";
 import { glyphForCharacter } from "../src/glyphForCharacter.js";
 import { shapeText } from "../src/shapeText.js";
 import { buildTestFont, type TestGlyph } from "./buildTestFont.js";
+import { coverage, layoutTable, struct } from "./buildLayoutTables.js";
 import { parse } from "./testFonts.js";
 
 const square = [
@@ -117,5 +118,51 @@ describe("glyphForCharacter", () => {
     expect(glyphForCharacter(f, 0x62)).toBe(0);
     expect(glyphForCharacter(font([glyph(0x2d, 300)]), 0x2011)).toBe(1);
     expect(glyphForCharacter(font([glyph(0x2d, 300)]), 0x2003)).toBe(0);
+  });
+});
+
+describe("space variants and GSUB", () => {
+  const glyphs = [
+    { advance: 500 },
+    { codePoints: [0x20], advance: 250 },
+    { codePoints: [0x61], advance: 500 },
+    { advance: 900 },
+    { advance: 400 },
+  ];
+  const ligature = {
+    type: 4,
+    subtables: [
+      struct([
+        1,
+        { offset: coverage([1]) },
+        1,
+        { offset: struct([1, { offset: struct([3, 2, 2]) }]) },
+      ]),
+    ],
+  };
+  const single = { type: 1, subtables: [struct([1, { offset: coverage([1]) }, { i16: 3 }])] };
+  const gsubFont = (lookup: typeof ligature | typeof single, replacement = 900) =>
+    parse(
+      buildTestFont({
+        family: "Gsub",
+        glyphs: glyphs.map((g, i) => (i === 3 ? { advance: replacement } : g)),
+        tables: { GSUB: layoutTable([{ tag: "ccmp", lookups: [0] }], [lookup]) },
+      }),
+    );
+
+  test("a ligature that starts with the substituted space keeps the ligature advance", () => {
+    const f = gsubFont(ligature);
+    for (const space of [" ", " ", " "]) {
+      const run = shapeText(f, `${space}a`);
+      expect(run.glyphs).toEqual([3]);
+      expect(run.advances).toEqual([900]);
+    }
+  });
+
+  test("the space GSUB left in place gives the advance that U+00A0 keeps and U+202F halves", () => {
+    const f = gsubFont(single, 400);
+    expect(advances(f, " ")).toEqual([400]);
+    expect(advances(f, " ")).toEqual([200]);
+    expect(advances(f, " ")).toEqual([1000]);
   });
 });

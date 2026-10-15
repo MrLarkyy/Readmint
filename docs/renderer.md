@@ -122,7 +122,7 @@ Drawn in document order, first at the back. Layer `id` and `name` are not emitte
     glyph with the advance HarfBuzz gives them (in font units, integers: U+2000 and U+2002 1/2 em, U+2001, U+2003 and
     U+3000 1 em, U+2004 1/3, U+2005 1/4, U+2006 1/6, U+2009 1/5, U+200A 1/16, each rounded to the nearest unit, U+205F
     4/18 em; U+2007 the advance of the first digit the font has, U+2008 that of `.` else `,`, both else the space
-    advance; U+202F half the space advance; U+00A0 the space advance), and U+2011 takes the U+2010 glyph, else the
+    advance; U+202F half the space advance; U+00A0 the advance of the glyph drawn, normally the space advance; those "space advance" rules use the glyph GSUB left in place of the space, and a glyph formed by a ligature keeps the ligature's advance), and U+2011 takes the U+2010 glyph, else the
     U+002D glyph, with that glyph's advance. The font's kerning applies on top. The text's own font draws them before
     any `fallback` font and no `missing-glyph` is reported; a font without U+0020 does not get the space variants (as
     before). Font-mode SVG writes such a glyph as a private-use character and keeps the real text in `aria-label`.

@@ -166,15 +166,17 @@ function position(state: ShapingState, rtl: boolean, kerning: boolean): void {
   finishOffsets(buffer, rtl);
 }
 
-/** Space variants the font does not map take the HarfBuzz fallback advance, before GPOS adds kerning on top. */
+/**
+ * Space variants the font does not map take the HarfBuzz fallback advance, before GPOS adds kerning on top. A glyph a
+ * ligature formed is left alone, and the advance of the glyph GSUB left in place of the space is the base of the
+ * rules that derive from it.
+ */
 function setFallbackSpaces(font: SfntFont, glyphs: readonly GlyphInfo[]): void {
-  const space = font.glyphFor(0x20);
-  if (space === 0) return;
-  const spaceAdvance = font.advanceOf(space);
+  if (font.glyphFor(0x20) === 0) return;
   for (const info of glyphs) {
     const fallback = spaceFallbackOf(info.codePoint);
-    if (fallback === undefined || font.glyphFor(info.codePoint) !== 0) continue;
-    info.xAdvance = fallbackSpaceAdvance(font, fallback, spaceAdvance);
+    if (fallback === undefined || info.ligated || font.glyphFor(info.codePoint) !== 0) continue;
+    info.xAdvance = fallbackSpaceAdvance(font, fallback, info.xAdvance);
   }
 }
 
