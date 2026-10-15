@@ -28,8 +28,12 @@ export function clear(node: Element): void {
   node.replaceChildren();
 }
 
-/** The bytes of a file the user picked. */
-export async function fileBytes(file: Blob): Promise<Uint8Array> {
+/**
+ * The bytes of a file the user picked, or undefined when it is larger than `maxBytes`: its size is checked before
+ * any of it is read.
+ */
+export async function readCapped(file: Blob, maxBytes: number): Promise<Uint8Array | undefined> {
+  if (file.size > maxBytes) return undefined;
   return new Uint8Array(await file.arrayBuffer());
 }
 

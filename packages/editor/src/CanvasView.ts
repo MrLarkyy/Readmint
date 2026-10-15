@@ -3,7 +3,7 @@ import { clear, element } from "./dom.js";
 import type { EditorState } from "./EditorState.js";
 import { findLayer } from "./layerAccess.js";
 import { boxAt } from "./layerAt.js";
-import { placeBox, turnPoint } from "./boxPlacement.js";
+import { axisAligned, layerDelta, placeBox } from "./boxPlacement.js";
 import type { LayerResize } from "./resizeLayer.js";
 
 /** What the canvas asks the editor to do; moves and resizes are in the layer's own coordinates. */
@@ -27,8 +27,6 @@ interface Drag {
   readonly startX: number;
   readonly startY: number;
   readonly box: LayerBox;
-  /** Degrees the layer's groups turn it: canvas moves are turned back by this. */
-  readonly groupDegrees: number;
   dx: number;
   dy: number;
 }
@@ -95,6 +93,15 @@ export class CanvasView {
     this.layout();
   }
 
+  /**
+   * Forgets the layer boxes after a render that failed: the image still shows the last good render, but its boxes may
+   * no longer match the design, so the canvas selects nothing until a render succeeds.
+   */
+  clearBoxes(): void {
+    this.boxes = [];
+    this.drawSelection();
+  }
+
   setZoom(zoom: number): void {
     this.zoom = zoom;
     this.layout();
@@ -152,7 +159,7 @@ export class CanvasView {
           pointerEvents: "none",
         },
       });
-      if (first && !turned) this.handles(outline);
+      if (first && axisAligned(box)) this.handles(outline);
       first = false;
     }
   }
@@ -192,7 +199,10 @@ export class CanvasView {
     const selection = this.state.selection;
     const selected =
       selection === undefined ? undefined : this.boxes.find((box) => box.layer === selection);
-    const handle = isHandle(handleName) ? handleName : undefined;
+    const handle =
+      isHandle(handleName) && selected !== undefined && axisAligned(selected)
+        ? handleName
+        : undefined;
     const box = handle === undefined ? boxAt(this.boxes, point.x, point.y) : selected;
     if (box === undefined) {
       this.actions.select(undefined);
@@ -205,7 +215,6 @@ export class CanvasView {
       startX: point.x,
       startY: point.y,
       box,
-      groupDegrees: placeBox(box).groupDegrees,
       dx: 0,
       dy: 0,
     };
@@ -227,7 +236,7 @@ export class CanvasView {
     this.drag = undefined;
     this.drawSelection();
     if (drag.dx === 0 && drag.dy === 0) return;
-    const { x: dx, y: dy } = turnPoint(drag.dx, drag.dy, -drag.groupDegrees);
+    const { x: dx, y: dy } = layerDelta(drag.box, drag.dx, drag.dy);
     if (drag.handle === undefined) {
       this.actions.move(drag.pointer, dx, dy);
       return;

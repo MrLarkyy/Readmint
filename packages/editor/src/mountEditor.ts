@@ -5,7 +5,7 @@ import { attachAsset } from "./attachAsset.js";
 import { CanvasView } from "./CanvasView.js";
 import { refuse } from "./commitDesign.js";
 import { createPreviewWorker } from "./createPreviewWorker.js";
-import { element, fileBytes } from "./dom.js";
+import { element, readCapped } from "./dom.js";
 import type { EditorIssue } from "./EditorIssue.js";
 import { EditorLimits } from "./EditorLimits.js";
 import { createEditorState, type EditorState } from "./EditorState.js";
@@ -151,9 +151,11 @@ export function mountEditor(root: HTMLElement, options: MountEditorOptions = {})
         return;
       }
       track(
-        Promise.all([fileBytes(file), import("./uploadFont.js")]).then(
+        Promise.all([readCapped(file, EditorLimits.maxFontBytes), import("./uploadFont.js")]).then(
           ([bytes, { uploadFont }]) => {
-            dispatch((current) => uploadFont(current, { name: file.name, bytes }));
+            if (bytes !== undefined) {
+              dispatch((current) => uploadFont(current, { name: file.name, bytes }));
+            }
           },
         ),
       );
@@ -195,9 +197,22 @@ export function mountEditor(root: HTMLElement, options: MountEditorOptions = {})
     changeFont: (id, change) => {
       dispatch((current) => setFontAsset(current, id, change));
     },
-    attach: (kind, id, bytes) => {
-      dispatch((current) => attachAsset(current, kind, id, bytes));
-      if (kind === "fonts") withFonts();
+    attach: (kind, id, file) => {
+      const max = kind === "fonts" ? EditorLimits.maxFontBytes : EditorLimits.maxImageBytes;
+      if (file.size > max) {
+        report(
+          "asset",
+          `the file for ${kind === "fonts" ? "font" : "image"} ${JSON.stringify(id)} is ${String(file.size)} bytes, more than the ${String(max)} allowed`,
+        );
+        return;
+      }
+      track(
+        readCapped(file, max).then((bytes) => {
+          if (bytes === undefined) return;
+          dispatch((current) => attachAsset(current, kind, id, bytes));
+          if (kind === "fonts") withFonts();
+        }),
+      );
     },
   });
   const canvas = new CanvasView(main, {
@@ -235,6 +250,8 @@ export function mountEditor(root: HTMLElement, options: MountEditorOptions = {})
       if (outcome.kind === "rendered" && outcome.result.ok) {
         svg = outcome.result.svg;
         canvas.showPreview({ svg, boxes: outcome.result.layerBoxes ?? [] });
+      } else {
+        canvas.clearBoxes();
       }
       show();
     },

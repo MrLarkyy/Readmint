@@ -1,13 +1,14 @@
 import type { FontAsset } from "@readmint/format";
 import { decodeDataUri } from "./base64.js";
-import { clear, element, fileBytes } from "./dom.js";
+import { clear, element, takeFile } from "./dom.js";
 import type { EditorState } from "./EditorState.js";
 import type { FontAssetChange } from "./setFontAsset.js";
 
 /** What the asset panel asks the editor to do. */
 export interface AssetActions {
   changeFont(id: string, change: FontAssetChange): void;
-  attach(kind: "fonts" | "images", id: string, bytes: Uint8Array): void;
+  /** The file is read by the editor once its size is checked. */
+  attach(kind: "fonts" | "images", id: string, file: File): void;
 }
 
 /**
@@ -96,7 +97,8 @@ export class AssetPanel {
     src: string,
     parent: Element,
   ): void {
-    const attached = state.sessionAssets[kind]?.[id] !== undefined;
+    const session = state.sessionAssets[kind];
+    const attached = session !== undefined && Object.hasOwn(session, id);
     const label = element(parent, "label", {
       className: "rm-path-asset",
       text: `${kind === "fonts" ? "font" : "image"} ${id} (${src}): ${attached ? "file attached" : "needs file"} `,
@@ -105,11 +107,8 @@ export class AssetPanel {
       attributes: { type: "file", "data-attach": `${kind}/${id}` },
     });
     input.addEventListener("change", () => {
-      const file = input.files?.[0];
-      if (file === undefined) return;
-      void fileBytes(file).then((bytes) => {
-        this.actions.attach(kind, id, bytes);
-      });
+      const file = takeFile(input);
+      if (file !== undefined) this.actions.attach(kind, id, file);
     });
   }
 }

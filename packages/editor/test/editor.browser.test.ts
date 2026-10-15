@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, expect, test } from "vitest";
 import { userEvent } from "vitest/browser";
+import type { Design } from "@readmint/format";
 import {
   importDesign,
   mountEditor,
@@ -190,4 +191,84 @@ test("an imported design's restricted font is locked as well", async () => {
   });
   const embedding = find('[data-font="Montserrat-Restricted"] select') as HTMLSelectElement;
   expect(embedding.disabled).toBe(true);
+});
+
+/** Remounts the editor on `design` and waits for its first preview. */
+async function remount(design: Design): Promise<void> {
+  editor.destroy();
+  editor = mountEditor(root, { initial: design, save: (file) => saved.push(file) });
+  await editor.settled();
+}
+
+test("after a failed render the canvas selects nothing until a render succeeds", async () => {
+  await click('[data-action="add-rect"]');
+  await setField("width", "{{missing}}");
+  expect(find('[aria-label="Issues"]').textContent).toContain("preview:");
+  await drag(find('[data-testid="overlay"]'), 390, 110, 0, 0);
+  expect(editor.state.selection).toBeUndefined();
+  // The image still shows the rect, but its box may no longer be where the design puts it.
+  await drag(find('[data-testid="overlay"]'), 50, 50, 0, 0);
+  expect(editor.state.selection).toBeUndefined();
+  await click('[data-pointer="/layers/0"] [data-action="select"]');
+  await setField("width", "120");
+  await drag(find('[data-testid="overlay"]'), 390, 110, 0, 0);
+  await drag(find('[data-testid="overlay"]'), 50, 50, 0, 0);
+  expect(editor.state.selection).toBe("/layers/0");
+});
+
+const turnedGroup = (rotation: number, childRotation: number): Design => ({
+  version: 0,
+  canvas: { width: 300, height: 300 },
+  layers: [
+    {
+      type: "group",
+      x: 100,
+      y: 100,
+      width: 100,
+      height: 40,
+      rotation,
+      children: [{ type: "rect", x: 0, y: 0, width: 40, height: 40, rotation: childRotation }],
+    },
+  ],
+});
+
+test("a drag in a turned group moves the layer along the group's axes, with the pointer", async () => {
+  await remount(turnedGroup(90, 0));
+  // The group turns 90 degrees about (150, 120): its child's centre (120, 120) lands at (150, 90).
+  await drag(find('[data-testid="overlay"]'), 150, 90, 0, 0);
+  expect(editor.state.selection).toBe("/layers/0/children/0");
+  expect(root.querySelector("[data-handle]")).toBeNull();
+  await drag(find('[data-testid="overlay"]'), 150, 90, 0, 12);
+  // Down the canvas is the group's +x.
+  expect(editor.state.design.layers[0]).toMatchObject({ children: [{ x: 12, y: 0 }] });
+});
+
+test("turns that cancel out on the canvas show no resize handles", async () => {
+  await remount(turnedGroup(-90, 90));
+  // Turned -90 about (150, 120), the child's centre lands at (150, 150).
+  await drag(find('[data-testid="overlay"]'), 150, 150, 0, 0);
+  expect(editor.state.selection).toBe("/layers/0/children/0");
+  expect(root.querySelector(".rm-selection")).not.toBeNull();
+  expect(root.querySelector("[data-handle]")).toBeNull();
+  await remount(turnedGroup(0, 0));
+  await drag(find('[data-testid="overlay"]'), 120, 120, 0, 0);
+  expect(root.querySelectorAll("[data-handle]")).toHaveLength(4);
+});
+
+test("a file for a path-sourced asset is refused by its size before it is read", async () => {
+  await remount({
+    version: 0,
+    canvas: { width: 100, height: 100 },
+    assets: { images: { logo: { src: "logo.png" } } },
+    layers: [],
+  });
+  await userEvent.upload(
+    find('input[data-attach="images/logo"]'),
+    new File([new Uint8Array(4_194_305)], "logo.png", { type: "image/png" }),
+  );
+  await editor.settled();
+  expect(editor.state.sessionAssets).toEqual({});
+  expect(find('[aria-label="Issues"]').textContent).toContain(
+    'image "logo" is 4194305 bytes, more than the 4194304 allowed',
+  );
 });
