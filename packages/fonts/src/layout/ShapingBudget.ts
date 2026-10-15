@@ -6,19 +6,20 @@ export const maxNesting = 8;
 export const maxSequence = 64;
 
 /**
- * The work one shaping call may do on a font's layout tables, counted in operations (a subtable tried on a glyph,
- * a glyph stepped over, a ligature or rule entry compared, a glyph moved in the buffer) rather than time, so a
- * hostile font fails the same way on every machine. The bounds follow HarfBuzz's max_ops and max_len: a multiple of
- * the input, with a floor for short texts.
+ * The work shaping may do on a font's layout tables, counted in operations (a subtable tried on a glyph, a glyph
+ * stepped over, a ligature, rule or lookup entry compared, a glyph moved in the buffer) rather than time, so a
+ * hostile font fails the same way on every machine. One budget may be shared by many `shapeText` calls (every word
+ * and line of one text), so their work together is bounded, not each call's. The bound follows HarfBuzz's max_ops:
+ * a multiple of the text, with a floor for short texts.
  */
 export class ShapingBudget {
-  readonly maxOperations: number;
-  readonly maxLength: number;
   private operations = 0;
 
-  constructor(inputGlyphs: number) {
-    this.maxOperations = Math.max(16_384, 64 * inputGlyphs);
-    this.maxLength = Math.max(4096, 8 * inputGlyphs);
+  constructor(readonly maxOperations: number) {}
+
+  /** The budget for shaping a text of `characters` UTF-16 units: max(16384, 64 x characters). */
+  static forText(characters: number): ShapingBudget {
+    return new ShapingBudget(Math.max(16_384, 64 * characters));
   }
 
   /** Operations spent so far. */
@@ -34,13 +35,9 @@ export class ShapingBudget {
       );
     }
   }
+}
 
-  /** A buffer grown to `length` glyphs. */
-  checkLength(length: number): void {
-    if (length > this.maxLength) {
-      throw new MalformedFont(
-        `font layout tables grow the text past ${String(this.maxLength)} glyphs`,
-      );
-    }
-  }
+/** The glyphs one shaping call may grow its buffer to (HarfBuzz max_len): max(4096, 8 x its characters). */
+export function maxBufferLength(characters: number): number {
+  return Math.max(4096, 8 * characters);
 }

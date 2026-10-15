@@ -18,6 +18,7 @@ export { FontRefused } from "./FontRefused.js";
 export { glyphClosure } from "./glyphClosure.js";
 export { MalformedFont } from "./MalformedFont.js";
 export { defaultOutlineOperations, OutlineBudget } from "./OutlineBudget.js";
+export { ShapingBudget } from "./layout/ShapingBudget.js";
 export { parseSfnt } from "./parseSfnt.js";
 export { shapeText } from "./shapeText.js";
 export { sniffFontFormat } from "./sniffFontFormat.js";

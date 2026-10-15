@@ -1,3 +1,4 @@
+import { MalformedFont } from "../MalformedFont.js";
 import type { ShapingBudget } from "./ShapingBudget.js";
 
 /** How a glyph attaches to another one after GPOS: by a mark anchor or a cursive connection. */
@@ -71,7 +72,7 @@ export function glyphInfo(glyph: number, codePoint: number, cluster: number): Gl
 
 /**
  * The glyphs of one shaping call, in logical order. Every change of its length goes through `splice`, which charges
- * the budget for the glyphs it moves and refuses a buffer past the length cap.
+ * the budget for the glyphs it moves and refuses a buffer past `maxLength`.
  */
 export class GlyphBuffer {
   readonly glyphs: GlyphInfo[];
@@ -79,6 +80,7 @@ export class GlyphBuffer {
   constructor(
     glyphs: GlyphInfo[],
     readonly budget: ShapingBudget,
+    readonly maxLength: number,
   ) {
     this.glyphs = glyphs;
   }
@@ -96,7 +98,11 @@ export class GlyphBuffer {
   /** Replaces `count` glyphs at `index` with `items`. */
   splice(index: number, count: number, items: readonly GlyphInfo[]): void {
     const length = this.glyphs.length - count + items.length;
-    this.budget.checkLength(length);
+    if (length > this.maxLength) {
+      throw new MalformedFont(
+        `font layout tables grow the text past ${String(this.maxLength)} glyphs`,
+      );
+    }
     this.budget.charge(1 + ((this.glyphs.length - index) >>> 6));
     this.glyphs.splice(index, count, ...items);
   }
@@ -116,6 +122,13 @@ export class GlyphBuffer {
   mergeClusters(start: number, end: number): void {
     if (end - start < 2) return;
     const glyphs = this.glyphs;
+    // Already one cluster: nothing changes, and the (bounded) cluster is not walked again.
+    this.budget.charge(1 + ((end - start) >>> 6));
+    let uniform = true;
+    for (let index = start + 1; index < end && uniform; index++) {
+      uniform = glyphs[index]?.cluster === glyphs[start]?.cluster;
+    }
+    if (uniform) return;
     while (end < glyphs.length && glyphs[end - 1]?.cluster === glyphs[end]?.cluster) end++;
     while (start > 0 && glyphs[start - 1]?.cluster === glyphs[start]?.cluster) start--;
     this.budget.charge(1 + ((end - start) >>> 6));

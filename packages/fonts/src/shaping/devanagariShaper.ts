@@ -120,26 +120,28 @@ function initialReordering(state: ShapingState): void {
   const { buffer, font, plan, layout } = state;
   const gsub = layout.gsub;
   const viramaGlyph = font.glyphFor(virama);
-  const would = (tag: string, glyphs: readonly number[]) =>
-    gsub !== undefined && wouldSubstitute(gsub, plan.gsubLookups(tag), glyphs);
-  const positions = new Map<number, number>();
-  const positionOf = (consonant: number): number => {
-    let position = positions.get(consonant);
-    if (position === undefined) {
-      const pairs = [
-        [viramaGlyph, consonant],
-        [consonant, viramaGlyph],
-      ];
-      const any = (tag: string) => pairs.some((pair) => would(tag, pair));
-      position =
-        any("blwf") || any("vatu")
-          ? Position.belowC
-          : any("pstf") || any("pref")
-            ? Position.postC
-            : Position.baseC;
-      positions.set(consonant, position);
+  // Each answer is computed once per font and plan, its lookup work charged to the text's budget.
+  const would = (tag: string, glyphs: readonly number[]) => {
+    const key = `${tag}:${glyphs.join(",")}`;
+    let answer = plan.substitutions.get(key);
+    if (answer === undefined) {
+      answer =
+        gsub !== undefined && wouldSubstitute(gsub, plan.gsubLookups(tag), glyphs, buffer.budget);
+      plan.substitutions.set(key, answer);
     }
-    return position;
+    return answer;
+  };
+  const positionOf = (consonant: number): number => {
+    const pairs = [
+      [viramaGlyph, consonant],
+      [consonant, viramaGlyph],
+    ];
+    const any = (tag: string) => pairs.some((pair) => would(tag, pair));
+    return any("blwf") || any("vatu")
+      ? Position.belowC
+      : any("pstf") || any("pref")
+        ? Position.postC
+        : Position.baseC;
   };
   for (const info of buffer.glyphs) {
     if (info.position === Position.baseC) info.position = positionOf(info.glyph);

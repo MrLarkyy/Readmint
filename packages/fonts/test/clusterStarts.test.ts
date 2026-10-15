@@ -25,3 +25,9 @@ test("characters above the BMP, regional indicator pairs and emoji modifiers", (
 test("an empty text has no clusters", () => {
   expect(clusterStarts("")).toEqual([]);
 });
+
+test("a cluster holds at most 32 code points: a longer run of marks or conjuncts goes on in a new one", () => {
+  const acute = String.fromCharCode(0x301);
+  expect(clusterStarts(`a${acute.repeat(40)}`)).toEqual([0, 32]);
+  expect(clusterStarts(String.fromCharCode(0x915, 0x94d).repeat(20))).toEqual([0, 32]);
+});

@@ -28,6 +28,8 @@ export class ShapePlan {
   readonly gsubScript: string | undefined;
   /** Whether GPOS has kern lookups (else the legacy kern table kerns). */
   readonly gposKerns: boolean;
+  /** Answers of `wouldSubstitute` (feature and glyphs as key), kept with the plan so each is computed once per font. */
+  readonly substitutions = new Map<string, boolean>();
   private readonly masks = new Map<string, number>();
   private readonly gsubFeatures: ReadonlyMap<string, readonly number[]>;
 

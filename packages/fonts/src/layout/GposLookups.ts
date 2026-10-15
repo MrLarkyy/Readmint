@@ -218,31 +218,49 @@ function reverseCursiveChain(glyphs: GlyphInfo[], start: number, newParent: numb
 }
 
 /**
- * The glyph a mark at `index` attaches to: the previous glyph that is not a mark, past the trailing parts of a
- * multiple substitution (a mark goes on the first of them).
+ * The glyph a mark at `index` attaches to: the nearest earlier glyph the lookup sees that is not a mark and that
+ * `accepts` takes, found by searching back only to where the previous search of this lookup pass stopped (HarfBuzz
+ * last_base), so a long run of marks costs linear work. A nested lookup searches without that memory.
  */
-function baseOf(context: ApplyContext, index: number): number {
+function baseOf(context: ApplyContext, index: number, accepts: (at: number) => boolean): number {
   const glyphs = context.buffer.glyphs;
-  const iterator = context.iteratorWithFlag(index, LookupFlag.ignoreMarks, -1);
-  let from = index;
-  for (;;) {
-    const at = iterator.prev(from);
-    const info = glyphs[at];
-    if (at < 0 || info === undefined) return -1;
-    const before = glyphs[at - 1];
-    if (
-      !info.multiplied ||
-      info.ligatureComponent === 0 ||
-      before === undefined ||
-      before.glyphClass === GlyphClass.mark ||
-      !before.multiplied ||
-      info.ligatureId !== before.ligatureId ||
-      info.ligatureComponent !== before.ligatureComponent + 1
-    ) {
-      return at;
-    }
-    from = at;
+  const nested = context.nested;
+  if (nested || context.lastBaseUntil > index) {
+    context.lastBase = -1;
+    context.lastBaseUntil = 0;
   }
+  for (let at = index - 1; at >= context.lastBaseUntil; at--) {
+    context.buffer.budget.charge();
+    const info = glyphs[at];
+    if (info === undefined || info.ignorable) continue;
+    if (!context.passes(info, LookupFlag.ignoreMarks, -1)) continue;
+    if ((info.mask & context.lookupMask) === 0 || !accepts(at)) continue;
+    context.lastBase = at;
+    break;
+  }
+  context.lastBaseUntil = index;
+  const base = context.lastBase;
+  if (nested) {
+    context.lastBase = -1;
+    context.lastBaseUntil = 0;
+  }
+  return base;
+}
+
+/** A mark goes on the first glyph of a multiple substitution, not on its later parts (HarfBuzz MarkBasePos). */
+function firstOfSequence(glyphs: readonly GlyphInfo[], at: number): boolean {
+  const info = glyphs[at];
+  const before = glyphs[at - 1];
+  return (
+    info === undefined ||
+    !info.multiplied ||
+    info.ligatureComponent === 0 ||
+    before === undefined ||
+    before.glyphClass === GlyphClass.mark ||
+    !before.multiplied ||
+    info.ligatureId !== before.ligatureId ||
+    info.ligatureComponent !== before.ligatureComponent + 1
+  );
 }
 
 /** The class and anchor of a mark from a MarkArray, undefined past its records. */
@@ -282,7 +300,14 @@ function markToBase(context: ApplyContext, subtable: number, index: number): num
   const mark = context.buffer.at(index);
   const markCovered = coverageIndex(context, subtable, 2, mark.glyph);
   if (markCovered < 0) return undefined;
-  const base = baseOf(context, index);
+  const baseCoverage = context.table.coverage(subtable + reader.u16(subtable + 4));
+  const base = baseOf(
+    context,
+    index,
+    (at) =>
+      firstOfSequence(context.buffer.glyphs, at) ||
+      baseCoverage.index(context.buffer.at(at).glyph) >= 0,
+  );
   const baseInfo = context.buffer.glyphs[base];
   if (baseInfo === undefined) return undefined;
   const baseCovered = coverageIndex(context, subtable, 4, baseInfo.glyph);
@@ -310,7 +335,7 @@ function markToLigature(
   const mark = context.buffer.at(index);
   const markCovered = coverageIndex(context, subtable, 2, mark.glyph);
   if (markCovered < 0) return undefined;
-  const ligature = context.iteratorWithFlag(index, LookupFlag.ignoreMarks, -1).prev(index);
+  const ligature = baseOf(context, index, () => true);
   const ligatureInfo = context.buffer.glyphs[ligature];
   if (ligatureInfo === undefined) return undefined;
   const ligatureCovered = coverageIndex(context, subtable, 4, ligatureInfo.glyph);

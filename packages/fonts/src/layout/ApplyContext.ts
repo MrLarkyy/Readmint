@@ -35,6 +35,12 @@ export class ApplyContext {
   autoZwnj = true;
   perSyllable = false;
   private lookup: Lookup | undefined;
+  /**
+   * The base a mark last attached to and the glyph the search for it stopped at (HarfBuzz last_base): marks after
+   * it search back only to there, so a long run of marks costs linear work. Reset for every lookup pass.
+   */
+  lastBase = -1;
+  lastBaseUntil = 0;
   private depth = 0;
   private nextLigatureId = 1;
 
@@ -54,6 +60,11 @@ export class ApplyContext {
     return this.lookup?.markFilteringSet ?? -1;
   }
 
+  /** Whether a lookup is being applied from inside a context lookup. */
+  get nested(): boolean {
+    return this.depth > 0;
+  }
+
   /** A fresh ligature id. */
   allocateLigatureId(): number {
     return this.nextLigatureId++;
@@ -63,6 +74,8 @@ export class ApplyContext {
   applyLookup(lookup: Lookup, options: LookupOptions): void {
     this.lookup = lookup;
     this.lookupMask = options.mask;
+    this.lastBase = -1;
+    this.lastBaseUntil = 0;
     this.autoZwj = options.autoZwj;
     this.autoZwnj = options.autoZwnj;
     this.perSyllable = options.perSyllable;

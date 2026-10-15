@@ -3,7 +3,7 @@ import { ApplyContext } from "./ApplyContext.js";
 import { FontLayout } from "./FontLayout.js";
 import { GlyphBuffer, glyphInfo } from "./GlyphBuffer.js";
 import { applyGposSubtable } from "./GposLookups.js";
-import { ShapingBudget } from "./ShapingBudget.js";
+import { maxBufferLength, ShapingBudget } from "./ShapingBudget.js";
 
 /**
  * Pair kerning between two glyphs in font units (`SfntFont.kerning`): the GPOS lookups of feature kern under DFLT,
@@ -20,7 +20,7 @@ export function kernPair(font: SfntFont, left: number, right: number): number {
     info.mask = 1;
     info.glyphClass = layout.gdef.glyphClass(info.glyph);
   }
-  const buffer = new GlyphBuffer(glyphs, new ShapingBudget(2));
+  const buffer = new GlyphBuffer(glyphs, ShapingBudget.forText(2), maxBufferLength(2));
   const context = new ApplyContext(gpos, layout.gdef, buffer, false, applyGposSubtable);
   for (const index of lookups) {
     const lookup = gpos.lookup(index);

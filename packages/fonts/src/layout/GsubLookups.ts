@@ -10,7 +10,7 @@ import {
 import { GlyphClass } from "./Gdef.js";
 import type { GlyphInfo } from "./GlyphBuffer.js";
 import type { LayoutTable } from "./LayoutTable.js";
-import { maxSequence } from "./ShapingBudget.js";
+import { maxSequence, type ShapingBudget } from "./ShapingBudget.js";
 
 /**
  * GSUB lookup types 1 (single), 2 (multiple), 3 (alternate: the first one), 4 (ligature), 5 and 6 (context), 8
@@ -44,20 +44,24 @@ export function applyGsubSubtable(
 
 /**
  * Whether the lookups would replace exactly this glyph sequence, without context (HarfBuzz would_substitute): the
- * Indic shaper asks it to learn which consonants take below-base, post-base or reph forms.
+ * Indic shaper asks it to learn which consonants take below-base, post-base or reph forms. Every lookup, subtable and
+ * ligature entry looked at costs one operation of `budget`.
  */
 export function wouldSubstitute(
   table: LayoutTable,
   lookups: readonly number[],
   glyphs: readonly number[],
+  budget: ShapingBudget,
 ): boolean {
   const first = glyphs[0];
   if (first === undefined) return false;
   for (const index of lookups) {
+    budget.charge();
     const lookup = table.lookup(index);
     if (lookup === undefined || !lookup.digest.mayHave(first)) continue;
     for (const subtable of lookup.subtables) {
-      if (wouldApply(table, lookup.type, subtable, glyphs)) return true;
+      budget.charge();
+      if (wouldApply(table, lookup.type, subtable, glyphs, budget)) return true;
     }
   }
   return false;
@@ -68,6 +72,7 @@ function wouldApply(
   type: number,
   subtable: number,
   glyphs: readonly number[],
+  budget: ShapingBudget,
 ): boolean {
   const reader = table.reader;
   const first = glyphs[0] ?? 0;
@@ -81,6 +86,7 @@ function wouldApply(
   const set = subtable + reader.u16(subtable + 6 + covered * 2);
   const count = reader.u16(set);
   for (let position = 0; position < Math.min(count, maxSequence); position++) {
+    budget.charge();
     const ligatureAt = set + reader.u16(set + 2 + position * 2);
     if (reader.u16(ligatureAt + 2) !== glyphs.length) continue;
     let same = true;

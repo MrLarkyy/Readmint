@@ -6,7 +6,7 @@ import { GlyphClass, type Gdef } from "./layout/Gdef.js";
 import { GlyphBuffer, glyphInfo, Joiner, type GlyphInfo } from "./layout/GlyphBuffer.js";
 import { applyGposSubtable } from "./layout/GposLookups.js";
 import { applyGsubSubtable } from "./layout/GsubLookups.js";
-import { ShapingBudget } from "./layout/ShapingBudget.js";
+import { maxBufferLength, ShapingBudget } from "./layout/ShapingBudget.js";
 import type { SfntFont } from "./SfntFont.js";
 import type { ShapedRun } from "./ShapedRun.js";
 import type { ShapeOptions } from "./ShapeOptions.js";
@@ -30,7 +30,7 @@ export function shapeText(font: SfntFont, text: string, options: ShapeOptions = 
   return shapeTextCounted(font, text, options).run;
 }
 
-/** `shapeText` with the operations it spent and its budget (tests pin the work as counts, not time). */
+/** `shapeText` with the operations its budget has spent and its cap (tests pin the work as counts, not time). */
 export function shapeTextCounted(
   font: SfntFont,
   text: string,
@@ -46,8 +46,8 @@ export function shapeTextCounted(
     ligatures: options.ligatures ?? true,
   });
   const characters = decode(font, text, plan, rtl);
-  const budget = new ShapingBudget(characters.length);
-  const buffer = new GlyphBuffer(characters, budget);
+  const budget = options.budget ?? ShapingBudget.forText(text.length);
+  const buffer = new GlyphBuffer(characters, budget, maxBufferLength(characters.length));
   const state: ShapingState = { font, layout, plan, buffer };
   classify(layout.gdef, buffer.glyphs);
   plan.shaper.setup(state);
