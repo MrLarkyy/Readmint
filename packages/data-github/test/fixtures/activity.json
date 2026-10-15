@@ -1,0 +1,221 @@
+{
+  "request": {
+    "operation": "ReadmintActivity",
+    "variables": {
+      "login": "readmint-fixture",
+      "author": "MDQ6VXNlcjE=",
+      "from": "2026-10-07T00:00:00Z",
+      "to": "2026-10-14T00:00:00Z",
+      "since": "2026-10-07T00:00:00Z",
+      "until": "2026-10-14T00:00:00Z"
+    }
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json; charset=utf-8",
+    "x-ratelimit-limit": "5000",
+    "x-ratelimit-remaining": "4994",
+    "x-ratelimit-reset": "1791972000",
+    "x-ratelimit-used": "6",
+    "x-ratelimit-resource": "graphql"
+  },
+  "body": {
+    "data": {
+      "user": {
+        "status": {
+          "message": "Shipping the GitHub loader",
+          "emoji": ":rocket:"
+        },
+        "pinnedItems": {
+          "nodes": [
+            {
+              "id": "R_site",
+              "isPrivate": false,
+              "name": "site",
+              "nameWithOwner": "readmint-fixture/site",
+              "description": "Personal site",
+              "url": "https://github.com/readmint-fixture/site",
+              "homepageUrl": "http://insecure.example.com",
+              "stargazerCount": 3,
+              "forkCount": 1,
+              "isFork": false,
+              "isArchived": false,
+              "createdAt": "2020-01-01T00:00:00Z",
+              "pushedAt": "2026-09-30T12:00:00Z",
+              "primaryLanguage": {
+                "name": "HTML",
+                "color": "#e34c26"
+              },
+              "languages": {
+                "edges": [
+                  {
+                    "size": 3000,
+                    "node": {
+                      "name": "HTML",
+                      "color": "#e34c26"
+                    }
+                  },
+                  {
+                    "size": 1000,
+                    "node": {
+                      "name": "TypeScript",
+                      "color": "#3178c6"
+                    }
+                  },
+                  {
+                    "size": 1000,
+                    "node": {
+                      "name": "Fixture Lang",
+                      "color": null
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "id": "R_readmint",
+              "isPrivate": false,
+              "name": "readmint",
+              "nameWithOwner": "readmint-fixture/readmint",
+              "description": "Designs for READMEs",
+              "url": "https://github.com/readmint-fixture/readmint",
+              "homepageUrl": "https://readmint.example.com/docs",
+              "stargazerCount": 120,
+              "forkCount": 8,
+              "isFork": false,
+              "isArchived": false,
+              "createdAt": "2020-01-01T00:00:00Z",
+              "pushedAt": "2026-09-30T12:00:00Z",
+              "primaryLanguage": {
+                "name": "TypeScript",
+                "color": "#3178c6"
+              },
+              "languages": {
+                "edges": [
+                  {
+                    "size": 50000,
+                    "node": {
+                      "name": "TypeScript",
+                      "color": "#3178c6"
+                    }
+                  },
+                  {
+                    "size": 4000,
+                    "node": {
+                      "name": "CSS",
+                      "color": "#663399"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "contributionsCollection": {
+          "commitContributionsByRepository": [
+            {
+              "repository": {
+                "name": "readmint",
+                "nameWithOwner": "readmint-fixture/readmint",
+                "isPrivate": false,
+                "defaultBranchRef": {
+                  "target": {
+                    "history": {
+                      "nodes": [
+                        {
+                          "oid": "a1b2c3d4e5f6a7b8c9d0a1b2c3d4e5f6a7b8c9d0",
+                          "messageHeadline": "Add pinned repositories to the GitHub loader",
+                          "committedDate": "2026-10-13T09:15:00Z",
+                          "additions": 120,
+                          "deletions": 14
+                        },
+                        {
+                          "oid": "b2c3d4e5f6a7b8c9d0a1b2c3d4e5f6a7b8c9d0a1",
+                          "messageHeadline": "Fix the week boundaries",
+                          "committedDate": "2026-10-12T17:40:00Z",
+                          "additions": 18,
+                          "deletions": 6
+                        },
+                        {
+                          "oid": "c3d4e5f6a7b8c9d0a1b2c3d4e5f6a7b8c9d0a1b2",
+                          "messageHeadline": "Document the activity window",
+                          "committedDate": "2026-10-09T08:05:00Z",
+                          "additions": 40,
+                          "deletions": 2
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "repository": {
+                "name": "dotfiles",
+                "nameWithOwner": "readmint-fixture/dotfiles",
+                "isPrivate": false,
+                "defaultBranchRef": {
+                  "target": {
+                    "history": {
+                      "nodes": [
+                        {
+                          "oid": "d4e5f6a7b8c9d0a1b2c3d4e5f6a7b8c9d0a1b2c3",
+                          "messageHeadline": "Tune the shell prompt",
+                          "committedDate": "2026-10-13T09:15:00Z",
+                          "additions": 5,
+                          "deletions": 5
+                        },
+                        {
+                          "oid": "e5f6a7b8c9d0a1b2c3d4e5f6a7b8c9d0a1b2c3d4",
+                          "messageHeadline": "Add a git alias",
+                          "committedDate": "2026-10-10T20:30:00Z",
+                          "additions": 3,
+                          "deletions": 0
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "repository": {
+                "name": "site",
+                "nameWithOwner": "readmint-fixture/site",
+                "isPrivate": false,
+                "defaultBranchRef": null
+              }
+            },
+            {
+              "repository": {
+                "name": "secret-plans",
+                "nameWithOwner": "readmint-fixture/secret-plans",
+                "isPrivate": true,
+                "defaultBranchRef": {
+                  "target": {
+                    "history": {
+                      "nodes": [
+                        {
+                          "oid": "f6a7b8c9d0a1b2c3d4e5f6a7b8c9d0a1b2c3d4e5",
+                          "messageHeadline": "Private roadmap",
+                          "committedDate": "2026-10-13T12:00:00Z",
+                          "additions": 9,
+                          "deletions": 1
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "rateLimit": {
+        "cost": 1,
+        "remaining": 4994,
+        "resetAt": "2026-10-14T10:00:00Z"
+      }
+    }
+  }
+}

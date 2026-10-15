@@ -2,32 +2,25 @@ import type {
   GitHubContributionDay,
   GitHubContributionLevel,
   GitHubData,
-  GitHubRepository,
+  GitHubPinnedRepository,
+  GitHubPush,
 } from "@readmint/data-github";
 import { sampleGitHubData, streaksOf, worstCaseGitHubData } from "./sampleGitHubData.js";
 
-/** One push of `github.pushes`, a field the loader does not produce yet (docs/components.md, Profile templates). */
-export interface ProfilePush {
-  readonly repository: string;
-  readonly hash: string;
-  readonly message: string;
-  readonly additions: number;
-  readonly deletions: number;
-  readonly date: string;
-}
+/** One push of `github.pushes`, as the loader produces it. */
+export type ProfilePush = GitHubPush;
 
-/** A repository with the weekly commit counts of the last 52 weeks, also not loaded yet. */
-export interface ProfileRepository extends GitHubRepository {
-  readonly weeklyCommits: readonly number[];
-}
+/** A repository with the weekly commit counts of the last 52 weeks (`github.pinned[]`). */
+export type ProfileRepository = GitHubPinnedRepository;
 
-/** The data object the profile templates read: `github.*` plus the fields the loader will add. */
+/**
+ * The data object the profile templates read: `github.*` as the loader produces it. The sample also gives
+ * `repositories[]` weekly commits, which the loader does not, so the templates' `github.repositories` fallback is
+ * exercised with the same numbers.
+ */
 export type ProfileData = {
   readonly github: Omit<GitHubData, "repositories"> & {
     readonly repositories: readonly ProfileRepository[];
-    readonly pinned: readonly ProfileRepository[];
-    readonly status: { readonly emoji: string | null; readonly message: string | null };
-    readonly pushes: readonly ProfilePush[];
   };
 };
 
@@ -274,7 +267,7 @@ export function otherProfileData(): ProfileData {
     description: `The ${String(index + 1)}. project of another developer.`,
     stars: 90 + index * 7,
     forks: 3 + index,
-    weeklyCommits: entry.weeklyCommits.map((count) => (count * 2) % 17),
+    weeklyCommits: (entry.weeklyCommits ?? []).map((count) => (count * 2) % 17),
   }));
   return {
     github: {

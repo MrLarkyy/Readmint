@@ -104,7 +104,7 @@ describe("redirects", () => {
         return replay.fetch(url, init);
       },
     });
-    expect(modes).toEqual(["error", "error", "error", "error"]);
+    expect(modes).toEqual(["error", "error", "error", "error", "error", "error"]);
   });
 
   test("a refused redirect is a network failure", async () => {

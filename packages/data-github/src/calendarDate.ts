@@ -14,6 +14,11 @@ export function nextDate(date: string): string {
   return formatUtc(requireUtcMs(date) + DAY_MS);
 }
 
+/** The day `days` days after `date` (before it when negative); the input must satisfy `isCalendarDate`. */
+export function addDays(date: string, days: number): string {
+  return formatUtc(requireUtcMs(date) + days * DAY_MS);
+}
+
 /** 0 = Sunday to 6 = Saturday; the input must satisfy `isCalendarDate`. */
 export function weekdayOf(date: string): number {
   return new Date(requireUtcMs(date)).getUTCDay();

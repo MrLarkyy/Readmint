@@ -2,6 +2,9 @@ export const packageName = "@readmint/data-github";
 
 export type * from "./GitHubData.js";
 export type { GitHubCache } from "./GitHubCache.js";
+export type { GitHubPinnedRepository } from "./GitHubPinnedRepository.js";
+export type { GitHubPush } from "./GitHubPush.js";
+export type { GitHubStatus } from "./GitHubStatus.js";
 export type { GitHubDataErrorCode, GitHubDataErrorDetails } from "./GitHubDataError.js";
 export type { GitHubLoadMeta, GitHubLoadResult } from "./GitHubLoadResult.js";
 export type { GitHubFetch, GitHubSourceOptions } from "./GitHubSourceOptions.js";

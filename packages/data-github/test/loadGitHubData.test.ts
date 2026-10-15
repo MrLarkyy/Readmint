@@ -14,6 +14,8 @@ import {
   FIXTURE_LOGIN,
   replayFetch,
   sentVariables,
+  activityExchanges,
+  pageExchanges,
   successExchanges,
   type Exchange,
   type Replay,
@@ -60,11 +62,12 @@ describe("loadGitHubData", () => {
     expectReplayDone(replay);
     expect(JSON.stringify(result.data)).toBe(JSON.stringify(JSON.parse(expectedText)));
     expect(result.meta).toEqual({
-      requests: 4,
-      cost: 4,
-      rateLimitRemaining: 4995,
+      requests: 6,
+      cost: 6,
+      rateLimitRemaining: 4993,
       resetAt: "2026-10-14T10:00:00.000Z",
       fromCache: false,
+      partial: [],
     });
   });
 
@@ -73,8 +76,8 @@ describe("loadGitHubData", () => {
     const result = await loadGitHubData({ token: "test-token", pageSize: 2, fetch: replay.fetch });
     expectReplayDone(replay);
     expect(JSON.stringify(result.data)).toBe(JSON.stringify(JSON.parse(expectedText)));
-    expect(result.meta.requests).toBe(5);
-    expect(result.meta.cost).toBe(5);
+    expect(result.meta.requests).toBe(7);
+    expect(result.meta.cost).toBe(7);
     expect(sentVariables(item(replay.requests, 0))).toEqual({});
     expect(sentVariables(item(replay.requests, 1))).toEqual({ login: FIXTURE_LOGIN });
   });
@@ -83,7 +86,7 @@ describe("loadGitHubData", () => {
     const replay = replayFetch(successExchanges());
     await load(replay);
     expectReplayDone(replay);
-    expect(replay.requests.slice(1).map(sentVariables)).toEqual([
+    expect(replay.requests.slice(1, 4).map(sentVariables)).toEqual([
       { login: FIXTURE_LOGIN, first: 2, after: null },
       { login: FIXTURE_LOGIN, first: 2, after: CURSOR_1 },
       { login: FIXTURE_LOGIN, first: 2, after: CURSOR_2 },
@@ -97,7 +100,7 @@ describe("loadGitHubData", () => {
   });
 
   test("stops at maxRepositories and reports the truncation", async () => {
-    const replay = replayFetch(successExchanges().slice(0, 3));
+    const replay = replayFetch([...pageExchanges().slice(0, 3), ...activityExchanges()]);
     const { data } = await load(replay, { maxRepositories: 3 });
     expectReplayDone(replay);
     expect(data.repositories.map((repository) => repository.name)).toEqual([
@@ -110,7 +113,7 @@ describe("loadGitHubData", () => {
   });
 
   test("reports truncation when the cap ends on a page boundary with more pages left", async () => {
-    const replay = replayFetch(successExchanges().slice(0, 3));
+    const replay = replayFetch([...pageExchanges().slice(0, 3), ...activityExchanges()]);
     const { data } = await load(replay, { maxRepositories: 4 });
     expectReplayDone(replay);
     expect(data.repositories).toHaveLength(4);
@@ -160,10 +163,11 @@ describe("loadGitHubData", () => {
       connection.pageInfo = { hasNextPage: false, endCursor: null };
       connection.nodes = [];
     });
-    const replay = replayFetch([profile, page]);
+    const replay = replayFetch([profile, page, exchange("activity-no-pinned")]);
     const { data } = await load(replay);
     expectReplayDone(replay);
     expect(data.repositories).toEqual([]);
+    expect(data.pinned).toEqual([]);
     expect(data.languages).toEqual([]);
     expect(data.counts).toEqual({ repositories: 0, stars: 0, forks: 0 });
     expect(data.repositoriesTruncated).toBe(false);
@@ -207,7 +211,10 @@ describe("Enterprise Managed User logins", () => {
               user.login = EMU_LOGIN;
             })
           : source;
-      const variables = { ...source.request.variables, login: EMU_LOGIN };
+      const variables =
+        "login" in source.request.variables
+          ? { ...source.request.variables, login: EMU_LOGIN }
+          : source.request.variables;
       return { ...renamed, request: { ...source.request, variables } };
     });
   }

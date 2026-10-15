@@ -84,6 +84,9 @@ export function sampleGitHubData(): { github: GitHubData } {
       following: 62,
       counts: { repositories: 48, stars: 12_450, forks: 380 },
       repositories: [],
+      pinned: [],
+      pushes: [],
+      status: null,
       repositoriesTruncated: false,
       languages,
       contributions: contributionsOf(year, {

@@ -1,0 +1,43 @@
+{
+  "request": {
+    "operation": "ReadmintActivity",
+    "variables": {
+      "login": "readmint-fixture",
+      "author": "MDQ6VXNlcjE=",
+      "from": "2026-10-07T00:00:00Z",
+      "to": "2026-10-14T00:00:00Z",
+      "since": "2026-10-07T00:00:00Z",
+      "until": "2026-10-14T00:00:00Z"
+    }
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json; charset=utf-8",
+    "x-ratelimit-limit": "5000",
+    "x-ratelimit-remaining": "4994",
+    "x-ratelimit-reset": "1791972000",
+    "x-ratelimit-used": "6",
+    "x-ratelimit-resource": "graphql"
+  },
+  "body": {
+    "data": {
+      "user": {
+        "status": null,
+        "pinnedItems": null,
+        "contributionsCollection": null
+      },
+      "rateLimit": {
+        "cost": 1,
+        "remaining": 4994,
+        "resetAt": "2026-10-14T10:00:00Z"
+      }
+    },
+    "errors": [
+      {
+        "type": "FORBIDDEN",
+        "path": ["user", "pinnedItems"],
+        "message": "Resource not accessible by integration"
+      }
+    ]
+  }
+}

@@ -17,6 +17,7 @@
   "body": {
     "data": {
       "user": {
+        "id": "MDQ6VXNlcjE=",
         "login": "readmint-fixture",
         "name": "Readmint Fixture",
         "bio": "Synthetic account used by the Readmint tests.",

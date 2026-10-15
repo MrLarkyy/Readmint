@@ -1,26 +1,34 @@
+import { byBytes, collectRepositories } from "./collectRepositories.js";
 import { computeStreaks } from "./computeStreaks.js";
 import {
   GITHUB_DATA_VERSION,
   type GitHubData,
   type GitHubLanguageShare,
   type GitHubRepository,
-  type GitHubRepositoryLanguage,
 } from "./GitHubData.js";
-import type { ProfileRecord, RepositoriesPageRecord } from "./GitHubRecords.js";
+import type { GitHubPinnedRepository } from "./GitHubPinnedRepository.js";
+import type {
+  ActivityRecord,
+  ProfileRecord,
+  RepositoriesPageRecord,
+  WeeksRecord,
+} from "./GitHubRecords.js";
+import { selectPinned } from "./selectPinned.js";
+import { sortPushes } from "./sortPushes.js";
 
 /**
- * Assembles the data object from validated records. Every list gets a total order that does not
+ * Assembles the data object from validated records; `activity` and `weeks` are `null` when
+ * GitHub did not return them. Every list gets a total order that does not
  * depend on the response order, locale or clock, so the same records give the same bytes.
  */
 export function buildGitHubData(
   profile: ProfileRecord,
   pages: readonly RepositoriesPageRecord[],
   maxRepositories: number,
+  activity: ActivityRecord | null,
+  weeks: WeeksRecord | null,
 ): GitHubData {
-  const loaded = uniqueRepositories(
-    pages.flatMap((page) => page.repositories.map(copyRepository)).sort(byStars),
-  );
-  const repositories = loaded.slice(0, maxRepositories);
+  const { loaded, repositories, ids } = collectRepositories(pages, maxRepositories);
   const lastPage = pages.at(-1);
   const sources = repositories.filter((repository) => !repository.isFork);
   const contributions = profile.contributions;
@@ -50,7 +58,12 @@ export function buildGitHubData(
       stars: sum(sources.map((repository) => repository.stars)),
       forks: sum(sources.map((repository) => repository.forks)),
     },
-    repositories,
+    repositories: [...repositories],
+    pinned: selectPinned(activity, repositories, ids).map((entry) =>
+      withWeeklyCommits(entry.repository, entry.id, weeks),
+    ),
+    pushes: sortPushes(activity?.recent ?? []),
+    status: activity?.status ?? null,
     repositoriesTruncated: loaded.length > maxRepositories || (lastPage?.hasNextPage ?? false),
     languages: languageShares(sources),
     contributions: {
@@ -69,37 +82,15 @@ export function buildGitHubData(
   };
 }
 
-// Stars can change between page requests and shift a repository onto two pages; the sorted
-// input keeps the copy with more stars.
-function uniqueRepositories(sorted: readonly GitHubRepository[]): GitHubRepository[] {
-  const seen = new Set<string>();
-  const unique: GitHubRepository[] = [];
-  for (const repository of sorted) {
-    if (seen.has(repository.nameWithOwner)) continue;
-    seen.add(repository.nameWithOwner);
-    unique.push(repository);
-  }
-  return unique;
-}
-
-function copyRepository(repository: GitHubRepository): GitHubRepository {
-  const primary = repository.primaryLanguage;
+function withWeeklyCommits(
+  repository: GitHubRepository,
+  id: string | null,
+  weeks: WeeksRecord | null,
+): GitHubPinnedRepository {
+  const counts = id === null ? undefined : weeks?.weeks.get(id);
   return {
-    name: repository.name,
-    nameWithOwner: repository.nameWithOwner,
-    description: repository.description,
-    url: repository.url,
-    homepageUrl: repository.homepageUrl,
-    stars: repository.stars,
-    forks: repository.forks,
-    isFork: repository.isFork,
-    isArchived: repository.isArchived,
-    createdAt: repository.createdAt,
-    pushedAt: repository.pushedAt,
-    primaryLanguage: primary === null ? null : { name: primary.name, color: primary.color },
-    languages: repository.languages
-      .map((language) => ({ name: language.name, color: language.color, bytes: language.bytes }))
-      .sort(byBytes),
+    ...repository,
+    weeklyCommits: counts === undefined || counts === null ? null : [...counts],
   };
 }
 
@@ -132,18 +123,4 @@ function languageShares(repositories: readonly GitHubRepository[]): GitHubLangua
 
 function sum(values: readonly number[]): number {
   return values.reduce((accumulated, value) => accumulated + value, 0);
-}
-
-// Code-unit comparison: localeCompare would order names differently per runtime locale.
-function compareText(left: string, right: string): number {
-  if (left === right) return 0;
-  return left < right ? -1 : 1;
-}
-
-function byStars(left: GitHubRepository, right: GitHubRepository): number {
-  return right.stars - left.stars || compareText(left.nameWithOwner, right.nameWithOwner);
-}
-
-function byBytes(left: GitHubRepositoryLanguage, right: GitHubRepositoryLanguage): number {
-  return right.bytes - left.bytes || compareText(left.name, right.name);
 }

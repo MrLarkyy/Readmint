@@ -30,8 +30,10 @@ function collectUndefined(value: unknown, path: string, found: string[]): void {
 
 describe("buildGitHubData", () => {
   test("the response order does not change a byte of the result", () => {
-    const reference = JSON.stringify(buildGitHubData(profile, pages, 300));
-    expect(JSON.stringify(buildGitHubData(profile, reversedPages(), 300))).toBe(reference);
+    const reference = JSON.stringify(buildGitHubData(profile, pages, 300, null, null));
+    expect(JSON.stringify(buildGitHubData(profile, reversedPages(), 300, null, null))).toBe(
+      reference,
+    );
     const shuffledLanguages = pages.map((page) => ({
       ...page,
       repositories: page.repositories.map((repository) => ({
@@ -39,11 +41,13 @@ describe("buildGitHubData", () => {
         languages: [...repository.languages].reverse(),
       })),
     }));
-    expect(JSON.stringify(buildGitHubData(profile, shuffledLanguages, 300))).toBe(reference);
+    expect(JSON.stringify(buildGitHubData(profile, shuffledLanguages, 300, null, null))).toBe(
+      reference,
+    );
   });
 
   test("equal stars and equal bytes are ordered by name in code units", () => {
-    const result = buildGitHubData(profile, pages, 300);
+    const result = buildGitHubData(profile, pages, 300, null, null);
     expect(result.repositories.map((repository) => repository.name)).toEqual([
       "readmint",
       "dotfiles",
@@ -60,7 +64,7 @@ describe("buildGitHubData", () => {
   });
 
   test("forks count in repositories but not in stars, forks or languages", () => {
-    const result = buildGitHubData(profile, pages, 300);
+    const result = buildGitHubData(profile, pages, 300, null, null);
     expect(result.repositories.some((repository) => repository.isFork)).toBe(true);
     expect(result.counts).toEqual({ repositories: 5, stars: 166, forks: 11 });
     expect(result.languages.map((language) => language.name)).not.toContain("Rust");
@@ -71,7 +75,7 @@ describe("buildGitHubData", () => {
   test("a repository repeated across pages is kept once", () => {
     const first = item(pages, 0);
     const repeated = [first, { ...item(pages, 1), repositories: [...first.repositories] }];
-    const result = buildGitHubData(profile, repeated, 300);
+    const result = buildGitHubData(profile, repeated, 300, null, null);
     expect(result.repositories.map((repository) => repository.name)).toEqual([
       "readmint",
       "dotfiles",
@@ -79,7 +83,7 @@ describe("buildGitHubData", () => {
   });
 
   test("the object is plain JSON without undefined values", () => {
-    const result = buildGitHubData(profile, pages, 300);
+    const result = buildGitHubData(profile, pages, 300, null, null);
     expect(JSON.parse(JSON.stringify(result))).toEqual(result);
     expect(structuredClone(result)).toEqual(result);
     const found: string[] = [];
@@ -88,11 +92,24 @@ describe("buildGitHubData", () => {
   });
 
   test("days carry their week column and weekday", () => {
-    const { contributions } = buildGitHubData(profile, pages, 300);
+    const { contributions } = buildGitHubData(profile, pages, 300, null, null);
     expect(contributions.days).toHaveLength(371);
     expect(contributions.days[0]).toMatchObject({ date: "2025-10-08", weekday: 3, week: 0 });
     expect(contributions.days[4]).toMatchObject({ date: "2025-10-12", weekday: 0, week: 1 });
     expect(contributions.days.at(-1)).toMatchObject({ date: "2026-10-13", weekday: 2, week: 53 });
     expect(contributions.weeks).toBe(54);
+  });
+
+  test("without activity: the most starred own repositories, no pushes, no status, no weekly commits", () => {
+    const result = buildGitHubData(profile, pages, 300, null, null);
+    expect(result.pinned.map((repository) => repository.name)).toEqual([
+      "readmint",
+      "dotfiles",
+      "notes",
+      "site",
+    ]);
+    expect(result.pinned.every((repository) => repository.weeklyCommits === null)).toBe(true);
+    expect(result.pushes).toEqual([]);
+    expect(result.status).toBeNull();
   });
 });

@@ -1,32 +1,53 @@
+import { activityWindow } from "./activityWindow.js";
 import { buildGitHubData } from "./buildGitHubData.js";
 import { cacheKey } from "./cacheKey.js";
+import { collectRepositories } from "./collectRepositories.js";
 import { checkPageChain, nextPageCursor } from "./checkPageChain.js";
 import type { GitHubCache } from "./GitHubCache.js";
 import type { GitHubData } from "./GitHubData.js";
 import { GitHubDataError, type GitHubDataErrorCode } from "./GitHubDataError.js";
 import type { GitHubLoadMeta, GitHubLoadResult } from "./GitHubLoadResult.js";
-import { profileQuery, repositoriesQuery, viewerQuery } from "./githubQueries.js";
-import type { RateLimitRecord, RepositoriesPageRecord } from "./GitHubRecords.js";
+import {
+  activityQuery,
+  profileQuery,
+  repositoriesQuery,
+  viewerQuery,
+  weekBoundaryNames,
+  weeksQuery,
+} from "./githubQueries.js";
+import type {
+  ActivityRecord,
+  RateLimitRecord,
+  RepositoriesPageRecord,
+  WeeksRecord,
+} from "./GitHubRecords.js";
 import type { GitHubSourceOptions } from "./GitHubSourceOptions.js";
 import { isGitHubLogin } from "./isGitHubLogin.js";
 import { isJsonRecord, ownField, type JsonRecord } from "./jsonRecord.js";
+import { parseActivityResponse } from "./parseActivityResponse.js";
 import { parseProfileResponse } from "./parseProfileResponse.js";
 import { parseRepositoriesPage } from "./parseRepositoriesPage.js";
 import { parseViewerResponse } from "./parseViewerResponse.js";
+import { parseWeeksResponse } from "./parseWeeksResponse.js";
 import { postGraphQL, type RequestStats } from "./postGraphQL.js";
 import { resolveSourceOptions, type ResolvedSourceOptions } from "./resolveSourceOptions.js";
+import { selectPinned } from "./selectPinned.js";
 
 /**
- * Loads one user's profile, public repositories, languages and contribution calendar.
+ * Loads one user's profile, public repositories, languages, contribution calendar, pinned
+ * repositories with their weekly commits, recent pushes and status.
  * Requests run one after another: the token owner (without `login`, or with a cache), the profile,
- * then the repository pages up to `maxRepositories`. Every response is validated before use, any
- * GraphQL error fails the whole load, and the token is sent only in the `Authorization`
- * header: no error, result or cache entry contains it.
+ * the repository pages up to `maxRepositories`, then the activity and the weekly commits. Every
+ * response is validated before use. A GraphQL error in the profile or a repository page fails the
+ * whole load; the activity and weekly-commit requests are best effort and, when GitHub refuses
+ * them, are named in `meta.partial` (see `OPTIONAL_MISSES`). The token is sent only in the
+ * `Authorization` header: no error, result or cache entry contains it.
  */
 export async function loadGitHubData(options: GitHubSourceOptions): Promise<GitHubLoadResult> {
   const resolved = resolveSourceOptions(options);
   const stats: RequestStats = { requests: 0, lastRateLimit: null };
   const rateLimits: (RateLimitRecord | null)[] = [];
+  const partial: PartialPart[] = [];
 
   const cache = resolved.cache;
   let viewer: string | null = null;
@@ -63,7 +84,7 @@ export async function loadGitHubData(options: GitHubSourceOptions): Promise<GitH
   if (cache !== null && key !== null) {
     const stored = await readCache(cache, key);
     const data = stored === undefined ? null : readStoredLoad(stored, login, resolved);
-    if (data !== null) return { data, meta: loadMeta(stats, rateLimits, true) };
+    if (data !== null) return { data, meta: loadMeta(stats, rateLimits, true, partial) };
   }
 
   const profileData = await postGraphQL(profileQuery, { login }, resolved, stats);
@@ -88,12 +109,95 @@ export async function loadGitHubData(options: GitHubSourceOptions): Promise<GitH
     after = nextPageCursor(page, usedCursors);
   }
 
-  const data = buildGitHubData(profile, pages, resolved.maxRepositories);
-  if (cache !== null && key !== null) {
-    const stored = JSON.stringify({ profile: profileData, pages: pageData });
+  const window = activityWindow(profile.contributions.days.at(-1)?.date ?? "");
+  const activityVariables = {
+    login,
+    author: profile.id,
+    from: window.since,
+    to: window.until,
+    since: window.since,
+    until: window.until,
+  };
+  const activityLoad = await loadOptional("activity", partial, async () => {
+    const raw = await postGraphQL(activityQuery, activityVariables, resolved, stats);
+    return { raw, record: parseActivityResponse(raw) };
+  });
+  rateLimits.push(activityLoad?.record.rateLimit ?? null);
+
+  const ids = weekIds(activityLoad?.record ?? null, pages, resolved.maxRepositories);
+  let weeksLoad: { raw: JsonRecord; record: WeeksRecord } | null = null;
+  if (ids.length > 0) {
+    const weekVariables: Record<string, string | readonly string[]> = { ids, author: profile.id };
+    weekBoundaryNames.forEach((name, index) => {
+      weekVariables[name] = window.weekBoundaries[index] ?? "";
+    });
+    weeksLoad = await loadOptional("weeks", partial, async () => {
+      const raw = await postGraphQL(weeksQuery, weekVariables, resolved, stats);
+      return { raw, record: parseWeeksResponse(raw, ids) };
+    });
+    rateLimits.push(weeksLoad?.record.rateLimit ?? null);
+  }
+
+  const data = buildGitHubData(
+    profile,
+    pages,
+    resolved.maxRepositories,
+    activityLoad?.record ?? null,
+    weeksLoad?.record ?? null,
+  );
+  // A degraded load is not stored: a retry would otherwise serve the gap until the entry expires.
+  if (cache !== null && key !== null && partial.length === 0) {
+    const stored = JSON.stringify({
+      profile: profileData,
+      pages: pageData,
+      activity: activityLoad?.raw ?? null,
+      weeks: weeksLoad?.raw ?? null,
+    });
     await writeCache(cache, key, stored, resolved.cacheTtlSeconds);
   }
-  return { data, meta: loadMeta(stats, rateLimits, false) };
+  return { data, meta: loadMeta(stats, rateLimits, false, partial) };
+}
+
+type PartialPart = GitHubLoadMeta["partial"][number];
+
+// The node ids to ask weekly commits for: the pinned selection, each repository once.
+function weekIds(
+  activity: ActivityRecord | null,
+  pages: readonly RepositoriesPageRecord[],
+  maxRepositories: number,
+): string[] {
+  const { repositories, ids } = collectRepositories(pages, maxRepositories);
+  const wanted = selectPinned(activity, repositories, ids).flatMap((entry) =>
+    entry.id === null ? [] : [entry.id],
+  );
+  return [...new Set(wanted)];
+}
+
+// Answers about these queries only. A token, rate-limit, network or abort failure would fail the
+// profile request just the same, so those still end the load.
+const OPTIONAL_MISSES: ReadonlySet<GitHubDataErrorCode> = new Set([
+  "graphql",
+  "forbidden",
+  "http",
+  "invalid-response",
+  "not-found",
+  "too-large",
+]);
+
+async function loadOptional<T>(
+  part: PartialPart,
+  partial: PartialPart[],
+  run: () => Promise<T>,
+): Promise<T | null> {
+  try {
+    return await run();
+  } catch (error) {
+    if (error instanceof GitHubDataError && OPTIONAL_MISSES.has(error.code)) {
+      partial.push(part);
+      return null;
+    }
+    throw error;
+  }
 }
 
 async function lookUpOwner(
@@ -163,7 +267,17 @@ function readStoredLoad(
     if (profile.login.toLowerCase() !== login.toLowerCase()) return null;
     const pages = storedPages.map((page: unknown) => parseRepositoriesPage(page, options.pageSize));
     checkPageChain(pages);
-    return buildGitHubData(profile, pages, options.maxRepositories);
+    // A complete load stores both parts; an entry without them is of an older format.
+    const storedActivity = ownField(parsed, "activity");
+    const storedWeeks = ownField(parsed, "weeks");
+    if (storedActivity === undefined || storedActivity === null || storedWeeks === undefined) {
+      return null;
+    }
+    const activity = parseActivityResponse(storedActivity);
+    const ids = weekIds(activity, pages, options.maxRepositories);
+    if (ids.length > 0 !== (storedWeeks !== null)) return null;
+    const weeks = storedWeeks === null ? null : parseWeeksResponse(storedWeeks, ids);
+    return buildGitHubData(profile, pages, options.maxRepositories, activity, weeks);
   } catch (error) {
     if (error instanceof SyntaxError || error instanceof GitHubDataError) return null;
     throw error;
@@ -174,6 +288,7 @@ function loadMeta(
   stats: RequestStats,
   rateLimits: readonly (RateLimitRecord | null)[],
   fromCache: boolean,
+  partial: readonly PartialPart[],
 ): GitHubLoadMeta {
   const reported = rateLimits.filter((rateLimit) => rateLimit !== null);
   const lastReported = reported.at(-1);
@@ -183,5 +298,6 @@ function loadMeta(
     rateLimitRemaining: stats.lastRateLimit?.remaining ?? lastReported?.remaining ?? null,
     resetAt: stats.lastRateLimit?.resetAt ?? lastReported?.resetAt ?? null,
     fromCache,
+    partial: [...partial],
   };
 }

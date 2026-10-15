@@ -36,6 +36,28 @@ test.skipIf(token === undefined || token === "")(
     expect(unknownPaths).toEqual([]);
     expect(data.contributions.days.length).toBeGreaterThan(300);
     expect(meta.fromCache).toBe(false);
+    expect(Array.isArray(meta.partial)).toBe(true);
+    expect(data.pinned.length).toBeLessThanOrEqual(6);
+    for (const repository of data.pinned) {
+      const weeks = repository.weeklyCommits;
+      expect(
+        weeks === null ||
+          (weeks.length === 52 && weeks.every((count) => Number.isInteger(count) && count >= 0)),
+      ).toBe(true);
+    }
+    expect(data.pushes.length).toBeLessThanOrEqual(10);
+    const last = Date.parse(`${data.contributions.to}T00:00:00Z`);
+    const dayMs = 86_400_000;
+    const times = data.pushes.map((push) => Date.parse(push.date));
+    expect(times).toEqual([...times].sort((left, right) => right - left));
+    for (const time of times) {
+      expect(time).toBeGreaterThanOrEqual(last - 6 * dayMs);
+      expect(time).toBeLessThan(last + dayMs);
+    }
+    if (data.status !== null) {
+      expect(typeof (data.status.message ?? "")).toBe("string");
+      expect(typeof (data.status.emoji ?? "")).toBe("string");
+    }
   },
   60_000,
 );

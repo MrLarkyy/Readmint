@@ -13,4 +13,9 @@ export interface GitHubLoadMeta extends DataSourceLoadMeta {
   readonly rateLimitRemaining: number | null;
   /** ISO timestamp at which the GraphQL rate limit resets. */
   readonly resetAt: string | null;
+  /**
+   * Parts GitHub refused or answered unusably, so their fields are empty: `activity` (status,
+   * pushes, the pinned repositories) and `weeks` (`weeklyCommits`). Empty after a complete load.
+   */
+  readonly partial: readonly ("activity" | "weeks")[];
 }

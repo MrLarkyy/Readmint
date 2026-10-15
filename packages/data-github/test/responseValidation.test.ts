@@ -17,6 +17,7 @@ import {
   exchange,
   FIXTURE_LOGIN,
   replayFetch,
+  activityExchanges,
   successExchanges,
   type Exchange,
 } from "./replayFetch.js";
@@ -39,7 +40,13 @@ function firstRepositoryWith(mutate: (node: FixtureRepository) => void): Exchang
   const changed = withRepositories(exchange("repositories-1"), (connection) => {
     mutate(item(connection.nodes, 0));
   });
-  return [exchange("profile"), changed, exchange("repositories-2"), exchange("repositories-3")];
+  return [
+    exchange("profile"),
+    changed,
+    exchange("repositories-2"),
+    exchange("repositories-3"),
+    ...activityExchanges(),
+  ];
 }
 
 const profile = () => exchange("profile");
