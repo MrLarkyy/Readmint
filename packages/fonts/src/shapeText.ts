@@ -6,6 +6,8 @@ import { GlyphBuffer, glyphInfo, Joiner, type GlyphInfo } from "./layout/GlyphBu
 import { applyGposSubtable } from "./layout/GposLookups.js";
 import { applyGsubSubtable } from "./layout/GsubLookups.js";
 import { maxBufferLength, ShapingBudget } from "./layout/ShapingBudget.js";
+import { fallbackSpaceAdvance } from "./fallbackSpaceAdvance.js";
+import { glyphForCharacter } from "./glyphForCharacter.js";
 import { normalizeText } from "./normalizeCharacters.js";
 import type { SfntFont } from "./SfntFont.js";
 import type { ShapedRun } from "./ShapedRun.js";
@@ -15,6 +17,7 @@ import type { ShapingState } from "./shaping/Shaper.js";
 import { mirrorOf } from "./unicode/bidiMirror.js";
 import { isDefaultIgnorable, isNonSpacingMark } from "./unicode/characterFlags.js";
 import { scriptOf, type ScriptCode } from "./unicode/scriptOf.js";
+import { spaceFallbackOf } from "./unicode/spaceFallback.js";
 
 const zwnj = 0x200c;
 const zwj = 0x200d;
@@ -22,7 +25,7 @@ const zwj = 0x200d;
 /**
  * Shapes one run of text in one font (OpenType layout as HarfBuzz does it): characters normalized against the font's
  * cmap per cluster (`normalizeCharacters`: canonically decomposed, marks ordered, recomposed into what the font maps,
- * so canonically equivalent texts shape alike), to glyphs through the cmap (mirrored in a right-to-left run), the script's shaper (Arabic joining, Devanagari syllables and reordering, or the
+ * so canonically equivalent texts shape alike), to glyphs through the cmap (a space variant the font lacks takes the U+0020 glyph with the HarfBuzz fallback advance, U+2011 the U+2010 or U+002D glyph; mirrored in a right-to-left run), the script's shaper (Arabic joining, Devanagari syllables and reordering, or the
  * default), GSUB lookups stage by stage, default ignorables removed, advances, GPOS lookups (or the legacy kern
  * table), mark advances zeroed and attachments resolved. Pure and deterministic: integer font units, no clock,
  * nothing taken from the platform's Unicode data. A broken or too costly layout table throws `MalformedFont`.
@@ -80,7 +83,11 @@ function decode(font: SfntFont, text: string, plan: ShapePlan, rtl: boolean): Gl
   const characters: GlyphInfo[] = [];
   const normalized = normalizeText(text, (codePoint) => font.glyphFor(codePoint) !== 0);
   normalized.codePoints.forEach((codePoint, index) => {
-    const info = glyphInfo(font.glyphFor(codePoint), codePoint, normalized.clusters[index] ?? 0);
+    const info = glyphInfo(
+      glyphForCharacter(font, codePoint),
+      codePoint,
+      normalized.clusters[index] ?? 0,
+    );
     info.mask = plan.globalMask;
     if (rtl) {
       const mirror = mirrorOf(codePoint);
@@ -128,6 +135,7 @@ function position(state: ShapingState, rtl: boolean, kerning: boolean): void {
   const { font, layout, plan, buffer } = state;
   const glyphs = buffer.glyphs;
   for (const info of glyphs) info.xAdvance = font.advanceOf(info.glyph);
+  setFallbackSpaces(font, glyphs);
   const gpos = layout.gpos;
   if (gpos !== undefined) {
     const context = new ApplyContext(gpos, layout.gdef, buffer, rtl, applyGposSubtable);
@@ -156,6 +164,18 @@ function position(state: ShapingState, rtl: boolean, kerning: boolean): void {
     }
   }
   finishOffsets(buffer, rtl);
+}
+
+/** Space variants the font does not map take the HarfBuzz fallback advance, before GPOS adds kerning on top. */
+function setFallbackSpaces(font: SfntFont, glyphs: readonly GlyphInfo[]): void {
+  const space = font.glyphFor(0x20);
+  if (space === 0) return;
+  const spaceAdvance = font.advanceOf(space);
+  for (const info of glyphs) {
+    const fallback = spaceFallbackOf(info.codePoint);
+    if (fallback === undefined || font.glyphFor(info.codePoint) !== 0) continue;
+    info.xAdvance = fallbackSpaceAdvance(font, fallback, spaceAdvance);
+  }
 }
 
 function output(glyphs: readonly GlyphInfo[], rtl: boolean): ShapedRun {

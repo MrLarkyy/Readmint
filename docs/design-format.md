@@ -169,7 +169,8 @@ reservedFontName?: boolean }`, and the optional
 
 - `drawAs`: `"font"` (default) embeds a subset of the glyphs the design draws; `"paths"` draws every text that uses
   the font as path data and embeds nothing;
-- `fallback`: 1 to 8 font asset ids, each once, tried in order for a character the font does not have (not
+- `fallback`: 1 to 8 font asset ids, each once, tried in order for a character the font does not have (a space variant or U+2011 the font lacks is drawn from the
+  font's own space or hyphen glyph, not from a fallback; not
   transitive: a fallback's own `fallback` is not used); an id that names no font asset is `unknown-reference`, a
   repeated one `duplicate-id`;
 - `kerning`: `false` turns the font's pair kerning off (default `true`).
