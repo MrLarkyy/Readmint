@@ -39,7 +39,16 @@ resvg loads no system fonts, so a fixture with `<text>` needs `fonts: [paths to 
 without them the rasterizer throws "SVG has text but the suite supplies no fonts" instead of drawing nothing.
 paths are used as given, so they are relative to the working directory of the test run (the repository root under
 `pnpm test`); build absolute ones from `import.meta.dirname`. A missing file is an error naming the path. A font
-committed to the repository must be redistributable and its licence file must sit beside it.
+committed to the repository must be redistributable and its licence file must sit beside it
+(`packages/renderer/test/fonts/README.md` lists each file with its source and checksum).
+
+resvg reads no WOFF or WOFF2 and ignores `@font-face`: it draws `<text>` from the files the suite lists, matched by the
+family name inside them, while Chromium draws the embedded subset. Text positions are written per character, so both
+place the same glyphs at the same points; a suite whose fixtures use WOFF or WOFF2 assets lists a TTF or OTF of the
+same release (`renderer-fonts-formats`). Two files with the same family and weight in one suite make resvg's choice
+ambiguous: keep them in separate suites. The `renderer-fonts` suites draw every fixture twice, with the embedded font
+(`<name>-font`) and as paths (`<name>-paths`), and `renderer-fonts.cross` checks in Node and in Chromium that the two
+look alike within the suite tolerance.
 
 resvg-js 2.6.2 does not decode WebP images: a WebP draws nothing in the Node PNG while Chromium draws it, so a fixture
 with a WebP image fails the browser leg. Cover WebP with unit tests instead.

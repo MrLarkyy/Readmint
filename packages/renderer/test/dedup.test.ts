@@ -75,17 +75,19 @@ describe("gradients", () => {
     expect(new Set(references(svg)).size).toBe(3);
   });
 
-  test("one gradient as fill, stroke, text fill and canvas background is defined once", () => {
+  test("one gradient as fill, stroke and canvas background is defined once; a text's spans its box", () => {
     const svg = rendered(
       [
         { type: "rect", width: 10, height: 10, fill: linear, stroke: linear, strokeWidth: 2 },
         { type: "text", content: "a", font: "m", fill: linear },
+        { type: "text", content: "a", font: "m", fill: linear },
       ],
       { canvas: { width: 100, height: 100, background: linear } },
     );
-    expect(occurrences(svg, "<linearGradient")).toBe(1);
-    expect(references(svg)).toHaveLength(4);
-    expect(new Set(references(svg)).size).toBe(1);
+    expect(occurrences(svg, "<linearGradient")).toBe(2);
+    expect(occurrences(svg, 'gradientUnits="userSpaceOnUse"')).toBe(1);
+    expect(references(svg)).toHaveLength(5);
+    expect(new Set(references(svg)).size).toBe(2);
   });
 });
 

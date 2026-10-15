@@ -1,8 +1,11 @@
 import type { Design } from "@readmint/format";
 import type { ExprResult, Template } from "@readmint/expr";
+import type { GlyphOutline } from "@readmint/fonts";
 import { AnimationCss } from "./AnimationCss.js";
+import type { FontUse } from "./FontUse.js";
 import type { LoadedFont } from "./loadFont.js";
 import type { LoadedImage } from "./loadImage.js";
+import { MissingGlyphs } from "./MissingGlyphs.js";
 import type { Bounds } from "./pathBounds.js";
 import { RenderFailure } from "./RenderFailure.js";
 import type { RenderIssue, RenderIssueCode } from "./RenderIssue.js";
@@ -18,6 +21,11 @@ export class RenderContext {
   readonly warnings: RenderIssue[] = [];
   /** Loaded fonts by asset id, in first-use order. */
   readonly fonts = new Map<string, LoadedFont>();
+  /** Glyphs drawn per font asset, in the order fonts first draw a glyph. */
+  readonly fontUse = new Map<string, FontUse>();
+  /** Glyph outlines by asset id and glyph, read once per render for text drawn as paths. */
+  readonly outlines = new Map<string, GlyphOutline>();
+  readonly missingGlyphs = new MissingGlyphs();
   /** Loaded images by asset id, in first-use order. */
   readonly images = new Map<string, LoadedImage>();
   /** Compiled expressions by source text; a design string is compiled once per render. */
@@ -66,6 +74,16 @@ export class RenderContext {
 
   warn(path: string, code: RenderIssueCode, message: string): void {
     this.warnings.push({ path, code, message });
+  }
+
+  /** The record of what this render draws with `font`, created at its first glyph. */
+  useFont(font: LoadedFont): FontUse {
+    let use = this.fontUse.get(font.asset);
+    if (use === undefined) {
+      use = { font, embedded: new Map(), glyphs: new Set(), embeddedBytes: 0, pathBytes: 0 };
+      this.fontUse.set(font.asset, use);
+    }
+    return use;
   }
 
   /** Charges the copies of one repeat against `maxRepeatCopies`, before any of them is expanded. */

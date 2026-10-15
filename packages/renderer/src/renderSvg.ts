@@ -1,6 +1,7 @@
 import { createBudget, createScope } from "@readmint/expr";
 import { ValueRanges, type Design } from "@readmint/format";
 import { countImageUses } from "./countImageUses.js";
+import { embedFonts } from "./embedFonts.js";
 import { escapeText } from "./escapeXml.js";
 import { expandLayers } from "./expandLayers.js";
 import { formatNumber } from "./formatNumber.js";
@@ -69,6 +70,9 @@ function render(context: RenderContext, options: RenderOptions): RenderResult {
   const background = resolvePaint(context, canvas.background, "/canvas/background", scope);
   const nodes = expandLayers(context, design.layers, "/layers", scope);
   countImageUses(context, nodes);
+  // Every text is laid out now, so each font's subset holds exactly the characters drawn with it.
+  embedFonts(context);
+  context.warnings.push(...context.missingGlyphs.warnings());
   // A frame has no CSS; the animated SVG names its rules after all of them, so they are known before any is drawn.
   const prefix = context.time === undefined ? sealAnimations(context, nodes) : undefined;
   const root = prefix === undefined ? "" : ` class="${prefix}"`;
@@ -89,9 +93,11 @@ function render(context: RenderContext, options: RenderOptions): RenderResult {
   const report: RenderReport = {
     bytes,
     limit: writer.limit,
-    fonts: [...context.fonts.values()].map((font) => ({
-      asset: font.asset,
-      bytes: font.dataUri.length,
+    fonts: [...context.fontUse.values()].map((use) => ({
+      asset: use.font.asset,
+      bytes: use.embeddedBytes + use.pathBytes,
+      glyphs: use.glyphs.size,
+      drawnAs: use.embeddedBytes > 0 ? "font" : "paths",
     })),
     images: [...context.imageBytes].map(([asset, total]) => ({ asset, bytes: total })),
     ...(design.animation === undefined

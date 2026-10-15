@@ -5,6 +5,7 @@ import { renderGroup } from "./renderGroup.js";
 import { renderImage } from "./renderImage.js";
 import { renderEllipse, renderPath, renderRect } from "./renderShape.js";
 import { renderText } from "./renderText.js";
+import { renderTextPaths } from "./renderTextPaths.js";
 
 /** Writes one node; layer ids and names are never emitted. */
 export function renderLayer(context: RenderContext, node: RenderNode): void {
@@ -28,7 +29,8 @@ function drawNode(context: RenderContext, node: RenderNode, extra: string): void
       renderPath(context.writer, node, extra);
       return;
     case "text":
-      renderText(context.writer, node, extra);
+      if (node.drawnAs === "paths") renderTextPaths(context, node, extra);
+      else renderText(context.writer, node, extra);
       return;
     case "image":
       renderImage(context, node, extra);
