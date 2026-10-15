@@ -1,4 +1,5 @@
 import { spawn } from "node:child_process";
+import path from "node:path";
 import { findExecutable, withSearchPath } from "./findExecutable.js";
 import type { GitResult, GitRunOptions, GitRunner } from "./GitRunner.js";
 
@@ -8,15 +9,18 @@ const maxOutputBytes = 1024 * 1024;
 /**
  * The real `GitRunner`: spawns `git` without a shell, so no argument is ever parsed by one, and by the absolute path
  * found on `PATH`, never from the workspace, with a `PATH` holding only the entries searched for it (see
- * `findExecutable`), so the programs git starts by name are not found there either. A failure to start, or no git
- * found, resolves with code `null` and the error code as standard error.
+ * `findExecutable`), so the programs git starts by name are not found there either. The process starts in the
+ * directory git was found in, not in the workspace, so Windows never searches the workspace for the DLLs the
+ * executable loads at start; the workspace is given with `-C`, after which git, and every program it starts, works
+ * inside it. A failure to start, or no git found, resolves with code `null` and the error code as standard error.
  */
 export const runGit: GitRunner = async (args, options) => {
   const platform = process.platform;
-  const env = withSearchPath(options.env, { platform, cwd: options.cwd });
-  const file = await findExecutable("git", { platform, env, cwd: options.cwd });
+  const workspace = path.resolve(options.cwd);
+  const env = withSearchPath(options.env, { platform, cwd: workspace });
+  const file = await findExecutable("git", { platform, env, cwd: workspace });
   if (file === undefined) return { code: null, stdout: "", stderr: "git could not run (ENOENT)" };
-  return spawnGit(file, args, { ...options, env });
+  return spawnGit(file, ["-C", workspace, ...args], { ...options, env });
 };
 
 function spawnGit(
@@ -26,7 +30,7 @@ function spawnGit(
 ): Promise<GitResult> {
   return new Promise<GitResult>((resolve) => {
     const child = spawn(file, [...args], {
-      cwd: options.cwd,
+      cwd: path.dirname(file),
       env: options.env,
       shell: false,
       windowsHide: true,
