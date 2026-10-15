@@ -10,7 +10,7 @@ import { contributionsYear, worstCaseContributions } from "./contributionsFixtur
 type Days = readonly GitHubContributionDay[];
 
 /** The streaks the loader would compute (docs/data-github.md): `longest` is the earliest of the longest runs. */
-function streaksOf(days: Days): GitHubContributions["streaks"] {
+export function streaksOf(days: Days): GitHubContributions["streaks"] {
   const none: GitHubStreak = { length: 0, start: null, end: null };
   let longest = none;
   let run: GitHubStreak = none;

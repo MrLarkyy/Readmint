@@ -146,9 +146,10 @@ test("--github --fetch-images sends no credential with an image request", async 
   expectNoToken(run);
 });
 
-function previewStatus(port: number): Promise<{ ok: boolean; issues: string[] }> {
+function previewStatus(port: number, secret: string): Promise<{ ok: boolean; issues: string[] }> {
   return new Promise((resolve, reject) => {
-    const req = request({ host: "127.0.0.1", port, path: "/status", agent: false }, (response) => {
+    const path = `/${secret}/status`;
+    const req = request({ host: "127.0.0.1", port, path, agent: false }, (response) => {
       let body = "";
       response.setEncoding("utf8");
       response.on("data", (chunk: string) => (body += chunk));
@@ -183,12 +184,13 @@ test("the preview page's issues never show the token", async () => {
   });
   try {
     const deadline = Date.now() + 10_000;
-    let port = 0;
+    let printed: RegExpExecArray | null = null;
     let issues: string[] = [];
     while (issues.length === 0) {
       if (Date.now() > deadline) throw new Error("timed out waiting for the preview");
-      port ||= Number(/preview: http:\/\/127\.0\.0\.1:(\d+)\//.exec(stderr)?.[1] ?? 0);
-      if (port > 0) ({ issues } = await previewStatus(port));
+      printed ??= /preview: http:\/\/127\.0\.0\.1:(\d+)\/([A-Za-z0-9_-]{43})\/\n/.exec(stderr);
+      if (printed !== null)
+        ({ issues } = await previewStatus(Number(printed[1]), printed[2] ?? ""));
       await sleep(10);
     }
     const page = JSON.stringify(issues);

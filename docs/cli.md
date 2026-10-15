@@ -18,13 +18,13 @@ becomes an animated WebP, APNG or GIF; `png` is always a still image (the frame 
 
 ## Commands
 
-| command                | does                                                                                                                           |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| `render <design>`      | renders the design; writes the SVG to standard output (no trailing newline) or to `--out`, a raster image to `--out`           |
-| `validate <design>`    | checks the design and loads every asset it declares; with data (`--data` or `--github`) also renders it and reports its issues |
-| `preview <design>`     | serves a live preview on `http://127.0.0.1:<port>/`, reloaded whenever an input file changes                                   |
-| `help`, `-h`, `--help` | prints the usage                                                                                                               |
-| `--version`            | prints the version                                                                                                             |
+| command                | does                                                                                                                                           |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `render <design>`      | renders the design; writes the SVG to standard output (no trailing newline) or to `--out`, a raster image to `--out`                           |
+| `validate <design>`    | checks the design and loads every asset it declares; with data (`--data` or `--github`) also renders it and reports its issues                 |
+| `preview <design>`     | serves a live preview on `http://127.0.0.1:<port>/` (with `--github` under a per-session secret path), reloaded whenever an input file changes |
+| `help`, `-h`, `--help` | prints the usage                                                                                                                               |
+| `--version`            | prints the version                                                                                                                             |
 
 Without data (`--data` or `--github`), `validate` does not render: every binding would fail. Every asset the design
 declares with a path is loaded, used or not, so a broken reference fails `validate` too. An image `src` bound to data is
@@ -142,7 +142,10 @@ as `render --data` with that object.
 - **Errors**: a failed load is one line `GitHub data (<code>): <message>`, its code one of the `GitHubDataError` codes
   of [data-github.md](data-github.md#errors) (`unauthorized`, `rate-limited`, `network`, ...), exit code 4.
 - **`preview`** loads the data once, before it starts serving; editing the design or an asset never
-  loads it again. Restart the preview for fresh data. Ctrl+C during the load ends it with exit code 0.
+  loads it again. Restart the preview for fresh data. Ctrl+C during the load ends it with exit code 0. The page and the
+  render are then served only under the secret address it prints, `http://127.0.0.1:<port>/<secret>/` (see
+  [Preview](#preview)). Each run prints a new address: a tab left open from an earlier run shows "forbidden: open the
+  address the preview printed" and must be reopened at the new one.
 - **Images** bound to the data (`--fetch-images`) are fetched with their own requests, which never carry the token or
   another credential.
 - **Never printed**: the token is redacted to `***` from every line on standard error and on the preview page (the
@@ -153,7 +156,8 @@ as `render --data` with that object.
 ## Preview
 
 `readmint preview` prints `preview: http://127.0.0.1:<port>/` and serves the render until it is stopped (Ctrl+C
-or SIGTERM, exit code 0). The page shows the SVG exactly as `render` writes it and the current issues. Every 300 ms it checks the
+or SIGTERM, exit code 0). With `--github` it prints `preview: http://127.0.0.1:<port>/<secret>/` instead: open that
+address. The page shows the SVG exactly as `render` writes it and the current issues. Every 300 ms it checks the
 design file, the fixture data and every asset file the design declares (also one that does not exist yet). A change
 counts once it reads the same on two consecutive checks, so the preview renders again up to about 600 ms after a save
 and the page reloads; a file still being written is not rendered half done, and a file that changes on every check is
@@ -164,10 +168,16 @@ file and renaming it over the design or an asset) is read again, up to four read
 The preview is for this computer only:
 
 - it listens on the literal address `127.0.0.1`, never on another interface, and has no host option;
-- it answers 403 unless the `Host` header is `127.0.0.1:<port>` or `localhost:<port>` (DNS rebinding), and to a request
-  a browser marks as coming from another site (`Sec-Fetch-Site`);
-- it serves a fixed set of routes from memory (`/`, `/render.svg`, `/status`, `/events`), never a file: any other path
-  is 404, any method but GET and HEAD 405;
+- it answers 403 unless the `Host` header is `127.0.0.1:<port>` or `localhost:<port>` (DNS rebinding), to a request
+  a browser marks as coming from another site (`Sec-Fetch-Site`), and to one whose `Origin` header, when sent, is not
+  `http://127.0.0.1:<port>` or `http://localhost:<port>` (`null` included);
+- with `--github` the page shows token-scoped data, so every route lives under a per-session secret: 256 random bits
+  (43 characters), new on each run, kept in memory only and never shown on the page, in `/status` or in an error.
+  Any path that does not begin with exactly `/<secret>/` is 403, checked before the method and before the limit of
+  pages below. This keeps out other users of the computer, their processes and other sites; a process of your own
+  user that can read your terminal or your environment can read the token itself, which no address can prevent;
+- it serves a fixed set of routes from memory (`/`, `/render.svg`, `/status`, `/events`, with `--github` each under
+  `/<secret>`), never a file: any other path is 404, any method but GET and HEAD 405;
 - the SVG is served with a Content Security Policy that allows only inline styles and `data:` images and fonts, the page
   with one that allows only its own script and requests;
 - at most 8 pages can follow the changes at once; a ninth event stream is refused with 503.

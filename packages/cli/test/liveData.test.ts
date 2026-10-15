@@ -207,34 +207,40 @@ describe("liveData and loadLiveData", () => {
 });
 
 describe("preview --github", () => {
-  async function status(port: number): Promise<{ version: number; ok: boolean }> {
+  interface Printed {
+    readonly port: number;
+    readonly secret: string;
+  }
+
+  function get(port: number, path: string): Promise<{ status: number; body: string }> {
     return new Promise((resolve, reject) => {
-      const req = request(
-        { host: "127.0.0.1", port, path: "/status", agent: false },
-        (response) => {
-          let body = "";
-          response.setEncoding("utf8");
-          response.on("data", (chunk: string) => (body += chunk));
-          response.on("end", () => {
-            resolve(JSON.parse(body) as { version: number; ok: boolean });
-          });
-        },
-      );
+      const req = request({ host: "127.0.0.1", port, path, agent: false }, (response) => {
+        let body = "";
+        response.setEncoding("utf8");
+        response.on("data", (chunk: string) => (body += chunk));
+        response.on("end", () => {
+          resolve({ status: response.statusCode ?? 0, body });
+        });
+      });
       req.on("error", reject);
       req.end();
     });
   }
 
-  async function until(condition: () => boolean | Promise<boolean>): Promise<void> {
-    const deadline = Date.now() + 10_000;
-    while (!(await condition())) {
-      if (Date.now() > deadline) throw new Error("timed out");
-      await sleep(10);
-    }
+  async function status({ port, secret }: Printed): Promise<{ version: number; ok: boolean }> {
+    return JSON.parse((await get(port, `/${secret}/status`)).body) as {
+      version: number;
+      ok: boolean;
+    };
   }
 
-  test("loads the data once; a design edit renders again without a request", async () => {
-    const replay = githubReplay();
+  /** The address the preview printed: its port and its 43-character secret. */
+  function printed(stderr: string): Printed | undefined {
+    const match = /preview: http:\/\/127\.0\.0\.1:(\d+)\/([A-Za-z0-9_-]{43})\/\n/.exec(stderr);
+    return match === null ? undefined : { port: Number(match[1]), secret: match[2] ?? "" };
+  }
+
+  function startLive(replay: ReturnType<typeof githubReplay>) {
     const controller = new AbortController();
     let stderr = "";
     const exit = runCli(["preview", "bound/design.json", "--github", "--port", "0"], {
@@ -248,25 +254,67 @@ describe("preview --github", () => {
       env: { GH_TOKEN: CANARY },
       fetch: replay.fetch,
     });
+    return { controller, exit, stderr: () => stderr };
+  }
+
+  async function until(condition: () => boolean | Promise<boolean>): Promise<void> {
+    const deadline = Date.now() + 10_000;
+    while (!(await condition())) {
+      if (Date.now() > deadline) throw new Error("timed out");
+      await sleep(10);
+    }
+  }
+
+  test("loads the data once; a design edit renders again without a request", async () => {
+    const replay = githubReplay();
+    const { controller, exit, stderr } = startLive(replay);
     try {
-      let port = 0;
-      await until(() => {
-        port = Number(/preview: http:\/\/127\.0\.0\.1:(\d+)\//.exec(stderr)?.[1] ?? 0);
-        return port > 0;
-      });
-      await until(async () => (await status(port)).ok);
+      let at: Printed | undefined;
+      await until(() => (at = printed(stderr())) !== undefined);
+      const live = at as Printed;
+      await until(async () => (await status(live)).ok);
       const requests = replay.requests.length;
       expect(requests).toBeGreaterThan(0);
-      const { version } = await status(port);
+      const { version } = await status(live);
       await tree.file("bound/design.json", boundDesign("{{ github.followers }}"));
-      await until(async () => (await status(port)).version > version);
-      expect(await status(port)).toMatchObject({ ok: true });
+      await until(async () => (await status(live)).version > version);
+      expect(await status(live)).toMatchObject({ ok: true });
       expect(replay.requests.length).toBe(requests);
     } finally {
       controller.abort();
     }
     expect(await exit).toBe(ExitCode.ok);
-    expect(stderr).not.toContain(CANARY);
+    expect(stderr()).not.toContain(CANARY);
+  });
+
+  test("serves live data only under the printed secret; each run prints a new one", async () => {
+    const secrets: string[] = [];
+    for (let run = 0; run < 2; run += 1) {
+      const { controller, exit, stderr } = startLive(githubReplay());
+      try {
+        let at: Printed | undefined;
+        await until(() => (at = printed(stderr())) !== undefined);
+        const { port, secret } = at as Printed;
+        secrets.push(secret);
+        for (const path of ["/", "/status", "/render.svg", "/events"]) {
+          const refused = await get(port, path);
+          expect(refused.status).toBe(403);
+          expect(refused.body).not.toContain("<svg");
+        }
+        const svg = await get(port, `/${secret}/render.svg`);
+        expect(svg.status).toBe(200);
+        const rendered = await tree.run(["render", "bound/design.json", "--github"], {
+          env: { GH_TOKEN: CANARY },
+          fetch: githubReplay().fetch,
+        });
+        expect(svg.body).toBe(rendered.stdout);
+        expect((await get(port, `/${secret}/status`)).body).not.toContain(secret);
+      } finally {
+        controller.abort();
+      }
+      expect(await exit).toBe(ExitCode.ok);
+    }
+    expect(secrets[0]).not.toBe(secrets[1]);
   });
 
   test("Ctrl+C during the load ends it with exit code 0", async () => {

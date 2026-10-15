@@ -12,5 +12,5 @@ User guide: [the wiki](https://github.com/MrLarkyy/Readmint/wiki), generated fro
 ([how it is published](docs/wiki-publishing.md)).
 
 Set up the GitHub Action: [docs/action.md](docs/action.md).
-Contribution calendar and starter templates (stats card, isometric card, banner, language bars, profile card, light and
-dark): [docs/components.md](docs/components.md).
+Contribution calendar, starter templates (stats card, isometric card, banner, language bars, profile card, light and
+dark) and three full profile templates (Year Ring, Horizon, Pinscreen): [docs/components.md](docs/components.md).

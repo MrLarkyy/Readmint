@@ -1,9 +1,11 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { Resvg } from "@resvg/resvg-wasm";
 import { beforeAll, describe, expect, test } from "vitest";
 import { exportRaster } from "../src/index.js";
 import { initRaster } from "../src/initRaster.js";
-import { acceptedJpegs } from "../../renderer/test/jpegMarkers.js";
+import { acceptedJpegs, refusedJpegs } from "../../renderer/test/jpegMarkers.js";
+import { drawnOutcome, jpegStructureCases } from "../../renderer/test/jpegStructureCases.js";
 import { decodeApng } from "./decodeRaster.js";
 import { dataUri, designInput, imageDesign } from "./rasterFixtures.js";
 
@@ -30,7 +32,71 @@ beforeAll(async () => {
   await initRaster();
 });
 
+/** resvg-wasm draws `bytes` straight at 32x16: its RGBA pixels. */
+function resvgPixels(bytes: Uint8Array): Uint8Array {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="16"><image width="32" height="16" href="${dataUri("image/jpeg", bytes)}"/></svg>`;
+  const resvg = new Resvg(svg);
+  const image = resvg.render();
+  const pixels = image.pixels;
+  image.free();
+  resvg.free();
+  return pixels;
+}
+
+describe("what resvg draws of the JPEG structure cases", () => {
+  const cases = jpegStructureCases(jpeg);
+  const pinned = cases.flatMap((row) =>
+    row.resvg === undefined ? [] : [[row.name, row.bytes, row.resvg] as const],
+  );
+
+  test.each(pinned)("%s", (_name, bytes, outcome) => {
+    expect(drawnOutcome(resvgPixels(bytes))).toEqual(outcome);
+  });
+
+  test.each(cases.map((row) => [row.name, row] as const))(
+    "exportRaster follows the sniffer on %s",
+    async (_name, row) => {
+      const output = exportRaster(designInput(imageDesign(dataUri("image/jpeg", row.bytes))), {
+        format: "png",
+        scale: 2,
+      });
+      if (row.message === undefined) await expect(output).resolves.toMatchObject({ format: "png" });
+      else await expect(output).rejects.toThrow(/asset-format/);
+    },
+  );
+});
+
+describe("JPEG variants resvg draws empty", () => {
+  const resvgOnly = refusedJpegs(jpeg).filter((row) => row.resvgDrawsNothing === true);
+
+  test.each(resvgOnly.map((row) => [row.name, row.bytes] as const))(
+    "resvg-wasm 2.6.2 draws nothing of a JPEG with %s, which exportRaster refuses",
+    async (_name, bytes) => {
+      const pixels = resvgPixels(bytes);
+      expect(pixels.filter((_value, index) => index % 4 === 3 && pixels[index] !== 0)).toHaveLength(
+        0,
+      );
+      const input = designInput(imageDesign(dataUri("image/jpeg", bytes)));
+      await expect(exportRaster(input, { format: "png", scale: 2 })).rejects.toThrow(
+        /asset-format/,
+      );
+    },
+  );
+});
+
 describe("accepted JPEG variants in the raster output", () => {
+  const grey = acceptedJpegs(jpeg).filter((row) => row.drawsGrey === true);
+
+  test.each(grey.map((row) => [row.name, row.bytes] as const))(
+    "resvg-wasm 2.6.2 draws the JPEG with %s flat grey, as Chromium does",
+    (_name, bytes) => {
+      const pixels = resvgPixels(bytes);
+      expect(pixels).toHaveLength(32 * 16 * 4);
+      expect(new Set(pixels.filter((_value, index) => index % 4 !== 3))).toEqual(new Set([128]));
+      expect(new Set(pixels.filter((_value, index) => index % 4 === 3))).toEqual(new Set([255]));
+    },
+  );
+
   test.each(acceptedJpegs(jpeg).map((row) => [row.name, row.bytes] as const))(
     "resvg draws %s, as the preview does",
     async (_name, bytes) => {

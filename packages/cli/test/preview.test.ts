@@ -3,6 +3,7 @@ import { createServer, type Server } from "node:net";
 import { setTimeout as sleep } from "node:timers/promises";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import { ExitCode, type ImageFetch, runCli } from "../src/index.js";
+import { previewPage } from "../src/previewPage.js";
 import { PreviewServer } from "../src/PreviewServer.js";
 import { boundDesign, type CliTree, makeCliTree, png } from "./cliTree.js";
 
@@ -117,13 +118,13 @@ interface EventStream {
   close(): void;
 }
 
-function events(port: number): Promise<EventStream> {
+function events(port: number, path = "/events"): Promise<EventStream> {
   return new Promise((resolve, reject) => {
     const req = request(
       {
         host: "127.0.0.1",
         port,
-        path: "/events",
+        path,
         agent: false,
         headers: { host: `localhost:${String(port)}` },
       },
@@ -377,6 +378,189 @@ describe("resources", () => {
     // libuv releases a closed handle on a later turn of the loop.
     await until(() => servers() === before, 2000);
   });
+});
+
+describe("per-session secret (--github)", () => {
+  const secret = "AbCdEfGhIjKlMnOpQrStUvWxYz0123456789-_abcde";
+  const liveSvg = '<svg xmlns="http://www.w3.org/2000/svg"><text>svg-live</text></svg>';
+  const hint = "forbidden: open the address the preview printed\n";
+  const servers: PreviewServer[] = [];
+
+  afterEach(async () => {
+    await Promise.all(servers.splice(0).map((server) => server.close()));
+  });
+
+  async function secretServer(): Promise<number> {
+    const server = new PreviewServer({ secret });
+    servers.push(server);
+    const { port } = await server.listen(0);
+    server.update({ svg: liveSvg, issues: ["live issue"] });
+    return port;
+  }
+
+  function expectNothingLive(reply: Reply): void {
+    expect(reply.body).not.toContain("svg-live");
+    expect(reply.body).not.toContain("live issue");
+  }
+
+  test("the test secret has the length previewSecret makes", () => {
+    expect(secret).toHaveLength(43);
+  });
+
+  test.each(["/", "/render.svg", "/render.svg?v=1", "/status", "/events"])(
+    "refuses %s without the secret",
+    async (path) => {
+      const port = await secretServer();
+      const reply = await get(port, path);
+      expect(reply.status).toBe(403);
+      expect(reply.body).toBe(hint);
+      expectNothingLive(reply);
+    },
+  );
+
+  test.each([
+    ["another secret", `/${"Z".repeat(43)}/render.svg`],
+    ["the secret uppercased", `/${secret.toUpperCase()}/render.svg`],
+    ["the secret without its last character", `/${secret.slice(0, -1)}/render.svg`],
+    ["the secret with one more character", `/${secret}x/render.svg`],
+    ["the secret without a slash", `/${secret}`],
+    ["the secret without a slash and a query", `/${secret}?v=1`],
+    ["an encoded slash before the secret", `/%2F${secret}/render.svg`],
+    ["a percent-encoded first character", `/%41${secret.slice(1)}/render.svg`],
+    ["the secret in a later segment", `/x/${secret}/render.svg`],
+  ])("refuses %s", async (_name, path) => {
+    const port = await secretServer();
+    const reply = await get(port, path);
+    expect(reply.status).toBe(403);
+    expectNothingLive(reply);
+  });
+
+  test("serves the page, the exact SVG, status and events under the secret", async () => {
+    const port = await secretServer();
+    const page = await get(port, `/${secret}/`);
+    expect(page.status).toBe(200);
+    expect(page.headers["content-type"]).toBe("text/html; charset=utf-8");
+    expect(page.body).toBe(previewPage.html);
+    expect(page.body).not.toContain(secret);
+
+    const svg = await get(port, `/${secret}/render.svg?v=1`);
+    expect(svg.status).toBe(200);
+    expect(svg.body).toBe(liveSvg);
+
+    const status = await get(port, `/${secret}/status`);
+    expect(JSON.parse(status.body)).toEqual({ version: 1, ok: true, issues: ["live issue"] });
+    expect(status.body).not.toContain(secret);
+
+    const stream = await events(port, `/${secret}/events`);
+    expect(stream.status).toBe(200);
+    stream.close();
+  });
+
+  test.each(["/../render.svg", "//render.svg", "/RENDER.SVG", "/data.json", "/x/../status"])(
+    "the raw target %s under the secret stays 404",
+    async (rest) => {
+      const port = await secretServer();
+      const reply = await get(port, `/${secret}${rest}`);
+      expect(reply.status).toBe(404);
+      expect(reply.body).toBe("not found\n");
+    },
+  );
+
+  test("the Host check still applies with the secret", async () => {
+    const port = await secretServer();
+    const reply = await get(port, `/${secret}/render.svg`, {
+      host: `evil.example:${String(port)}`,
+    });
+    expect(reply.status).toBe(403);
+    expect(reply.body).toBe("forbidden\n");
+  });
+
+  test("an outsider cannot take an event-stream slot", async () => {
+    const port = await secretServer();
+    const outsiders = await Promise.all(Array.from({ length: 9 }, () => get(port, "/events")));
+    expect(outsiders.map((reply) => reply.status)).toEqual(Array<number>(9).fill(403));
+    const stream = await events(port, `/${secret}/events`);
+    expect(stream.status).toBe(200);
+    stream.close();
+  });
+
+  test("the secret is checked before the method", async () => {
+    const port = await secretServer();
+    expect((await get(port, "/", { method: "POST" })).status).toBe(403);
+    const inside = await get(port, `/${secret}/`, { method: "POST" });
+    expect(inside.status).toBe(405);
+    expect(inside.headers.allow).toBe("GET, HEAD");
+  });
+
+  test.each(["a/b", "abcdefghij", `${secret}/`, `${secret}%`, ""])(
+    "the constructor refuses the secret %j",
+    (bad) => {
+      expect(() => new PreviewServer({ secret: bad })).toThrow(
+        "the preview secret must be at least 32 base64url characters",
+      );
+    },
+  );
+});
+
+describe("Origin", () => {
+  const secret = "AbCdEfGhIjKlMnOpQrStUvWxYz0123456789-_abcde";
+  let server: PreviewServer | undefined;
+
+  afterEach(async () => {
+    await server?.close();
+    server = undefined;
+  });
+
+  /** The fixture preview's SVG path and port, then the secret server's. */
+  async function bothModes(): Promise<readonly (readonly [number, string])[]> {
+    const fixture = await startPreview();
+    server = new PreviewServer({ secret });
+    const { port } = await server.listen(0);
+    server.update({ svg: "<svg/>", issues: [] });
+    return [
+      [fixture.port, "/render.svg"],
+      [port, `/${secret}/render.svg`],
+    ];
+  }
+
+  test.each(["http://evil.example", "null", "http://127.0.0.1:1", "https://127.0.0.1:PORT"])(
+    "refuses the Origin %s in both modes",
+    async (origin) => {
+      for (const [port, path] of await bothModes()) {
+        const reply = await get(port, path, {
+          headers: { origin: origin.replace("PORT", String(port)) },
+        });
+        expect(reply.status).toBe(403);
+        expect(reply.body).toBe("forbidden\n");
+      }
+    },
+  );
+
+  test.each(["http://127.0.0.1:PORT", "http://LOCALHOST:PORT"])(
+    "accepts the Origin %s in both modes",
+    async (origin) => {
+      for (const [port, path] of await bothModes()) {
+        const reply = await get(port, path, {
+          headers: { origin: origin.replace("PORT", String(port)) },
+        });
+        expect(reply.status).toBe(200);
+      }
+    },
+  );
+});
+
+test("the page uses relative URLs only", () => {
+  expect(previewPage.html).not.toMatch(/["'`]\/(status|render\.svg|events)/);
+  expect(previewPage.html).toContain('fetch("status"');
+  expect(previewPage.html).toContain('"render.svg?v="');
+  expect(previewPage.html).toContain('new EventSource("events")');
+  expect(previewPage.csp).toMatch(/^default-src 'none'; script-src 'sha256-/);
+});
+
+test("the fixture preview prints and serves the bare URL", async () => {
+  const preview = await startPreview();
+  expect(preview.stderr()).toBe(`preview: http://127.0.0.1:${String(preview.port)}/\n`);
+  expect((await get(preview.port, "/")).status).toBe(200);
 });
 
 test("--fetch-images serves the bound image inlined (RM-28)", async () => {

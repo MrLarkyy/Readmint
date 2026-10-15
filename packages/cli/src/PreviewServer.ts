@@ -1,3 +1,4 @@
+import { timingSafeEqual } from "node:crypto";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import type { AddressInfo } from "node:net";
 import { previewPage } from "./previewPage.js";
@@ -22,15 +23,24 @@ export interface PreviewServerOptions {
   readonly maxClients?: number;
   /** Interval of the keep-alive comment on event streams; default 15 s. */
   readonly keepAliveMs?: number;
+  /**
+   * When set, every route lives under `/<secret>/` and any other path answers 403: at least 32
+   * base64url characters (see `previewSecret`). Never served or put in an error.
+   */
+  readonly secret?: string;
 }
 
 const svgCsp = "default-src 'none'; style-src 'unsafe-inline'; img-src data:; font-src data:";
 const plainCsp = "default-src 'none'";
+// Only path-safe characters: the prefix is compared on the raw target, never decoded.
+const secretPattern = /^[A-Za-z0-9_-]{32,}$/;
 
 /**
  * The live preview's HTTP server. Listens on 127.0.0.1 only (a literal, never a name or an
- * option); answers only a Host naming that address or localhost with its port (DNS rebinding);
- * serves a fixed set of routes from memory, never a file.
+ * option); answers only a Host naming that address or localhost with its port (DNS rebinding) and
+ * an Origin, when sent, that is this server; serves a fixed set of routes from memory, never a
+ * file. With a secret, those routes live only under `/<secret>/`, so a local process or another
+ * user of the machine that does not know the printed address reads nothing.
  */
 export class PreviewServer {
   readonly #server: Server;
@@ -38,13 +48,19 @@ export class PreviewServer {
   readonly #maxClients: number;
   readonly #keepAliveMs: number;
   #keepAlive: NodeJS.Timeout | undefined;
+  readonly #prefix: Buffer | undefined;
   #hosts: ReadonlySet<string> = new Set();
+  #origins: ReadonlySet<string> = new Set();
   #svg: string | undefined;
   #status: PreviewStatus = { version: 0, ok: false, issues: [] };
 
   constructor(options: PreviewServerOptions = {}) {
     this.#maxClients = options.maxClients ?? 8;
     this.#keepAliveMs = options.keepAliveMs ?? 15_000;
+    if (options.secret !== undefined && !secretPattern.test(options.secret)) {
+      throw new Error("the preview secret must be at least 32 base64url characters");
+    }
+    this.#prefix = options.secret === undefined ? undefined : Buffer.from(`/${options.secret}`);
     this.#server = createServer((request, response) => {
       this.#handle(request, response);
     });
@@ -68,6 +84,7 @@ export class PreviewServer {
       `127.0.0.1:${String(address.port)}`,
       `localhost:${String(address.port)}`,
     ]);
+    this.#origins = new Set([...this.#hosts].map((host) => `http://${host}`));
     this.#keepAlive = setInterval(() => {
       for (const client of this.#clients) client.write(": keep-alive\n\n");
     }, this.#keepAliveMs);
@@ -109,18 +126,27 @@ export class PreviewServer {
   }
 
   #handle(request: IncomingMessage, response: ServerResponse): void {
-    if (!this.#hosts.has((request.headers.host ?? "").toLowerCase()) || isCrossSite(request)) {
+    const origin = request.headers.origin;
+    if (
+      !this.#hosts.has((request.headers.host ?? "").toLowerCase()) ||
+      isCrossSite(request) ||
+      (origin !== undefined && !this.#origins.has(origin.toLowerCase()))
+    ) {
       send(response, 403, "text/plain", "forbidden\n");
+      return;
+    }
+    // Before the method and the event-stream limit: a request without the secret learns nothing
+    // and cannot take a slot.
+    const path = this.#route(request.url ?? "");
+    if (path === undefined) {
+      send(response, 403, "text/plain", "forbidden: open the address the preview printed\n");
       return;
     }
     if (request.method !== "GET" && request.method !== "HEAD") {
       send(response, 405, "text/plain", "method not allowed\n", { Allow: "GET, HEAD" });
       return;
     }
-    // The raw target, not a normalised URL: "/a/../status" and "/%2e%2e/" match no route.
-    const target = request.url ?? "";
-    const query = target.indexOf("?");
-    switch (query === -1 ? target : target.slice(0, query)) {
+    switch (path) {
       case "/":
         send(response, 200, "text/html", previewPage.html, {}, previewPage.csp);
         return;
@@ -138,6 +164,24 @@ export class PreviewServer {
       default:
         send(response, 404, "text/plain", "not found\n");
     }
+  }
+
+  /**
+   * The route of a raw target without its query; with a secret, what follows exactly
+   * `/<secret>`, or undefined when the target does not start with it and a slash.
+   */
+  #route(target: string): string | undefined {
+    // The raw target, not a normalised URL: "/a/../status" and "/%2e%2e/" match no route.
+    const query = target.indexOf("?");
+    const path = query === -1 ? target : target.slice(0, query);
+    const prefix = this.#prefix;
+    if (prefix === undefined) return path;
+    const bytes = Buffer.from(path);
+    // The length is public; the bytes are compared in constant time.
+    if (bytes.length <= prefix.length || bytes[prefix.length] !== 0x2f) return undefined;
+    if (!timingSafeEqual(bytes.subarray(0, prefix.length), prefix)) return undefined;
+    // The prefix is ASCII, so its byte count is its character count.
+    return path.slice(prefix.length);
   }
 
   #openEvents(request: IncomingMessage, response: ServerResponse): void {
