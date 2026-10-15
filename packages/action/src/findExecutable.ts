@@ -72,17 +72,21 @@ function pathKey(
     .find((candidate) => candidate.toUpperCase() === "PATH");
 }
 
-/** The absolute entries of `searchPath` outside `cwd`, as written (`raw`) and resolved (`dir`). */
-function searchDirs(
+/**
+ * The absolute entries of `searchPath` outside `cwd`, as written (`raw`) and resolved (`dir`). Entries are split on
+ * `separator`, the platform's path delimiter unless the reader of the variable splits differently.
+ */
+export function searchDirs(
   platform: NodeJS.Platform,
   searchPath: string,
   cwd: string,
+  separator?: string | RegExp,
 ): { raw: string; dir: string }[] {
   const win32 = platform === "win32";
   const paths = win32 ? path.win32 : path.posix;
   const base = paths.resolve(cwd);
   const dirs: { raw: string; dir: string }[] = [];
-  for (const raw of searchPath.split(paths.delimiter)) {
+  for (const raw of searchPath.split(separator ?? paths.delimiter)) {
     const entry = win32 ? unquote(raw) : raw;
     if (!(win32 ? isWindowsAbsolute(entry) : paths.isAbsolute(entry))) continue;
     const dir = paths.resolve(entry);
