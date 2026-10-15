@@ -204,8 +204,12 @@ Drawn in document order, first at the back. Layer `id` and `name` are not emitte
   works on the upright picture; a layer `rotation` comes first in the `transform` list and turns the result around the
   layer's centre. Orientation 1 (or none) draws exactly as before.
 - Which EXIF counts follows what Chromium reads: a JPEG APP1 segment is EXIF by its first five bytes `Exif\0` (the
-  sixth may be anything), and past the frame header stray bytes before the next marker are skipped, as libjpeg does; a
-  PNG or WebP block may start with the same six-byte prefix. The first EXIF block holding an Orientation entry
+  sixth may be anything). Before the frame header the segments must follow each other exactly (stray bytes, `FF 00`
+  included, are `asset-format`); past it markers are read as libjpeg's `next_marker` reads them: bytes up to a 0xFF
+  are skipped, then 0xFF fill bytes, `FF 00` is a stuffed zero and the scan goes on, RSTn and TEM carry no length,
+  and a segment length below 2 skips just the two length bytes. A marker libjpeg rejects there (a second SOI, an
+  unknown code) makes Chromium draw nothing at all, EXIF or not. A PNG or WebP block may start with the same six-byte
+  prefix. The first EXIF block holding an Orientation entry
   decides, its first entry of type SHORT with count 1; a value outside 1-8, another type or count, an entry only in
   IFD1, or a block whose TIFF header or IFD0 lies outside it counts as 1 and is never an error.
 - `fit`: `contain` (default) = `preserveAspectRatio="xMidYMid meet"`, `cover` = `xMidYMid slice`, `fill` = `none`.

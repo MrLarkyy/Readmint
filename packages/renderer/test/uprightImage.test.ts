@@ -73,6 +73,10 @@ describe("uprightImage", () => {
       "jpeg, Exif after stray bytes behind the frame header",
       jpegWithExif(jpeg, orientationTiff(8, true), { afterFrame: [0, 0x2a] }),
     ],
+    [
+      "jpeg, Exif after FF 00 behind the frame header",
+      jpegWithExif(jpeg, orientationTiff(3), { afterFrame: [0xff, 0xff, 0, 0x12] }),
+    ],
     ["webp, two EXIF chunks", webpWithExif(twoEntries, orientationTiff(3, true))],
     ...formats,
   ])("%s: every Orientation entry says SHORT 1", (_name, data) => {

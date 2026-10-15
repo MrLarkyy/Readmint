@@ -84,6 +84,7 @@ describe("EXIF orientation on an inline image", () => {
   test.each([
     ["a sixth Exif prefix byte other than 0", { sixthByte: 1 }],
     ["stray bytes before its Exif segment, after the frame header", { afterFrame: [0, 0x2a] }],
+    ["FF 00 before its Exif segment, after the frame header", { afterFrame: [0, 0xff, 0] }],
   ])("a JPEG with %s is oriented, as Chromium does", (_name, options) => {
     const src = toDataUri("image/jpeg", jpegWithExif(jpeg, orientationTiff(6), options));
     expect(images(render(src, { fit: "fill" }))).toEqual([

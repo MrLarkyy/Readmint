@@ -191,8 +191,9 @@ function isFrameHeader(marker: number): boolean {
 
 /**
  * Walks the segments up to the image data: the size from the frame header, EXIF from any APP1 `Exif` segment before
- * the scan (decoders read every marker up to it). Past the frame header stray bytes between segments are skipped, as
- * libjpeg does, and a broken or cut-off walk just ends; every step advances, so the walk is one pass at most.
+ * the scan (decoders read every marker up to it). Before the frame header the segments must follow each other
+ * exactly; past it the walk reads markers as libjpeg (and so Chromium) does, so it finds the same EXIF segments, and a
+ * cut-off walk just ends. Every step advances, so the walk is one pass at most.
  */
 function sniffJpeg(bytes: Bytes): SniffResult {
   let offset = 2;
@@ -202,23 +203,24 @@ function sniffJpeg(bytes: Bytes): SniffResult {
   let problem = "JPEG has no frame header before its image data";
   try {
     for (;;) {
-      if (bytes.u8(offset) !== 0xff) {
-        if (size === undefined) {
-          problem = "JPEG segment does not start with 0xFF";
-          break;
-        }
-        // Past the frame header libjpeg skips stray bytes to the next marker and still reads it.
-        while (bytes.u8(offset) !== 0xff) offset++;
+      const next = nextMarker(bytes, offset, size !== undefined);
+      if (next === undefined) {
+        problem = "JPEG segment does not start with 0xFF";
+        break;
       }
-      while (bytes.u8(offset) === 0xff) offset++;
-      const marker = bytes.u8(offset);
-      offset++;
+      const marker = next.marker;
+      offset = next.offset;
       if (marker === 0x01 || (marker >= 0xd0 && marker <= 0xd8)) continue;
       if (marker === 0xd9 || marker === 0xda) break;
       const length = bytes.u16be(offset);
       if (length < 2) {
-        problem = "JPEG segment length is invalid";
-        break;
+        if (size === undefined) {
+          problem = "JPEG segment length is invalid";
+          break;
+        }
+        // libjpeg skips nothing past such a length (or stops at a table it needs, where nothing is drawn anyway).
+        offset += 2;
+        continue;
       }
       // Decoders check only `Exif\0`; the sixth byte, meant to be 0, may be anything.
       if (marker === 0xe1 && length >= 8 && bytes.ascii(offset + 2, 5) === "Exif\0") {
@@ -235,6 +237,30 @@ function sniffJpeg(bytes: Bytes): SniffResult {
   }
   if (size === undefined) return { ok: false, message: problem };
   return found("image/jpeg", size[0], size[1], 1, exif, blocks);
+}
+
+/**
+ * The marker code at or after `start` and the offset just past it, or undefined when the bytes there are no marker.
+ * Strict, a marker must start right at `start` (0xFF fill bytes allowed). Lenient is libjpeg's next_marker: bytes
+ * up to a 0xFF are skipped, then fill bytes, and `FF 00` (a stuffed zero, no marker) sends the scan on.
+ */
+function nextMarker(
+  bytes: Bytes,
+  start: number,
+  lenient: boolean,
+): { readonly marker: number; readonly offset: number } | undefined {
+  let offset = start;
+  for (;;) {
+    if (bytes.u8(offset) !== 0xff) {
+      if (!lenient) return undefined;
+      while (bytes.u8(offset) !== 0xff) offset++;
+    }
+    while (bytes.u8(offset) === 0xff) offset++;
+    const marker = bytes.u8(offset);
+    offset++;
+    if (marker !== 0) return { marker, offset };
+    if (!lenient) return undefined;
+  }
 }
 
 function skipSubBlocks(bytes: Bytes, start: number): number {

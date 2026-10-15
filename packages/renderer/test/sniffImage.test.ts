@@ -191,6 +191,17 @@ describe("EXIF orientation", () => {
     ["a sixth Exif prefix byte other than 0", { sixthByte: 1 }],
     ["an Exif segment after stray bytes behind the frame header", { afterFrame: [0, 0x2a, 0] }],
     ["both", { sixthByte: 0xff, afterFrame: [1] }],
+    // Checked against Chromium (libjpeg-turbo): each of these still reads the Exif segment after it.
+    ["FF 00 (a stuffed zero) after the frame header", { afterFrame: [0xff, 0] }],
+    ["FF 00 and more stray bytes", { afterFrame: [0xff, 0, 0x12, 0x34] }],
+    ["fill bytes before FF 00", { afterFrame: [0xff, 0xff, 0] }],
+    ["a stray byte before FF 00", { afterFrame: [0, 0xff, 0] }],
+    ["FF 00 twice", { afterFrame: [0xff, 0, 0xff, 0] }],
+    ["stray, fill and FF 00 mixed", { afterFrame: [0x12, 0xff, 0xff, 0xff, 0, 0x34] }],
+    ["an RST0 marker, which has no length", { afterFrame: [0xff, 0xd0] }],
+    ["a TEM marker, which has no length", { afterFrame: [0xff, 0x01] }],
+    ["a COM segment of length 0", { afterFrame: [0xff, 0xfe, 0, 0] }],
+    ["an APP2 segment of length 1", { afterFrame: [0xff, 0xe2, 0, 1] }],
   ])("a JPEG with %s is read as Chromium reads it", (_name, options) => {
     expect(sniffImage(jpegWithExif(jpeg, orientationTiff(6), options), 1000)).toMatchObject({
       ok: true,
@@ -209,9 +220,24 @@ describe("EXIF orientation", () => {
     });
   });
 
-  test("stray bytes up to the end after the frame header end the walk", () => {
-    const data = bytes([...jpeg.subarray(0, jpegScan)], new Array<number>(5000).fill(0x2a));
+  test.each([
+    ["stray bytes", [0x2a]],
+    ["stuffed zeros", [0xff, 0]],
+    ["fill bytes", [0xff]],
+  ])("%s up to the end after the frame header end the walk", (_name, pattern) => {
+    const tail = Array.from(
+      { length: 100_000 },
+      (_, index) => pattern[index % pattern.length] ?? 0,
+    );
+    const data = bytes([...jpeg.subarray(0, jpegScan)], tail);
     expect(sniffImage(data, 1000)).toMatchObject({ ok: true, info: { width: 32, height: 16 } });
+  });
+
+  test("FF 00 before the frame header is refused, like any stray bytes there", () => {
+    expect(sniffImage(bytes([0xff, 0xd8, 0xff, 0], [...jpeg.subarray(2)]), 1000)).toMatchObject({
+      ok: false,
+      message: "JPEG segment does not start with 0xFF",
+    });
   });
 
   test("stored width and height stay as they are", () => {
