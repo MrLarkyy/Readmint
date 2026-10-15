@@ -13,7 +13,7 @@ const slack = 2e-5;
 const radiansPerDegree = Math.PI / 180;
 
 /**
- * Intervals surely holding the cosine and sine of `degrees`, computed with + - * % round only (each exactly specified
+ * Intervals surely holding the cosine and sine of `degrees`, computed with + - * / % round only (each exactly specified
  * by IEEE 754, which every engine follows), so Node and every browser get the same bits: the angle is reduced to
  * within 45 degrees of a quadrant, where Taylor polynomials to x^11 (sine) and x^12 (cosine) are off by under 1e-11.
  * Undefined for a non-finite angle.

@@ -126,6 +126,50 @@ describe("strokeBounds", () => {
     }
   });
 
+  test.each<[string, [number, number][]]>([
+    // Skipped, the short (0, 0) to (0, 0.24) makes the close run from (0, 0), turning the bevel at the start into a
+    // miter reaching about 2 widths.
+    [
+      "a short segment right before the close",
+      [
+        [100, 0.24],
+        [
+          100 + 3000 * Math.cos((151.1 * Math.PI) / 180),
+          0.24 + 3000 * Math.sin((151.1 * Math.PI) / 180),
+        ],
+        [0, 0],
+        [0, 0.24],
+      ],
+    ],
+    // Skipped, the short first segment makes the second one run from the start, which the close joins.
+    [
+      "a short first segment",
+      [
+        [0, 0],
+        [0.24, 0],
+        [100, -3000],
+        [-2900, 1000],
+      ],
+    ],
+  ])(
+    "a closed subpath with %s holds every miter tip when that segment is skipped",
+    (_name, points) => {
+      const d = `${points.map(([x, y], index) => `${index === 0 ? "M" : "L"}${String(x)} ${String(y)}`).join(" ")} Z`;
+      const box = bounds(d, 1000);
+      const [start = [0, 0], second = [0, 0]] = points;
+      for (const tolerance of [0, 1000 / 1.01 / 4096]) {
+        const kept = skipped([...points, start], tolerance);
+        // Closed: the joins at the start too, between the close and the first segment kept.
+        for (const [x, y] of reach([...kept, kept[1] ?? second], 500)) {
+          expect(x).toBeLessThanOrEqual(box.maxX);
+          expect(x).toBeGreaterThanOrEqual(box.minX);
+          expect(y).toBeLessThanOrEqual(box.maxY);
+          expect(y).toBeGreaterThanOrEqual(box.minY);
+        }
+      }
+    },
+  );
+
   test("polylines with short segments hold every miter tip at any scale that keeps joins", () => {
     let seed = 1068;
     const random = () => {

@@ -308,6 +308,13 @@ describe("tight bounds: turns, glyph boxes and stroke joins", () => {
     ],
     ["text whose glyph box just reaches the canvas", bigText(textEdge)],
     ["a path whose stroke reaches the canvas", wideStroke(140)],
+    [
+      "the same stroke at x 300 as a rounded square: joins at arcs are padded by twice the width",
+      {
+        ...wideStroke(300),
+        d: "M10 0 H30 A10 10 0 0 1 40 10 V30 A10 10 0 0 1 30 40 H10 A10 10 0 0 1 0 30 V10 A10 10 0 0 1 10 0 Z",
+      } as Layer,
+    ],
   ])("%s is kept", (_name, layer) => {
     expect(render(design([anchor, layer]))).toContain(probe);
   });

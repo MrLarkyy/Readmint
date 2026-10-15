@@ -10,10 +10,10 @@ import { Resvg } from "@resvg/resvg-js";
  * its SHA-256).
  *
  * resvg-js 2.6.2 aborts the whole process (a native panic, no exception) on a layer of its own (opacity, clip,
- * symbol) lying beyond twice the canvas. The renderer leaves out such layers wholly off the canvas, but a path whose
- * control points or arc box reach the canvas while its curve lies far, or text in a font whose head box overstates
- * its glyphs, can still be written. No fixture (renderer SVG or hand-written) given to the golden may hold such a
- * layer.
+ * symbol) lying beyond twice the canvas. The renderer leaves out such layers wholly off the canvas, but a stroke whose
+ * joins are padded by twice its width (at an arc, a nearly straight curve or a short segment), a path whose control
+ * points or arc box reach the canvas while its curve lies far, or text in a font whose head box overstates its glyphs
+ * can still be written. No fixture (renderer SVG or hand-written) given to the golden may hold such a layer.
  */
 export function rasterizeSvg(
   svg: string,

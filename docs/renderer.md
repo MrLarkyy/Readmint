@@ -89,18 +89,23 @@ Drawn in document order, first at the back. Layer `id` and `name` are not emitte
   viewer, and resvg 2.6.2 aborts (resvg-js: the whole process) on such a layer once it lies beyond twice the canvas. Its
   gradients and clip path are not written either; its fonts are embedded as for any text, and `layerBoxes` still lists
   it so the editor can select it. A clip group on the canvas whose children all lie outside the canvas counts as
-  outside. The box tested surely holds the drawing and is never trimmed: text by its glyphs, not its layout box, each
-  within the `head` box of the font its run draws with (a font whose `head` box is empty: 1 em left of the pen to
-  2 em right, 2 em above the baseline to 1 em below); a path stroke by the hull of its points grown by half the width
-  plus the miter tip of each join (miter limit 4; twice the width at a join next to an arc, a nearly straight curve
-  or a segment under about 1/1000 of the width, which rasterizers may skip when a group scales the path down, and at
-  the far end of the segment after one, so the box holds at any scale); a turn by intervals for its cosine and sine
-  from fixed polynomials. All of it is computed with `+ - * / %`, `round`, `min`, `max`, `abs` and a square root
-  (each exactly rounded per IEEE 754) only, so Node and every browser decide alike. A few far layers that draw
-  nothing are still kept: a path whose control points or arc box reach the canvas while its curve lies far, and text
-  in a font whose `head` box overstates its glyphs. Such a layer is written, browsers draw the SVG as usual, and raster
-  export of it beyond twice the canvas refuses with `raster-image` ([raster.md](raster.md)). Layers without an own
-  layer stay wherever they are; resvg draws them anywhere.
+  outside. The box tested is never trimmed: text by its glyphs, not its layout box, each within the `head` box of the
+  font its run draws with (a font whose `head` box is empty: 1 em left of the pen to 2 em right, 2 em above the
+  baseline to 1 em below); the `head` box is trusted, so text in a font whose `head` box is smaller than its glyphs
+  can be left out while it shows. A path stroke is bounded by the hull of its points grown by half the width plus the
+  miter tip of each join (miter limit 4). A join next to an arc (`A`), a nearly straight curve or a short segment,
+  and the far end of the segment after one, is padded by twice the width instead: rasterizers may draw those
+  directions otherwise or skip the segment when a group scales the path down, so the box holds at any scale. A
+  segment is short below 1/64 + 1/1024 of the stroke width + 1/1000 of its control polygon's length + 1/100 of its
+  largest coordinate (near coordinate 400, any segment under about 4 units). A turn is bounded by intervals for its
+  cosine and sine from fixed polynomials. All of it is computed with `+ - * / %`, `round`, `min`, `max`, `abs` and a
+  square root (each exactly rounded per IEEE 754) only, so Node and every browser decide alike. A few far layers that
+  draw nothing are still kept: a stroke whose joins are padded by twice its width (a stroke 100 wide 300 right of a
+  100 wide canvas is left out as a square but kept as a rounded square with `A` corners), a path whose control
+  points or arc box reach the canvas while its curve lies far, and text in a font whose `head` box overstates its
+  glyphs. Such a layer is written, browsers draw the SVG as usual, and raster export of it beyond twice the canvas
+  refuses with `raster-image` ([raster.md](raster.md)). Layers without an own layer stay wherever they are; resvg
+  draws them anywhere.
 - **Path data template**: a `d` with `{{...}}` placeholders is evaluated per copy like a text, then checked as the
   format checks a literal `d` (not empty, at most 100000 characters, path data characters only; else `range` at `d`).
   Each copy gets the box and the `draw` length of its own data; a literal `d` is measured once per layer.
