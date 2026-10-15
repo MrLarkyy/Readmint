@@ -2,7 +2,7 @@ import { chmod, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, test } from "vitest";
-import { findExecutable } from "../src/findExecutable.js";
+import { findExecutable, withSearchPath } from "../src/findExecutable.js";
 
 /** A file system holding exactly `files`; every probed path is recorded. */
 function fakeFs(files: readonly string[]): {
@@ -180,5 +180,89 @@ describe("the default file check", () => {
       cwd,
     });
     expect(found).toBe(path.join(real, name));
+  });
+});
+
+describe("withSearchPath", () => {
+  test("win32: the key Node uses keeps only the searched entries, as written; other casings go", () => {
+    const env = {
+      PATH: [
+        ".",
+        "",
+        "bin",
+        "\\tools",
+        "C:tools",
+        workspace,
+        "d:\\A\\REPO\\repo\\sub",
+        '"C:\\Program Files\\Git\\cmd"',
+        "C:/Windows/System32/",
+      ].join(";"),
+      Path: "C:\\other",
+      path: "C:\\third",
+      HOME: "C:\\Users\\runner",
+      GIT_TERMINAL_PROMPT: "0",
+    };
+    expect(withSearchPath(env, { platform: "win32", cwd: workspace })).toEqual({
+      PATH: '"C:\\Program Files\\Git\\cmd";C:/Windows/System32/',
+      HOME: "C:\\Users\\runner",
+      GIT_TERMINAL_PROMPT: "0",
+    });
+    expect(
+      withSearchPath({ Path: `${workspace};C:\\git` }, { platform: "win32", cwd: workspace }),
+    ).toEqual({
+      Path: "C:\\git",
+    });
+  });
+
+  test.each(["linux", "darwin"] as const)(
+    "%s: relative, empty and workspace entries go; a normal PATH and every other variable stay as they are",
+    (platform) => {
+      const cwd = "/work/repo";
+      const normal = "/usr/local/bin:/usr/bin:/bin:/opt/hostedtoolcache/node/22/x64/bin/";
+      expect(
+        withSearchPath({ PATH: normal, Path: ".", HOME: "/home/runner" }, { platform, cwd }),
+      ).toEqual({ PATH: normal, Path: ".", HOME: "/home/runner" });
+      expect(
+        withSearchPath(
+          { PATH: `:.:bin:${cwd}:${cwd}/node_modules/.bin:${normal}` },
+          { platform, cwd },
+        ),
+      ).toEqual({ PATH: normal });
+    },
+  );
+
+  test("the result is what findExecutable searches", async () => {
+    const env = withSearchPath(
+      { PATH: `${workspace};C:\\git` },
+      { platform: "win32", cwd: workspace },
+    );
+    const fs = fakeFs(["C:\\git\\git.exe"]);
+    expect(
+      await findExecutable("git", {
+        platform: "win32",
+        env,
+        cwd: workspace,
+        isExecutable: fs.isExecutable,
+      }),
+    ).toBe("C:\\git\\git.exe");
+  });
+
+  test.each(["win32", "linux"] as const)(
+    "%s: without a PATH the environment is copied as it is",
+    (platform) => {
+      const env = { HOME: "/home/runner", Path: platform === "linux" ? "." : undefined };
+      const result = withSearchPath(env, { platform, cwd: "/work/repo" });
+      expect(result).toEqual(env);
+      expect(result).not.toBe(env);
+    },
+  );
+
+  test("an empty PATH stays empty", () => {
+    expect(withSearchPath({ PATH: "" }, { platform: "linux", cwd: "/work/repo" })).toEqual({
+      PATH: "",
+    });
+    expect(withSearchPath({ PATH: "." }, { platform: "linux", cwd: "/work/repo" })).toEqual({
+      PATH: "",
+    });
   });
 });

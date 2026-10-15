@@ -26,27 +26,69 @@ export async function findExecutable(
   const win32 = options.platform === "win32";
   const paths = win32 ? path.win32 : path.posix;
   const isExecutable = options.isExecutable ?? (win32 ? isFile : isExecutableFile);
-  const searchPath = win32 ? windowsPath(options.env) : options.env["PATH"];
+  const key = pathKey(options.platform, options.env);
+  const searchPath = key === undefined ? undefined : options.env[key];
   if (searchPath === undefined) return undefined;
-  const cwd = paths.resolve(options.cwd);
   const file = win32 ? `${name}.exe` : name;
-  for (const raw of searchPath.split(paths.delimiter)) {
-    const entry = win32 ? unquote(raw) : raw;
-    if (!(win32 ? isWindowsAbsolute(entry) : paths.isAbsolute(entry))) continue;
-    const dir = paths.resolve(entry);
-    if (isInside(paths, cwd, dir)) continue;
+  for (const { dir } of searchDirs(options.platform, searchPath, options.cwd)) {
     const candidate = paths.join(dir, file);
     if (await isExecutable(candidate)) return candidate;
   }
   return undefined;
 }
 
-/** Node keeps the first of case-insensitively equal keys in sorted order when it builds a Windows environment. */
-function windowsPath(env: Readonly<Record<string, string | undefined>>): string | undefined {
-  const key = Object.keys(env)
+/**
+ * `env` with `PATH` reduced to the entries `findExecutable` searches, kept as written and in order, so the programs
+ * the started one runs by name (git's remote helpers, ssh, filters, gpg) are never found through the workspace
+ * either. On win32 the key Node passes on is rewritten and every other casing of `PATH` dropped. Without a `PATH`
+ * value, `env` is returned as it is; every other variable is copied unchanged.
+ */
+export function withSearchPath<V extends string | undefined>(
+  env: Readonly<Record<string, V>>,
+  options: Pick<FindExecutableOptions, "platform" | "cwd">,
+): Record<string, V> {
+  const key = pathKey(options.platform, env);
+  const searchPath = key === undefined ? undefined : env[key];
+  if (key === undefined || searchPath === undefined) return { ...env };
+  const kept = searchDirs(options.platform, searchPath, options.cwd).map(({ raw }) => raw);
+  const result: Record<string, V> = {};
+  for (const [name, value] of Object.entries(env)) {
+    if (name.toUpperCase() !== "PATH" || options.platform !== "win32") result[name] = value;
+  }
+  const delimiter = options.platform === "win32" ? path.win32.delimiter : path.posix.delimiter;
+  // `V` includes `string`: the value replaces a defined one.
+  result[key] = kept.join(delimiter) as V;
+  return result;
+}
+
+/** The key Node passes on: on win32 the first case-insensitive match in sorted order (how it builds the block). */
+function pathKey(
+  platform: NodeJS.Platform,
+  env: Readonly<Record<string, string | undefined>>,
+): string | undefined {
+  if (platform !== "win32") return Object.hasOwn(env, "PATH") ? "PATH" : undefined;
+  return Object.keys(env)
     .sort()
     .find((candidate) => candidate.toUpperCase() === "PATH");
-  return key === undefined ? undefined : env[key];
+}
+
+/** The absolute entries of `searchPath` outside `cwd`, as written (`raw`) and resolved (`dir`). */
+function searchDirs(
+  platform: NodeJS.Platform,
+  searchPath: string,
+  cwd: string,
+): { raw: string; dir: string }[] {
+  const win32 = platform === "win32";
+  const paths = win32 ? path.win32 : path.posix;
+  const base = paths.resolve(cwd);
+  const dirs: { raw: string; dir: string }[] = [];
+  for (const raw of searchPath.split(paths.delimiter)) {
+    const entry = win32 ? unquote(raw) : raw;
+    if (!(win32 ? isWindowsAbsolute(entry) : paths.isAbsolute(entry))) continue;
+    const dir = paths.resolve(entry);
+    if (!isInside(paths, base, dir)) dirs.push({ raw, dir });
+  }
+  return dirs;
 }
 
 function unquote(entry: string): string {

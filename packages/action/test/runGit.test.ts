@@ -69,4 +69,41 @@ describe("runGit", { timeout: 30_000 }, () => {
     });
     expect(result).toEqual({ code: null, stdout: "", stderr: "git could not run (ENOENT)" });
   });
+
+  test("a program git starts by name is never found through the workspace", async () => {
+    await plantProbe(workspace, "planted");
+    await plantProbe(empty, "outside");
+    const original = process.env["PATH"] ?? "";
+    const env = envWithPath([workspace, ".", "", empty, original].join(path.delimiter));
+    const result = await runGit(["-c", "alias.probe=!readmint-probe", "probe"], {
+      cwd: workspace,
+      env,
+      timeoutMs: 30_000,
+    });
+    expect(result.stdout.trim()).toBe("outside");
+    expect(result.code).toBe(0);
+  });
+
+  test("git and what it starts get PATH without relative, empty or workspace entries", async () => {
+    const original = process.env["PATH"] ?? "";
+    const env = envWithPath([workspace, ".", "", original].join(path.delimiter));
+    const result = await runGit(["-c", 'alias.path=!echo "$PATH"', "path"], {
+      cwd: workspace,
+      env,
+      timeoutMs: 30_000,
+    });
+    expect(result.code).toBe(0);
+    const seen = result.stdout.trim();
+    expect(seen).not.toContain(path.basename(workspace));
+    // Git for Windows' shell shows PATH in its own form; the entries are only comparable on POSIX.
+    if (!win32)
+      expect(seen.split(":").filter((entry) => entry === "" || entry === ".")).toEqual([]);
+  });
 });
+
+/** An executable script `readmint-probe` in `dir` that prints `text`. */
+async function plantProbe(dir: string, text: string): Promise<void> {
+  const file = path.join(dir, "readmint-probe");
+  await writeFile(file, `#!/bin/sh\necho ${text}\n`);
+  await chmod(file, 0o755);
+}

@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { findExecutable } from "./findExecutable.js";
+import { findExecutable, withSearchPath } from "./findExecutable.js";
 import type { GitResult, GitRunOptions, GitRunner } from "./GitRunner.js";
 
 /** Most bytes kept of each output stream; git's answers here are short. */
@@ -7,17 +7,16 @@ const maxOutputBytes = 1024 * 1024;
 
 /**
  * The real `GitRunner`: spawns `git` without a shell, so no argument is ever parsed by one, and by the absolute path
- * found on `PATH`, never from the workspace (see `findExecutable`). A failure to start, or no git found, resolves with
- * code `null` and the error code as standard error.
+ * found on `PATH`, never from the workspace, with a `PATH` holding only the entries searched for it (see
+ * `findExecutable`), so the programs git starts by name are not found there either. A failure to start, or no git
+ * found, resolves with code `null` and the error code as standard error.
  */
 export const runGit: GitRunner = async (args, options) => {
-  const file = await findExecutable("git", {
-    platform: process.platform,
-    env: options.env,
-    cwd: options.cwd,
-  });
+  const platform = process.platform;
+  const env = withSearchPath(options.env, { platform, cwd: options.cwd });
+  const file = await findExecutable("git", { platform, env, cwd: options.cwd });
   if (file === undefined) return { code: null, stdout: "", stderr: "git could not run (ENOENT)" };
-  return spawnGit(file, args, options);
+  return spawnGit(file, args, { ...options, env });
 };
 
 function spawnGit(
