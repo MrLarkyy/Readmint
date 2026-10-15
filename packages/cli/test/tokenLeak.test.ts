@@ -228,14 +228,14 @@ describe("a failing --open opener never leaks the secret address", () => {
     return { code: await exit, stderr };
   }
 
-  function expectOnlyThePreviewLine(stderr: string, line: string): string {
-    const printed = /preview: (http:\/\/127\.0\.0\.1:\d+\/([A-Za-z0-9_-]{43})\/)\n/.exec(stderr);
-    expect(printed).not.toBeNull();
-    const secret = printed?.[2] ?? "";
-    expect(stderr.split(secret)).toHaveLength(2);
+  /** The opener got the launch address, and neither it nor a second secret reached standard error. */
+  function expectOnlyThePreviewLine(stderr: string, line: string, seen: string): void {
+    const printed = printedAddress(stderr);
+    expectLaunchAddress(seen, printed);
+    expect(stderr.split(printed.secret)).toHaveLength(2);
+    expect(stderr).not.toContain(seen.slice(-43));
     expect(stderr).toContain(line);
     expect(stderr).not.toContain("internal error");
-    return printed?.[1] ?? "";
   }
 
   test("a rejection with the address in its message, path and arguments", async () => {
@@ -251,12 +251,11 @@ describe("a failing --open opener never leaks the secret address", () => {
       );
     });
     expect(code).toBe(ExitCode.ok);
-    expect(
-      expectOnlyThePreviewLine(
-        stderr,
-        "preview: cannot open a browser (ENOENT); open the address above\n",
-      ),
-    ).toBe(seen);
+    expectOnlyThePreviewLine(
+      stderr,
+      "preview: cannot open a browser (ENOENT); open the address above\n",
+      seen,
+    );
     expectNoToken({ code, stdout: "", stderr });
   });
 
@@ -267,8 +266,91 @@ describe("a failing --open opener never leaks the secret address", () => {
       throw Object.assign(new Error(`boom ${url}`), { code: url });
     });
     expect(code).toBe(ExitCode.ok);
-    expect(
-      expectOnlyThePreviewLine(stderr, "preview: cannot open a browser; open the address above\n"),
-    ).toBe(seen);
+    expectOnlyThePreviewLine(
+      stderr,
+      "preview: cannot open a browser; open the address above\n",
+      seen,
+    );
   });
+});
+
+/** The port and the secret of the one `preview:` line of a `--github` run. */
+function printedAddress(stderr: string): { port: string; secret: string } {
+  const printed = /preview: http:\/\/127\.0\.0\.1:(\d+)\/([A-Za-z0-9_-]{43})\/\n/.exec(stderr);
+  expect(printed).not.toBeNull();
+  return { port: printed?.[1] ?? "", secret: printed?.[2] ?? "" };
+}
+
+/** What the opener got: the launch address of that server, never the secret. */
+function expectLaunchAddress(seen: string, printed: { port: string; secret: string }): void {
+  expect(seen).toMatch(/^http:\/\/127\.0\.0\.1:\d+\/[A-Za-z0-9_-]{43}$/);
+  expect(seen.startsWith(`http://127.0.0.1:${printed.port}/`)).toBe(true);
+  expect(seen).not.toContain(printed.secret);
+}
+
+function getRaw(url: string): Promise<{ status: number; location?: string; body: string }> {
+  return new Promise((resolve, reject) => {
+    const req = request(url, { agent: false }, (response) => {
+      let body = "";
+      response.setEncoding("utf8");
+      response.on("data", (chunk: string) => (body += chunk));
+      response.on("end", () => {
+        const location = response.headers.location;
+        resolve({
+          status: response.statusCode ?? 0,
+          ...(location === undefined ? {} : { location }),
+          body,
+        });
+      });
+    });
+    req.on("error", reject);
+    req.end();
+  });
+}
+
+test("--github --open opens a one-time launch address, never the secret one", async () => {
+  const controller = new AbortController();
+  let stderr = "";
+  let seen = "";
+  const exit = runCli(["preview", "bound/design.json", "--github", "--open", "--port", "0"], {
+    stdout: () => undefined,
+    stderr: (text) => {
+      stderr += text;
+    },
+    cwd: tree.root,
+    signal: controller.signal,
+    pollIntervalMs: 20,
+    env,
+    fetch: githubReplay().fetch,
+    openUrl: (url) => {
+      seen = url;
+      return Promise.resolve();
+    },
+  });
+  try {
+    const deadline = Date.now() + 10_000;
+    while (seen === "") {
+      if (Date.now() > deadline) throw new Error("timed out waiting for the opener");
+      await sleep(10);
+    }
+    const printed = printedAddress(stderr);
+    expectLaunchAddress(seen, printed);
+    const before = stderr;
+
+    const first = await getRaw(seen);
+    expect(first.status).toBe(303);
+    expect(first.location).toBe(`/${printed.secret}/`);
+    expect(first.body).not.toContain(printed.secret);
+    const again = await getRaw(seen);
+    expect(again.status).toBe(403);
+    expect(again.body).toBe("forbidden: open the address the preview printed\n");
+
+    expect(stderr).toBe(before);
+    expect(stderr.split(printed.secret)).toHaveLength(2);
+    expect(stderr).not.toContain(seen.slice(-43));
+  } finally {
+    controller.abort();
+  }
+  expect(await exit).toBe(ExitCode.ok);
+  expectNoToken({ code: 0, stdout: "", stderr });
 });

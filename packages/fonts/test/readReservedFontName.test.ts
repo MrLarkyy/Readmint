@@ -132,6 +132,7 @@ describe("the Reserved Font Name hint of a name table", () => {
       montserrat.woff,
       montserrat.woff2,
       noto.arabic,
+      noto.arabicMarks,
       noto.devanagari,
       readmintTestSymbols(),
     ]) {

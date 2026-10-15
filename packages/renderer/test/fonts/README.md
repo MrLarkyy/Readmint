@@ -33,14 +33,17 @@ can be tested.
 ## Noto Naskh Arabic, Noto Sans Devanagari (SIL Open Font License 1.1, `OFL-<family>.txt`)
 
 Copyright 2022 The Noto Project Authors (https://github.com/notofonts/arabic and
-https://github.com/notofonts/devanagari). The licences declare no Reserved Font Name. Both files have OS/2 `fsType` 0
-(installable embedding). They are subsets of the static unhinted TrueType fonts of the notofonts GitHub release
+https://github.com/notofonts/devanagari). The licences declare no Reserved Font Name. All three files have OS/2
+`fsType` 0 (installable embedding). They are subsets of the static unhinted TrueType fonts of the notofonts GitHub release
 assets, made with fontTools 4.66.1 so the shaping tests stay small; every layout table (GDEF, GSUB, GPOS) and the whole
-name table are kept, outlines are unchanged.
+name table are kept, outlines are unchanged. `NotoNaskhArabic-Marks.ttf` is a second subset of the same original with
+the maddah, hamza and other marks U+0653-U+0658 and the modifier marks U+06DC, U+06E3, U+06E7 and U+06E8 added, for
+the Arabic mark ordering tests (RM-59); the first file stays as it was, so its goldens keep their glyph ids.
 
 | file                             | version | source (release asset, sha256 of the zip; font inside)                                                                                                                                                                                                   | sha256 of the original font                                        | sha256 of the subset                                               |
 | -------------------------------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ | ------------------------------------------------------------------ |
 | `NotoNaskhArabic-Regular.ttf`    | 2.021   | https://github.com/notofonts/arabic/releases/download/NotoNaskhArabic-v2.021/NotoNaskhArabic-v2.021.zip (`6c050ab9bd087d69b733c505a7576e60c528c2f33cd7b91005a5bd7da4514032`), `NotoNaskhArabic/unhinted/ttf/NotoNaskhArabic-Regular.ttf`                 | `c34fdbd98af4dbc45ca192a23d2eeb77032add83086f5fe32957d23b3f36b221` | `3bf5e21cbf32ddb0fca050e5259c37fa90ad70d2e7b0f4e050f442509a830329` |
+| `NotoNaskhArabic-Marks.ttf`      | 2.021   | https://github.com/notofonts/arabic/releases/download/NotoNaskhArabic-v2.021/NotoNaskhArabic-v2.021.zip (`6c050ab9bd087d69b733c505a7576e60c528c2f33cd7b91005a5bd7da4514032`), `NotoNaskhArabic/unhinted/ttf/NotoNaskhArabic-Regular.ttf`                 | `c34fdbd98af4dbc45ca192a23d2eeb77032add83086f5fe32957d23b3f36b221` | `bd74ec640b73b2b0363e908a80c026eb1a6e5017fb29c9f868abe5b77a3b6f10` |
 | `NotoSansDevanagari-Regular.ttf` | 2.007   | https://github.com/notofonts/devanagari/releases/download/NotoSansDevanagari-v2.007/NotoSansDevanagari-v2.007.zip (`820c7da45b1e63562cb41c0a8cac5d9a4202312043a3a040ed1325857ef469b1`), `NotoSansDevanagari/unhinted/ttf/NotoSansDevanagari-Regular.ttf` | `9c7d935139ea6a1e6ad9dbac4f6d27ece1e04bca8123c8888d00a0f9df4724cd` | `f4b173cf83db171ba5855f2e622eaa3480980852302bfa67bff78d7d1c0e9a09` |
 
 `OFL-NotoNaskhArabic.txt` and `OFL-NotoSansDevanagari.txt` are the `OFL.txt` of each release zip (trailing spaces trimmed, as in `OFL.txt`). The
@@ -48,7 +51,8 @@ subsets were made with these commands (the same input gives the same bytes):
 
 ```sh
 python -m fontTools.subset NotoNaskhArabic-Regular.ttf --unicodes="U+0020-007E,U+00A0,U+060C,U+061B,U+061F,U+0621-0652,U+0660-0669,U+0670-0671,U+067E,U+0686,U+06A9,U+06AF,U+06CC,U+200C-200F,U+25CC" --layout-features='*' --layout-scripts='*' --name-IDs='*' --name-languages='*' --name-legacy --notdef-outline --glyph-names --legacy-kern --output-file=NotoNaskhArabic-Regular.subset.ttf
+python -m fontTools.subset NotoNaskhArabic-Regular.ttf --unicodes="U+0020-007E,U+00A0,U+060C,U+061B,U+061F,U+0621-0652,U+0653-0658,U+0660-0669,U+0670-0671,U+067E,U+0686,U+06A9,U+06AF,U+06CC,U+06DC,U+06E3,U+06E7-06E8,U+200C-200F,U+25CC" --layout-features='*' --layout-scripts='*' --name-IDs='*' --name-languages='*' --name-legacy --notdef-outline --glyph-names --legacy-kern --output-file=NotoNaskhArabic-Marks.ttf
 python -m fontTools.subset NotoSansDevanagari-Regular.ttf --unicodes="U+0020-007E,U+00A0,U+0900-0914,U+0915,U+0917,U+091C,U+0924,U+0926,U+0928,U+092A,U+092E,U+092F,U+0930,U+0932,U+0935,U+0937,U+0938,U+0939,U+093C-094D,U+0950,U+0964-096F,U+200C-200D,U+25CC" --layout-features='*' --layout-scripts='*' --name-IDs='*' --name-languages='*' --name-legacy --notdef-outline --glyph-names --legacy-kern --output-file=NotoSansDevanagari-Regular.subset.ttf
 ```
 
-Neither font has Latin letters: the shaping goldens pair them with Montserrat for mixed text.
+None of the Noto fonts has Latin letters: the shaping goldens pair them with Montserrat for mixed text.
