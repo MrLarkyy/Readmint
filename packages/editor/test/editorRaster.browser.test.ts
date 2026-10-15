@@ -18,7 +18,7 @@ import { editorSession } from "./editorSession.js";
 import { testFonts } from "./testFonts.js";
 
 /** A cold raster worker fetches 3 MB of WebAssembly and compiles it: allow for a slow machine. */
-const slow = 60_000;
+const slow = 180_000;
 
 let root: HTMLElement;
 let editor: EditorHandle;
