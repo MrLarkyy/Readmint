@@ -11,7 +11,8 @@ import { stripXmlInvalid } from "./stripXmlInvalid.js";
 import { evaluateText } from "./expressions.js";
 import { resolveOptionalNumber } from "./resolveValue.js";
 import type { TextLine, TextRun } from "./TextLine.js";
-import { TextShaper, type ShapedGlyph } from "./TextShaper.js";
+import type { TextLayout } from "./TextLayout.js";
+import { TextShaper, type ShapedGlyph, type TextShaperOptions } from "./TextShaper.js";
 import { wrapText } from "./wrapText.js";
 
 export const defaultFontSize = 16;
@@ -67,39 +68,44 @@ export function resolveText(
     context.fail(fontRef.path, "missing-asset", "a text needs a font (its own or its style's)");
   }
   const primary = selectFont(context, fontRef.value, fontWeight, fontRef.path);
-  const shaper = new TextShaper(context, {
-    referenced: fontRef.value,
-    primary,
-    weight: fontWeight,
-    fontSize,
-    letterSpacing,
-  });
-  const shaped = wrapText(content, width, (text) => shaper.measure(text)).map((line) =>
-    shaper.layout(line),
-  );
-  let widest = 0;
-  for (const line of shaped) widest = Math.max(widest, line.width);
-  const boxWidth = width ?? widest;
   const alignment: Align =
     align.value === "middle" || align.value === "end" ? align.value : "start";
-  const lines = shaped.map((line) => placeLine(line, boxWidth, alignment));
-  const drawnAs = lines.some((line) => line.runs.some((run) => run.font.drawAs === "paths"))
-    ? "paths"
-    : "font";
-  record(context, lines, drawnAs);
-  for (const line of shaped) {
-    for (const glyph of line.glyphs) {
-      if (glyph.font === undefined)
-        context.missingGlyphs.note(fontRef.value, glyph.codePoint, contentPath);
-    }
+  const key = JSON.stringify([
+    primary.asset,
+    fontRef.value,
+    fontWeight ?? null,
+    fontSize,
+    letterSpacing,
+    width ?? null,
+    alignment,
+    content,
+  ]);
+  let layout = context.textLayouts.get(key);
+  if (layout === undefined) {
+    layout = layOut(
+      context,
+      content,
+      width,
+      alignment,
+      {
+        referenced: fontRef.value,
+        primary,
+        weight: fontWeight,
+        fontSize,
+        letterSpacing,
+      },
+      contentPath,
+    );
+    context.textLayouts.set(key, layout);
   }
+  const { lines, drawnAs } = layout;
   const scale = fontSize / primary.font.unitsPerEm;
   const lineAdvance = lineHeight * fontSize;
   const glyphHeight = (primary.font.ascender - primary.font.descender) * scale;
   return {
     kind: "text",
     ...base,
-    width: boxWidth,
+    width: layout.width,
     height: lines.length * lineAdvance,
     text: content,
     lines,
@@ -112,11 +118,43 @@ export function resolveText(
   };
 }
 
-/** Moves a line by its alignment in the box and groups its drawn glyphs into runs of one font. */
+/** Shapes, wraps and places a text, recording the glyphs each font draws and the characters none has. */
+function layOut(
+  context: RenderContext,
+  content: string,
+  width: number | undefined,
+  alignment: Align,
+  options: TextShaperOptions,
+  contentPath: string,
+): TextLayout {
+  const shaper = new TextShaper(context, options);
+  const shaped = wrapText(content, width, (text) => shaper.measure(text)).map((line) =>
+    shaper.layout(line),
+  );
+  let widest = 0;
+  for (const line of shaped) widest = Math.max(widest, line.width);
+  const boxWidth = width ?? widest;
+  const missing: number[] = [];
+  const lines = shaped.map((line) => placeLine(line, boxWidth, alignment, missing));
+  const drawnAs = lines.some((line) => line.runs.some((run) => run.font.drawAs === "paths"))
+    ? "paths"
+    : "font";
+  record(context, lines, drawnAs);
+  for (const codePoint of missing) {
+    context.missingGlyphs.note(options.referenced, codePoint, contentPath);
+  }
+  return { lines, width: boxWidth, drawnAs };
+}
+
+/**
+ * Moves a line by its alignment in the box and groups its drawn glyphs into runs of one font; code points no font has
+ * go to `missing`. Without an offset the shaped glyphs are the placed ones (no copy per glyph).
+ */
 function placeLine(
   line: { width: number; glyphs: readonly ShapedGlyph[] },
   boxWidth: number,
   align: Align,
+  missing: number[],
 ): TextLine {
   const offset =
     align === "start"
@@ -127,12 +165,19 @@ function placeLine(
   const runs: TextRun[] = [];
   let current: { font: TextRun["font"]; glyphs: TextRun["glyphs"][number][] } | undefined;
   for (const glyph of line.glyphs) {
-    if (glyph.font === undefined) continue;
+    if (glyph.font === undefined) {
+      missing.push(glyph.codePoint);
+      continue;
+    }
     if (current?.font !== glyph.font) {
       current = { font: glyph.font, glyphs: [] };
       runs.push(current);
     }
-    current.glyphs.push({ glyph: glyph.glyph, codePoint: glyph.codePoint, x: offset + glyph.x });
+    current.glyphs.push(
+      offset === 0
+        ? glyph
+        : { glyph: glyph.glyph, codePoint: glyph.codePoint, x: offset + glyph.x },
+    );
   }
   return { width: line.width, runs };
 }

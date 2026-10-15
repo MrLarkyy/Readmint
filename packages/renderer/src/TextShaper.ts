@@ -2,7 +2,7 @@ import { fontFallbacks, selectFont, type LoadedFont } from "./loadFont.js";
 import { ownEntry } from "./ownEntry.js";
 import { pointer } from "./pointer.js";
 import type { RenderContext } from "./RenderContext.js";
-import { withFont } from "./withFont.js";
+import { fontFault } from "./withFont.js";
 
 /** A code point with the font that draws it (undefined: no font has it) and its advance including spacing. */
 interface Resolved {
@@ -38,6 +38,8 @@ export interface TextShaperOptions {
  */
 export class TextShaper {
   private readonly resolved = new Map<number, Resolved>();
+  /** Widths of the strings measured for wrapping (words repeat): at most one entry per word of the text. */
+  private readonly widths = new Map<string, number>();
   private readonly fallbacks = new Map<number, LoadedFont>();
   private readonly fallbackIds: readonly string[];
 
@@ -54,7 +56,12 @@ export class TextShaper {
 
   /** Width of a text laid out on one line. */
   measure(text: string): number {
-    return this.walk(text, undefined);
+    let width = this.widths.get(text);
+    if (width === undefined) {
+      width = this.walk(text, undefined);
+      this.widths.set(text, width);
+    }
+    return width;
   }
 
   layout(text: string): { width: number; glyphs: ShapedGlyph[] } {
@@ -106,7 +113,12 @@ export class TextShaper {
   }
 
   private kern(font: LoadedFont, left: number, right: number): number {
-    const units = withFont(this.context, font, () => font.font.kerning(left, right));
+    let units: number;
+    try {
+      units = font.font.kerning(left, right);
+    } catch (error) {
+      return fontFault(this.context, font, error);
+    }
     return (units * this.options.fontSize) / font.font.unitsPerEm;
   }
 

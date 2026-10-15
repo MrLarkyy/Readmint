@@ -13,20 +13,25 @@ export function withFont<T>(context: RenderContext, font: LoadedFont, work: () =
   try {
     return work();
   } catch (error) {
-    if (error instanceof MalformedFont) {
-      context.fail(
-        pointer(pointer("/assets/fonts", font.asset), "src"),
-        "asset-format",
-        `font asset ${echo(font.asset)}: ${error.message}`,
-      );
-    }
-    if (error instanceof FontRefused) {
-      context.fail(
-        pointer("/assets/fonts", font.asset),
-        error.kind === "too-large" ? "asset-too-large" : "unsupported-font",
-        `font asset ${echo(font.asset)}: ${error.message}`,
-      );
-    }
-    throw error;
+    return fontFault(context, font, error);
   }
+}
+
+/** A font error caught while reading `font`, as the render issue of its asset; any other error is rethrown. */
+export function fontFault(context: RenderContext, font: LoadedFont, error: unknown): never {
+  if (error instanceof MalformedFont) {
+    context.fail(
+      pointer(pointer("/assets/fonts", font.asset), "src"),
+      "asset-format",
+      `font asset ${echo(font.asset)}: ${error.message}`,
+    );
+  }
+  if (error instanceof FontRefused) {
+    context.fail(
+      pointer("/assets/fonts", font.asset),
+      error.kind === "too-large" ? "asset-too-large" : "unsupported-font",
+      `font asset ${echo(font.asset)}: ${error.message}`,
+    );
+  }
+  throw error;
 }

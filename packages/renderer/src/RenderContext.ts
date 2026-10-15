@@ -6,6 +6,7 @@ import type { FontUse } from "./FontUse.js";
 import type { LoadedFont } from "./loadFont.js";
 import type { LoadedImage } from "./loadImage.js";
 import { MissingGlyphs } from "./MissingGlyphs.js";
+import type { TextLayout } from "./TextLayout.js";
 import type { Bounds } from "./pathBounds.js";
 import { RenderFailure } from "./RenderFailure.js";
 import type { RenderIssue, RenderIssueCode } from "./RenderIssue.js";
@@ -46,6 +47,11 @@ export class RenderContext {
    */
   subsetBytesLeft: number;
   readonly missingGlyphs = new MissingGlyphs();
+  /**
+   * Laid-out texts by everything their layout depends on, so repeat copies of one text are laid out (and their glyphs
+   * recorded) once; one entry per distinct text, whose content each copy has reserved in the output budget.
+   */
+  readonly textLayouts = new Map<string, TextLayout>();
   /** Loaded images by asset id, in first-use order. */
   readonly images = new Map<string, LoadedImage>();
   /** Compiled expressions by source text; a design string is compiled once per render. */
