@@ -1,20 +1,22 @@
 import path from "node:path";
-import { quoteForLog } from "@readmint/cli";
+import { type OutputFormat, outputExtension, quoteForLog } from "@readmint/cli";
 import { ActionError } from "./ActionError.js";
 import type { PlannedDesign } from "./PlannedDesign.js";
+import type { PlannedFile } from "./PlannedFile.js";
 
 const darkSuffix = ".dark";
 
 /**
- * Pairs the listed designs with their outputs `<output-dir>/<stem>.svg`, and with the dark twin
- * `<stem>.dark.<ext>` next to a design when `exists` finds it (`<stem>.dark.svg`). A listed twin
- * is used once, with its light design; a twin listed without it, or two designs with one output
- * name (case-insensitively: checkouts on Windows and macOS fold case), is an input error.
- * Order: as listed.
+ * Pairs the listed designs with their outputs `<output-dir>/<stem>.<ext>`, one per format (`apng`
+ * writes `.png`), and with the dark twin `<stem>.dark.<ext>` next to a design when `exists` finds
+ * it (`<stem>.dark.<ext>` outputs). A listed twin is used once, with its light design; a twin listed
+ * without it, or two designs with one output name (case-insensitively: checkouts on Windows and
+ * macOS fold case), is an input error. Order: as listed.
  */
 export async function planOutputs(
   designs: readonly string[],
   outputDir: string,
+  formats: readonly OutputFormat[],
   exists: (design: string) => Promise<boolean>,
 ): Promise<PlannedDesign[]> {
   const listed = designs.map(normalize);
@@ -23,15 +25,25 @@ export async function planOutputs(
   const planned: PlannedDesign[] = [];
   const outputs = new Map<string, string>();
 
-  const claim = (output: string, design: string): void => {
-    const key = output.toLowerCase();
-    const other = outputs.get(key);
-    if (other !== undefined && other !== design) {
-      problems.push(
-        `designs ${quoteForLog(other)} and ${quoteForLog(design)} both write ${quoteForLog(output)}`,
-      );
+  const file = (design: string, name: string): PlannedFile => {
+    const planned = {
+      design,
+      outputs: formats.map((format) => ({
+        format,
+        output: join(outputDir, `${name}.${outputExtension(format)}`),
+      })),
+    };
+    for (const { output } of planned.outputs) {
+      const key = output.toLowerCase();
+      const other = outputs.get(key);
+      if (other !== undefined && other !== design) {
+        problems.push(
+          `designs ${quoteForLog(other)} and ${quoteForLog(design)} both write ${quoteForLog(output)}`,
+        );
+      }
+      outputs.set(key, design);
     }
-    outputs.set(key, design);
+    return planned;
   };
 
   const seen = new Set<string>();
@@ -53,11 +65,9 @@ export async function planOutputs(
       continue;
     }
     const twin = join(dir, `${stem}${darkSuffix}${ext}`);
-    const light = { design, output: join(outputDir, `${stem}.svg`) };
-    claim(light.output, design);
+    const light = file(design, stem);
     if (listedKeys.has(twin.toLowerCase()) || (await exists(twin))) {
-      const dark = { design: twin, output: join(outputDir, `${stem}${darkSuffix}.svg`) };
-      claim(dark.output, twin);
+      const dark = file(twin, `${stem}${darkSuffix}`);
       planned.push({ stem, light, dark });
     } else {
       planned.push({ stem, light });

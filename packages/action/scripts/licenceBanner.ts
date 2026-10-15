@@ -1,7 +1,18 @@
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 
 const licenceFile = /^(?:licen[cs]e|copying|notice)(?:[.-].*)?$/i;
+
+/**
+ * Licence texts in this repository (scripts/licences/README.md) added after a package's own: for code its
+ * WebAssembly carries without the package shipping the notice (libwebp in wasm-webp, the Rust crates in resvg-wasm),
+ * or for a package that publishes no licence file at all (resvg-wasm, brotli).
+ */
+const suppliedLicences: Readonly<Record<string, readonly string[]>> = {
+  "@resvg/resvg-wasm": ["resvg-wasm.LICENSE", "resvg-wasm-crates.txt"],
+  brotli: ["brotli.txt"],
+  "wasm-webp": ["libwebp-COPYING", "libwebp-PATENTS"],
+};
 
 interface BundledPackage {
   readonly name: string;
@@ -14,16 +25,14 @@ interface BundledPackage {
  * The legal comment put at the top of the Action bundle: for every npm package any of the
  * bundled modules comes from (workspace packages excluded: they are this repository's own
  * code), its name, version, licence and the full text of its licence and notice files, sorted
- * by name. A package that ships no licence file needs `<name>.txt` in `suppliedDir`, written
- * and reviewed in this repository; without either the build throws: the bundle is never built
- * without a licence text.
+ * by name. A package listed in `suppliedLicences` gets those texts too. Throws when a package still has no licence text: the bundle is never built without one.
  */
-export function licenceBanner(moduleIds: Iterable<string>, suppliedDir?: string): string {
+export function licenceBanner(moduleIds: Iterable<string>): string {
   const packages = new Map<string, BundledPackage>();
   for (const id of moduleIds) {
     const root = packageRoot(id);
     if (root === undefined || packages.has(root)) continue;
-    const bundled = readPackage(root, suppliedDir);
+    const bundled = readPackage(root);
     if (bundled !== undefined) packages.set(root, bundled);
   }
   const sorted = [...packages.values()].sort((a, b) =>
@@ -49,7 +58,7 @@ function packageRoot(id: string): string | undefined {
   return parts.slice(0, end).join(path.sep);
 }
 
-function readPackage(root: string, suppliedDir: string | undefined): BundledPackage | undefined {
+function readPackage(root: string): BundledPackage | undefined {
   const manifest = JSON.parse(readFileSync(path.join(root, "package.json"), "utf8")) as {
     name?: unknown;
     version?: unknown;
@@ -59,19 +68,16 @@ function readPackage(root: string, suppliedDir: string | undefined): BundledPack
   if (name.startsWith("@readmint/")) return undefined;
   const files = readdirSync(root)
     .filter((file) => licenceFile.test(file))
-    .sort();
-  const supplied = suppliedDir === undefined ? undefined : path.join(suppliedDir, `${name}.txt`);
-  const texts =
-    files.length > 0
-      ? files.map((file) => readFileSync(path.join(root, file), "utf8"))
-      : supplied !== undefined && existsSync(supplied)
-        ? [readFileSync(supplied, "utf8")]
-        : [];
-  if (texts.length === 0) throw new Error(`${name} ships no licence file to bundle`);
+    .sort()
+    .map((file) => path.join(root, file));
+  for (const supplied of suppliedLicences[name] ?? []) {
+    files.push(path.join(import.meta.dirname, "licences", supplied));
+  }
+  if (files.length === 0) throw new Error(`${name} ships no licence file to bundle`);
   return {
     name,
     version: typeof manifest.version === "string" ? manifest.version : "unknown",
     licence: typeof manifest.license === "string" ? manifest.license : "see below",
-    texts,
+    texts: files.map((file) => readFileSync(file, "utf8")),
   };
 }

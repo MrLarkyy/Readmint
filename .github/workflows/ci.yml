@@ -26,13 +26,24 @@ jobs:
         run: |
           grep -q "@license Unicode-3.0" packages/action/dist/action.js
           grep -q "^ \* Package: yaml@" packages/action/dist/action.js
+          grep -q "^ \* Package: @resvg/resvg-wasm@" packages/action/dist/action.js
+          grep -q "^ \* Package: wasm-webp@" packages/action/dist/action.js
+          grep -q "Rust crates compiled into @resvg/resvg-wasm" packages/action/dist/action.js
+          grep -q "Copyright (c) 2010, Google Inc" packages/action/dist/action.js
+          grep -q "^ \* Package: gifenc@" packages/action/dist/action.js
+          test -f packages/action/dist/wasm/resvg.wasm
+          test -f packages/action/dist/wasm/webp.wasm
           work="$RUNNER_TEMP/readmint-smoke"
           cp -r packages/action/test/fixtures/smoke "$work"
           env "INPUT_DESIGNS=card.json" "INPUT_DATA-FILE=data.json" "INPUT_DRY-RUN=true" \
+            "INPUT_FORMATS=svg,png,webp,gif" \
             "GITHUB_WORKSPACE=$work" "GITHUB_OUTPUT=$work/output.txt" \
             node packages/action/dist/action.js
           test -f "$work/readmint/card.svg"
           test -f "$work/readmint/card.dark.svg"
+          test -f "$work/readmint/card.png"
+          test -f "$work/readmint/card.webp"
+          test -f "$work/readmint/card.gif"
           grep -q "^changed<<" "$work/output.txt"
       - run: pnpm typecheck
       - run: pnpm lint

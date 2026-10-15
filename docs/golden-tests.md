@@ -53,6 +53,16 @@ look alike within the suite tolerance.
 resvg-js 2.6.2 does not decode WebP images: a WebP draws nothing in the Node PNG while Chromium draws it, so a fixture
 with a WebP image fails the browser leg. Cover WebP with unit tests instead.
 
+## Raster export
+
+The golden rasterizer stays resvg-js 2.6.2 (native, tests only). Raster export ([raster.md](raster.md)) draws with
+`@resvg/resvg-wasm` 2.6.2, the same resvg core, and its suite (`packages/raster/test/raster.golden.test.ts`) checks
+that: every frame of every PNG, WebP, APNG and GIF it writes is decoded and compared with `rasterizeSvg` of the
+renderer's SVG at that frame's time, within `defaultNodeTolerance` (GIF: its 1-bit alpha applied to the reference,
+threshold 0.15, 1 % of the pixels). The decoded frames, stacked into one image per fixture and format, are the
+committed goldens in `packages/raster/test/golden/raster/` (`pnpm golden:update raster`). WebP images in a design
+are compared with the same design holding the PNG twin, since resvg-js cannot draw them.
+
 ## Animated designs
 
 The PNG goldens are static: a suite of an animated design pins frames, fixtures rendered with `time` (for example

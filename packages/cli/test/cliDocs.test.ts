@@ -2,8 +2,9 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { expect, test } from "vitest";
 import * as cli from "../src/index.js";
-import { ExitCode } from "../src/index.js";
+import { ExitCode, outputFormats } from "../src/index.js";
 import { helpText } from "../src/helpText.js";
+import { parseCliArgs } from "../src/parseCliArgs.js";
 
 const docs = readFileSync(join(import.meta.dirname, "..", "..", "..", "docs", "cli.md"), "utf8");
 
@@ -28,14 +29,19 @@ test("--help lists the same exit codes", () => {
   expect(codes).toEqual(Object.values(ExitCode));
 });
 
-test("--help and docs/cli.md say the output is SVG only", () => {
-  expect(helpText).toContain("Output is SVG only until raster export");
-  expect(docs).toContain("The output is **SVG only** until raster export");
+test("--help and docs/cli.md name every output format", () => {
+  for (const format of outputFormats) {
+    expect(helpText).toContain(format);
+    expect(section("Options")).toContain("`" + format + "`");
+  }
+  expect(helpText).not.toContain("SVG only");
+  expect(docs).not.toContain("SVG only");
 });
 
 test("--help and docs/cli.md list the same options", () => {
-  const helpOptions = [...helpText.matchAll(/^ {2}(?:-h, )?(--[a-z]+)/gm)].map(([, name]) => name);
-  const docOptions = [...docs.matchAll(/^\| `(--[a-z]+)/gm)].map(([, name]) => name);
+  const helpOptions = [...helpText.matchAll(/^ {2}(?:-h, )?(--[a-z-]+)/gm)].map(([, name]) => name);
+  const docOptions = [...docs.matchAll(/^\| `(--[a-z-]+)/gm)].map(([, name]) => name);
+  expect(helpOptions).toContain("--frame-rate");
   expect(new Set(helpOptions)).toEqual(new Set([...docOptions, "--help", "--version"]));
 });
 
@@ -49,4 +55,13 @@ test("docs/cli.md or docs/asset-loading.md names every export of @readmint/cli",
     (name) => !docs.includes(`\`${name}`) && !assetDocs.includes(`\`${name}`),
   );
   expect(missing).toEqual([]);
+});
+
+test("--help and docs/cli.md name every --out extension that picks a raster format", () => {
+  for (const extension of [".png", ".apng", ".webp", ".gif"]) {
+    expect(helpText).toContain(extension);
+    expect(section("Options")).toContain("`" + extension + "`");
+    const command = parseCliArgs(["render", "d.json", "--out", `a${extension}`]);
+    expect(command.name === "render" ? command.format : "").not.toBe("svg");
+  }
 });

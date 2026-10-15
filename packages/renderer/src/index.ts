@@ -8,3 +8,4 @@ export type { RenderResult } from "./RenderResult.js";
 export { frameTimes } from "./frameTimes.js";
 export { RenderLimits } from "./RenderLimits.js";
 export { renderSvg } from "./renderSvg.js";
+export { type ImageInfo, type ImageMime, type SniffResult, sniffImage } from "./sniffImage.js";

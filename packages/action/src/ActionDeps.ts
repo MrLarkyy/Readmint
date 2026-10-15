@@ -10,4 +10,6 @@ export interface ActionDeps {
   readonly cwd: string;
   /** `fetch` for the GitHub load; the global one when absent. */
   readonly fetch?: GitHubFetch;
+  /** Loads the raster codecs (the bundle ships them next to it); called once a raster format is listed. */
+  readonly initRaster?: () => Promise<void>;
 }

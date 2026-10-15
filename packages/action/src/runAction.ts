@@ -30,7 +30,7 @@ export async function runAction(env: Env, deps: ActionDeps): Promise<number> {
   try {
     const config = readInputs(env);
     const workspace = path.resolve(deps.cwd, nonEmpty(env.GITHUB_WORKSPACE) ?? ".");
-    const plan = await planOutputs(config.designs, config.outputDir, (design) =>
+    const plan = await planOutputs(config.designs, config.outputDir, config.formats, (design) =>
       entryExists(path.resolve(workspace, design)),
     );
 
@@ -47,13 +47,18 @@ export async function runAction(env: Env, deps: ActionDeps): Promise<number> {
     }
 
     const data = await loadActionData(config, workspace, deps.fetch);
-    const rendered = await renderAll(plan, workspace, data, config.locale);
+    if (config.formats.some((format) => format !== "svg")) await loadRaster(deps);
+    const rendered = await renderAll(plan, workspace, data, {
+      ...(config.locale === undefined ? {} : { locale: config.locale }),
+      scale: config.scale,
+      ...(config.frameRate === undefined ? {} : { frameRate: config.frameRate }),
+    });
     for (const warning of rendered.warnings) log.warning(warning);
     const written = await writeOutputs(workspace, config.outputDir, rendered.files);
     log.info(
       `rendered ${String(rendered.files.length)} file(s); ${String(written.length)} written, the rest unchanged`,
     );
-    const snippet = pictureSnippet(plan);
+    const snippet = pictureSnippet(plan, rendered.files);
     log.group("README snippet", snippet.split("\n"));
 
     let files = written;
@@ -108,6 +113,19 @@ async function checkPushTarget(repo: GitRepo, branch: string): Promise<void> {
     throw new ActionError(
       "git",
       `the checkout (${head.slice(0, 12)}) is not the tip of branch ${name} on origin (${remote.slice(0, 12)}); check out the branch the Action pushes to, at its latest commit`,
+    );
+  }
+}
+
+async function loadRaster(deps: ActionDeps): Promise<void> {
+  if (deps.initRaster === undefined) return;
+  try {
+    await deps.initRaster();
+  } catch (error) {
+    const code = errnoCode(error);
+    throw new ActionError(
+      "render",
+      `the raster codecs cannot be loaded${code === undefined ? "" : ` (${code})`}; the Action bundle is incomplete`,
     );
   }
 }
