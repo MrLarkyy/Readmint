@@ -10,5 +10,6 @@ export { crc32 } from "./crc32.js";
 export type { Orientation, OrientationField } from "./exifOrientation.js";
 export { frameTimes } from "./frameTimes.js";
 export { RenderLimits } from "./RenderLimits.js";
+export { EntropyBudget, maxRenderEntropySteps } from "./EntropyBudget.js";
 export { renderSvg } from "./renderSvg.js";
 export { type ImageInfo, type ImageMime, type SniffResult, sniffImage } from "./sniffImage.js";

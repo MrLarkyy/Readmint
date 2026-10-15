@@ -1,4 +1,4 @@
-import { RenderLimits, sniffImage } from "@readmint/renderer";
+import { EntropyBudget, RenderLimits, sniffImage } from "@readmint/renderer";
 import { RasterError } from "./RasterError.js";
 
 /** What drawing the images of an SVG decodes, frame after frame. */
@@ -64,6 +64,8 @@ export function countImagePixels(svg: string, frames: number): ImageWork {
   let images = 0;
   let totalDraws = 0;
   const webp = new Set<string>();
+  // One JPEG symbol-check budget for every image of the export, as the render has.
+  const budget = new EntropyBudget();
   for (const match of svg.matchAll(imageElement)) {
     const element = match[0];
     const source = dataHref.exec(element);
@@ -72,7 +74,14 @@ export function countImagePixels(svg: string, frames: number): ImageWork {
     const sniffed = sniffImage(
       new Uint8Array(Buffer.from(base64, "base64")),
       RenderLimits.maxAnimationFrames,
+      budget,
     );
+    if (!sniffed.ok && budget.exhausted) {
+      throw new RasterError(
+        "raster-too-many-image-pixels",
+        `${EntropyBudget.message()}; draw fewer JPEG images or simpler ones`,
+      );
+    }
     if (!sniffed.ok) {
       throw new RasterError("raster-image", `an image cannot be drawn: ${sniffed.message}`);
     }

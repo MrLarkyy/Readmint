@@ -1,4 +1,5 @@
 import type { Bytes } from "./Bytes.js";
+import type { EntropyBudget } from "./EntropyBudget.js";
 import { HuffmanTable } from "./HuffmanTable.js";
 import { type EntropyScan, JpegEntropy } from "./JpegEntropy.js";
 import { entropyRefusal, resvgDiffers, undrawable } from "./jpegRefusals.js";
@@ -68,9 +69,14 @@ export class JpegStructure {
   private mjpeg = false;
   /** How often each quantization table has been defined. */
   private readonly quantTables = new Map<number, number>();
+  /** The entries of each quantization table's latest definition, in zigzag order. */
+  private readonly quantEntries = new Map<number, Uint16Array>();
   private readonly libjpeg: ColourMarks = { jfif: false, adobe: undefined };
   private readonly decoder: ColourMarks = { jfif: false, adobe: undefined };
   private scanned = false;
+
+  /** @param budget the symbol-check steps the render has left, shared by all its images; none, the file's cap only */
+  constructor(private readonly budget?: EntropyBudget) {}
 
   /** Why the length segment of `marker` at `offset` (its length field) is refused, or undefined. */
   segmentProblem(marker: number, bytes: Bytes, offset: number, length: number): string | undefined {
@@ -107,7 +113,9 @@ export class JpegStructure {
     }
     const height = bytes.u16be(offset + 3);
     const width = bytes.u16be(offset + 5);
-    if (width > 0 && height > 0) this.entropy = new JpegEntropy(width, height, this.components);
+    if (width > 0 && height > 0) {
+      this.entropy = new JpegEntropy(width, height, this.components, this.budget);
+    }
     if (marker === 0xc3) return undefined;
     if (count === 4)
       return resvgDiffers("frame of 4 components (CMYK or YCCK), which resvg draws empty,");
@@ -195,11 +203,14 @@ export class JpegStructure {
         return resvgDiffers(`quantization table of precision ${String(precision)}`);
       const size = 64 * (precision + 1);
       if (end - at - 1 < size) return undrawable("quantization table segment of an invalid length");
+      const entries = new Uint16Array(64);
       for (let entry = 0; entry < 64; entry++) {
         const value = precision === 0 ? bytes.u8(at + 1 + entry) : bytes.u16be(at + 1 + 2 * entry);
         if (value === 0)
           return resvgDiffers(`quantization table ${String(table)} with a zero entry`);
+        entries[entry] = value;
       }
+      this.quantEntries.set(table, entries);
       this.quantTables.set(table, (this.quantTables.get(table) ?? 0) + 1);
       at += 1 + size;
     }
@@ -373,10 +384,13 @@ export class JpegStructure {
     const components = Array.from({ length: count }, (_, position) => {
       const id = bytes.u8(offset + 3 + 2 * position);
       const tables = bytes.u8(offset + 4 + 2 * position);
+      const index = this.components.findIndex((component) => component.id === id);
+      const quantTable = this.components[index]?.table;
       return {
-        index: this.components.findIndex((component) => component.id === id),
+        index,
         dc: this.table("DC", tables >> 4, !progressive),
         ac: this.table("AC", tables & 0x0f, !progressive),
+        quant: quantTable === undefined ? undefined : this.quantEntries.get(quantTable),
       };
     });
     return {

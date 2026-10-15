@@ -157,9 +157,13 @@ interface ProgressiveScan {
 /**
  * A progressive 32x16 grey JPEG built here, the grey file's DC values in five scans: DC at point transform 1, AC 1-5
  * at 1 (block 0 holds coefficient 1 = 20, the rest one EOB run), AC 6-63 (one EOB run), the AC 1-5 refinement (block
- * 0 gains coefficient 2 = 1) and the DC refinement. `edit` replaces the data of scan `index`.
+ * 0 gains coefficient 2 = 1) and the DC refinement. `edit` replaces the data of scan `index`; the DQT holds 1 for DC
+ * and `acQuantization` for every AC coefficient.
  */
-function progressiveJpeg(edit?: { readonly index: number; readonly data: (bits: Bits) => void }) {
+function progressiveJpeg(
+  edit?: { readonly index: number; readonly data: (bits: Bits) => void },
+  acQuantization = 1,
+) {
   const halves = greyValues.map((value) => value / 2);
   const scans: ProgressiveScan[] = [
     {
@@ -185,7 +189,7 @@ function progressiveJpeg(edit?: { readonly index: number; readonly data: (bits: 
   return new Uint8Array([
     0xff,
     0xd8,
-    ...segment(0xdb, [0, ...new Array<number>(64).fill(1)]),
+    ...segment(0xdb, [0, 1, ...new Array<number>(63).fill(acQuantization)]),
     ...segment(0xc2, [8, 0, 16, 0, 32, 1, 1, 0x11, 0]),
     ...segment(0xc4, [...dcTable.body, ...acTable.body]),
     ...scans.flatMap((scan, index) => {
@@ -196,6 +200,36 @@ function progressiveJpeg(edit?: { readonly index: number; readonly data: (bits: 
         ...bits.bytes(),
       ];
     }),
+    0xff,
+    0xd9,
+  ]);
+}
+
+/**
+ * An accepted progressive 1024x512 grey JPEG of about 10 KB that costs the symbol check about 6.7 million steps: a DC
+ * scan, then each AC coefficient alone at point transform 13 and refined 13 times, every scan one end-of-band run over
+ * all 8192 blocks. Copies of it cross a render's shared step budget.
+ */
+export function costlyProgressiveJpeg(): Uint8Array {
+  const oneCode = (id: number, symbol: number) => [id, 1, ...new Array<number>(15).fill(0), symbol];
+  const scan = (start: number, end: number, high: number, low: number, data: readonly number[]) => [
+    ...segment(0xda, [1, 1, 0x00, start, end, (high << 4) | low]),
+    ...data,
+  ];
+  // EOB13 (`0`) and 13 zero bits: a run of 8192 blocks, then padding.
+  const everyBlock = [0x00, 0x03];
+  const bands = range(63, 1).flatMap((k) => [
+    ...scan(k, k, 0, 13, everyBlock),
+    ...range(13).flatMap((step) => scan(k, k, 13 - step, 12 - step, everyBlock)),
+  ]);
+  return new Uint8Array([
+    0xff,
+    0xd8,
+    ...segment(0xdb, [0, ...new Array<number>(64).fill(1)]),
+    ...segment(0xc2, [8, 0x02, 0x00, 0x04, 0x00, 1, 1, 0x11, 0]),
+    ...segment(0xc4, [...oneCode(0x00, 0), ...oneCode(0x10, 0xd0)]),
+    ...scan(0, 0, 0, 0, new Array<number>(1024).fill(0)),
+    ...bands,
     0xff,
     0xd9,
   ]);
@@ -310,6 +344,20 @@ const flippedInScan = (jpeg: Uint8Array, index = 0) => {
 export function jpegEntropyCases(gradient: Uint8Array): JpegEntropyCase[] {
   const progressive = dataUriBytes(progressiveUri);
   const lossless = dataUriBytes(losslessUri);
+  /** The grey file with block 0 at DC `value`, the others at 0, every entry `quantization`. */
+  const dcAt = (value: number, quantization: number) =>
+    greyJpeg({ quantization, values: [value, 0, 0, 0, 0, 0, 0, 0] });
+  /** The grey file at DC 0 with coefficient 1 of block 0 at `value`, every entry `quantization`. */
+  const acAt = (value: number, quantization: number) =>
+    greyJpeg({
+      quantization,
+      values: new Array<number>(8).fill(0),
+      block: (bits, index, difference) => {
+        bits.dc(difference);
+        if (index === 0) bits.ac(0, value);
+        bits.eob();
+      },
+    });
   const rows: JpegEntropyCase[] = [
     // (k) Controls: the built files decode cleanly.
     { name: "the grey file", bytes: greyJpeg(), chromium: [78, 78, 78], resvg: [78, 78, 78] },
@@ -458,7 +506,7 @@ export function jpegEntropyCases(gradient: Uint8Array): JpegEntropyCase[] {
       chromium: [82, 82, 82],
       resvg: "nothing",
     },
-    // (d) Categories and sizes past what 8-bit samples need.
+    // (d) Categories and sizes past what 8-bit samples need (values: their dequantized size rules, see (i)).
     {
       name: "the grey file with a DC difference of category 12",
       bytes: greyJpeg({
@@ -482,7 +530,6 @@ export function jpegEntropyCases(gradient: Uint8Array): JpegEntropyCase[] {
           bits.eob();
         },
       }),
-      message: "AC value outside the 8-bit range",
       chromium: [255, 255, 255],
       resvg: [255, 255, 255],
     },
@@ -497,7 +544,7 @@ export function jpegEntropyCases(gradient: Uint8Array): JpegEntropyCase[] {
           bits.eob();
         },
       }),
-      message: "AC value outside the 8-bit range",
+      message: "dequantized value may pass 4096",
       chromium: [255, 255, 255],
       resvg: [255, 255, 255],
     },
@@ -512,7 +559,7 @@ export function jpegEntropyCases(gradient: Uint8Array): JpegEntropyCase[] {
           bits.eob();
         },
       }),
-      message: "AC value outside the 8-bit range",
+      message: "dequantized value may pass 4096",
       chromium: [0, 0, 0],
       resvg: [255, 255, 255],
       at: [1, 0],
@@ -520,7 +567,6 @@ export function jpegEntropyCases(gradient: Uint8Array): JpegEntropyCase[] {
     {
       name: "the progressive file with an AC value of size 10 at point transform 1",
       bytes: progressiveJpeg({ index: 1, data: (bits) => bits.ac(0, 600).eob().eob(2, 3) }),
-      message: "AC value outside the 8-bit range",
       chromium: [255, 255, 255],
       resvg: [255, 255, 255],
     },
@@ -617,18 +663,91 @@ export function jpegEntropyCases(gradient: Uint8Array): JpegEntropyCase[] {
       chromium: [82, 82, 82],
       resvg: "nothing",
     },
-    // (i) DC values past what 12 bits hold.
+    // (i) Dequantized values: a coefficient times its quantization entry, measured alike up to 4096, apart from 8192.
+    {
+      name: "the grey file with DC 512 at quantization 8",
+      bytes: dcAt(512, 8),
+      chromium: [255, 255, 255],
+      resvg: [255, 255, 255],
+    },
+    {
+      name: "the grey file with DC 1024 at quantization 8",
+      bytes: dcAt(1024, 8),
+      message: "dequantized value may pass 4096",
+      chromium: [0, 0, 0],
+      resvg: [255, 255, 255],
+    },
+    {
+      name: "the grey file with DC 2000 at quantization 16",
+      bytes: dcAt(2000, 16),
+      message: "dequantized value may pass 4096",
+      chromium: [32, 32, 32],
+      resvg: [255, 255, 255],
+    },
+    {
+      name: "the grey file with AC 1000 at quantization 4",
+      bytes: acAt(1000, 4),
+      chromium: [255, 255, 255],
+      resvg: [255, 255, 255],
+    },
+    {
+      name: "the grey file with AC 1000 at quantization 8",
+      bytes: acAt(1000, 8),
+      message: "dequantized value may pass 4096",
+      chromium: [255, 255, 255],
+      resvg: [255, 255, 255],
+    },
+    {
+      name: "the grey file with AC 1000 at quantization 16",
+      bytes: acAt(1000, 16),
+      message: "dequantized value may pass 4096",
+      chromium: [61, 61, 61],
+      resvg: [255, 255, 255],
+    },
+    {
+      name: "the grey file with AC 200 at quantization 64",
+      bytes: acAt(200, 64),
+      message: "dequantized value may pass 4096",
+      chromium: [0, 0, 0],
+      resvg: [255, 255, 255],
+    },
+    {
+      name: "the grey file with AC 1000 at quantization 64",
+      bytes: acAt(1000, 64),
+      message: "dequantized value may pass 4096",
+      chromium: [0, 0, 0],
+      resvg: [255, 255, 255],
+    },
+    {
+      name: "the grey file with AC 600 at quantization 255",
+      bytes: acAt(600, 255),
+      message: "dequantized value may pass 4096",
+      chromium: [255, 255, 255],
+      resvg: [0, 0, 0],
+    },
+    {
+      name: "the progressive file, AC quantization 16, with AC 128 at point transform 1",
+      bytes: progressiveJpeg({ index: 1, data: (bits) => bits.ac(0, 128).eob().eob(2, 3) }, 16),
+      message: "dequantized value may pass 4096",
+      chromium: [255, 255, 255],
+      resvg: [255, 255, 255],
+    },
+    {
+      name: "the progressive file, AC quantization 16",
+      bytes: progressiveJpeg(undefined, 16),
+      chromium: [139, 139, 139],
+      resvg: [139, 139, 139],
+    },
     {
       name: "the grey file with a DC value of 4000",
       bytes: greyJpeg({ values: [2000, 4000, 2000, 0, 400, 300, 100, -100] }),
-      message: "DC value outside the 8-bit range",
       chromium: [255, 255, 255],
       resvg: [255, 255, 255],
     },
     {
       name: "the grey file, quantization 16, with a DC value of 4000",
       bytes: greyJpeg({ quantization: 16, values: [2000, 4000, 2000, 0, 25, 18, 6, -6] }),
-      message: "DC value outside the 8-bit range",
+      message: "dequantized value may pass 4096",
       chromium: [32, 32, 32],
       resvg: [255, 255, 255],
     },

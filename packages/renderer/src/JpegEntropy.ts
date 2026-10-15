@@ -1,4 +1,5 @@
 import { EntropyBits } from "./EntropyBits.js";
+import type { EntropyBudget } from "./EntropyBudget.js";
 import type { HuffmanTable } from "./HuffmanTable.js";
 import {
   acFirstBlock,
@@ -27,11 +28,15 @@ export interface EntropyComponent {
   readonly v: number;
 }
 
-/** One component of a scan: its place in the frame and the tables the scan gives it. */
+/**
+ * One component of a scan: its place in the frame, the Huffman tables the scan gives it and the entries of its
+ * quantization table in zigzag order (undefined where no DQT defines it, which the marker walk refuses).
+ */
 export interface ScanComponent {
   readonly index: number;
   readonly dc: HuffmanTable | undefined;
   readonly ac: HuffmanTable | undefined;
+  readonly quant?: Uint16Array | undefined;
 }
 
 /**
@@ -50,7 +55,14 @@ export interface EntropyScan {
 
 /** What the entropy check finds wrong: a fault of a block, of the data around the blocks, or a limit. */
 export type EntropyFault =
-  BlockFault | "marker" | "restart" | "restart-data" | "block-count" | "steps" | "history";
+  | BlockFault
+  | "marker"
+  | "restart"
+  | "restart-data"
+  | "block-count"
+  | "steps"
+  | "budget"
+  | "history";
 
 interface Walk {
   readonly bits: EntropyBits;
@@ -65,10 +77,14 @@ interface Walk {
  * runs and the refinement correction bits, which take the history of nonzero coefficients per block. It finds where
  * the two decoders part ways (`EntropyFault`). Past the last block both ignore the padding bits and skip any bytes up
  * to the next marker, so the check ends there. Where the data runs out without a marker it finds nothing: the marker
- * walk rules on a cut file.
+ * walk rules on a cut file. Its steps count against `maxEntropySteps` for the file and against `budget`, shared by
+ * every image of a render, where one is given.
  */
 export class JpegEntropy {
   private steps = 0;
+  /** Where the current scan stops: the file's cap or what the shared budget has left, the lower. */
+  private cap = maxEntropySteps;
+  private charged = 0;
   private readonly hMax: number;
   private readonly vMax: number;
   private readonly histories: (Uint32Array | undefined)[] = [];
@@ -77,6 +93,7 @@ export class JpegEntropy {
     private readonly width: number,
     private readonly height: number,
     private readonly components: readonly EntropyComponent[],
+    private readonly budget?: EntropyBudget,
   ) {
     this.hMax = Math.max(...components.map(({ h }) => h));
     this.vMax = Math.max(...components.map(({ v }) => v));
@@ -90,8 +107,10 @@ export class JpegEntropy {
       predictors: new Int32Array(scan.components.length),
       eobRun: 0,
     };
-    if (scan.components.length > 1) return this.interleaved(walk);
-    return this.nonInterleaved(walk);
+    this.open();
+    return this.close(
+      scan.components.length > 1 ? this.interleaved(walk) : this.nonInterleaved(walk),
+    );
   }
 
   /**
@@ -99,9 +118,13 @@ export class JpegEntropy {
    * on `table`, no restart interval (`LosslessJpeg` refuses one).
    */
   losslessFault(data: Uint8Array, start: number, table: HuffmanTable): EntropyFault | undefined {
-    const bits = new EntropyBits(data, start);
+    this.open();
+    return this.close(this.losslessWalk(new EntropyBits(data, start), table));
+  }
+
+  private losslessWalk(bits: EntropyBits, table: HuffmanTable): EntropyFault | undefined {
     for (let pixel = 0; pixel < this.width * this.height; pixel++) {
-      if (++this.steps > maxEntropySteps) return "steps";
+      if (++this.steps > this.cap) return this.overCap();
       for (let sample = 0; sample < 3; sample++) {
         const category = table.decode(bits);
         if (category === undefined) return stopFault(bits, "code");
@@ -119,7 +142,7 @@ export class JpegEntropy {
     for (let mcu = 0; mcu < across * down; mcu++) {
       const restart = restartFault(walk, mcu);
       if (restart !== undefined) return restart;
-      if (++this.steps > maxEntropySteps) return "steps";
+      if (++this.steps > this.cap) return this.overCap();
       for (const [position, component] of walk.scan.components.entries()) {
         const blocks = (sampled[position]?.h ?? 1) * (sampled[position]?.v ?? 1);
         for (let block = 0; block < blocks; block++) {
@@ -154,14 +177,14 @@ export class JpegEntropy {
     for (let block = 0; block < blocks; block++) {
       const restart = restartFault(walk, block);
       if (restart !== undefined) return restart;
-      if (++this.steps > maxEntropySteps) return "steps";
+      if (++this.steps > this.cap) return this.overCap();
       if (history !== undefined && walk.eobRun > 0) {
         const run = Math.min(walk.eobRun, blocks - block, untilRestart(walk.scan, block));
         if (walk.scan.high > 0) {
           // Each block of a refinement run takes a correction bit per coefficient of the band already nonzero.
           walk.bits.skip(runCorrections(history, block, run, [walk.scan.start, walk.scan.end]));
           this.steps += run - 1;
-          if (this.steps > maxEntropySteps) return "steps";
+          if (this.steps > this.cap) return this.overCap();
           if (walk.bits.overrun) return stopFault(walk.bits, undefined);
         }
         // A run in a first scan costs one step, whatever its length: no bits, no history.
@@ -177,6 +200,27 @@ export class JpegEntropy {
       if (walk.bits.overrun) return stopFault(walk.bits, undefined);
     }
     return undefined;
+  }
+
+  /** Before a scan: its cap, from the file's and what the shared budget has left. */
+  private open(): void {
+    this.cap = Math.min(maxEntropySteps, this.steps + (this.budget?.remaining ?? Infinity));
+  }
+
+  /** After a scan: its steps charged to the shared budget. */
+  private close(fault: EntropyFault | undefined): EntropyFault | undefined {
+    if (this.budget !== undefined) {
+      this.budget.remaining = Math.max(0, this.budget.remaining - (this.steps - this.charged));
+    }
+    this.charged = this.steps;
+    return fault;
+  }
+
+  /** The fault of a scan past its cap: the file's own, else the shared budget's, which is then spent. */
+  private overCap(): EntropyFault {
+    if (this.steps > maxEntropySteps) return "steps";
+    if (this.budget !== undefined) this.budget.exhausted = true;
+    return "budget";
   }
 
   /** The blocks across and down a non-interleaved scan of `component` holds, as libjpeg counts them. */
@@ -211,9 +255,11 @@ function dcBlock(walk: Walk, component: ScanComponent, position: number): BlockF
     return undefined;
   }
   if (component.dc === undefined) return undefined;
-  if (scan.progressive) return dcFirstBlock(bits, component.dc, predictors, position, scan.low);
+  if (scan.progressive) {
+    return dcFirstBlock(bits, component.dc, predictors, position, scan.low, component.quant);
+  }
   if (component.ac === undefined) return undefined;
-  return sequentialBlock(bits, component.dc, component.ac, predictors, position);
+  return sequentialBlock(bits, component.dc, component.ac, predictors, position, component.quant);
 }
 
 /** One block of an AC scan outside an end-of-band run. */
@@ -228,8 +274,8 @@ function acBlock(
   if (component.ac === undefined) return undefined;
   const result =
     scan.high > 0
-      ? acRefineBlock(bits, component.ac, band, history, block)
-      : acFirstBlock(bits, component.ac, band, scan.low, history, block);
+      ? acRefineBlock(bits, component.ac, band, scan.low, history, block, component.quant)
+      : acFirstBlock(bits, component.ac, band, scan.low, history, block, component.quant);
   if (typeof result !== "number") return result;
   walk.eobRun = result;
   return undefined;

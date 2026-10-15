@@ -1,4 +1,5 @@
 import { Bytes, Truncated } from "./Bytes.js";
+import type { EntropyBudget } from "./EntropyBudget.js";
 import { exifOrientation, type Orientation, type OrientationField } from "./exifOrientation.js";
 import { JpegStructure } from "./JpegStructure.js";
 import { LosslessJpeg } from "./LosslessJpeg.js";
@@ -35,14 +36,19 @@ const png = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
 /**
  * Format by magic bytes (PNG, JPEG, GIF, WebP), dimensions from the header, the animation frame count and the EXIF
  * orientation, without decoding pixels. Every walk advances on each step and stops at the end of the bytes, so crafted
- * input costs at most one pass; a JPEG one more over each scan's Huffman symbols, bounded by `maxEntropySteps`. SVG and
- * anything else is refused.
+ * input costs at most one pass; a JPEG one more over each scan's Huffman symbols, bounded by `maxEntropySteps` and,
+ * where `budget` is given, by what it has left for every image of the render together (a JPEG that crosses it is
+ * refused and sets `budget.exhausted`). SVG and anything else is refused.
  */
-export function sniffImage(data: Uint8Array, maxFrames: number): SniffResult {
+export function sniffImage(
+  data: Uint8Array,
+  maxFrames: number,
+  budget?: EntropyBudget,
+): SniffResult {
   const bytes = new Bytes(data);
   try {
     if (bytes.startsWith(png)) return sniffPng(bytes, maxFrames);
-    if (bytes.startsWith([0xff, 0xd8, 0xff])) return sniffJpeg(bytes);
+    if (bytes.startsWith([0xff, 0xd8, 0xff])) return sniffJpeg(bytes, budget);
     if (bytes.startsWith([0x47, 0x49, 0x46, 0x38])) return sniffGif(bytes, maxFrames);
     if (bytes.startsWith([0x52, 0x49, 0x46, 0x46]) && bytes.ascii(8, 4) === "WEBP") {
       return sniffWebp(bytes, maxFrames);
@@ -221,13 +227,13 @@ function frameHeaderProblem(bytes: Bytes, offset: number, length: number): strin
  * that is refused. Every step advances, so the marker walk is one pass at most and the symbol check one more per scan,
  * bounded by `maxEntropySteps`.
  */
-function sniffJpeg(bytes: Bytes): SniffResult {
+function sniffJpeg(bytes: Bytes, budget: EntropyBudget | undefined): SniffResult {
   let offset = 2;
   let size: readonly [width: number, height: number] | undefined;
   let exif = false;
   const blocks: OrientationField[] = [];
   const lossless = new LosslessJpeg();
-  const structure = new JpegStructure();
+  const structure = new JpegStructure(budget);
   try {
     for (;;) {
       const next = nextJpegMarker(bytes, offset, size !== undefined);

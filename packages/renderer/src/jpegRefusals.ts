@@ -1,4 +1,6 @@
 import type { EntropyFault } from "./JpegEntropy.js";
+import { maxDequantized } from "./entropyBlocks.js";
+import { EntropyBudget } from "./EntropyBudget.js";
 import { maxEntropySteps, maxProgressiveBlocks } from "./JpegEntropy.js";
 
 /** Chromium draws it, resvg (jpeg-decoder 0.3.1) draws nothing or other pixels. */
@@ -20,10 +22,10 @@ export function entropyRefusal(fault: EntropyFault): string {
       return resvgDiffers("image data with an invalid Huffman code");
     case "dc-category":
       return resvgDiffers("image data with a DC difference of category 12 to 15");
-    case "dc-range":
-      return failClosed("image data with a DC value outside the 8-bit range");
-    case "ac-size":
-      return failClosed("image data with an AC value outside the 8-bit range");
+    case "value":
+      return failClosed(
+        `image data with a coefficient whose dequantized value may pass ${String(maxDequantized)}`,
+      );
     case "ac-run":
       return resvgDiffers("image data with a run of coefficients past the end of the block");
     case "eob-run":
@@ -42,6 +44,8 @@ export function entropyRefusal(fault: EntropyFault): string {
       return failClosed("non-interleaved scan whose blocks the two decoders count differently");
     case "steps":
       return `JPEG image data that takes more than ${String(maxEntropySteps)} decoding steps is refused`;
+    case "budget":
+      return EntropyBudget.message();
     case "history":
       return `JPEG progressive frame of more than ${String(maxProgressiveBlocks)} blocks is refused`;
   }

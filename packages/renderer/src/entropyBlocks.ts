@@ -2,17 +2,39 @@ import type { EntropyBits } from "./EntropyBits.js";
 import type { HuffmanTable } from "./HuffmanTable.js";
 
 /**
+ * The largest dequantized coefficient (value times its quantization entry) the check accepts. An 8-bit encoder writes
+ * at most about 1024 plus half the entry (T.81 F.1.1.4: DC within -1024..1016, AC within 10 bits); the two outputs
+ * were measured alike up to 4096 and apart from 8192 on, where libjpeg-turbo's 16-bit arithmetic (SIMD
+ * dequantization and IDCT) overflows and jpeg-decoder's 32-bit one does not.
+ */
+export const maxDequantized = 4096;
+
+/** Quantization entries of 1, for a component the walk has no table of (the marker walk refuses such a scan). */
+const ones = new Uint16Array(64).fill(1);
+
+/**
  * What breaks the symbols of one block, each a point where libjpeg-turbo 3.1 and jpeg-decoder 0.3.1 part ways:
  * `code` no code of up to 16 bits matches (libjpeg warns and goes on, jpeg-decoder fails); `dc-category` a DC
- * difference of category 12-15 (jpeg-decoder fails); `dc-range` a DC value past what 12 bits hold (no 8-bit encoder
- * writes it; the decoders keep it in integers of other widths); `ac-size` an AC value past what 8-bit samples give
- * (likewise); `ac-run` a run past the end of the block or band (libjpeg stores the value past it, jpeg-decoder drops
- * it or stores it elsewhere); `eob-run` an end-of-band run in a sequential scan (jpeg-decoder reads its bits and skips
- * the next blocks, libjpeg ends the block); `refine-size` a refinement value of another size than 1 (jpeg-decoder
- * fails).
+ * difference of category 12-15 (jpeg-decoder fails); `value` a coefficient whose largest final magnitude (refinement
+ * bits included) times its quantization entry passes `maxDequantized` (fail-closed); `ac-run` a run past the end of
+ * the block or band (libjpeg stores the value past it, jpeg-decoder drops it or stores it elsewhere); `eob-run` an
+ * end-of-band run in a sequential scan (jpeg-decoder reads its bits and skips the next blocks, libjpeg ends the
+ * block); `refine-size` a refinement value of another size than 1 (jpeg-decoder fails).
  */
-export type BlockFault =
-  "code" | "dc-category" | "dc-range" | "ac-size" | "ac-run" | "eob-run" | "refine-size";
+export type BlockFault = "code" | "dc-category" | "value" | "ac-run" | "eob-run" | "refine-size";
+
+/**
+ * True where a coefficient of `magnitude` at point transform `low` may end past `maxDequantized` with `entry`: the
+ * refinement scans still to come can add up to 2^low - 1.
+ */
+const tooLarge = (magnitude: number, low: number, entry: number | undefined) =>
+  ((magnitude + 1) * (1 << low) - 1) * (entry ?? 1) > maxDequantized;
+
+/** The value of `size` magnitude bits read from `bits` (T.81 F.2.2.1 EXTEND). */
+function extended(bits: EntropyBits, size: number): number {
+  const raw = bits.read(size);
+  return raw < 1 << (size - 1) ? raw - (1 << size) + 1 : raw;
+}
 
 /** One sequential (SOF0, SOF1) block: the DC difference into `predictors[component]`, then the AC symbols to 63. */
 export function sequentialBlock(
@@ -21,8 +43,9 @@ export function sequentialBlock(
   ac: HuffmanTable,
   predictors: Int32Array,
   component: number,
+  quant: Uint16Array = ones,
 ): BlockFault | undefined {
-  const fault = dcFirstBlock(bits, dc, predictors, component, 0);
+  const fault = dcFirstBlock(bits, dc, predictors, component, 0, quant);
   if (fault !== undefined) return fault;
   for (let k = 1; k <= 63; k++) {
     const symbol = ac.decode(bits);
@@ -36,32 +59,31 @@ export function sequentialBlock(
       }
       return run === 0 ? undefined : "eob-run";
     }
-    if (size > 10) return "ac-size";
     k += run;
     if (k > 63) return "ac-run";
-    bits.skip(size);
+    if (tooLarge(Math.abs(extended(bits, size)), 0, quant[k])) return "value";
   }
   return undefined;
 }
 
-/** One block of a scan that delivers DC values: the difference into `predictors[component]`, scaled by `low`. */
+/**
+ * One block of a scan that delivers DC values: the difference into `predictors[component]`, the value scaled by
+ * `low` and checked against quantization entry 0 of `quant`.
+ */
 export function dcFirstBlock(
   bits: EntropyBits,
   dc: HuffmanTable,
   predictors: Int32Array,
   component: number,
   low: number,
+  quant: Uint16Array = ones,
 ): BlockFault | undefined {
   const category = dc.decode(bits);
   if (category === undefined) return "code";
   if (category > 11) return "dc-category";
-  if (category === 0) return undefined;
-  const raw = bits.read(category);
-  const difference = raw < 1 << (category - 1) ? raw - (1 << category) + 1 : raw;
-  const predictor = (predictors[component] ?? 0) + difference;
+  const predictor = (predictors[component] ?? 0) + (category === 0 ? 0 : extended(bits, category));
   predictors[component] = predictor;
-  const value = predictor * (1 << low);
-  return value < -2048 || value > 2047 ? "dc-range" : undefined;
+  return tooLarge(Math.abs(predictor), low, quant[0]) ? "value" : undefined;
 }
 
 /**
@@ -76,6 +98,7 @@ export function acFirstBlock(
   low: number,
   history: Uint32Array,
   block: number,
+  quant: Uint16Array = ones,
 ): BlockFault | number {
   const [start, end] = band;
   for (let k = start; k <= end; k++) {
@@ -90,10 +113,9 @@ export function acFirstBlock(
       }
       return (1 << run) + (run === 0 ? 0 : bits.read(run)) - 1;
     }
-    if (size + low > 10) return "ac-size";
     k += run;
     if (k > end) return "ac-run";
-    bits.skip(size);
+    if (tooLarge(Math.abs(extended(bits, size)), low, quant[k])) return "value";
     setNonzero(history, block, k);
   }
   return 0;
@@ -108,8 +130,10 @@ export function acRefineBlock(
   bits: EntropyBits,
   ac: HuffmanTable,
   band: readonly [start: number, end: number],
+  low: number,
   history: Uint32Array,
   block: number,
+  quant: Uint16Array = ones,
 ): BlockFault | number {
   const [start, end] = band;
   for (let k = start; k <= end; k++) {
@@ -131,6 +155,7 @@ export function acRefineBlock(
     }
     if (size !== 0) {
       if (k > end) return "ac-run";
+      if (tooLarge(1, low, quant[k])) return "value";
       setNonzero(history, block, k);
     }
   }

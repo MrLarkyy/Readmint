@@ -2,6 +2,7 @@ import type { Design } from "@readmint/format";
 import type { ExprResult, Template } from "@readmint/expr";
 import { OutlineBudget, type GlyphOutline, type SfntFont } from "@readmint/fonts";
 import { AnimationCss } from "./AnimationCss.js";
+import { EntropyBudget } from "./EntropyBudget.js";
 import { CanvasPlacement } from "./CanvasPlacement.js";
 import type { FontUse } from "./FontUse.js";
 import type { LoadedFont } from "./loadFont.js";
@@ -42,6 +43,8 @@ export class RenderContext {
   readonly outlineBudget = new OutlineBudget();
   /** Shaping operations spent by the texts of the render so far (`chargeShaping`). */
   shapingOperations = 0;
+  /** JPEG symbol-check steps the images of the render may still take, every image together. */
+  readonly entropyBudget = new EntropyBudget();
   /**
    * Parsed fonts by source: the bytes a caller supplied (by identity) or the `src` data URI (by value), so assets
    * sharing one source decode it once and count it once against `maxTotalFontBytes`.

@@ -403,10 +403,14 @@ budget?, maxBytes? })`, `encodeWoff`, `decodeWoff`, `glyphClosure`, `OutlineBudg
   than the restart marker due, or none, where a restart interval ends. Refused fail-closed, as the probe found them
   drawn alike in some files and apart in others: image data a marker cuts short before its last block (libjpeg fills
   the rest grey or leaves it as earlier scans had it, jpeg-decoder decodes zero bits, which agree only by chance);
-  bytes between the padding and a restart marker (libjpeg skips any, jpeg-decoder looks only a few bytes ahead); a DC
-  value past 2047 either way or an AC value of more than 10 bits, beyond what 8-bit samples give (alike while the
-  dequantized value fits 16 bits, apart past it, as Chromium's libjpeg-turbo dequantizes in 16 bits); a
-  non-interleaved scan whose blocks the two count differently (a component sampled 2 under a largest 4: libjpeg
+  bytes between the padding and a restart marker (libjpeg skips any, jpeg-decoder looks only a few bytes ahead); a
+  coefficient whose magnitude times its quantization entry (the component's DQT table at the coefficient's zigzag
+  position) passes 4096, a coefficient of a progressive scan taken at the most the refinement bits still to come can
+  make it (`((|v| + 1) << Al) - 1`, a new refinement coefficient `(2 << Al) - 1`): an 8-bit encoder writes at most
+  about 1024 plus half the entry, and the two drew such files alike up to 4096 and apart from 8192 on (DC 1024 at
+  entry 8, AC 1000 at 16, AC 200 at 64, AC 600 at 255: libjpeg-turbo's 16-bit arithmetic overflows where
+  jpeg-decoder's 32-bit one does not); lossless data has no quantization and no such rule; a non-interleaved scan
+  whose blocks the two count differently (a component sampled 2 under a largest 4: libjpeg
   rounds the component's width up to blocks, jpeg-decoder pads it to whole MCUs; from the source, not drawable in the
   32x16 probe). Accepted, as both draw them alike: padding bits other than ones, bytes after the last block up to the
   next marker, an end-of-band run past the end of the scan, and lossless differences of category 9-16 (both keep the
@@ -587,11 +591,15 @@ each text by its own budget, max(16384, 128 x its length) operations, which fail
 the whole render by 4000000 shaping operations, every text together (an internal bound like the outline work, not a
 `RenderLimits` field), which fails as `asset-too-large` at the content of the text that crossed it, naming its font.
 A text laid out once is shaped once, however many copies draw it.
-The JPEG symbol check (see Images) is bounded by two fixed limits, not `RenderLimits` fields, each an `asset-format`
-naming it: 134217728 (2^27) decoding steps per file (a block or MCU visited, a run of empty bands in a first AC scan
-counting once), and a progressive frame of at most 8388608 (2^23) blocks over all its components, whose nonzero
+The JPEG symbol check (see Images) is bounded by fixed limits, not `RenderLimits` fields. Per file, each an
+`asset-format` naming it: 134217728 (2^27) decoding steps (a block or MCU visited, a run of empty bands in a first AC
+scan counting once), and a progressive frame of at most 8388608 (2^23) blocks over all its components, whose nonzero
 history (64 MiB at most) is checked before any is allocated; both stay far above a 4 MiB file of the largest image the
-raster output takes.
+raster output takes. Per render, every image asset together (each asset is checked, even one whose bytes another
+asset shares): the same 134217728 steps (`maxRenderEntropySteps`, like the shaping bound), so copies of a crafted file
+cost no more than the costliest single one (a 10 KB progressive file can take some 7 million steps); crossing it fails
+as `asset-too-large` at the image asset that crossed it, naming the limit. Raster export checks the images of its
+SVG again against a budget of its own of that size (`raster-too-many-image-pixels`).
 
 ## Issues
 

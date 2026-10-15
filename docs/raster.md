@@ -127,6 +127,9 @@ with libwebp and swaps it for a PNG of the same pixels, in its own copy of the S
 frame on a transparent canvas, as a still SVG viewer shows it. Only an `<image>` whose `href` is a WebP data URI is
 swapped; the same text in a data-bound text stays text. The WebP structure is read with bounds checks before
 anything is decoded (size, the renderer's `maxImageSide` and `maxAnimationFrames`); a malformed file is `raster-image`.
+Every image's header is read again before drawing (`sniffImage`); the JPEG symbol check of all images of the export
+together has one budget of 134217728 decoding steps (the renderer's per-render bound), crossing it is
+`raster-too-many-image-pixels`.
 GIF and APNG images draw their first frame, as resvg does.
 
 ## API
