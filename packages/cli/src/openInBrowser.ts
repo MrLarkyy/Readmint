@@ -11,7 +11,7 @@ export interface OpenInBrowserOptions {
 
 /** The only shapes `preview` prints: plain, and under the 43-character session secret. */
 const previewAddress = new RegExp(
-  `^http://127\.0\.0\.1:\d{1,5}/(?:[A-Za-z0-9_-]{${String(previewSecretLength)}}/)?$`,
+  String.raw`^http://127\.0\.0\.1:\d{1,5}/(?:[A-Za-z0-9_-]{${String(previewSecretLength)}}/)?$`,
 );
 
 /**
@@ -47,7 +47,7 @@ export function openInBrowser(url: string, options: OpenInBrowserOptions = {}): 
 /** By full path: Windows searches the current directory first, where a downloaded repository could plant a program. */
 export function rundll32Path(env: Readonly<Record<string, string | undefined>>): string {
   const root = env["SystemRoot"];
-  const base = root !== undefined && path.win32.isAbsolute(root) ? root : "C:\Windows";
+  const base = root !== undefined && /^[A-Za-z]:[\\/]/.test(root) ? root : "C:\\Windows";
   return path.win32.join(base, "System32", "rundll32.exe");
 }
 

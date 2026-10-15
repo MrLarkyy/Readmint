@@ -19,14 +19,14 @@ function stub() {
 }
 
 test.each([
-  ["win32", "C:\Windows\System32\rundll32.exe", ["url.dll,FileProtocolHandler", address]],
+  ["win32", "C:\\Windows\\System32\\rundll32.exe", ["url.dll,FileProtocolHandler", address]],
   ["darwin", "open", [address]],
   ["linux", "xdg-open", [address]],
 ] as const)(
   "%s runs %s with the address as one argument, no shell",
   async (platform, command, args) => {
     const { child, calls, fake } = stub();
-    const opened = openInBrowser(address, { platform, spawn: fake });
+    const opened = openInBrowser(address, { platform, spawn: fake, env: {} });
     child.emit("spawn");
     await opened;
     expect(calls).toEqual([
@@ -69,10 +69,11 @@ test.each(["file:///x", "-a x", "http://evil.example/", "http://127.0.0.1:1/x/",
 );
 
 test.each([
-  [{ SystemRoot: "D:\WinNT" }, "D:\WinNT\System32\rundll32.exe"],
-  [{ SystemRoot: "relative" }, "C:\Windows\System32\rundll32.exe"],
-  [{ SystemRoot: ".\x" }, "C:\Windows\System32\rundll32.exe"],
-  [{}, "C:\Windows\System32\rundll32.exe"],
+  [{ SystemRoot: "D:\\WinNT" }, "D:\\WinNT\\System32\\rundll32.exe"],
+  [{ SystemRoot: "relative" }, "C:\\Windows\\System32\\rundll32.exe"],
+  [{ SystemRoot: ".\\x" }, "C:\\Windows\\System32\\rundll32.exe"],
+  [{ SystemRoot: "\\evil" }, "C:\\Windows\\System32\\rundll32.exe"],
+  [{}, "C:\\Windows\\System32\\rundll32.exe"],
 ])("the Windows opener is the full path for %o", async (env, expected) => {
   const { child, calls, fake } = stub();
   const opened = openInBrowser(address, { platform: "win32", spawn: fake, env });
