@@ -287,14 +287,31 @@ budget?, maxBytes? })`, `encodeWoff`, `decodeWoff`, `glyphClosure`, `OutlineBudg
   asset is refused with the marker named instead of an empty box in one output or both. Up to the image data (SOS),
   before or after the frame header, the markers read on are DHT, DQT, DRI, APP0-15 and COM (skipped by their length, at
   least 2). Refused, the message naming the marker: RSTn, TEM, DNL, DAC, a segment length below 2, a second SOI, EOI before the image data, a second
-  frame header, and any other code (`02`-`BF`, `DE`, `DF`, `F0`-`FD`). Only SOF0, SOF1 and SOF2 (baseline, extended
-  and progressive Huffman) with 8-bit samples are accepted: SOF5-7, `C8` and SOF13-15 libjpeg does not draw, and the rest is
-  refused because the outputs differ, as probed with genuine files (Chromium 156, resvg-wasm 2.6.2, fixtures in
-  `packages/renderer/test/assets/jpeg`): Chromium draws them all except 16-bit DCT samples (0x0), resvg draws
-  arithmetic coding (SOF9-11), DCT samples above 8 bits and 12- and 16-bit lossless grey empty, and traps on a 12-bit
-  lossless RGB file. 8-bit lossless (SOF3) is drawn differently: grey
-  is black in Chromium and YCbCr gets other colours; only a file coded as RGB matches, and it is refused with its type.
-  A frame header whose length is not 8 plus 3 per component, or which has no component, is refused too.
+  frame header, and any other code (`02`-`BF`, `DE`, `DF`, `F0`-`FD`). Accepted are SOF0, SOF1 and SOF2 (baseline,
+  extended and progressive Huffman) with 8-bit samples, and 8-bit RGB-coded lossless (SOF3, below): SOF5-7, `C8` and
+  SOF13-15 libjpeg does not draw, and the rest is refused because the outputs differ, as probed with genuine files
+  (Chromium 156, resvg-wasm 2.6.2, fixtures in `packages/renderer/test/assets/jpeg`): Chromium draws them all except
+  16-bit DCT samples (0x0), resvg draws arithmetic coding (SOF9-11), DCT samples above 8 bits and 12- and 16-bit
+  lossless grey empty, and traps on a 12-bit lossless RGB file. A DCT frame header whose length is not 8 plus 3 per
+  component, or which has no component, is refused too.
+- A lossless JPEG (SOF3) is accepted only where Chromium and resvg draw the same pixels: resvg-wasm 2.6.2 decodes with
+  jpeg-decoder 0.3.1, whose lossless path copies the stored samples without any colour transform (it ignores JFIF,
+  Adobe and the component ids) and one per component and pixel whatever the sampling factors; Chromium (libjpeg-turbo
+  3.1) converts no colour in lossless mode and draws only what it reads as RGB. So, up to the first scan header (SOS),
+  on either side of the frame header: (1) 8-bit samples, three components with ids `R` `G` `B` (82 71 66) in that
+  order, each sampled 1x1 with quantization table 0; (2) no APP0 whose data starts `JFIF`; (3) every APP14 whose data
+  starts `Adobe` is at least 12 bytes long with transform 0 (libjpeg takes the last one, so all must agree); (4) no DRI;
+  (5) the first scan holds `R` `G` `B` in frame order, predictor 1-7, no spectral end, successive approximation or
+  point transform; (6) the file reaches that scan header (a DCT file cut after its frame header is still read, a
+  lossless one is refused). Anything else is `asset-format` with `JPEG frame type 0xC3 (lossless) is refused:` and the
+  reason (`a JFIF segment`, `Adobe transform 1`, `component ids 1 2 3`, `sampling 1x2`, `precision of 12 bits`,
+  ...). The outputs differ on grey (black in Chromium), YCbCr (other colours), JFIF and Adobe transform 1 or 2 (empty
+  in Chromium), sampling factors other than 1x1 (resvg ignores them), a quantization table other than 0 (empty in
+  resvg) and a point transform. Ids 1 2 3, a short Adobe segment and a restart interval of 0 draw alike in the probe
+  but are refused fail-closed: reading other ids as RGB in lossless is libjpeg-turbo 3 alone (IJG libjpeg and
+  jpeg-decoder's colour rule read 1 2 3 as YCbCr), and no restart (an interval above 0) was probed. Measured with genuine
+  libjpeg-turbo 3.1.3 files (`sof3-8bit-rgb*.jpg`, predictors 1-7, with and without Adobe APP14) and segment edits of
+  them; a Chromium or resvg upgrade that changes a pin fails the tests and asks for a new probe.
 - EXIF orientation (tag `0x0112` in IFD0 of a JPEG APP1 `Exif` segment, a PNG `eXIf` chunk before or after the image
   data, or a WebP `EXIF` chunk) is applied by the renderer, never by the decoder: browsers honour the tag and resvg
   does not, so leaving it to them would draw the preview and the raster output differently. The inlined copy has every

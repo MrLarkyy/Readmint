@@ -8,6 +8,11 @@ import { sniffImage } from "../src/sniffImage.js";
 import { jpegWithExif, orientationTiff, pngWithExif, vp8x, webpWithExif } from "./exifImages.js";
 import { jpegFrameFixtures } from "./jpegFrameTypes.js";
 import { acceptedJpegs, refusedJpegs } from "./jpegMarkers.js";
+import {
+  acceptedLosslessJpegs,
+  losslessWithSecondFrameHeader,
+  refusedLosslessJpegs,
+} from "./losslessJpegs.js";
 
 const assets = join(import.meta.dirname, "assets");
 const read = (name: string) => new Uint8Array(readFileSync(join(assets, name)));
@@ -332,6 +337,40 @@ describe("JPEG marker rules", () => {
       expect(result.ok ? "" : result.message).toContain(message);
     },
   );
+
+  test.each(acceptedLosslessJpegs.map((row) => [row.name, row.bytes] as const))(
+    "the 8-bit RGB lossless JPEG with %s is accepted",
+    (_name, data) => {
+      expect(sniffImage(data, 1000)).toMatchObject({
+        ok: true,
+        info: { mime: "image/jpeg", width: 32, height: 16, exif: false },
+      });
+    },
+  );
+
+  test.each(refusedLosslessJpegs().map((row) => [row.name, row.bytes, row.reason] as const))(
+    "a lossless JPEG with %s is refused, naming the reason",
+    (_name, data, reason) => {
+      const result = sniffImage(data, 1000);
+      expect(result.ok).toBe(false);
+      const message = result.ok ? "" : result.message;
+      expect(message).toContain(`JPEG frame type 0xC3 (lossless) is refused: ${reason};`);
+      expect(message).toContain("8-bit RGB-coded lossless JPEGs");
+    },
+  );
+
+  test("a lossless JPEG with a second frame header is refused", () => {
+    expect(sniffImage(losslessWithSecondFrameHeader(), 1000)).toEqual({
+      ok: false,
+      message: "JPEG holds a second frame header",
+    });
+  });
+
+  test("a baseline JPEG cut after its frame header is still read, a lossless one is not", () => {
+    expect(sniffImage(jpeg.subarray(0, jpegScan), 1000).ok).toBe(true);
+    const cut = refusedLosslessJpegs().find((row) => row.name === "cut before the scan");
+    expect(cut === undefined ? undefined : sniffImage(cut.bytes, 1000).ok).toBe(false);
+  });
 
   test("a frame header cut off at its sample precision is truncated", () => {
     const frame = jpeg.findIndex((byte, index) => byte === 0xff && jpeg[index + 1] === 0xc0);
