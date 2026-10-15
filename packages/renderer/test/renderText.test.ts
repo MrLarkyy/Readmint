@@ -270,3 +270,57 @@ describe("renderText with shaped glyphs", () => {
     expect(subsetOf(result.svg).glyphFor(0xf0000)).not.toBe(0);
   });
 });
+
+test("a private-use character of the text itself is renumbered, so it never collides with a shaped glyph's", () => {
+  // U+E000 is a glyph of its own in this font; GPOS raises x, so x needs a private-use character too.
+  const raise = struct([1, { offset: struct([1, 1, 2]) }, 0x0002, { i16: 40 }]);
+  const gpos = layoutTable([{ tag: "kern", lookups: [0] }], [{ type: 1, subtables: [raise] }]);
+  const bytes = buildTestFont({
+    family: "Private",
+    glyphs: [
+      { advance: 500 },
+      {
+        codePoints: [0xe000],
+        advance: 500,
+        contours: [
+          [
+            [0, 0, true],
+            [400, 0, true],
+            [0, 400, true],
+          ],
+        ],
+      },
+      {
+        codePoints: [0x78],
+        advance: 500,
+        contours: [
+          [
+            [0, 0, true],
+            [300, 300, true],
+            [0, 300, true],
+          ],
+        ],
+      },
+    ],
+    tables: { GPOS: gpos },
+  });
+  const design: Design = {
+    version: 0,
+    canvas: { width: 100, height: 40 },
+    assets: {
+      fonts: { p: { family: "Private", src: "p.ttf", licence: { embedding: "allowed" } } },
+    },
+    layers: [{ type: "text", content: "x\ue000", font: "p" }],
+  };
+  const result = renderSvg(design, { assets: { fonts: { p: bytes } } });
+  if (!result.ok) throw new Error(JSON.stringify(result.issues));
+  expect(spans(result.svg).map((span) => span.text)).toEqual(["\ue000\ue001"]);
+  const base64 = /url\(data:font\/woff;base64,([^)]+)\)/u.exec(result.svg)?.[1] ?? "";
+  const subset = parseSfnt(Uint8Array.from(atob(base64), (char) => char.charCodeAt(0)));
+  if (!subset.ok) throw new Error(subset.message);
+  const raised = subset.font.glyphFor(0xe000);
+  const own = subset.font.glyphFor(0xe001);
+  expect(raised).not.toBe(0);
+  expect(own).not.toBe(0);
+  expect(raised).not.toBe(own);
+});
