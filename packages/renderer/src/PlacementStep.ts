@@ -1,5 +1,6 @@
 import type { Bounds } from "./pathBounds.js";
 import type { SampledTransforms } from "./sampleAnimation.js";
+import { turnInterval, type Interval } from "./turnInterval.js";
 
 /**
  * One transform between a node's coordinates and its parent's, as the SVG writes it: a translation, a turn of
@@ -12,8 +13,10 @@ export type PlacementStep =
   | { readonly kind: "unknown" };
 
 /**
- * A box containing `bounds` after `step`, in the parent's coordinates; undefined for an unknown step. Only + - * min
- * max abs, so every engine computes the same numbers: a turn takes the L1 radius about its centre, which is at least
+ * A box containing `bounds` after `step`, in the parent's coordinates; undefined for an unknown step. Only + - * / %
+ * round min max abs, so every engine computes the same numbers: a turn rotates the box with cosine and sine intervals
+ * (`turnInterval`), each axis by interval products, then grows it by 1 plus a millionth of its reach for single
+ * precision coordinates in rasterizers; a non-finite angle takes the L1 radius about the centre, which is at least
  * the distance of every corner.
  */
 export function placeBounds(bounds: Bounds, step: PlacementStep): Bounds | undefined {
@@ -27,6 +30,8 @@ export function placeBounds(bounds: Bounds, step: PlacementStep): Bounds | undef
       };
     case "turn": {
       if (step.degrees % 360 === 0) return bounds;
+      const turn = turnInterval(step.degrees);
+      if (turn !== undefined) return turned(bounds, step.cx, step.cy, turn.cos, turn.sin);
       const radius =
         Math.max(Math.abs(bounds.minX - step.cx), Math.abs(bounds.maxX - step.cx)) +
         Math.max(Math.abs(bounds.minY - step.cy), Math.abs(bounds.maxY - step.cy));
@@ -49,6 +54,25 @@ export function placeBounds(bounds: Bounds, step: PlacementStep): Bounds | undef
     case "unknown":
       return undefined;
   }
+}
+
+function turned(bounds: Bounds, cx: number, cy: number, cos: Interval, sin: Interval): Bounds {
+  const dx = { lo: bounds.minX - cx, hi: bounds.maxX - cx };
+  const dy = { lo: bounds.minY - cy, hi: bounds.maxY - cy };
+  const along = times(cos, dx);
+  const across = times(sin, dy);
+  const x = { lo: cx + along.lo - across.hi, hi: cx + along.hi - across.lo };
+  const down = times(sin, dx);
+  const up = times(cos, dy);
+  const y = { lo: cy + down.lo + up.lo, hi: cy + down.hi + up.hi };
+  const reach = Math.max(Math.abs(x.lo), Math.abs(x.hi), Math.abs(y.lo), Math.abs(y.hi));
+  const growth = 1 + reach * 1e-6;
+  return { minX: x.lo - growth, minY: y.lo - growth, maxX: x.hi + growth, maxY: y.hi + growth };
+}
+
+function times(a: Interval, b: Interval): Interval {
+  const products = [a.lo * b.lo, a.lo * b.hi, a.hi * b.lo, a.hi * b.hi];
+  return { lo: Math.min(...products), hi: Math.max(...products) };
 }
 
 /** `bounds` through every step, innermost (last) first; undefined when any step is unknown. */

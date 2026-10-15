@@ -27,6 +27,8 @@ function fixtureDesign(
 
 /** Layers of their own far off the canvas, which the renderer leaves out. */
 const offCanvas = fixtureDesign(layout, "off-canvas-layers");
+/** A turned group with a far child, large text and a wide stroke past the canvas, which it leaves out too. */
+const offCanvasTight = fixtureDesign(layout, "off-canvas-tight");
 /** A rect with opacity sliding in from four canvas widths away. */
 const slideIn = fixtureDesign(animation, "off-canvas-slide-in-t0");
 
@@ -40,11 +42,13 @@ beforeAll(async () => {
   await initRaster();
 });
 
-/** Exports `offCanvas` as a PNG and checks it against the golden rasterizer's drawing of the renderer's SVG. */
-async function expectOffCanvasPng(): Promise<void> {
-  const output = await exportRaster(designInput(offCanvas), { format: "png", scale: 2 });
-  const rendered = renderSvg(offCanvas);
+/** Exports `design` as a PNG and checks it against the golden rasterizer's drawing of the renderer's SVG. */
+async function expectPng(design: Design, size: readonly [number, number]): Promise<void> {
+  const output = await exportRaster(designInput(design), { format: "png", scale: 2 });
+  const rendered = renderSvg(design);
   if (!rendered.ok) throw new Error("the design does not render");
+  expect(rendered.svg).not.toContain("#c00001");
+  expect(rendered.svg).not.toContain("#cf222e");
   const expected = decodePng(rasterizeSvg(rendered.svg, 2));
   const actual = decodePng(output.bytes);
   const comparison = comparePng(
@@ -52,14 +56,11 @@ async function expectOffCanvasPng(): Promise<void> {
     pngOf(actual, output.width, output.height),
     defaultNodeTolerance,
   );
-  expect([output.width, output.height]).toEqual([320, 200]);
+  expect([output.width, output.height]).toEqual(size);
   expect(comparison.pass, `${String(comparison.diffPixels)} pixels differ`).toBe(true);
 }
 
-/**
- * A group turned about its centre with a child far from it: the trig-free bounds of the turn reach the canvas, so
- * the renderer keeps the layer, and resvg traps on it (never give this to the golden rasterizer).
- */
+/** A group turned about its centre with a child far from it: the turn's bounds keep the child far, so it is left out. */
 const turnedFar: Design = {
   version: 0,
   canvas: { width: 100, height: 100 },
@@ -76,19 +77,43 @@ const turnedFar: Design = {
   ],
 };
 
+/**
+ * A tiny arc far right of the canvas: the box of its ellipse (twice the radius from its end points) reaches the
+ * canvas, so the renderer keeps the layer, and resvg traps on it (never give this to the golden rasterizer).
+ */
+const farArc: Design = {
+  version: 0,
+  canvas: { width: 100, height: 100 },
+  layers: [
+    { type: "rect", x: 10, y: 10, width: 10, height: 10, fill: "#0969da" },
+    {
+      type: "path",
+      d: "M400 50 A200 200 0 0 1 400 51",
+      fill: "none",
+      stroke: "#c00001",
+      strokeWidth: 4,
+      opacity: 0.5,
+    },
+  ],
+};
+
 describe("a design with layers far off the canvas exports", () => {
-  test("as a PNG with the golden rasterizer's pixels", async () => {
-    await expectOffCanvasPng();
+  test.each<[string, Design, [number, number]]>([
+    ["off-canvas-layers", offCanvas, [320, 200]],
+    ["off-canvas-tight", offCanvasTight, [200, 200]],
+    ["a group turned 45 degrees with a far child", turnedFar, [200, 200]],
+  ])("%s as a PNG with the golden rasterizer's pixels", async (_name, design, size) => {
+    await expectPng(design, size);
   });
 
   test("or, for a layer the renderer keeps, refuses with raster-image; the next export draws", async () => {
-    const rendered = renderSvg(turnedFar);
+    const rendered = renderSvg(farArc);
     expect(rendered.ok && rendered.svg.includes("#c00001")).toBe(true);
-    await expect(exportRaster(designInput(turnedFar), { format: "png" })).rejects.toMatchObject({
+    await expect(exportRaster(designInput(farArc), { format: "png" })).rejects.toMatchObject({
       name: "RasterError",
       code: "raster-image",
     });
-    await expectOffCanvasPng();
+    await expectPng(offCanvas, [320, 200]);
   });
 
   test("as an APNG while an animated layer slides in from beyond twice the canvas", async () => {

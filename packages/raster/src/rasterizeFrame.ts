@@ -8,8 +8,9 @@ import { RasterError } from "./RasterError.js";
  * must have run. The WebAssembly objects are freed at once: the module's memory only grows.
  *
  * resvg 2.6.2 traps (a WebAssembly `unreachable`) on a layer of its own (opacity, clip, symbol) lying beyond twice
- * the canvas. The renderer leaves out such layers wholly off the canvas, but its box is generous, so a few still
- * reach here (very large text or a very wide stroke near the canvas, a turned group far from its centre), and
+ * the canvas. The renderer leaves out such layers wholly off the canvas, but a few still reach here (a path whose
+ * control points or arc box reach the canvas while its curve lies far, text in a font whose head box overstates its
+ * glyphs), and
  * `RasterInput.frame` may hand over any SVG: the trap becomes a `RasterError`, and the module draws the next SVG as
  * before. Each trap leaks the trapped object (`free` throws after one), and after some 1,500 traps in one process
  * the module stops drawing: the CLI and the Action stop at the first, a long-running host should load the module
