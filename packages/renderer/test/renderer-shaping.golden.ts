@@ -97,6 +97,19 @@ export const shapingPairs: readonly FontPair[] = [
       }),
     ],
   },
+  {
+    name: "space-variants",
+    fonts: { medium: fontAssets.medium, devanagari: fontAssets.devanagari },
+    height: 110,
+    layers: [
+      // Em, en, third, sixth, narrow and ideographic spaces, none of them in Montserrat.
+      text("1\u2003" + "2\u20023\u20044\u20065\u202f6\u30007", "medium", { fontSize: 24, y: 6 }),
+      // U+2011 takes the U+2010 glyph; U+2009 is Montserrat's own.
+      text("non\u2011breaking 2\u20093", "medium", { fontSize: 24, y: 40 }),
+      // The font has no U+2010: U+2011 takes the hyphen-minus glyph.
+      text("\u0939\u2011\u0915", "devanagari", { fontSize: 24, y: 74 }),
+    ],
+  },
   ...Object.keys(decomposedTwins).map((name) => ({
     name,
     fonts: { medium: fontAssets.medium },

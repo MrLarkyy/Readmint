@@ -1,5 +1,6 @@
 import {
   clusterStarts,
+  glyphForCharacter,
   isDefaultIgnorable,
   isNonSpacingMark,
   lineLevels,
@@ -137,7 +138,7 @@ export class TextShaper {
     return resolveLevels(text);
   }
 
-  /** Whether no font of the text has a character (it is then not drawn and keeps the .notdef advance). */
+  /** Whether no font of the text has a character, own or as a space / hyphen fallback (it is then not drawn and keeps the .notdef advance). */
   lacks(codePoint: number): boolean {
     return !isDefaultIgnorable(codePoint) && this.fontFor(codePoint) === missing;
   }
@@ -258,7 +259,8 @@ export class TextShaper {
           font = base;
         } else if (
           base !== missing &&
-          (isDefaultIgnorable(codePoint) || this.font(base).font.glyphFor(codePoint) !== 0)
+          (isDefaultIgnorable(codePoint) ||
+            glyphForCharacter(this.font(base).font, codePoint) !== 0)
         ) {
           font = base;
         } else {
@@ -350,14 +352,14 @@ export class TextShaper {
 }
 
 /**
- * Whether a font draws a text as shaping maps it: every character of `normalizeForFont` has a glyph or is a default
- * ignorable, and at least one has a glyph.
+ * Whether a font draws a text as shaping maps it: every character of `normalizeForFont` has a glyph (its own, or the
+ * space / hyphen fallback of `glyphForCharacter`) or is a default ignorable, and at least one has a glyph.
  */
 function covers(font: SfntFont, text: string): boolean {
   let drawn = false;
   for (const char of normalizeForFont(font, text)) {
     const codePoint = char.codePointAt(0) ?? 0;
-    if (font.glyphFor(codePoint) !== 0) drawn = true;
+    if (glyphForCharacter(font, codePoint) !== 0) drawn = true;
     else if (!isDefaultIgnorable(codePoint)) return false;
   }
   return drawn;

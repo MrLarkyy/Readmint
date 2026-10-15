@@ -284,4 +284,115 @@ describe("TextShaper with canonically equivalent text", () => {
       ["m", 0xe9],
     ]);
   });
+
+  describe("space variants and U+2011 the font lacks", () => {
+    const glyph = (codePoint: number, advance: number) => ({
+      codePoints: [codePoint],
+      advance,
+      contours: square,
+    });
+    const spaced = (...extra: ReturnType<typeof glyph>[]) =>
+      buildTestFont({
+        family: "Built",
+        glyphs: [{ advance: 500 }, glyph(0x20, 250), glyph(0x41, 500), glyph(0x2d, 300), ...extra],
+      });
+    const spaceAssets = {
+      fonts: {
+        a: spaced(),
+        p: spaced(),
+        b: buildTestFont({
+          family: "Built",
+          glyphs: [{ advance: 500 }, glyph(0x20, 250), glyph(0x41, 500), glyph(0x2d, 300)],
+        }),
+        c: buildTestFont({ family: "Built", glyphs: [{ advance: 500 }, glyph(0x41, 500)] }),
+      },
+    };
+    const spaceFonts: Record<string, FontAsset> = {
+      a: { family: "Built", src: "a.ttf", licence: { embedding: "allowed" } },
+      p: { family: "Built", src: "a.ttf", licence: { embedding: "allowed" }, drawAs: "paths" },
+      b: { family: "Built", src: "b.ttf", licence: { embedding: "allowed" }, fallback: ["m"] },
+      c: { family: "Built", src: "c.ttf", licence: { embedding: "allowed" } },
+      m: fontAssets.medium,
+    };
+    const run = (asset: string, content: string) => {
+      const result = renderSvg(
+        {
+          version: 0,
+          canvas: { width: 400, height: 60 },
+          assets: { fonts: spaceFonts },
+          layers: [{ type: "text", content, font: asset, fontSize: 20 }],
+        },
+        { assets: spaceAssets },
+      );
+      if (!result.ok) throw new Error(JSON.stringify(result.issues));
+      return result;
+    };
+    const lineOf = (asset: string, text: string) => {
+      const context = new RenderContext(
+        {
+          version: 0,
+          canvas: { width: 400, height: 60 },
+          assets: { fonts: spaceFonts },
+          layers: [],
+        },
+        { assets: spaceAssets },
+      );
+      const instance = new TextShaper(
+        context,
+        {
+          referenced: asset,
+          primary: selectFont(context, asset, undefined, "/layers/0/font"),
+          weight: undefined,
+          fontSize: 20,
+          letterSpacing: 0,
+          path: "/layers/0/content",
+        },
+        ShapingBudget.forText(1000),
+      );
+      return instance.layout(text, instance.paragraph(text), 0, text.length);
+    };
+
+    test("draw from the font's own space and hyphen glyphs without a warning", () => {
+      const line = lineOf("a", "A\u2003A\u2011A");
+      expect(line.glyphs.map((entry) => [entry.font?.asset, entry.x])).toEqual([
+        ["a", 0],
+        ["a", 10],
+        ["a", 30],
+        ["a", 40],
+        ["a", 46],
+      ]);
+      const font = run("a", "A\u2003A\u2011A");
+      expect(font.warnings).toEqual([]);
+      expect(font.svg).toContain("aria-label");
+      expect(font.svg).toContain("\u2003");
+      expect(font.svg).toContain("\u2011");
+      expect(run("p", "A\u2003A\u2011A").warnings).toEqual([]);
+    });
+
+    test("are drawn by the text's own font before its fallback fonts", () => {
+      const line = lineOf("b", "A\u2009A");
+      expect(line.glyphs.map((entry) => entry.font?.asset)).toEqual(["b", "b", "b"]);
+      expect(line.glyphs[2]?.x).toBe(10 + 4);
+      expect(run("b", "A\u2009A").warnings).toEqual([]);
+    });
+
+    test("stay missing in a font without a space glyph", () => {
+      const result = run("c", "A\u2003A");
+      expect(result.warnings).toEqual([
+        {
+          path: "/assets/fonts/c",
+          code: "missing-glyph",
+          message: expect.stringContaining("U+2003") as string,
+        },
+      ]);
+    });
+
+    test("render the same bytes twice, and for the canonical singleton spellings", () => {
+      const first = run("a", "A\u2000A\u2001A").svg;
+      expect(run("a", "A\u2000A\u2001A").svg).toBe(first);
+      expect(run("a", "A\u2002A\u2003A").svg).toBe(
+        first.replaceAll("\u2000", "\u2002").replaceAll("\u2001", "\u2003"),
+      );
+    });
+  });
 });
