@@ -19,7 +19,7 @@ function design(content: string): Design {
 test("an emoji-heavy text the format accepts at its 10000-character limit renders", () => {
   // 10000 code points of source with a placeholder, about 20000 UTF-16 units.
   const source = `{{ 1 }}${emoji.repeat(9993)}`;
-  expect([...source]).toHaveLength(10_000);
+  expect(Array.from(source)).toHaveLength(10_000);
   expect(validateDesign(design(source)).ok).toBe(true);
   expect(renderSvg(design(source)).ok).toBe(true);
   // A placeholder filling in 10000 code points stays within maxTextLength.
