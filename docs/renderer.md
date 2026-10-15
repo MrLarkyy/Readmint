@@ -206,7 +206,7 @@ Drawn in document order, first at the back. Layer `id` and `name` are not emitte
   U+2011 (Text, Space and hyphen fallbacks). No vertical text, no variable-font axes,
   no fallback shaping for fonts without layout tables (Arabic presentation forms). Characters of one word in different
   fonts do not join or attach across the font change.
-- A line break in the content is a hard break. With a `width`, words (split at spaces) fill each line greedily; a word
+- A line break in the content is a hard break. With a `width`, words (split at breakable spaces: U+0020, U+2000-2006, U+2008-200A, U+205F, U+3000; U+00A0, U+2007 and U+202F never break) fill each line greedily; a word
   wider than the line breaks between clusters, never inside one (a ligature, a letter with its marks, a conjunct). Word widths include kerning inside the word; kerning across a space
   is left out of the wrapping decision (it is in the final positions). The space at a soft break is dropped, every
   other space is kept (`xml:space="preserve"`).
