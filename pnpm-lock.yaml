@@ -60,6 +60,9 @@ importers:
       '@readmint/data':
         specifier: workspace:*
         version: link:../data
+      '@readmint/data-github':
+        specifier: workspace:*
+        version: link:../data-github
       '@readmint/expr':
         specifier: workspace:*
         version: link:../expr
@@ -102,9 +105,25 @@ importers:
 
   packages/editor:
     dependencies:
+      '@readmint/data':
+        specifier: workspace:*
+        version: link:../data
+      '@readmint/fonts':
+        specifier: workspace:*
+        version: link:../fonts
       '@readmint/format':
         specifier: workspace:*
         version: link:../format
+      '@readmint/renderer':
+        specifier: workspace:*
+        version: link:../renderer
+    devDependencies:
+      '@readmint/golden':
+        specifier: workspace:*
+        version: link:../golden
+      vite:
+        specifier: 8.3.4
+        version: 8.3.4(@types/node@22.20.5)(yaml@2.9.1)
 
   packages/expr: {}
 

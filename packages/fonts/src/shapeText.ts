@@ -1,4 +1,3 @@
-import { clusterStarts } from "./clusterStarts.js";
 import { ApplyContext } from "./layout/ApplyContext.js";
 import { finishOffsets } from "./layout/finishOffsets.js";
 import { FontLayout } from "./layout/FontLayout.js";
@@ -7,6 +6,7 @@ import { GlyphBuffer, glyphInfo, Joiner, type GlyphInfo } from "./layout/GlyphBu
 import { applyGposSubtable } from "./layout/GposLookups.js";
 import { applyGsubSubtable } from "./layout/GsubLookups.js";
 import { maxBufferLength, ShapingBudget } from "./layout/ShapingBudget.js";
+import { normalizeText } from "./normalizeCharacters.js";
 import type { SfntFont } from "./SfntFont.js";
 import type { ShapedRun } from "./ShapedRun.js";
 import type { ShapeOptions } from "./ShapeOptions.js";
@@ -20,8 +20,9 @@ const zwnj = 0x200c;
 const zwj = 0x200d;
 
 /**
- * Shapes one run of text in one font (OpenType layout as HarfBuzz does it): characters to glyphs through the cmap
- * (mirrored in a right-to-left run), the script's shaper (Arabic joining, Devanagari syllables and reordering, or the
+ * Shapes one run of text in one font (OpenType layout as HarfBuzz does it): characters normalized against the font's
+ * cmap per cluster (`normalizeCharacters`: canonically decomposed, marks ordered, recomposed into what the font maps,
+ * so canonically equivalent texts shape alike), to glyphs through the cmap (mirrored in a right-to-left run), the script's shaper (Arabic joining, Devanagari syllables and reordering, or the
  * default), GSUB lookups stage by stage, default ignorables removed, advances, GPOS lookups (or the legacy kern
  * table), mark advances zeroed and attachments resolved. Pure and deterministic: integer font units, no clock,
  * nothing taken from the platform's Unicode data. A broken or too costly layout table throws `MalformedFont`.
@@ -72,21 +73,14 @@ function firstScript(text: string): ScriptCode {
 }
 
 /**
- * One glyph per character, its cluster the start of its character cluster (`clusterStarts`: a base with its marks
- * and joiners), as HarfBuzz forms grapheme clusters before shaping.
+ * One glyph per normalized character, its cluster the start of its character cluster (`clusterStarts`: a base with
+ * its marks and joiners), as HarfBuzz forms grapheme clusters and normalizes them before shaping.
  */
 function decode(font: SfntFont, text: string, plan: ShapePlan, rtl: boolean): GlyphInfo[] {
   const characters: GlyphInfo[] = [];
-  const starts = clusterStarts(text);
-  let next = 0;
-  let cluster = 0;
-  for (let index = 0; index < text.length; index++) {
-    const codePoint = text.codePointAt(index) ?? 0;
-    if (starts[next] === index) {
-      cluster = index;
-      next++;
-    }
-    const info = glyphInfo(font.glyphFor(codePoint), codePoint, cluster);
+  const normalized = normalizeText(text, (codePoint) => font.glyphFor(codePoint) !== 0);
+  normalized.codePoints.forEach((codePoint, index) => {
+    const info = glyphInfo(font.glyphFor(codePoint), codePoint, normalized.clusters[index] ?? 0);
     info.mask = plan.globalMask;
     if (rtl) {
       const mirror = mirrorOf(codePoint);
@@ -97,8 +91,7 @@ function decode(font: SfntFont, text: string, plan: ShapePlan, rtl: boolean): Gl
     info.ignorable = isDefaultIgnorable(codePoint);
     info.joiner = codePoint === zwnj ? Joiner.zwnj : codePoint === zwj ? Joiner.zwj : Joiner.none;
     characters.push(info);
-    if (codePoint > 0xffff) index++;
-  }
+  });
   return characters;
 }
 

@@ -26,4 +26,9 @@ export interface RenderOptions {
    * a design without `animation` ignores it.
    */
   readonly time?: number;
+  /**
+   * Also return `layerBoxes`: the canvas box and design layer of every drawn node, for the editor's selection. Never
+   * changes the SVG.
+   */
+  readonly layerBoxes?: boolean;
 }

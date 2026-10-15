@@ -20,6 +20,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec playwright install --with-deps --only-shell chromium
       - run: pnpm -r build
+      - run: pnpm --filter @readmint/editor app
       - run: pnpm --filter @readmint/action bundle
       - name: Action bundle smoke run
         shell: bash

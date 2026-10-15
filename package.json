@@ -8,6 +8,7 @@
   },
   "scripts": {
     "build": "pnpm -r build",
+    "editor": "pnpm --filter @readmint/editor dev",
     "typecheck": "pnpm -r typecheck && tsc -p tsconfig.json",
     "lint": "eslint .",
     "format": "prettier --write .",

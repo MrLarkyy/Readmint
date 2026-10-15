@@ -1,6 +1,7 @@
 /**
- * Writes src/unicode/ucdTables.ts (the Unicode properties shaping and bidi need, as compact range tables) and
- * test/data/BidiCharacterTest-sample.txt from the Unicode Character Database 16.0.0. The renderer must not take these
+ * Writes src/unicode/ucdTables.ts (the Unicode properties shaping, bidi and normalization need, as compact range and
+ * pair tables), test/data/BidiCharacterTest-sample.txt and test/data/NormalizationTest-sample.txt from the Unicode
+ * Character Database 16.0.0. The renderer must not take these
  * properties from RegExp property escapes or Intl: their Unicode version differs between Node and browser builds.
  *
  * Run from the repository root with Node 24, after downloading the files below (each checked against its sha256)
@@ -18,10 +19,12 @@ const sources = {
   "BidiBrackets.txt": "b8f32554c6f658821fb0ee742d21c5b1f2086b9bf13071fed04894b022f93d67",
   "BidiCharacterTest.txt": "d04a51a90052dcd71c4e91ee5b3a9d973ee35c12406b5a99875ac8163c8f2804",
   "BidiMirroring.txt": "d7afdadd1bbd66f5a663ac0e8f7958f18fd9491fc0bc59ec5877cb82db71db7d",
+  "CompositionExclusions.txt": "89e83cf9cc8bef6c1f8bf77e42cf6f0341dfa42e66261f4dbe9b492e7a23c8ee",
   "DerivedBidiClass.txt": "71ed943a49c58568d8d92e80ecc2ba2f06e62aee9c8ebb0e6e8bd2c3ed8b180e",
   "DerivedCoreProperties.txt": "39d35161f2954497f69e08bdb9e701493f476a3d30222de20028feda36c1dabd",
   "IndicPositionalCategory.txt": "cbb9e2193e26c9b3d595a8f0ff4fd2ad956482309143ceb4ce5469c19f14feba",
   "IndicSyllabicCategory.txt": "615f1b92ba7ec76e18c5b5c05d2e1836e4b98bc791eb9e27946c7621fc047ae7",
+  "NormalizationTest.txt": "d811971453e7075e1ad56fb1b301eece5aa80757b81f6156e74a1bfb3ae5ceb1",
   "Scripts.txt": "9e88f0a677df47311106340be8ede2ecdacd9c1c931831218d2be6d5508e0039",
   "UnicodeData.txt": "ff58e5823bd095166564a006e47d111130813dcf8bf234ef79fa51a870edb48f",
 } as const;
@@ -31,6 +34,11 @@ type Source = keyof typeof sources;
 const codeSpace = 0x110000;
 const alphabet = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-_";
 const sampleLines = 2000;
+/** Every n-th test of NormalizationTest.txt parts 1 and 2 goes into its sample; the other parts go in whole. */
+const normalizationStep = 12;
+const maxSampleBytes = 200_000;
+/** The longest full canonical decomposition the normalizer allows for (UAX #15 keeps it at four). */
+const maxDecompositionLength = 4;
 
 /** Scripts with a shaper or an OpenType script tag of their own; every other script is `Other`. */
 const scriptCodes: Readonly<Record<string, string>> = {
@@ -330,6 +338,107 @@ function bidiSample(): string {
   ].join("\n");
 }
 
+/** Canonical_Combining_Class (UnicodeData.txt field 3); the `<..., First>` ranges are all class 0. */
+function combiningClasses(): Uint8Array {
+  const values = new Uint8Array(codeSpace);
+  for (const line of read("UnicodeData.txt")) {
+    const parts = line.split(";");
+    if (parts.length < 6) continue;
+    values[Number.parseInt(parts[0] ?? "", 16)] = Number.parseInt(parts[3] ?? "0", 10);
+  }
+  return values;
+}
+
+/** Canonical decompositions (UnicodeData.txt field 5 without a `<tag>`): one or two code points each. */
+function canonicalDecompositions(): Map<number, number[]> {
+  const decompositions = new Map<number, number[]>();
+  for (const line of read("UnicodeData.txt")) {
+    const parts = line.split(";");
+    const mapping = parts[5] ?? "";
+    if (mapping === "" || mapping.startsWith("<")) continue;
+    const codePoints = mapping.split(" ").map((text) => Number.parseInt(text, 16));
+    if (codePoints.length > 2) throw new Error(`${parts[0] ?? ""}: decomposition of more than two`);
+    decompositions.set(Number.parseInt(parts[0] ?? "", 16), codePoints);
+  }
+  return decompositions;
+}
+
+function fullDecompositionLength(codePoint: number, decompositions: Map<number, number[]>): number {
+  const mapping = decompositions.get(codePoint);
+  if (mapping === undefined) return 1;
+  return mapping.reduce((sum, part) => sum + fullDecompositionLength(part, decompositions), 0);
+}
+
+/**
+ * Canonical decompositions as varint triples (code point minus the previous one, zigzag(first minus code point),
+ * second times two plus the Full_Composition_Exclusion bit; second 0 for a singleton). Full_Composition_Exclusion
+ * (UAX #15): CompositionExclusions.txt, singletons, and non-starter decompositions (the character or its first part
+ * has a combining class).
+ */
+function decompositionTriples(classes: Uint8Array): string {
+  const decompositions = canonicalDecompositions();
+  const excluded = new Set<number>();
+  for (const line of read("CompositionExclusions.txt")) {
+    const parts = fields(line);
+    if (parts !== undefined) excluded.add(range(parts[0] ?? "")[0]);
+  }
+  let text = "";
+  let previous = 0;
+  const sorted = [...decompositions].sort((left, right) => left[0] - right[0]);
+  for (const [codePoint, [first = 0, second = 0]] of sorted) {
+    if (fullDecompositionLength(codePoint, decompositions) > maxDecompositionLength) {
+      throw new Error(
+        `${codePoint.toString(16)}: full decomposition longer than the normalizer allows`,
+      );
+    }
+    const exclusion =
+      excluded.has(codePoint) ||
+      second === 0 ||
+      (classes[codePoint] ?? 0) !== 0 ||
+      (classes[first] ?? 0) !== 0;
+    text += varint(codePoint - previous) + varint(zigzag(first - codePoint));
+    text += varint(second * 2 + (exclusion ? 1 : 0));
+    previous = codePoint;
+  }
+  return text;
+}
+
+/**
+ * NormalizationTest.txt without comments: parts 0, 3, 4 and 5 whole, every n-th test of parts 1 (character by
+ * character) and 2 (canonical order), so the sample covers the whole file the same way on every run.
+ */
+function normalizationSample(): string {
+  const kept: string[] = [];
+  let part = "";
+  let position = 0;
+  for (const line of read("NormalizationTest.txt")) {
+    const marker = /^(@Part\d)/.exec(line);
+    if (marker !== null) {
+      part = marker[1] ?? "";
+      position = 0;
+      kept.push(part);
+      continue;
+    }
+    const parts = fields(line);
+    if (parts === undefined) continue;
+    const sampled = part === "@Part1" || part === "@Part2";
+    if (!sampled || position % normalizationStep === 0)
+      kept.push(`${parts.slice(0, 5).join(";")};`);
+    position++;
+  }
+  const sample = [
+    `# Parts 0, 3, 4 and 5 and every ${String(normalizationStep)}th test of parts 1 and 2 of NormalizationTest-${version}.txt`,
+    `# (sha256 ${sources["NormalizationTest.txt"]}), comments removed,`,
+    "# written by packages/fonts/scripts/generateUnicodeTables.ts. Copyright Unicode, Inc.; Unicode License V3,",
+    "# see packages/fonts/LICENSE-UNICODE. Fields: source; NFC; NFD; NFKC; NFKD (code points).",
+    ...kept,
+    "",
+  ].join("\n");
+  if (sample.length > maxSampleBytes)
+    throw new Error(`normalization sample of ${String(sample.length)} bytes`);
+  return sample;
+}
+
 function list(names: readonly string[]): string {
   return `[${names.map((name) => JSON.stringify(name)).join(", ")}]`;
 }
@@ -345,12 +454,13 @@ const categories = generalCategories();
 const scriptOf = scripts();
 const syllabic = indicTable("IndicSyllabicCategory.txt", "Other", scriptOf);
 const positional = indicTable("IndicPositionalCategory.txt", "NA", scriptOf);
+const classes = combiningClasses();
 const tables = `/*!
  * @license Unicode-3.0 for the Unicode Character Database data below; full text also in LICENSE-UNICODE.
  *
  * Generated by packages/fonts/scripts/generateUnicodeTables.ts from the Unicode Character Database ${version}
  * (Scripts, DerivedBidiClass, BidiBrackets, BidiMirroring, ArabicShaping, IndicSyllabicCategory,
- * IndicPositionalCategory, DerivedCoreProperties, UnicodeData). Do not edit by hand.
+ * IndicPositionalCategory, DerivedCoreProperties, UnicodeData, CompositionExclusions). Do not edit by hand.
  *
 ${licence}
  */
@@ -389,7 +499,22 @@ export const bracketPairs =
 /** Bidi_Mirroring_Glyph: varint pairs (code point minus the previous one, zigzag(mirror minus code point)). */
 export const mirrorPairs =
   "${mirrors()}";
+
+/** Canonical_Combining_Class: runs of the class itself (0-240). */
+export const combiningClassRuns =
+  "${runs(classes)}";
+
+/**
+ * Canonical decompositions: varint triples (code point minus the previous one, zigzag(first minus code point),
+ * second times two plus 1 when Full_Composition_Exclusion; second 0 for a singleton). Hangul is algorithmic.
+ */
+export const decompositionTriples =
+  "${decompositionTriples(classes)}";
 `;
 
 writeFileSync(new URL("../src/unicode/ucdTables.ts", import.meta.url), tables);
 writeFileSync(new URL("../test/data/BidiCharacterTest-sample.txt", import.meta.url), bidiSample());
+writeFileSync(
+  new URL("../test/data/NormalizationTest-sample.txt", import.meta.url),
+  normalizationSample(),
+);

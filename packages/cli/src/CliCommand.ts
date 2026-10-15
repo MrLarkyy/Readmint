@@ -11,6 +11,10 @@ export interface DesignArgs {
   readonly locale?: string;
   /** `--fetch-images`: fetch the images whose `src` is bound to data; without it the CLI never fetches. */
   readonly fetchImages?: boolean;
+  /** `--github`: load `{ github }` live with the token from the environment instead of `--data`. */
+  readonly github?: boolean;
+  /** `--login`: the GitHub login `--github` loads; the token's owner when absent. */
+  readonly login?: string;
 }
 
 /** `readmint render` beyond the design arguments. */
