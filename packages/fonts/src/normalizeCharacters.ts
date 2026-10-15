@@ -20,7 +20,7 @@ export interface NormalizedCharacters {
  * Canonical normalization restricted to what a font draws, one character cluster (a run of equal `clusters` values)
  * at a time: (1) every character is decomposed canonically and recursively, except a singleton decomposition
  * (U+212B, CJK compatibility ideographs) of a character the font maps; (2) each run of at most 32 non-starters is
- * stable-sorted by combining class; (2b) in "font" order, a cluster of Arabic script then moves the modifier combining
+ * stable-sorted by combining class; (2b) in "font" order, a cluster of Arabic script (its own, else `runScript`) moves the modifier combining
  * marks that lead its class 220 and 230 marks to the start of the run (UAX #53, `moveModifierMarks`), each keeping
  * its own class for blocking; (3) Unicode canonical composition (UAX #15: blocking, composition exclusions, Hangul).
  * When the font maps every character of the fully composed cluster (its NFC) but default ignorables (never drawn:
@@ -37,6 +37,7 @@ export function normalizeCharacters(
   clusters: readonly number[],
   maps: (codePoint: number) => boolean,
   order: "canonical" | "font" = "font",
+  runScript: ScriptCode = "Zyyy",
 ): NormalizedCharacters {
   const keyOf = order === "font" ? modifiedCombiningClassOf : combiningClassOf;
   const normalized: number[] = [];
@@ -65,7 +66,7 @@ export function normalizeCharacters(
     const arabic =
       order === "font" &&
       segment.some(isModifierCombiningMark) &&
-      clusterScript(segment) === "Arab";
+      clusterScript(segment, runScript) === "Arab";
     let result = [...segment];
     steps += reorder(result, result.map(combiningClassOf), arabic);
     const composed: number[] = [];
@@ -91,13 +92,16 @@ export function normalizeCharacters(
 
 const everything = () => true;
 
-/** The script of a cluster: that of its first character not Common, Inherited or unassigned (as `shapeText` picks). */
-function clusterScript(codePoints: readonly number[]): ScriptCode {
+/**
+ * The script of a cluster: that of its first character not Common, Inherited or unassigned (as `shapeText` picks),
+ * else the run's (marks on a tatweel or a dotted circle inside Arabic text).
+ */
+function clusterScript(codePoints: readonly number[], runScript: ScriptCode): ScriptCode {
   for (const codePoint of codePoints) {
     const script = scriptOf(codePoint);
     if (script !== "Zyyy" && script !== "Zinh" && script !== "Zzzz") return script;
   }
-  return "Zyyy";
+  return runScript;
 }
 
 /**
@@ -146,7 +150,9 @@ function insertionSort(codePoints: number[], keys: number[], from: number, to: n
 
 /**
  * Canonical composition of one cluster onto `output`: a character joins the last starter when nothing between them
- * blocks it (a starter, or a mark of an equal or higher class) and the font maps the composite. The steps taken.
+ * blocks it (a starter, or a mark of an equal or higher class) and the font maps the composite. The highest key since
+ * the starter decides, not the last one: after a modifier mark moved (`moveModifierMarks`) the keys are no longer
+ * ascending. The steps taken.
  */
 function compose(
   codePoints: readonly number[],
@@ -155,19 +161,21 @@ function compose(
   output: number[],
 ): number {
   let starter = -1;
-  let lastKey = 0;
+  let highest = 0;
   for (let index = 0; index < codePoints.length; index++) {
     const codePoint = codePoints[index] ?? 0;
     const key = keys[index] ?? 0;
-    if (starter >= 0 && (lastKey === 0 || lastKey < key)) {
+    if (starter >= 0 && (highest === 0 || highest < key)) {
       const composite = compositionOf(output[starter] ?? 0, codePoint);
       if (composite !== undefined && maps(composite)) {
         output[starter] = composite;
         continue;
       }
     }
-    if (key === 0) starter = output.length;
-    lastKey = key;
+    if (key === 0) {
+      starter = output.length;
+      highest = 0;
+    } else highest = Math.max(highest, key);
     output.push(codePoint);
   }
   return codePoints.length;
@@ -175,12 +183,14 @@ function compose(
 
 /**
  * `normalizeCharacters` over a text's character clusters (`clusterStarts`), each cluster value the UTF-16 offset of
- * its start, as `shapeText` takes them.
+ * its start, as `shapeText` takes them; `runScript` is the script of the run a cluster of only Common and Inherited
+ * characters belongs to.
  */
 export function normalizeText(
   text: string,
   maps: (codePoint: number) => boolean,
   order: "canonical" | "font" = "font",
+  runScript: ScriptCode = "Zyyy",
 ): NormalizedCharacters {
   const codePoints: number[] = [];
   const clusters: number[] = [];
@@ -197,7 +207,7 @@ export function normalizeText(
     clusters.push(cluster);
     if (codePoint > 0xffff) index++;
   }
-  return normalizeCharacters(codePoints, clusters, maps, order);
+  return normalizeCharacters(codePoints, clusters, maps, order, runScript);
 }
 
 /** The code points as a string (no spread: a long text would overflow the argument list). */

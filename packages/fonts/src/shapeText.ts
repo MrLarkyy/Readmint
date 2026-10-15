@@ -43,13 +43,14 @@ export function shapeTextCounted(
   const layout = FontLayout.of(font);
   const rtl = options.rtl ?? false;
   const kerning = options.kerning ?? true;
+  const script = options.script ?? firstScript(text);
   const plan = layout.plan({
-    script: options.script ?? firstScript(text),
+    script,
     rtl,
     kerning,
     ligatures: options.ligatures ?? true,
   });
-  const characters = decode(font, text, plan, rtl);
+  const characters = decode(font, text, plan, script, rtl);
   const budget = options.budget ?? ShapingBudget.forText(text.length);
   const buffer = new GlyphBuffer(characters, budget, maxBufferLength(characters.length));
   const state: ShapingState = { font, layout, plan, buffer };
@@ -77,11 +78,19 @@ function firstScript(text: string): ScriptCode {
 
 /**
  * One glyph per normalized character, its cluster the start of its character cluster (`clusterStarts`: a base with
- * its marks and joiners), as HarfBuzz forms grapheme clusters and normalizes them before shaping.
+ * its marks and joiners), as HarfBuzz forms grapheme clusters and normalizes them before shaping. A cluster without a
+ * script of its own (marks on a tatweel or a dotted circle) is normalized as the run's script.
  */
-function decode(font: SfntFont, text: string, plan: ShapePlan, rtl: boolean): GlyphInfo[] {
+function decode(
+  font: SfntFont,
+  text: string,
+  plan: ShapePlan,
+  script: ScriptCode,
+  rtl: boolean,
+): GlyphInfo[] {
   const characters: GlyphInfo[] = [];
-  const normalized = normalizeText(text, (codePoint) => font.glyphFor(codePoint) !== 0);
+  const maps = (codePoint: number) => font.glyphFor(codePoint) !== 0;
+  const normalized = normalizeText(text, maps, "font", script);
   normalized.codePoints.forEach((codePoint, index) => {
     const info = glyphInfo(
       glyphForCharacter(font, codePoint),

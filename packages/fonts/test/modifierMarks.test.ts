@@ -29,6 +29,11 @@ function normalize(
     .codePoints;
 }
 
+/** The canonical decomposition (NFD) from the package's own tables: equal for canonically equivalent inputs. */
+const nfd = (codePoints: readonly number[]) => normalize(codePoints, decomposedFont, "canonical");
+const hex = (codePoints: readonly number[]) =>
+  codePoints.map((codePoint) => codePoint.toString(16)).join(" ");
+
 const beh = 0x628;
 const alef = 0x627;
 const fatha = 0x64e;
@@ -117,6 +122,40 @@ describe("Arabic clusters move their leading modifier marks to the start of the 
     expect(normalize([0x623, maddah], noAlefHamza)).toEqual([alef, hamzaAbove, maddah]);
     expect(normalize([alef, maddah, hamzaAbove], noAlefHamza)).toEqual([0x622, hamzaAbove]);
     expect(normalize([alef, fatha, hamzaAbove], noAlefHamza)).toEqual([alef, hamzaAbove, fatha]);
+    // The moved hamza blocks maddah even with the fatha after it: the keys are no longer ascending.
+    expect(normalize([alef, fatha, hamzaAbove, maddah], noAlefHamza)).toEqual([
+      alef,
+      hamzaAbove,
+      fatha,
+      maddah,
+    ]);
+  });
+
+  test("the output is canonically equivalent to the input for every font", () => {
+    const bases = [alef, 0x648, 0x64a, 0x6d5, 0x6c1, 0x6d2, beh];
+    const marks = [fatha, kasra, shadda, sukun, maddah, hamzaAbove, hamzaBelow, subscriptAlef];
+    const composites = [0x622, 0x623, 0x624, 0x625, 0x626, 0x6c0, 0x6c2, 0x6d3];
+    const plain = [...bases, ...marks, superscriptAlef, smallHighSeen];
+    const fonts = [everything, decomposedFont];
+    for (let mask = 0; mask < 1 << composites.length; mask += 5) {
+      fonts.push(font(...plain, ...composites.filter((_, bit) => (mask & (1 << bit)) !== 0)));
+    }
+    const sequences: number[][] = [[]];
+    for (const sequence of sequences) {
+      if (sequence.length < 3) for (const mark of marks) sequences.push([...sequence, mark]);
+    }
+    const failures: string[] = [];
+    for (const base of bases) {
+      for (const sequence of sequences) {
+        const input = [base, ...sequence];
+        for (const maps of fonts) {
+          const output = normalize(input, maps);
+          if (nfd(output).join() !== nfd(input).join())
+            failures.push(`${hex(input)} -> ${hex(output)}`);
+        }
+      }
+    }
+    expect(failures.slice(0, 10)).toEqual([]);
   });
 
   test("every canonically equivalent spelling of a cluster gives the same characters", () => {
@@ -141,6 +180,7 @@ describe("Arabic clusters move their leading modifier marks to the start of the 
       expect(spellings.length).toBeGreaterThan(2);
       for (const maps of fonts) {
         const expected = normalize([base, ...marks], maps);
+        expect(nfd(expected)).toEqual(nfd([base, ...marks]));
         for (const spelling of spellings) {
           expect(normalize(spelling, maps), spelling.map((c) => c.toString(16)).join(" ")).toEqual(
             expected,
@@ -168,12 +208,48 @@ describe("Arabic clusters move their leading modifier marks to the start of the 
       fatha,
       hamzaAbove,
     ]);
-    expect(normalizeText("بَٔ aَٔ", decomposedFont).codePoints).toEqual([
+    expect(normalizeText("\u0628\u064e\u0654 a\u064e\u0654", decomposedFont).codePoints).toEqual([
       beh,
       hamzaAbove,
       fatha,
       0x20,
       0x61,
+      fatha,
+      hamzaAbove,
+    ]);
+  });
+
+  test("a cluster without a script of its own (tatweel, dotted circle) takes the run's", () => {
+    const tatweel = 0x640;
+    const text = String.fromCodePoint(beh, tatweel, fatha, hamzaAbove);
+    expect(normalizeText(text, decomposedFont, "font", "Arab").codePoints).toEqual([
+      beh,
+      tatweel,
+      hamzaAbove,
+      fatha,
+    ]);
+    expect(normalizeText(text, decomposedFont).codePoints).toEqual([
+      beh,
+      tatweel,
+      fatha,
+      hamzaAbove,
+    ]);
+    const circle = String.fromCodePoint(0x25cc, fatha, hamzaAbove);
+    expect(normalizeText(circle, decomposedFont, "font", "Arab").codePoints).toEqual([
+      0x25cc,
+      hamzaAbove,
+      fatha,
+    ]);
+    // A cluster's own script wins over the run's.
+    const latin = String.fromCodePoint(0x61, fatha, hamzaAbove);
+    expect(normalizeText(latin, decomposedFont, "font", "Arab").codePoints).toEqual([
+      0x61,
+      fatha,
+      hamzaAbove,
+    ]);
+    expect(normalizeText(text, decomposedFont, "canonical", "Arab").codePoints).toEqual([
+      beh,
+      tatweel,
       fatha,
       hamzaAbove,
     ]);
@@ -192,9 +268,9 @@ describe("Arabic clusters move their leading modifier marks to the start of the 
   });
 
   test("NFC (the accessible text) keeps Unicode's order", () => {
-    expect(normalizeNfc("آٔ")).toBe("آٔ");
-    expect(normalizeNfc("بَٔ")).toBe("بَٔ");
-    expect(normalizeNfc("أَ")).toBe("أَ");
+    expect(normalizeNfc("\u0627\u0653\u0654")).toBe("\u0622\u0654");
+    expect(normalizeNfc("\u0628\u064e\u0654")).toBe("\u0628\u064e\u0654");
+    expect(normalizeNfc("\u0627\u064e\u0654")).toBe("\u0623\u064e");
   });
 });
 
