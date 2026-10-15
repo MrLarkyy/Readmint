@@ -14,10 +14,17 @@ const result = renderSvg(design, {
   assets: { fonts: { inter: bytes }, images: { logo: bytes } }, // bytes for assets whose src is a path
   limits: { maxOutputBytes: 1_000_000 }, // optional overrides of RenderLimits
   time: 400, // optional: the static frame at 400 ms of the design's timeline (see Animation)
+  layerBoxes: true, // optional: also return where each drawn layer sits (see Report); the SVG stays the same
 });
 
 type RenderResult =
-  | { ok: true; svg: string; report: RenderReport; warnings: RenderIssue[] }
+  | {
+      ok: true;
+      svg: string;
+      report: RenderReport;
+      warnings: RenderIssue[];
+      layerBoxes?: LayerBox[];
+    }
   | { ok: false; issues: RenderIssue[] };
 ```
 
@@ -371,7 +378,7 @@ Output:
   (one per distinct track; tracks of one element with the same positions and easings share one) and classes
   `.r<hash>a0, a1, ...` (`animation: <keyframes> <duration>ms linear infinite`, or `linear both` when the timeline
   plays once), deduplicated by their text, so identical copies of a repeat share their rules. The root `<svg>` carries
-  `class="r<hash>"`. An SVG inlined into a page (the editor) shares the page's style: the prefix keeps two different
+  `class="r<hash>"`. An SVG inlined into a web page shares the page's style: the prefix keeps two different
   Readmint SVGs apart, while the same design still gives the same bytes. Only numbers, `#rrggbb` colours and fixed
   words are written there; nothing from the design or the data. One rule
   `@media (prefers-reduced-motion:reduce){.r<hash> [class]{animation:none!important}}` stops this document's
@@ -483,3 +490,14 @@ subset's size grows with distinct glyphs, not with repeats. An image is `{ asset
 once however often it is drawn (an image with EXIF data, inline at every use, once per use), and 0 for an asset whose
 bytes an earlier asset already wrote, so the image bytes add up to what the SVG holds. A design with a timeline also reports `animation: { duration, loop }`, what `frameTimes`
 takes.
+
+With the option `layerBoxes: true` a successful render also returns `layerBoxes`, one per drawn node in paint order
+(later boxes are drawn over earlier ones): `{ layer, x, y, width, height, rotation?, groupTurns? }`. `layer` is the JSON
+Pointer of the design layer under `/layers` that drew it: every repeat copy gives its layer's pointer, the layers of a
+component give their instance's. `x`, `y`, `width`, `height` are the node's box at its layout position before any turn
+(its offsets and those of its groups added; animations do not move it), rounded to 3 decimals. On the canvas the box is
+turned by `rotation` (its own degrees, clockwise about its centre), then by each of `groupTurns` (`{ degrees, cx, cy }`,
+the turned groups around it, innermost first, each about a centre in the same unturned coordinates); either is absent
+when nothing turns. The renderer does no trigonometry here, as in the SVG: the reader applies the turns. Layers a
+`visible` or `if` drops have no box. The option never changes the SVG or the report; the editor selects layers in its
+preview with it.
