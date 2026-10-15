@@ -456,7 +456,12 @@ budget?, maxBytes? })`, `encodeWoff`, `decodeWoff`, `glyphClosure`, `OutlineBudg
   Measured with built files of exact symbols and the gradient, `progressive.jpg` and `sof3-8bit-rgb.jpg` broken in
   place, every kind pinned in both outputs (`packages/renderer/test/jpegEntropyCases.ts`: Chromium 156, resvg-wasm
   2.6.2). The check is bounded (see Limits) and takes about 100 ms for a 3 MB baseline file, 200 ms for a progressive
-  one.
+  one. An accepted JPEG's result is kept by its bytes for the module instance (at most 64 images and 32 MiB of image
+  data, the least recently used dropped first; a hit needs the bytes equal byte for byte, so a hash collision is a
+  miss; refused files are checked every time), so a repeated render, every frame of an animation and the raster pass
+  skip the check for bytes already checked: a hit costs a hash and a comparison of the bytes, some 17 ms for a 3.5 MB
+  file. The copy the SVG holds (orientation upright, colour data removed) is kept too, with what its check finds,
+  unless a removed segment is not followed by a marker. Results and output never depend on the cache (see Limits).
 
 - Lossy pixel values the two decoders round apart are bounded by a pinned tolerance: at most 2 levels per channel
   (`jpegChannelTolerance`, `packages/raster/test/jpegDecoderTolerance.ts`), as libjpeg-turbo (Chromium) and
@@ -662,8 +667,11 @@ history and column-pair sums (128 MiB at most) are checked before any is allocat
 raster output takes. Per render, every image asset together (each asset is checked, even one whose bytes another
 asset shares): the same 134217728 steps (`maxRenderEntropySteps`, like the shaping bound), so copies of a crafted file
 cost no more than the costliest single one (a 10 KB progressive file can take some 7 million steps); crossing it fails
-as `asset-too-large` at the image asset that crossed it, naming the limit. Raster export checks the images of its
-SVG again against a budget of its own of that size (`raster-too-many-image-pixels`).
+as `asset-too-large` at the image asset that crossed it, naming the limit. A JPEG whose result is cached (see Images)
+charges the steps its first check took, and one the budget no longer holds fails as that check would have, so the
+same design fails at the same asset with the same issue, and renders the same SVG, whatever was checked before. Raster
+export checks the images of its SVG again against a budget of its own of that size (`raster-too-many-image-pixels`),
+charged alike, the images the render checked found in the cache.
 
 ## Issues
 

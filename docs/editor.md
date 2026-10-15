@@ -146,6 +146,9 @@ its bounds (`readImageFile`):
 A refused image leaves the design unchanged, with an `image` issue saying why; so does a file that cannot be read or a
 check that fails to load. The check loads on the first upload, never with the page, and runs on the page's thread: it
 decodes no pixels, but a JPEG's symbol walk takes about 0.1 s for a 3 MB baseline file, 0.2 s for a progressive one.
+The renderer keeps an accepted JPEG's result per module instance ([renderer.md](renderer.md), Images): the preview
+worker checks it once for all its later renders, the raster worker once for every frame and the pixel count of an
+export; the upload check on the page thread keeps its own.
 
 The upload checks the file alone. What a render bounds over the whole design is the preview's to report, as for an
 imported design, with the design kept: the JPEG data of all its images together (`maxRenderEntropySteps`), the SVG's

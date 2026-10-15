@@ -4,9 +4,11 @@ import { EntropyBudget } from "./EntropyBudget.js";
 import { fnv1a } from "./fnv1a.js";
 import { ownEntry } from "./ownEntry.js";
 import { plainColourImage } from "./plainColourImage.js";
+import { plainImageInfo } from "./plainImageInfo.js";
 import { pointer } from "./pointer.js";
 import type { RenderContext } from "./RenderContext.js";
 import { echo, isBinding } from "./resolveValue.js";
+import { sniffCache } from "./SniffCache.js";
 import { sniffImage, type ImageInfo } from "./sniffImage.js";
 import { uprightImage } from "./uprightImage.js";
 
@@ -70,7 +72,9 @@ export function loadImage(context: RenderContext, assetId: string, usePath: stri
       `image asset ${name}: no bytes were supplied for ${echo(asset.src)}`,
     );
   }
+  const before = context.entropyBudget.remaining;
   const sniffed = sniffImage(bytes, limits.maxAnimationFrames, context.entropyBudget);
+  const steps = before - context.entropyBudget.remaining;
   if (!sniffed.ok) {
     if (context.entropyBudget.exhausted) {
       context.fail(srcPath, "asset-too-large", `image asset ${name}: ${EntropyBudget.message()}`);
@@ -99,10 +103,12 @@ export function loadImage(context: RenderContext, assetId: string, usePath: stri
       `image asset ${name} has more than ${String(limits.maxAnimationFrames)} animation frames`,
     );
   }
+  const plain = plainImage(bytes, info);
+  rememberPlain(bytes, plain, info, steps);
   const loaded: LoadedImage = {
     ...info,
     asset: assetId,
-    ...distinctData(context, `data:${info.mime};base64,${encodeBase64(plainImage(bytes, info))}`),
+    ...distinctData(context, `data:${info.mime};base64,${encodeBase64(plain)}`),
   };
   context.images.set(assetId, loaded);
   return loaded;
@@ -111,6 +117,16 @@ export function loadImage(context: RenderContext, assetId: string, usePath: stri
 /** The copy every output draws. Upright first: it patches at the sniffed offsets, which removing ranges moves. */
 function plainImage(bytes: Uint8Array, info: ImageInfo): Uint8Array {
   return plainColourImage(uprightImage(bytes, info), info);
+}
+
+/**
+ * Caches the sniff of the JPEG copy the SVG holds, derived from the original's, so the raster pass, which sniffs that
+ * copy, finds it checked: charged the original's `steps`, as its symbol check takes the same.
+ */
+function rememberPlain(bytes: Uint8Array, plain: Uint8Array, info: ImageInfo, steps: number): void {
+  if (plain === bytes) return;
+  const plainInfo = plainImageInfo(bytes, info);
+  if (plainInfo !== undefined) sniffCache.remember(plain, { ok: true, info: plainInfo }, steps);
 }
 
 /**

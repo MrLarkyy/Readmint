@@ -4,6 +4,7 @@ import { exifOrientation, type Orientation, type OrientationField } from "./exif
 import { JpegStructure } from "./JpegStructure.js";
 import { LosslessJpeg } from "./LosslessJpeg.js";
 import { nextJpegMarker } from "./nextJpegMarker.js";
+import { sniffCache } from "./SniffCache.js";
 
 export type ImageMime = "image/png" | "image/jpeg" | "image/gif" | "image/webp";
 
@@ -51,16 +52,29 @@ const png = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
  * stops at the end of the bytes, so crafted input costs at most one pass; a JPEG one more over each scan's Huffman
  * symbols, bounded by `maxEntropySteps` and, where `budget` is given, by what it has left for every image of the
  * render together (a JPEG that crosses it is refused and sets `budget.exhausted`). SVG and anything else is refused.
+ *
+ * An accepted JPEG's result is kept by its bytes in `sniffCache` for the module instance: the same bytes again (a
+ * repeated render, the next frame, the raster pass) skip the symbol check, yet get the same result and charge `budget`
+ * the same steps, so the outcome never depends on what was sniffed before. The result is frozen and shared.
  */
 export function sniffImage(
   data: Uint8Array,
   maxFrames: number,
   budget?: EntropyBudget,
 ): SniffResult {
+  if (new Bytes(data).startsWith(jpegMagic)) {
+    return sniffCache.sniff(data, budget, (bytes, probe) => sniffUncached(bytes, maxFrames, probe));
+  }
+  return sniffUncached(data, maxFrames, budget);
+}
+
+const jpegMagic = [0xff, 0xd8, 0xff];
+
+function sniffUncached(data: Uint8Array, maxFrames: number, budget?: EntropyBudget): SniffResult {
   const bytes = new Bytes(data);
   try {
     if (bytes.startsWith(png)) return sniffPng(bytes, maxFrames);
-    if (bytes.startsWith([0xff, 0xd8, 0xff])) return sniffJpeg(bytes, budget);
+    if (bytes.startsWith(jpegMagic)) return sniffJpeg(bytes, budget);
     if (bytes.startsWith([0x47, 0x49, 0x46, 0x38])) return sniffGif(bytes, maxFrames);
     if (bytes.startsWith([0x52, 0x49, 0x46, 0x46]) && bytes.ascii(8, 4) === "WEBP") {
       return sniffWebp(bytes, maxFrames);

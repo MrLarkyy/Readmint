@@ -246,6 +246,9 @@ const progression = (
     })),
   );
 
+/** The symbol-check steps `costlyProgressiveJpeg` takes, in Node and in Chromium alike. */
+export const costlyProgressiveSteps = 6_717_566;
+
 /**
  * An accepted progressive 1024x512 grey JPEG of about 10 KB that costs the symbol check about 6.7 million steps: a DC
  * scan, then each AC coefficient alone at point transform 13 and refined 13 times, every scan one end-of-band run over
