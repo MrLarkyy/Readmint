@@ -174,3 +174,22 @@ describe("renderText", () => {
     expect(subset.font.table("GPOS")).toBeUndefined();
   });
 });
+
+test("a missing character is reported for the asset the text names, whose fallbacks were tried (review probe 8)", () => {
+  const result = render(
+    [{ type: "text", content: "A\u6f22\u2605", font: "medium", fontWeight: 800 }],
+    {
+      medium: { ...fontAssets.medium, fallback: ["sym"] },
+      bold: fontAssets.extraBold,
+      sym: fontAssets.symbols,
+    },
+  );
+  expect(result.warnings).toEqual([
+    {
+      path: "/assets/fonts/medium",
+      code: "missing-glyph",
+      message: expect.stringContaining("U+6F22") as string,
+    },
+  ]);
+  expect(result.report.fonts.map((font) => font.asset)).toEqual(["bold", "sym"]);
+});

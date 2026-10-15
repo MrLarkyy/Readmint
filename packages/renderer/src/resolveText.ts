@@ -90,7 +90,7 @@ export function resolveText(
   for (const line of shaped) {
     for (const glyph of line.glyphs) {
       if (glyph.font === undefined)
-        context.missingGlyphs.note(primary.asset, glyph.codePoint, contentPath);
+        context.missingGlyphs.note(fontRef.value, glyph.codePoint, contentPath);
     }
   }
   const scale = fontSize / primary.font.unitsPerEm;
