@@ -177,7 +177,10 @@ export interface EllipseLayer extends LayerBase, ShapeProps {
 
 export interface PathLayer extends LayerBase, ShapeProps {
   readonly type: "path";
-  /** SVG path data; only commands, numbers, separators and whitespace. */
+  /**
+   * SVG path data (only commands, numbers, separators and whitespace), or a template with `{{ }}` placeholders that
+   * the renderer evaluates as text and holds to the same rules.
+   */
   readonly d: string;
   readonly animate?: PathAnimation;
 }

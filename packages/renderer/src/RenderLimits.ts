@@ -15,7 +15,7 @@ export interface RenderLimits {
   readonly maxImageSide: number;
   /** Frames of an animated GIF, APNG or WebP. */
   readonly maxAnimationFrames: number;
-  /** UTF-16 code units of a text after its placeholders are filled in. */
+  /** Code points of a text after its placeholders are filled in, counted as the format counts `content`. */
   readonly maxTextLength: number;
   /** Expression steps of the whole render (`@readmint/expr` budget, shared by every evaluation). */
   readonly maxExpressionSteps: number;

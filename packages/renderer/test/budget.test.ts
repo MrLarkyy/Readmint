@@ -135,6 +135,8 @@ test("a repeat inside a component passes maxRepeatCopies at the definition, nami
 test.each([
   ["a long path", { type: "path", d: `M0 0${" l1 1".repeat(19_999)}`, stroke: "#000" }],
   ["a long text", { type: "text", content: "{{long}}", width: 200, font: "m" }],
+  // Reserved by what it evaluates to, not by the 15 characters of the template.
+  ["a growing path template", { type: "path", d: "M0 0{{ steps }}", stroke: "#000" }],
 ] as const)("nested repeats of %s stop with too-large well under a second", (_name, leaf) => {
   const items = Array.from({ length: 1000 }, (_, index) => index);
   const design: Design = {
@@ -150,8 +152,9 @@ test.each([
     ],
   };
   const long = "word ".repeat(2000);
+  const steps = " l1 1".repeat(19_999);
   const started = performance.now();
-  const result = renderSvg(design, { data: { items, long } });
+  const result = renderSvg(design, { data: { items, long, steps } });
   const elapsed = performance.now() - started;
   // The output budget (a path reserves its data, a text its content) trips long before the copy limit.
   expect(result).toMatchObject({ ok: false, issues: [{ path: "", code: "too-large" }] });

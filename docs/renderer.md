@@ -75,6 +75,9 @@ Drawn in document order, first at the back. Layer `id` and `name` are not emitte
   row is as tall as its tallest child. In a stack or grid a child's own `x`/`y` is an offset inside its slot.
 - **rotation** turns a layer around the centre of its box and does not change the layout. **opacity** applies to the
   layer and everything in it. **clip** on a group clips to the group box.
+- **Path data template**: a `d` with `{{...}}` placeholders is evaluated per copy like a text, then checked as the
+  format checks a literal `d` (not empty, at most 100000 characters, path data characters only; else `range` at `d`).
+  Each copy gets the box and the `draw` length of its own data; a literal `d` is measured once per layer.
 - **style**: a layer's own property wins over the one of its `style`.
 - **Paint**: colours are written as `#rrggbb` plus `fill-opacity` / `stroke-opacity` / `stop-opacity` for alpha (the
   widest supported form). Gradient coordinates are fractions of the painted element's bounding box (defaults: linear
@@ -275,7 +278,7 @@ Output:
   dash pattern again at every subpath (each `M`, and the segment after a `Z`), so every subpath draws from its own start
   at the pace of the longest one, and shorter subpaths are complete earlier. The length is computed (lines exactly,
   curves as 32 chords each, `+ - * /` and `Math.sqrt` only), because resvg ignores `pathLength`. Paths with arcs cannot
-  `draw` (their length needs trigonometry).
+  `draw` (their length needs trigonometry); an arc a template `d` gives under a `draw` track is `range` at the track.
 - `x`, `y`, `rotation` and `scale` each get a `<g>` of their own around the element, outermost first in that order,
   whose CSS animates only that group's `transform` (the element keeps its own `transform` for its static `rotation`).
   With a rotation or scale the groups sit in `<g transform="translate(cx cy)">` and the element is drawn moved by
@@ -333,8 +336,8 @@ the canvas background and the layers.
 | `maxAnimationKeyframes` | 100000   | keyframes of every animation track of the render together, every repeat copy counted, in a frame too                                      | `too-large`          |
 
 The output size is counted while the SVG is written (a shared definition once, when its first use writes it), and
-every layer reserves the least markup of its kind before it is built (a path also its data, a text its filled-in
-content, before either is measured), so a huge or nested `repeat` stops early instead of building everything. Font
+every layer reserves the least markup of its kind before it is built (a path also its data, a template `d` once
+evaluated, a text its filled-in content, before either is measured), so a huge or nested `repeat` stops early instead of building everything. Font
 subsets are written once every text is laid out and count like any markup; text drawn as paths checks its path data
 against the budget glyph by glyph while it is built.
 Animation CSS counts toward `maxOutputBytes` like any markup, and every animated transform reserves its group (a
@@ -345,20 +348,20 @@ keyframes before any is resolved. Fixed limits: 10000 items per `repeat` (expr, 
 
 ## Issues
 
-| code                   | meaning                                                                                                                                                                                                                                             |
-| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `binding`              | an expression failed to compile or evaluate, the step budget ran out, a repeat `each` is not a list or has more than 10000 items, or its `as`/`index` names are unreadable or equal (the message names expr's error code)                           |
-| `type`                 | a value of the wrong kind (also a prop of the wrong type, a list or object written into text)                                                                                                                                                       |
-| `range`                | a number outside the format's range, a keyframe offset below the one before it, a `time` outside [0, 86400000]                                                                                                                                      |
-| `missing-asset`        | an asset path without supplied bytes, or a reference to no asset                                                                                                                                                                                    |
-| `asset-format`         | not an accepted image or a malformed font (also one found broken when its glyphs, kerning or subset are read, or a table that decompresses past its declared size); a data URI type that does not match                                             |
-| `asset-too-large`      | over a byte, side or frame limit; a font past its outline budget or whose subset could not fit the output budget                                                                                                                                    |
-| `unsupported-font`     | a font collection (TTC, or WOFF2 with several fonts), CFF2 outlines or a CFF FontMatrix other than 1/unitsPerEm                                                                                                                                     |
-| `font-not-embeddable`  | warning: the licence or the fsType forbids embedding; the font's text is drawn as paths (once per asset)                                                                                                                                            |
-| `too-large`            | the SVG passes `maxOutputBytes`, a text passes `maxTextLength`, the repeats pass `maxRepeatCopies` (at the `repeat` that crossed it), the tracks pass `maxAnimationKeyframes` (at the track that crossed it), components nest deeper than 64 levels |
-| `font-family-mismatch` | warning: the asset family differs from the family inside the font                                                                                                                                                                                   |
-| `missing-glyph`        | warning: characters neither the font nor its fallbacks have; they are not drawn and keep the `.notdef` advance (once per font asset, up to ten named)                                                                                               |
-| `animation-cut`        | warning: a track runs past the end of the timeline and is cut there (once per track, however many copies)                                                                                                                                           |
+| code                   | meaning                                                                                                                                                                                                                                                |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `binding`              | an expression failed to compile or evaluate, the step budget ran out, a repeat `each` is not a list or has more than 10000 items, or its `as`/`index` names are unreadable or equal (the message names expr's error code)                              |
+| `type`                 | a value of the wrong kind (also a prop of the wrong type, a list or object written into text)                                                                                                                                                          |
+| `range`                | a number outside the format's range, a keyframe offset below the one before it, a `time` outside [0, 86400000], a template `d` that gives empty, over-long (100000) or non-path data (at `d`), an arc a template `d` gives under `draw` (at the track) |
+| `missing-asset`        | an asset path without supplied bytes, or a reference to no asset                                                                                                                                                                                       |
+| `asset-format`         | not an accepted image or a malformed font (also one found broken when its glyphs, kerning or subset are read, or a table that decompresses past its declared size); a data URI type that does not match                                                |
+| `asset-too-large`      | over a byte, side or frame limit; a font past its outline budget or whose subset could not fit the output budget                                                                                                                                       |
+| `unsupported-font`     | a font collection (TTC, or WOFF2 with several fonts), CFF2 outlines or a CFF FontMatrix other than 1/unitsPerEm                                                                                                                                        |
+| `font-not-embeddable`  | warning: the licence or the fsType forbids embedding; the font's text is drawn as paths (once per asset)                                                                                                                                               |
+| `too-large`            | the SVG passes `maxOutputBytes`, a text passes `maxTextLength`, the repeats pass `maxRepeatCopies` (at the `repeat` that crossed it), the tracks pass `maxAnimationKeyframes` (at the track that crossed it), components nest deeper than 64 levels    |
+| `font-family-mismatch` | warning: the asset family differs from the family inside the font                                                                                                                                                                                      |
+| `missing-glyph`        | warning: characters neither the font nor its fallbacks have; they are not drawn and keep the `.notdef` advance (once per font asset, up to ten named)                                                                                                  |
+| `animation-cut`        | warning: a track runs past the end of the timeline and is cut there (once per track, however many copies)                                                                                                                                              |
 
 ## Report
 

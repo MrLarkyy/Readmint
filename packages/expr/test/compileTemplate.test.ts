@@ -78,6 +78,18 @@ describe("compileTemplate", () => {
     });
   });
 
+  test("the source limit counts code points, so astral characters count once", () => {
+    const emoji = "😀";
+    const atLimit = emoji.repeat(ExpressionLimits.maxSourceLength);
+    expect(compileTemplate(atLimit).ok).toBe(true);
+    const result = compileTemplate(`${atLimit}x`);
+    expect(!result.ok && result.error).toMatchObject({
+      code: "too-long",
+      start: 20_000,
+      end: 20_001,
+    });
+  });
+
   test("a compiled template is reused across scopes", () => {
     const template = compileTemplate("{{ n * 2 }}");
     if (!template.ok) expect.fail(template.error.message);
