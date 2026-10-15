@@ -38,7 +38,7 @@ afterEach(async () => {
 
 const licence = { embedding: "allowed" } as const;
 
-function designFile(assets: Design["assets"]): DesignFile {
+function designFile(assets: NonNullable<Design["assets"]>): DesignFile {
   return {
     design: { version: 0, canvas: { width: 1, height: 1 }, layers: [], assets },
     designDir: join(tree.root, "d"),
