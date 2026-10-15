@@ -300,12 +300,38 @@ budget?, maxBytes? })`, `encodeWoff`, `decodeWoff`, `glyphClosure`, `OutlineBudg
   (Chromium 156, resvg-wasm 2.6.2, fixtures in `packages/renderer/test/assets/jpeg`): Chromium draws them all except
   16-bit DCT samples (0x0), resvg draws arithmetic coding (SOF9-11), DCT samples above 8 bits and 12- and 16-bit
   lossless grey empty, and traps on a 12-bit lossless RGB file. A DCT frame header whose length is not 8 plus 3 per
-  component, or which has no component, is refused too. So is a baseline (SOF0) file in which, anywhere between its
-  frame header and EOI, a scan selects Huffman table 2 or 3 or a DHT defines one: jpeg-decoder allows only tables 0
-  and 1 past a baseline frame header and draws nothing, Chromium draws it. For that the sniffer reads a baseline file
-  on past its first scan to EOI in one pass, skipping the image data (stuffed zeros, fill bytes and RST0-7) and other
-  segments by their length; several scans, restart markers and a COM before EOI stay accepted, as does a table 2
-  defined before the frame header (both read it), and a file that ends early is read as far as it goes.
+  component, or which has no component, is refused too.
+- The whole JPEG, every frame type, is read once from SOI to EOI and held to what Chromium (libjpeg-turbo 3.1) and
+  resvg (jpeg-decoder 0.3.1) both draw alike; the rest is `asset-format` with the reason named. jpeg-decoder fails, so
+  resvg draws nothing, on much that libjpeg reads or ignores, and reads the colour space differently. Past the first
+  scan the sniffer skips the image data (stuffed zeros, fill bytes, RST0-7) up to the next marker; only SOS, DHT, DQT,
+  DRI, APP0-15, COM and EOI may follow (a restart marker only right after the data). Refused, wherever they are:
+  - segments: an Adobe APP14 (`Adobe�`, 12 bytes or more) with a transform above 2; a DQT table of precision above 1,
+    with a zero entry, an id above 3 or a wrong length; a DHT table without codes, with code lengths no Huffman code
+    has, of class above 1 or id above 3, or a wrong length; in a baseline (SOF0) file, past its frame header, a DHT of
+    table 2 or 3 (jpeg-decoder allows tables 0 and 1 there; before the frame header any); a DRI whose length is not 4;
+  - frames: 4 components (CMYK and YCCK: resvg draws them empty), any count but 1 or 3, a component id twice,
+    sampling factors outside 1-4 or not an integral ratio of the largest, a quantization table above 3;
+  - scans: a header of a wrong length or 0 or more than 4 components; a component the frame lacks or out of frame
+    order; a Huffman table selector above 3 (above 1 in SOF0); a Huffman table no DHT defines yet (libjpeg-turbo then
+    uses its default tables, jpeg-decoder draws nothing); a quantization table no DQT defines; a sequential (SOF0, SOF1)
+    scan whose spectral selection is not 0-63 (or 0-0) or whose successive approximation is not 0; progressive
+    parameters jpeg-decoder rejects; more than 10 blocks per MCU; a scan of a component already complete (jpeg-decoder
+    skips it, libjpeg applies it); a quantization table redefined between two scans of one component;
+  - after the image data: any other marker (TEM, SOI, DNL, a restart after a segment, SOFn, DAC, EXP, `02`-`BF`, ...),
+    and fill bytes before a stuffed zero inside the data (`FF FF 00`);
+  - at EOI: a component whose 64 coefficients no scan completed (libjpeg draws what it has, jpeg-decoder nothing), and
+    for 3 components a colour space the two pick differently: libjpeg reads a JFIF APP0, then an Adobe transform (0
+    is RGB), then the ids `R` `G` `B`, all before the first scan; jpeg-decoder reads the ids first (1 2 3 YCbCr,
+    `R` `G` `B` RGB, 1 34 35 and `r` `g` `b` not at all), then JFIF, then Adobe (2 not at all), from anywhere
+    up to EOI.
+
+  Several scans, restart markers, tables, APPn and COM between the scans and before EOI stay accepted, as does a
+  table 2 defined before a baseline frame header. A file that ends before EOI is read as far as it goes: neither
+  output draws a cut baseline file. Every rule is pinned in both outputs (`packages/renderer/test/jpegStructureCases.ts`
+  and `jpegMarkers.ts`: Chromium 156, resvg-wasm 2.6.2); a few that both draw nothing for are refused to name the
+  reason. Corrupt entropy-coded data inside a well-formed scan is not checked.
+
 - A lossless JPEG (SOF3) is accepted only where Chromium and resvg draw the same pixels: resvg-wasm 2.6.2 decodes with
   jpeg-decoder 0.3.1, whose lossless path copies the stored samples without any colour transform (it ignores JFIF,
   Adobe and the component ids) and one per component and pixel whatever the sampling factors; Chromium (libjpeg-turbo

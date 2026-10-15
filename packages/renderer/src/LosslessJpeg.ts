@@ -1,5 +1,4 @@
 import type { Bytes } from "./Bytes.js";
-import { skipEntropyData } from "./skipEntropyData.js";
 
 /** Component ids `R` `G` `B`: RGB under every colour rule of libjpeg, libjpeg-turbo and jpeg-decoder. */
 const rgbIds = [0x52, 0x47, 0x42] as const;
@@ -54,14 +53,20 @@ export class LosslessJpeg {
   }
 
   /**
-   * Why the file is refused at its first scan (the SOS length field at `offset`), or undefined: the segments before
-   * it, its header, then its image data up to the marker that ends it.
+   * Why the file is refused at its first scan header (the SOS length field at `offset`), or undefined: the segments
+   * before it, then the header.
    */
   problemAtScan(bytes: Bytes, offset: number): string | undefined {
-    const reason =
-      this.segmentReason ??
-      scanReason(bytes, offset) ??
-      imageDataReason(bytes.data, offset + bytes.u16be(offset));
+    const reason = this.segmentReason ?? scanReason(bytes, offset);
+    return reason === undefined ? undefined : refusal(reason);
+  }
+
+  /**
+   * Why the file is refused by what ends its image data: `marker` as `skipEntropyData` found it without passing
+   * restart markers (a DRI being refused, none can belong there), undefined when the data ran out. Only EOI qualifies.
+   */
+  problemAfterImageData(marker: number | undefined): string | undefined {
+    const reason = imageDataReason(marker);
     return reason === undefined ? undefined : refusal(reason);
   }
 
@@ -130,13 +135,9 @@ function scanReason(bytes: Bytes, offset: number): string | undefined {
   return undefined;
 }
 
-/**
- * Why the image data from `start` does not end at EOI, or undefined: one pass to the first marker, skipping stuffed
- * zeros (`FF 00`) and fill bytes. No restart marker can belong there, a DRI being refused.
- */
-function imageDataReason(data: Uint8Array, start: number): string | undefined {
-  const marker = skipEntropyData(data, start, false)?.marker;
+function imageDataReason(marker: number | undefined): string | undefined {
   if (marker === undefined) return "image data without an end-of-image marker";
+  if (marker === 0) return "fill bytes before a stuffed zero in the image data";
   if (marker === 0xd9) return undefined;
   if (marker === 0xda) return "a second scan";
   if (marker >= 0xd0 && marker <= 0xd7) return `a restart marker ${hex(marker)}`;

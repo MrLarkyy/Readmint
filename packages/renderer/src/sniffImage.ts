@@ -1,7 +1,8 @@
-import { baselineScansProblem, baselineTablesProblem } from "./baselineJpeg.js";
 import { Bytes, Truncated } from "./Bytes.js";
 import { exifOrientation, type Orientation, type OrientationField } from "./exifOrientation.js";
+import { JpegStructure } from "./JpegStructure.js";
 import { LosslessJpeg } from "./LosslessJpeg.js";
+import { nextJpegMarker } from "./nextJpegMarker.js";
 
 export type ImageMime = "image/png" | "image/jpeg" | "image/gif" | "image/webp";
 
@@ -212,10 +213,10 @@ function frameHeaderProblem(bytes: Bytes, offset: number, length: number): strin
  * the scan (decoders read every marker up to it). Before the frame header the segments must follow each other
  * exactly; past it the walk reads markers as libjpeg (and so Chromium) does, so it finds the same EXIF segments, and a
  * cut-off walk just ends. A marker libjpeg rejects or resvg draws empty, before or after the frame header, refuses the
- * image, as does a Huffman table above 1 anywhere past the frame header of a baseline (SOF0) file, read on to its EOI.
- * A lossless (SOF3) file is judged at its first scan by `LosslessJpeg`, fed every segment before it on both sides of
- * the frame header (libjpeg fixes the colour space there), then its image data up to EOI; one cut off before that is
- * refused. Every step advances, so the walk is one pass at most.
+ * image. `JpegStructure` holds every segment, the frame and, from the first scan on, the rest of the file to EOI to
+ * what Chromium and resvg both draw alike. A lossless (SOF3) file is judged at its first scan by `LosslessJpeg`, fed
+ * every segment before it on both sides of the frame header (libjpeg fixes the colour space there), then its image
+ * data must end at EOI; one cut off before that is refused. Every step advances, so the walk is one pass at most.
  */
 function sniffJpeg(bytes: Bytes): SniffResult {
   let offset = 2;
@@ -223,10 +224,10 @@ function sniffJpeg(bytes: Bytes): SniffResult {
   let exif = false;
   const blocks: OrientationField[] = [];
   const lossless = new LosslessJpeg();
-  let frame: number | undefined;
+  const structure = new JpegStructure();
   try {
     for (;;) {
-      const next = nextMarker(bytes, offset, size !== undefined);
+      const next = nextJpegMarker(bytes, offset, size !== undefined);
       if (next === undefined)
         return { ok: false, message: "JPEG segment does not start with 0xFF" };
       const marker = next.marker;
@@ -235,11 +236,7 @@ function sniffJpeg(bytes: Bytes): SniffResult {
         if (size === undefined) {
           return { ok: false, message: "JPEG has no frame header before its image data" };
         }
-        const scanProblem = lossless.lossless
-          ? lossless.problemAtScan(bytes, offset)
-          : frame === 0xc0
-            ? baselineScansProblem(bytes, offset)
-            : undefined;
+        const scanProblem = structure.scansProblem(bytes, offset, lossless);
         if (scanProblem !== undefined) return { ok: false, message: scanProblem };
         return found("image/jpeg", size[0], size[1], 1, exif, blocks);
       }
@@ -255,18 +252,16 @@ function sniffJpeg(bytes: Bytes): SniffResult {
         blocks.push(exifOrientation(bytes.data, offset + 8, offset + length));
       }
       lossless.readSegment(marker, bytes, offset, length);
-      if (marker === 0xc4 && frame === 0xc0) {
-        const tablesProblem = baselineTablesProblem(bytes, offset, length);
-        if (tablesProblem !== undefined) return { ok: false, message: tablesProblem };
-      }
+      const segmentProblem = structure.segmentProblem(marker, bytes, offset, length);
+      if (segmentProblem !== undefined) return { ok: false, message: segmentProblem };
       if (isFrameHeader(marker)) {
         const frameProblem =
           marker === 0xc3
             ? lossless.readFrame(bytes, offset, length)
             : frameHeaderProblem(bytes, offset, length);
-        if (frameProblem !== undefined) return { ok: false, message: frameProblem };
+        const structureProblem = frameProblem ?? structure.frameProblem(marker, bytes, offset);
+        if (structureProblem !== undefined) return { ok: false, message: structureProblem };
         size = [bytes.u16be(offset + 5), bytes.u16be(offset + 3)];
-        frame = marker;
       }
       offset += length;
     }
@@ -274,30 +269,6 @@ function sniffJpeg(bytes: Bytes): SniffResult {
     if (!(error instanceof Truncated) || size === undefined) throw error;
     if (lossless.lossless) return { ok: false, message: lossless.problemWhenTruncated() };
     return found("image/jpeg", size[0], size[1], 1, exif, blocks);
-  }
-}
-
-/**
- * The marker code at or after `start` and the offset just past it, or undefined when the bytes there are no marker.
- * Strict, a marker must start right at `start` (0xFF fill bytes allowed). Lenient is libjpeg's next_marker: bytes
- * up to a 0xFF are skipped, then fill bytes, and `FF 00` (a stuffed zero, no marker) sends the scan on.
- */
-function nextMarker(
-  bytes: Bytes,
-  start: number,
-  lenient: boolean,
-): { readonly marker: number; readonly offset: number } | undefined {
-  let offset = start;
-  for (;;) {
-    if (bytes.u8(offset) !== 0xff) {
-      if (!lenient) return undefined;
-      while (bytes.u8(offset) !== 0xff) offset++;
-    }
-    while (bytes.u8(offset) === 0xff) offset++;
-    const marker = bytes.u8(offset);
-    offset++;
-    if (marker !== 0) return { marker, offset };
-    if (!lenient) return undefined;
   }
 }
 

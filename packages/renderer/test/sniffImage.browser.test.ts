@@ -3,6 +3,7 @@ import { sniffImage } from "../src/sniffImage.js";
 import gradientJpeg from "./assets/gradient.jpg?inline";
 import { dataUriBytes, toDataUri } from "./exifImages.js";
 import { jpegFrameFixtures } from "./jpegFrameTypes.js";
+import { type DrawnOutcome, drawnOutcome, jpegStructureCases } from "./jpegStructureCases.js";
 import { acceptedJpegs, refusedJpegs } from "./jpegMarkers.js";
 import {
   acceptedLosslessJpegs,
@@ -133,6 +134,31 @@ describe("Chromium and the sniffer agree on lossless JPEGs", () => {
       expect(sniffImage(bytes, 1000).ok).toBe(false);
     },
   );
+});
+
+/** What Chromium draws of `bytes`, the whole image through a canvas. */
+async function chromiumDrawing(bytes: Uint8Array): Promise<DrawnOutcome> {
+  const image = new Image();
+  image.src = toDataUri("image/jpeg", bytes);
+  await image.decode().catch(() => undefined);
+  if (image.naturalWidth === 0) return "nothing";
+  const canvas = document.createElement("canvas");
+  canvas.width = image.naturalWidth;
+  canvas.height = image.naturalHeight;
+  const context = canvas.getContext("2d");
+  if (context === null) throw new Error("no 2d canvas");
+  context.drawImage(image, 0, 0);
+  return drawnOutcome(context.getImageData(0, 0, canvas.width, canvas.height).data);
+}
+
+describe("what Chromium draws of the JPEG structure cases", () => {
+  const pinned = jpegStructureCases(jpeg).flatMap((row) =>
+    row.chromium === undefined ? [] : [[row.name, row.bytes, row.chromium] as const],
+  );
+
+  test.each(pinned)("%s", async (_name, bytes, outcome) => {
+    expect(await chromiumDrawing(bytes)).toEqual(outcome);
+  });
 });
 
 describe("Chromium draws the genuine JPEG frame types the sniffer refuses", () => {

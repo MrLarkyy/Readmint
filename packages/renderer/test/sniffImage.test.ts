@@ -7,6 +7,7 @@ import { renderSvg, type RenderOptions } from "../src/index.js";
 import { sniffImage } from "../src/sniffImage.js";
 import { jpegWithExif, orientationTiff, pngWithExif, vp8x, webpWithExif } from "./exifImages.js";
 import { jpegFrameFixtures } from "./jpegFrameTypes.js";
+import { jpegStructureCases } from "./jpegStructureCases.js";
 import { acceptedJpegs, refusedJpegs } from "./jpegMarkers.js";
 import {
   acceptedLosslessJpegs,
@@ -382,6 +383,25 @@ describe("JPEG marker rules", () => {
       ok: false,
       message: "the image data is truncated",
     });
+  });
+});
+
+describe("the JPEG structure Chromium and resvg draw alike", () => {
+  const cases = jpegStructureCases(jpeg);
+
+  test.each(cases.map((row) => [row.name, row] as const))("%s", (_name, row) => {
+    const result = sniffImage(row.bytes, 1000);
+    if (row.message === undefined) {
+      expect(result).toMatchObject({
+        ok: true,
+        info: { mime: "image/jpeg", width: 32, height: 16 },
+      });
+      // An accepted case is one both outputs were measured to draw alike.
+      expect(row.chromium).toEqual(row.resvg);
+    } else {
+      expect(result.ok).toBe(false);
+      expect(result.ok ? "" : result.message).toContain(row.message);
+    }
   });
 });
 
