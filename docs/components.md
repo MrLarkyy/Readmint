@@ -178,7 +178,10 @@ A folder holds, per section, `<section>.json` and its dark twin `<section>.dark.
 - **Fonts.** Archivo, Archivo Condensed (Omnibus-Type), Geist and Geist Mono (Vercel) are SIL OFL 1.1 static TTFs, byte
   copies of the upstream files (origin, version and sha256 in each `fonts/README.md`), none with a Reserved Font Name
   and all with OS/2 `fsType` 0, so the renderer embeds a subset of the glyphs a section draws. Only the files a
-  template names are in its folder, with the licence text beside them.
+  template names are in its folder, with the licence text beside them. Archivo and Archivo Condensed have no Cyrillic
+  and none of the four families has emoji or CJK glyphs: such a name or commit message is not drawn and the render
+  warns `missing-glyph` ([renderer](renderer.md)). Add a font asset that has them and list it in the `fallback` of the
+  design's fonts ([design format](design-format.md#assets)), and mind the size budget below.
 
 ### Data the templates read
 
@@ -210,9 +213,9 @@ and `pinscreen` "no pushes yet" and "no commits yet"; the sections that do not r
   runs line by line is one panel-coloured cover whose `y` steps (at most 15 steps in the 32 keyframes of a track).
   Motions that never need a start (the turning ring, a ticker, the pulse, the ripple) start and end in their rest pose,
   and a test compares frame 0 with the frame at the end of every section.
-- **One timeline per design.** All sections but two play once over 60000 ms (the format maximum; the ring turns once
-  per view and rests), `loop: false`. The Horizon header and stack are tickers: `loop: true`, the row drawn several
-  times and moved by exactly one set of items.
+- **One timeline per design.** The three footers and the Pinscreen repository slots are static; the other sections
+  but two play once over 60000 ms (the format maximum; the ring turns once per view and rests), `loop: false`. The
+  Horizon header and stack are tickers: `loop: true`, the row drawn several times and moved by exactly one set of items.
 - **A 3D ring without trigonometry.** A point of an ellipse with semi-axes `R1 + R2` and `R1 - R2` is the sum of two
   counter-rotating circles. Each day is three nested groups, each only a rotation (outer `phi`, middle `-2 phi` turning
   twice as fast the other way, inner `phi` so the line stays upright), so all 365 copies share three animation rules
@@ -220,8 +223,8 @@ and `pinscreen` "no pushes yet" and "no commits yet"; the sections that do not r
 - **Square root without a filter.** The expression language has no square root: heights use chords of the square root
   through 0, 1, 4, 16 and 64 (clamped at 64 a day; a chord is at most 6 % below the root).
 - **Text without measuring.** Geist Mono advances 0.6 em, so a token of the Pinscreen editor sits at `columns x 8.4`
-  pixels; free text is cut with `truncate` and held in a `clip` group. Do not nest a clip group inside a clipped group
-  that moves its content out of the visible box: resvg stops on it.
+  pixels; free text is cut with `truncate` and held in a `clip` group. Keep every clip group inside the canvas: resvg-js
+  2.6.2 aborts the process on a clip group whose box lies wholly outside it.
 
 ### Bytes per section
 
