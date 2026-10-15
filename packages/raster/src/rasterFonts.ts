@@ -1,7 +1,7 @@
 import { parseSfnt } from "@readmint/fonts";
 import { RenderLimits } from "@readmint/renderer";
 import { unescapeCss } from "./cssText.js";
-import { decodeWoff } from "./decodeWoff.js";
+import { woffFont } from "./woffFont.js";
 import { RasterError } from "./RasterError.js";
 import type { RasterFont } from "./RasterFont.js";
 import { unescapeXml } from "./xmlText.js";
@@ -17,7 +17,7 @@ const textElement = /<text[\s>]/;
 /**
  * The fonts the rasterizer draws with: each font an `@font-face` rule of a `<style>` element embeds as a `data:` URI
  * (as the renderer writes them; escaped text and attribute values cannot form one), then the caller's. TTF and OTF
- * are drawn as they are, WOFF once decoded (`decodeWoff`); WOFF2, another format, a broken font, or text with no font
+ * are drawn as they are, WOFF once decoded (`woffFont`); WOFF2, another format, a broken font, or text with no font
  * at all is a `raster-font` error, never blank text.
  */
 export function rasterFonts(svg: string, extra: readonly Uint8Array[] = []): RasterFont[] {
@@ -70,7 +70,7 @@ function sfntOf(bytes: Uint8Array, mime: string, label: string): Uint8Array {
       `${label} is WOFF2, which raster export cannot draw yet; give the font asset as TTF, OTF or WOFF`,
     );
   }
-  if (tag === "wOFF") return decodeWoff(bytes, RenderLimits.maxFontBytes, label);
+  if (tag === "wOFF") return woffFont(bytes, RenderLimits.maxFontBytes, label);
   if (tag === "\0\x01\0\0" || tag === "OTTO" || tag === "true") return bytes;
   throw new RasterError("raster-font", `${label} is not a TTF, OTF or WOFF font`);
 }

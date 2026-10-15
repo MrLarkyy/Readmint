@@ -1,8 +1,8 @@
+import { encodeWoff } from "@readmint/fonts";
 import { describe, expect, test } from "vitest";
-import { decodeWoff } from "../src/decodeWoff.js";
 import { exportRaster, RasterError } from "../src/index.js";
+import { woffFont } from "../src/woffFont.js";
 import { decodeApng } from "./decodeRaster.js";
-import { encodeWoff } from "./encodeWoff.js";
 import { dataUri, fontBytes } from "./rasterFixtures.js";
 
 const woff = encodeWoff(fontBytes);
@@ -17,7 +17,7 @@ async function pixels(svg: string): Promise<Uint8Array> {
 }
 
 function readable(bytes: Uint8Array): Uint8Array {
-  return decodeWoff(bytes, 4_194_304, "the font");
+  return woffFont(bytes, 4_194_304, "the font");
 }
 
 describe("WOFF fonts", () => {
@@ -48,28 +48,28 @@ describe("WOFF fonts", () => {
     await expect(failure).rejects.toThrow("WOFF2, which raster export cannot draw yet");
   });
 
-  const broken: [string, (bytes: Uint8Array) => void, string][] = [
-    ["a short header", (b) => b.fill(0, 0, 4), "the header is invalid"],
+  const broken: [string, (bytes: Uint8Array) => void, string | RegExp][] = [
+    ["a header without a font flavour", (b) => b.fill(0, 4, 8), "wraps no TrueType or CFF font"],
     [
       "a directory past the end",
       (b) => {
         new DataView(b.buffer).setUint16(12, 60_000);
       },
-      "directory is truncated",
+      "tables (1 to 64 allowed)",
     ],
     [
       "a table past the end",
       (b) => {
         new DataView(b.buffer).setUint32(44 + 4, b.length);
       },
-      "outside the file",
+      "lies past the end",
     ],
     [
       "a table stored larger than it is",
       (b) => {
         new DataView(b.buffer).setUint32(44 + 12, 1);
       },
-      "stored larger than it is",
+      "larger compressed than inflated",
     ],
     [
       "a table that inflates past its declared size",
@@ -83,7 +83,7 @@ describe("WOFF fonts", () => {
           }
         }
       },
-      "does not inflate to its declared size",
+      "inflates to more bytes than it declares",
     ],
     [
       "a corrupt compressed table",
@@ -97,7 +97,7 @@ describe("WOFF fonts", () => {
           }
         }
       },
-      "does not inflate to its declared size",
+      /inflates to (?:fewer|more) bytes than it declares|not valid zlib data/,
     ],
   ];
 
@@ -109,8 +109,8 @@ describe("WOFF fonts", () => {
   });
 
   test("tables that decode past the font limit are refused before anything inflates", () => {
-    expect(() => decodeWoff(woff, 1000, "the font")).toThrow(
-      /decodes to \d+ bytes, more than the 1000 allowed/,
+    expect(() => woffFont(woff, 1000, "the font")).toThrow(
+      /decompresses to \d+ bytes, more than the 1000 allowed/,
     );
   });
 });

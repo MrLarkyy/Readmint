@@ -105,14 +105,25 @@ function resolveGradient(
   };
 }
 
+/** A box in user space: what a text gradient spans. */
+export interface PaintBox {
+  readonly x: number;
+  readonly y: number;
+  readonly width: number;
+  readonly height: number;
+}
+
 /**
  * ` fill="..."` (or stroke) plus `fill-opacity` when the colour has alpha; a gradient refers to its definition in
  * `<defs>`, written once per distinct gradient under a document-prefixed `d<hash>-g<hash>` id. Empty when the paint is undefined.
+ * Without `box` a gradient spans the bounding box of what it paints, as the drawer measures it; with `box` it spans
+ * that box exactly (text: the layout box, so glyph ink measured differently by each drawer cannot move it).
  */
 export function paintAttributes(
   writer: SvgWriter,
   attribute: "fill" | "stroke",
   paint: Paint | undefined,
+  box?: PaintBox,
 ): string {
   if (paint === undefined) return "";
   switch (paint.kind) {
@@ -122,13 +133,14 @@ export function paintAttributes(
       return ` ${attribute}="${paint.colour.hex}"${alpha(`${attribute}-opacity`, paint.colour)}`;
     case "linear":
     case "radial":
-      return ` ${attribute}="url(#${defineGradient(writer, paint)})"`;
+      return ` ${attribute}="url(#${defineGradient(writer, paint, box)})"`;
   }
 }
 
 function defineGradient(
   writer: SvgWriter,
   paint: Extract<Paint, { kind: "linear" | "radial" }>,
+  box: PaintBox | undefined,
 ): string {
   const names = paint.kind === "linear" ? ["x1", "y1", "x2", "y2"] : ["cx", "cy", "r"];
   const coordinates = names
@@ -141,7 +153,15 @@ function defineGradient(
     )
     .join("");
   const element = paint.kind === "linear" ? "linearGradient" : "radialGradient";
-  return writer.share("g", (id) => `<${element} id="${id}"${coordinates}>${stops}</${element}>`);
+  // The fractions stay as they are; the transform maps the unit square onto the box, as objectBoundingBox would.
+  const units =
+    box === undefined
+      ? ""
+      : ` gradientUnits="userSpaceOnUse" gradientTransform="matrix(${[box.width, 0, 0, box.height, box.x, box.y].map(formatNumber).join(" ")})"`;
+  return writer.share(
+    "g",
+    (id) => `<${element} id="${id}"${units}${coordinates}>${stops}</${element}>`,
+  );
 }
 
 function alpha(attribute: string, colour: PaintColour): string {

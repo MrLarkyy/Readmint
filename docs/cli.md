@@ -83,7 +83,10 @@ The design file must lie inside `--root` (default: the current folder), checked 
 [asset-loading.md](asset-loading.md)): a design reached through a link that leaves the root is refused. The design is
 read as UTF-8 (at most 12 MiB, the format's source limit); `.json` is read as JSON, `.yaml` and `.yml` as YAML, any other
 extension by its first character. Its assets resolve against the design file's folder through `readAsset`, with the
-renderer's limits (`maxFontBytes`, `maxImageBytes`); `data:` sources are left to the renderer.
+renderer's limits (`maxFontBytes`, `maxImageBytes`); `data:` sources are left to the renderer. Assets that resolve to
+the same real path (however it is spelled: `a.ttf`, `./a.ttf`, a symlink) are read once and
+share one byte array, so the renderer decodes such a font once and counts it once against `maxTotalFontBytes` (it also
+recognises equal bytes in different arrays). The Action loads assets the same way.
 
 ## Fixture data
 
@@ -105,7 +108,9 @@ or SIGTERM, exit code 0). The page shows the SVG exactly as `render` writes it a
 design file, the fixture data and every asset file the design declares (also one that does not exist yet). A change
 counts once it reads the same on two consecutive checks, so the preview renders again up to about 600 ms after a save
 and the page reloads; a file still being written is not rendered half done, and a file that changes on every check is
-not rendered until it stops changing. A render that fails keeps the last good SVG and shows the issues.
+not rendered until it stops changing. A save that lands while a file is being read (an editor writing a temporary
+file and renaming it over the design or an asset) is read again, up to four reads about 150 ms apart in all, before
+"changed while it was being read" is shown. A render that fails keeps the last good SVG and shows the issues.
 
 The preview is for this computer only:
 

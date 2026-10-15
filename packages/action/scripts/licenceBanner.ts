@@ -6,10 +6,11 @@ const licenceFile = /^(?:licen[cs]e|copying|notice)(?:[.-].*)?$/i;
 /**
  * Licence texts in this repository (scripts/licences/README.md) added after a package's own: for code its
  * WebAssembly carries without the package shipping the notice (libwebp in wasm-webp, the Rust crates in resvg-wasm),
- * or for a package that publishes no licence file at all (resvg-wasm).
+ * or for a package that publishes no licence file at all (resvg-wasm, brotli).
  */
 const suppliedLicences: Readonly<Record<string, readonly string[]>> = {
   "@resvg/resvg-wasm": ["resvg-wasm.LICENSE", "resvg-wasm-crates.txt"],
+  brotli: ["brotli.txt"],
   "wasm-webp": ["libwebp-COPYING", "libwebp-PATENTS"],
 };
 

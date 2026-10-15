@@ -5,13 +5,15 @@ import { animationDesigns } from "./animationDesigns.js";
 import { renderFixture } from "./renderFixture.js";
 import animation from "./renderer-animation.golden.js";
 import components from "./renderer-components.golden.js";
+import fontFormats from "./renderer-fonts-formats.golden.js";
+import fonts from "./renderer-fonts.golden.js";
 import images from "./renderer-images.golden.js";
 import layout from "./renderer-layout.golden.js";
 import shapes from "./renderer-shapes.golden.js";
 import text from "./renderer-text.golden.js";
 import { svgSafetyProblems } from "./svgSafety.js";
 
-const suites = [shapes, layout, text, images, components, animation];
+const suites = [shapes, layout, text, images, components, animation, fonts, fontFormats];
 
 describe("every golden fixture is self-contained", () => {
   for (const suite of suites) {

@@ -1,4 +1,7 @@
-/** Width of a string; additive over concatenation, as the v0 metrics (no kerning) are. */
+/**
+ * Width of a string. Wrapping adds the widths of words and spaces, so kerning across a word boundary is left out
+ * of the decision; the final layout of each line includes it.
+ */
 export type MeasureWidth = (text: string) => number;
 
 /**

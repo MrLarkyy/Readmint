@@ -50,6 +50,60 @@ test("a package without a licence file fails the build", async () => {
   expect(() => licenceBanner([join(bare, "index.js")])).toThrow("bare ships no licence file");
 });
 
+test("brotli, which ships no licence file, gets the text supplied for it in the repository", () => {
+  const fontsRequire = createRequire(
+    join(import.meta.dirname, "..", "..", "fonts", "package.json"),
+  );
+  const banner = licenceBanner([fontsRequire.resolve("brotli/decompress.js")]);
+  expect(banner).toContain(" * Package: brotli@1.3.3 (MIT)");
+  expect(banner).toContain(" * Copyright (c) Devon Govett");
+  expect(banner).toContain(" *     Copyright 2013 Google Inc. All Rights Reserved.");
+  expect(banner).toContain("END OF TERMS AND CONDITIONS");
+});
+
+test("brotli, which ships none, has its MIT and Apache-2.0 texts supplied", () => {
+  const text = readFileSync(
+    join(import.meta.dirname, "..", "scripts", "licences", "brotli.txt"),
+    "utf8",
+  );
+  expect(text).toContain("MIT License");
+  expect(text).toContain("Copyright 2013 Google Inc.");
+  expect(text).toContain("Apache License\n                           Version 2.0, January 2004");
+  expect(text).toContain("END OF TERMS AND CONDITIONS");
+});
+
+test("the brotli text names, for each bundled file, the notice the file itself carries", () => {
+  const text = readFileSync(
+    join(import.meta.dirname, "..", "scripts", "licences", "brotli.txt"),
+    "utf8",
+  );
+  const fontsRequire = createRequire(
+    join(import.meta.dirname, "..", "..", "fonts", "package.json"),
+  );
+  const root = dirname(fontsRequire.resolve("brotli/decompress.js"));
+  const google = "Copyright 2013 Google Inc. All Rights Reserved.";
+  const plain = [
+    "decompress.js",
+    "dec/streams.js",
+    "dec/huffman.js",
+    "dec/dictionary-browser.js",
+    "dec/dictionary.bin.js",
+  ];
+  const apache = [
+    "dec/decode.js",
+    "dec/bit_reader.js",
+    "dec/context.js",
+    "dec/dictionary.js",
+    "dec/prefix.js",
+    "dec/transform.js",
+  ];
+  const flat = text.replace(/\s+/gu, " ");
+  for (const file of [...plain, ...apache]) expect(flat).toContain(file);
+  for (const file of plain) expect(readFileSync(join(root, file), "utf8")).not.toContain(google);
+  for (const file of apache)
+    expect(readFileSync(join(root, file), "utf8").slice(0, 200)).toContain(google);
+});
+
 test("a comment end inside a licence text cannot close the banner", async () => {
   const odd = join(dir, "node_modules", "odd");
   await mkdir(odd, { recursive: true });

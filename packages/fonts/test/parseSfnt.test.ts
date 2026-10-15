@@ -34,6 +34,8 @@ describe("Montserrat", () => {
     const font = parse(medium);
     expect(font).toMatchObject({
       format: "ttf",
+      container: "ttf",
+      outlines: "glyf",
       unitsPerEm: 1000,
       fsType: 0,
       weightClass: 500,
@@ -72,14 +74,18 @@ describe("refused containers", () => {
   test.each([
     ["wOFF", "woff"],
     ["wOF2", "woff2"],
-  ])("%s is unsupported until RM-14", (magic, format) => {
+  ])("%s without a font inside is malformed", (magic, format) => {
     const bytes = new Uint8Array(
       Array.from(magic, (char) => char.charCodeAt(0)).concat(Array(60).fill(0)),
     );
     expect(sniffFontFormat(bytes)).toBe(format);
-    const result = parseSfnt(bytes);
-    expect(result).toMatchObject({ ok: false, kind: "unsupported" });
-    expect(result.ok ? "" : result.message).toContain("RM-14");
+    expect(parseSfnt(bytes)).toMatchObject({ ok: false, kind: "malformed" });
+  });
+
+  test("a WOFF2 collection is unsupported", () => {
+    const bytes = new Uint8Array(64);
+    bytes.set([0x77, 0x4f, 0x46, 0x32, 0x74, 0x74, 0x63, 0x66]);
+    expect(parseSfnt(bytes)).toMatchObject({ ok: false, kind: "unsupported" });
   });
 
   test("a collection is unsupported", () => {

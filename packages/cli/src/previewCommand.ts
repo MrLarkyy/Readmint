@@ -11,6 +11,7 @@ import { ExitCode } from "./ExitCode.js";
 import { formatIssue } from "./formatIssue.js";
 import type { DesignFile } from "./loadDesignFile.js";
 import { loadRenderInput } from "./loadRenderInput.js";
+import { retryWhileChanging } from "./retryWhileChanging.js";
 import { PreviewServer, type PreviewUpdate } from "./PreviewServer.js";
 import { printLines } from "./printLines.js";
 import { renderInput } from "./renderInput.js";
@@ -74,7 +75,10 @@ async function renderUpdate(
 ): Promise<PreviewUpdate> {
   let lines: readonly string[];
   try {
-    const input = await loadRenderInput(args, { cwd: io.cwd, onDesignFile });
+    // A save racing the read is read again, not shown as an issue.
+    const input = await retryWhileChanging(() =>
+      loadRenderInput(args, { cwd: io.cwd, onDesignFile }),
+    );
     const name = input.file.name;
     const result = renderInput(input, args);
     if (result.ok) {

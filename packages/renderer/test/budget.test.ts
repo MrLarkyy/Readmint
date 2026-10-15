@@ -20,9 +20,9 @@ test("output over the budget fails with too-large naming the limit", () => {
     assets: { fonts: { m: fontAssets.medium } },
     layers: [{ type: "text", content: "x", font: "m" }],
   };
-  const result = renderSvg(design, { limits: { maxOutputBytes: 100_000 } });
+  const result = renderSvg(design, { limits: { maxOutputBytes: 1000 } });
   expect(result).toMatchObject({ ok: false, issues: [{ path: "", code: "too-large" }] });
-  expect(result.ok ? "" : result.issues[0]?.message).toContain("100000 bytes");
+  expect(result.ok ? "" : result.issues[0]?.message).toContain("1000 bytes");
 });
 
 // 10000 is the most items one repeat takes (expr); nested, that is 10^8 possible rects.
@@ -193,10 +193,54 @@ test("the report lists embedded fonts and images once each, in first-use order",
       { type: "text", content: "b", font: "m" },
     ],
   });
-  expect(result.ok && result.report.fonts).toEqual([
-    { asset: "m", bytes: fontAssets.medium.src.length },
+  if (!result.ok) throw new Error(JSON.stringify(result.issues));
+  const dataUri = /url\((data:font\/woff;base64,[^)]+)\)/u.exec(result.svg)?.[1] ?? "";
+  expect(result.svg.split("@font-face")).toHaveLength(2);
+  expect(result.report.fonts).toEqual([
+    { asset: "m", bytes: dataUri.length, glyphs: 2, drawnAs: "font" },
   ]);
-  expect(result.ok && result.report.images).toEqual([]);
+  expect(result.report.images).toEqual([]);
+});
+
+test("the embedded subset counts toward maxOutputBytes", () => {
+  const design: Design = {
+    version: 0,
+    canvas: { width: 100, height: 100 },
+    assets: { fonts: { m: fontAssets.medium } },
+    layers: [{ type: "text", content: "Readmint", font: "m" }],
+  };
+  const fits = renderSvg(design);
+  if (!fits.ok) throw new Error(JSON.stringify(fits.issues));
+  const subset = fits.report.fonts[0]?.bytes ?? 0;
+  expect(subset).toBeGreaterThan(1000);
+  expect(renderSvg(design, { limits: { maxOutputBytes: fits.report.bytes } }).ok).toBe(true);
+  expect(renderSvg(design, { limits: { maxOutputBytes: subset - 1 } })).toMatchObject({
+    ok: false,
+    issues: [{ code: "too-large" }],
+  });
+});
+
+test("the size report grows with distinct glyphs, not with repeats", () => {
+  const sizeOf = (content: string) => {
+    const result = renderSvg({
+      version: 0,
+      canvas: { width: 100, height: 100 },
+      assets: { fonts: { m: fontAssets.medium } },
+      layers: [{ type: "text", content, font: "m" }],
+    });
+    if (!result.ok) throw new Error(JSON.stringify(result.issues));
+    return result.report.fonts[0] ?? { bytes: 0, glyphs: 0 };
+  };
+  const latin = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  const accented = Array.from({ length: 64 }, (_, index) => String.fromCodePoint(0xc0 + index));
+  const one = sizeOf("a");
+  const ten = sizeOf("abcdefghij");
+  const hundred = sizeOf(`${latin}${accented.join("")}`.slice(0, 100));
+  expect([one.glyphs, ten.glyphs, hundred.glyphs]).toEqual([1, 10, 100]);
+  expect(ten.bytes).toBeGreaterThan(one.bytes);
+  expect(hundred.bytes).toBeGreaterThan(ten.bytes);
+  expect(sizeOf("a".repeat(1000)).bytes).toBe(one.bytes);
+  expect(sizeOf("abcdefghij".repeat(100)).bytes).toBe(ten.bytes);
 });
 
 const tinyGif = "data:image/gif;base64,R0lGODlhAQABAAAAACwAAAAAAQABAAACAkQBADs=";

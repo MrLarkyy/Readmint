@@ -1,16 +1,13 @@
 import { embeddingAllowed, parseSfnt, type SfntFont } from "@readmint/fonts";
 import type { FontAsset } from "@readmint/format";
-import { encodeBase64 } from "./base64.js";
+import { bytesKey, sameBytes } from "./bytesKey.js";
 import { decodeDataUri } from "./decodeDataUri.js";
-import { escapeCssString } from "./escapeCssString.js";
-import { escapeCssToken } from "./escapeCssToken.js";
-import { escapeText } from "./escapeXml.js";
 import { ownEntry } from "./ownEntry.js";
 import { pointer } from "./pointer.js";
 import type { RenderContext } from "./RenderContext.js";
 import { echo } from "./resolveValue.js";
 
-/** A font asset that passed every check and is embedded in the output. */
+/** A font asset that passed every check; drawn with an embedded subset or as paths. */
 export interface LoadedFont {
   readonly asset: string;
   readonly family: string;
@@ -18,33 +15,37 @@ export interface LoadedFont {
   readonly weight: number;
   readonly style: "normal" | "italic";
   readonly font: SfntFont;
-  readonly dataUri: string;
+  /** `paths` when the asset asks for it or its licence forbids embedding: such a font is never embedded. */
+  readonly drawAs: "font" | "paths";
+  readonly kerning: boolean;
 }
 
 const defaultWeight = 400;
+const maxFallbacks = 8;
 
 /**
- * The font a text draws with: among the assets sharing the family and style of `assetId`, the one whose weight
- * CSS font matching would pick for `weight` (the asset itself when no weight is asked for). Only that asset is
- * loaded and embedded.
+ * The font a text draws with: among the assets sharing the family of `assetId` and its style (or `style`), the one
+ * whose weight CSS font matching would pick for `weight` (the asset itself when no weight is asked for or no asset
+ * has that style). Only that asset is loaded.
  */
 export function selectFont(
   context: RenderContext,
   assetId: string,
   weight: number | undefined,
   usePath: string,
+  style?: "normal" | "italic",
 ): LoadedFont {
   const fonts = context.design.assets?.fonts;
   const asset = ownEntry(fonts, assetId);
   if (asset === undefined) context.fail(usePath, "missing-asset", `no font asset ${echo(assetId)}`);
   if (weight === undefined || fonts === undefined) return loadFont(context, assetId, asset);
-  const style = asset.style ?? "normal";
+  const wanted = style ?? asset.style ?? "normal";
   const candidates = Object.keys(fonts)
     .flatMap((id) => {
       const other = ownEntry(fonts, id);
       return other !== undefined &&
         other.family === asset.family &&
-        (other.style ?? "normal") === style
+        (other.style ?? "normal") === wanted
         ? [{ id, weight: other.weight ?? defaultWeight }]
         : [];
     })
@@ -76,41 +77,22 @@ export function matchWeight(desired: number, available: readonly number[]): numb
   return above[0] ?? below[0] ?? desired;
 }
 
-/** Checks one font asset (licence, size, format, fsType) and embeds it once per render. */
+/**
+ * Checks one font asset (size, format, licence, fsType) once per render. A font whose declared licence or OS/2
+ * fsType forbids embedding is drawn as paths, with one `font-not-embeddable` warning; nothing is embedded here
+ * (the subsets are written once every text is laid out).
+ */
 export function loadFont(context: RenderContext, assetId: string, asset: FontAsset): LoadedFont {
   const cached = context.fonts.get(assetId);
   if (cached !== undefined) return cached;
   const assetPath = pointer("/assets/fonts", assetId);
   const name = echo(assetId);
-  if (asset.licence.embedding !== "allowed") {
-    context.fail(
-      pointer(pointer(assetPath, "licence"), "embedding"),
-      "font-not-embeddable",
-      `font asset ${name} is declared restricted and is never embedded; drawing it as paths arrives with RM-14`,
-    );
-  }
-  const { bytes, mime } = fontBytes(context, assetId, asset, assetPath);
-  const parsed = parseSfnt(bytes);
-  if (!parsed.ok) {
-    context.fail(
-      pointer(assetPath, "src"),
-      parsed.kind === "unsupported" ? "unsupported-font" : "asset-format",
-      `font asset ${name}: ${parsed.message}`,
-    );
-  }
-  const font = parsed.font;
-  if (mime !== undefined && mime !== `font/${font.format}`) {
+  const { font, mime } = readFontOnce(context, assetId, asset, assetPath);
+  if (mime !== undefined && mime !== `font/${font.container}`) {
     context.fail(
       pointer(assetPath, "src"),
       "asset-format",
-      `font asset ${name} is declared ${mime} but holds a ${font.format.toUpperCase()} font`,
-    );
-  }
-  if (!embeddingAllowed(font.fsType)) {
-    context.fail(
-      assetPath,
-      "font-not-embeddable",
-      `font asset ${name} forbids embedding in its OS/2 fsType (0x${font.fsType.toString(16).padStart(4, "0")}); drawing it as paths arrives with RM-14`,
+      `font asset ${name} is declared ${mime} but holds a ${font.container.toUpperCase()} font`,
     );
   }
   if (font.familyName !== asset.family) {
@@ -126,15 +108,101 @@ export function loadFont(context: RenderContext, assetId: string, asset: FontAss
     weight: asset.weight ?? defaultWeight,
     style: asset.style ?? "normal",
     font,
-    dataUri: `data:font/${font.format};base64,${encodeBase64(bytes)}`,
+    drawAs: drawAs(context, asset, font, assetPath, name),
+    kerning: asset.kerning !== false,
   };
   context.fonts.set(assetId, loaded);
-  context.writer.style(
-    escapeText(
-      `@font-face{font-family:"${escapeCssString(loaded.family)}";src:url(${loaded.dataUri});font-weight:${escapeCssToken(String(loaded.weight))};font-style:${escapeCssToken(loaded.style)}}`,
-    ),
-  );
   return loaded;
+}
+
+/**
+ * The parsed font of an asset's source, read once per render per source (supplied bytes also by content). A new source is charged against
+ * `maxTotalFontBytes` before it decodes (its declared size: the parse may decode at most what is left) and by what it
+ * decoded to; the asset that crosses the allowance fails with `asset-too-large`, in the same order on every run.
+ */
+function readFontOnce(
+  context: RenderContext,
+  assetId: string,
+  asset: FontAsset,
+  assetPath: string,
+): { font: SfntFont; mime: string | undefined } {
+  const supplied = ownEntry(context.assets.fonts, assetId);
+  const key = supplied instanceof Uint8Array ? supplied : asset.src;
+  const known = context.parsedFonts.get(key);
+  if (known !== undefined) return known;
+  const name = echo(assetId);
+  // Size first (fontBytes refuses bytes over maxFontBytes), then the content key: nothing oversize is hashed.
+  const { bytes, mime } = fontBytes(context, assetId, asset, assetPath);
+  const contentKey = supplied instanceof Uint8Array ? bytesKey(bytes) : undefined;
+  const sameContent = contentKey === undefined ? undefined : context.fontsByContent.get(contentKey);
+  if (sameContent !== undefined && sameBytes(sameContent.bytes, bytes)) {
+    context.parsedFonts.set(key, sameContent.read);
+    return sameContent.read;
+  }
+  const left = context.fontBytesLeft;
+  const total = () =>
+    context.fail(
+      assetPath,
+      "asset-too-large",
+      `font asset ${name} brings the fonts of this render past ${String(context.limits.maxTotalFontBytes)} decoded bytes together (maxTotalFontBytes); assets with the same source count once`,
+    );
+  if (bytes.length > left) total();
+  const parsed = parseSfnt(bytes, { maxBytes: Math.min(context.limits.maxFontBytes, left) });
+  if (!parsed.ok) {
+    if (parsed.kind === "too-large" && left < context.limits.maxFontBytes) total();
+    context.fail(
+      parsed.kind === "too-large" ? assetPath : pointer(assetPath, "src"),
+      parsed.kind === "unsupported"
+        ? "unsupported-font"
+        : parsed.kind === "too-large"
+          ? "asset-too-large"
+          : "asset-format",
+      `font asset ${name}: ${parsed.message}`,
+    );
+  }
+  if (parsed.font.sfntBytes > left) total();
+  context.fontBytesLeft = left - parsed.font.sfntBytes;
+  const read = { font: parsed.font, mime };
+  context.parsedFonts.set(key, read);
+  // One entry per key: a font whose key collides with another's is decoded and charged on its own, so crafted
+  // collisions cost one comparison each, never a scan.
+  if (contentKey !== undefined && sameContent === undefined) {
+    context.fontsByContent.set(contentKey, { bytes, read });
+  }
+  return read;
+}
+
+/** Fallback ids of a font asset; the schema allows 1 to 8, an unvalidated design gets the same bound. */
+export function fontFallbacks(asset: FontAsset | undefined): readonly string[] {
+  const fallback: unknown = asset?.fallback;
+  if (!Array.isArray(fallback)) return [];
+  return fallback.filter((id): id is string => typeof id === "string").slice(0, maxFallbacks);
+}
+
+function drawAs(
+  context: RenderContext,
+  asset: FontAsset,
+  font: SfntFont,
+  assetPath: string,
+  name: string,
+): "font" | "paths" {
+  if (asset.licence.embedding !== "allowed") {
+    context.warn(
+      pointer(pointer(assetPath, "licence"), "embedding"),
+      "font-not-embeddable",
+      `font asset ${name} is declared restricted: its text is drawn as paths, the font is never embedded`,
+    );
+    return "paths";
+  }
+  if (!embeddingAllowed(font.fsType)) {
+    context.warn(
+      assetPath,
+      "font-not-embeddable",
+      `font asset ${name} forbids embedding in its OS/2 fsType (0x${font.fsType.toString(16).padStart(4, "0")}): its text is drawn as paths, the font is never embedded`,
+    );
+    return "paths";
+  }
+  return asset.drawAs === "paths" ? "paths" : "font";
 }
 
 function fontBytes(

@@ -237,6 +237,18 @@ export interface FontAsset {
   readonly weight?: number;
   readonly style?: "normal" | "italic";
   readonly licence: FontLicence;
+  /**
+   * `font` (default) embeds a subset of the used glyphs; `paths` draws every text that uses this font as path data
+   * and embeds nothing. A restricted font is always drawn as paths.
+   */
+  readonly drawAs?: "font" | "paths";
+  /**
+   * Font asset ids (1 to 8, each once) tried in order for a character this font does not have; not transitive, the
+   * same weight and style are matched within each fallback's family.
+   */
+  readonly fallback?: readonly string[];
+  /** Pair kerning from the font (GPOS `kern` or the `kern` table); default true. */
+  readonly kerning?: boolean;
 }
 
 export interface ImageAsset {

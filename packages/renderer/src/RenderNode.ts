@@ -2,6 +2,7 @@ import type { LoadedFont } from "./loadFont.js";
 import type { LoadedImage } from "./loadImage.js";
 import type { NodeAnimation } from "./NodeAnimation.js";
 import type { Paint } from "./paint.js";
+import type { TextLine } from "./TextLine.js";
 
 /**
  * A layer with every binding evaluated and its box measured. `x`/`y` start as the layer's own values and are set
@@ -47,11 +48,14 @@ export interface PathNode extends NodeBase, ShapeStyle {
 
 export interface TextNode extends NodeBase {
   readonly kind: "text";
-  readonly lines: readonly string[];
+  /** The text after filling placeholders: the accessible name of text drawn as paths. */
+  readonly text: string;
+  readonly lines: readonly TextLine[];
+  /** The font the text names (after weight matching); fallback runs carry their own. */
   readonly font: LoadedFont;
   readonly fontSize: number;
-  readonly letterSpacing: number;
-  readonly align: "start" | "middle" | "end";
+  /** `paths` when any font the text draws with is drawn as paths: the whole text then is. */
+  readonly drawnAs: "font" | "paths";
   readonly fill: Paint | undefined;
   /** Offset of the first baseline from the top of the box. */
   readonly baseline: number;

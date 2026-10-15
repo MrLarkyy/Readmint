@@ -17,6 +17,11 @@ export class SfntReader {
     return this.view.getUint8(offset);
   }
 
+  i8(offset: number): number {
+    this.need(offset, 1);
+    return this.view.getInt8(offset);
+  }
+
   u16(offset: number): number {
     this.need(offset, 2);
     return this.view.getUint16(offset);
@@ -32,6 +37,11 @@ export class SfntReader {
     return this.view.getUint32(offset);
   }
 
+  i32(offset: number): number {
+    this.need(offset, 4);
+    return this.view.getInt32(offset);
+  }
+
   tag(offset: number): string {
     return String.fromCharCode(
       this.u8(offset),
@@ -41,8 +51,20 @@ export class SfntReader {
     );
   }
 
+  /** `length` bytes at `offset`, shared with the input. */
+  slice(offset: number, length: number): Uint8Array {
+    this.need(offset, length);
+    return this.bytes.subarray(offset, offset + length);
+  }
+
   private need(offset: number, size: number): void {
-    if (!Number.isSafeInteger(offset) || offset < 0 || offset + size > this.bytes.byteLength) {
+    if (
+      !Number.isSafeInteger(offset) ||
+      !Number.isSafeInteger(size) ||
+      offset < 0 ||
+      size < 0 ||
+      offset + size > this.bytes.byteLength
+    ) {
       throw new MalformedFont("font data ends inside a table");
     }
   }

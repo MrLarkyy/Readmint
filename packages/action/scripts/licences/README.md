@@ -13,3 +13,6 @@
   changes version.
 - `libwebp-COPYING`, `libwebp-PATENTS` (`wasm-webp`, MIT): `webp-wasm.wasm` is libwebp (BSD-3-Clause), built from
   webmproject/libwebp at 6c484cbf (v1.3.2 plus 135 commits); these are that release's `COPYING` and `PATENTS`.
+- `brotli.txt` (`brotli`, MIT): the package and its repository publish no licence file. The MIT terms with the author
+  its package.json names, which bundled files carry Google's Apache-2.0 notice, and the Apache License 2.0 text
+  (https://www.apache.org/licenses/LICENSE-2.0.txt).

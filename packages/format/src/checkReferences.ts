@@ -1,4 +1,10 @@
-import type { ComponentDefinition, ComponentPropDefinition, Design, Layer } from "./Design.js";
+import type {
+  ComponentDefinition,
+  ComponentPropDefinition,
+  Design,
+  FontAsset,
+  Layer,
+} from "./Design.js";
 import type { DesignIssueCode } from "./DesignIssue.js";
 import { DesignLimits } from "./DesignLimits.js";
 import { designSchemaV0 } from "./designSchemaV0.js";
@@ -24,7 +30,8 @@ type Records<T> = Readonly<Record<string, T>>;
  * Checks JSON Schema cannot express, on a structurally valid design: references resolve to own
  * entries only (`Object.hasOwn`, so `constructor` is no style), ids are unique per scope
  * (document, each component), component props match their definition, components form no cycle,
- * text has a font and the expanded layer count stays within `maxLayers`. Document order is kept.
+ * text has a font, font fallbacks name font assets (each once) and the expanded layer count stays
+ * within `maxLayers`. Document order is kept.
  */
 export function checkReferences(design: Design, issues: IssueCollector): void {
   new ReferenceWalker(design, issues).run();
@@ -32,7 +39,7 @@ export function checkReferences(design: Design, issues: IssueCollector): void {
 
 class ReferenceWalker {
   private readonly styles: Records<{ readonly font?: string }>;
-  private readonly fonts: Records<unknown>;
+  private readonly fonts: Records<FontAsset>;
   private readonly images: Records<unknown>;
   private readonly components: Records<ComponentDefinition>;
   private readonly cycles = new Map<string, string>();
@@ -70,6 +77,7 @@ class ReferenceWalker {
     for (const key of Object.keys(this.design)) {
       if (key === "layers") this.walkLayers(this.design.layers, "/layers", new Map());
       else if (key === "styles") this.checkStyles();
+      else if (key === "assets") this.checkFallbacks();
       else if (key === "components") this.checkComponents();
     }
   }
@@ -79,6 +87,20 @@ class ReferenceWalker {
       const font = this.styles[name]?.font;
       if (font !== undefined && !Object.hasOwn(this.fonts, font))
         this.add(`/styles/${name}/font`, "unknown-reference", `unknown font ${quoteInput(font)}`);
+    }
+  }
+
+  private checkFallbacks(): void {
+    for (const name of Object.keys(this.fonts)) {
+      const seen = new Set<string>();
+      (this.fonts[name]?.fallback ?? []).forEach((font, index) => {
+        const at = jsonPointer(jsonPointer(jsonPointer("/assets/fonts", name), "fallback"), index);
+        if (!Object.hasOwn(this.fonts, font))
+          this.add(at, "unknown-reference", `unknown font ${quoteInput(font)}`);
+        else if (seen.has(font))
+          this.add(at, "duplicate-id", `font ${quoteInput(font)} is already a fallback`);
+        seen.add(font);
+      });
     }
   }
 

@@ -1,8 +1,12 @@
 import type { Design } from "@readmint/format";
 import type { ExprResult, Template } from "@readmint/expr";
+import { OutlineBudget, type GlyphOutline, type SfntFont } from "@readmint/fonts";
 import { AnimationCss } from "./AnimationCss.js";
+import type { FontUse } from "./FontUse.js";
 import type { LoadedFont } from "./loadFont.js";
 import type { LoadedImage } from "./loadImage.js";
+import { MissingGlyphs } from "./MissingGlyphs.js";
+import type { TextLayout } from "./TextLayout.js";
 import type { Bounds } from "./pathBounds.js";
 import { RenderFailure } from "./RenderFailure.js";
 import type { RenderIssue, RenderIssueCode } from "./RenderIssue.js";
@@ -18,6 +22,44 @@ export class RenderContext {
   readonly warnings: RenderIssue[] = [];
   /** Loaded fonts by asset id, in first-use order. */
   readonly fonts = new Map<string, LoadedFont>();
+  /** Glyphs drawn per font asset, in the order fonts first draw a glyph. */
+  readonly fontUse = new Map<string, FontUse>();
+  /** Glyph outlines by asset id and glyph, read once per render for text drawn as paths. */
+  readonly outlines = new Map<string, GlyphOutline>();
+  /**
+   * Outline work of the whole render, every font together: paths (each glyph once, then cached) and CFF subsets.
+   * Per font it would grow with the number of font assets.
+   */
+  readonly outlineBudget = new OutlineBudget();
+  /**
+   * Parsed fonts by source: the bytes a caller supplied (by identity) or the `src` data URI (by value), so assets
+   * sharing one source decode it once and count it once against `maxTotalFontBytes`.
+   */
+  readonly parsedFonts = new Map<
+    Uint8Array | string,
+    { font: SfntFont; mime: string | undefined }
+  >();
+  /**
+   * Parsed fonts of supplied bytes by content (`bytesKey`, confirmed byte for byte), so equal bytes in different
+   * arrays (any caller: the CLI, the editor, an API user) are decoded and charged once too. One entry per key.
+   */
+  readonly fontsByContent = new Map<
+    string,
+    { bytes: Uint8Array; read: { font: SfntFont; mime: string | undefined } }
+  >();
+  /** Decoded font bytes the render may still take (`maxTotalFontBytes`). */
+  fontBytesLeft: number;
+  /**
+   * Uncompressed bytes the font subsets of the render may still take: four times the output budget, for all subsets
+   * together (each one is also held to four times what is left of the output).
+   */
+  subsetBytesLeft: number;
+  readonly missingGlyphs = new MissingGlyphs();
+  /**
+   * Laid-out texts by everything their layout depends on, so repeat copies of one text are laid out (and their glyphs
+   * recorded) once; one entry per distinct text, whose content each copy has reserved in the output budget.
+   */
+  readonly textLayouts = new Map<string, TextLayout>();
   /** Loaded images by asset id, in first-use order. */
   readonly images = new Map<string, LoadedImage>();
   /** Compiled expressions by source text; a design string is compiled once per render. */
@@ -54,6 +96,8 @@ export class RenderContext {
     this.limits = mergeLimits(options.limits);
     this.assets = options.assets ?? {};
     this.writer = new SvgWriter(this.limits.maxOutputBytes);
+    this.fontBytesLeft = this.limits.maxTotalFontBytes;
+    this.subsetBytesLeft = this.limits.maxOutputBytes * 4;
     this.time = options.time;
     this.animationCss = new AnimationCss(this.writer);
   }
@@ -66,6 +110,16 @@ export class RenderContext {
 
   warn(path: string, code: RenderIssueCode, message: string): void {
     this.warnings.push({ path, code, message });
+  }
+
+  /** The record of what this render draws with `font`, created at its first glyph. */
+  useFont(font: LoadedFont): FontUse {
+    let use = this.fontUse.get(font.asset);
+    if (use === undefined) {
+      use = { font, embedded: new Map(), glyphs: new Set(), embeddedBytes: 0, pathBytes: 0 };
+      this.fontUse.set(font.asset, use);
+    }
+    return use;
   }
 
   /** Charges the copies of one repeat against `maxRepeatCopies`, before any of them is expanded. */

@@ -1,0 +1,14 @@
+[
+  {
+    "path": "/assets/fonts/sans/drawAs",
+    "code": "enum"
+  },
+  {
+    "path": "/assets/fonts/sans/kerning",
+    "code": "type"
+  },
+  {
+    "path": "/assets/fonts/sans/fallback",
+    "code": "count"
+  }
+]

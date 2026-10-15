@@ -6,8 +6,12 @@ import { pointer } from "./pointer.js";
 import type { RenderContext } from "./RenderContext.js";
 import { echo } from "./resolveValue.js";
 import { sniffImage, type ImageInfo } from "./sniffImage.js";
+import { uprightImage } from "./uprightImage.js";
 
-/** An image asset that passed every check, with its bytes re-encoded as a data URI of the sniffed type. */
+/**
+ * An image asset that passed every check, with its bytes re-encoded as a data URI of the sniffed type; EXIF
+ * orientation entries in that copy say 1, `orientation` keeps what they said for the renderer to apply.
+ */
 export interface LoadedImage extends ImageInfo {
   readonly asset: string;
   /** One string instance per distinct data in a render: assets with identical bytes hold the same string. */
@@ -84,7 +88,7 @@ export function loadImage(context: RenderContext, assetId: string, usePath: stri
   const loaded: LoadedImage = {
     ...info,
     asset: assetId,
-    ...distinctData(context, `data:${info.mime};base64,${encodeBase64(bytes)}`),
+    ...distinctData(context, `data:${info.mime};base64,${encodeBase64(uprightImage(bytes, info))}`),
   };
   context.images.set(assetId, loaded);
   return loaded;
