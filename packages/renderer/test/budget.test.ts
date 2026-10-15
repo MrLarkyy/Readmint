@@ -169,7 +169,7 @@ test("a 10000-rect design renders in under 2 s and the report counts UTF-8 bytes
   }));
   const design: Design = {
     version: 0,
-    title: "Größe ✓ 😀",
+    title: "Gr\u00f6\u00dfe \u2713 \u{1f600}",
     canvas: { width: 100, height: 100 },
     layers,
   };
@@ -370,7 +370,16 @@ test("1000 copies of a 1 MB image write its data once, in under 2 s", () => {
 });
 
 test("utf8Length counts like TextEncoder, lone surrogates included", () => {
-  for (const text of ["", "abc", "é", "€", "😀", "a\uD800b", "\uDC00", "x😀y€"]) {
+  for (const text of [
+    "",
+    "abc",
+    "\u00e9",
+    "\u20ac",
+    "\u{1f600}",
+    "a\uD800b",
+    "\uDC00",
+    "x\u{1f600}y\u20ac",
+  ]) {
     expect(utf8Length(text)).toBe(new TextEncoder().encode(text).length);
   }
 });
@@ -665,3 +674,45 @@ test("maxAnimationKeyframes defaults to 100000 and can be overridden", () => {
     ).toBe(true);
   }
 });
+
+test.each(["font", "paths"] as const)(
+  "a text of maxTextLength Arabic and Devanagari words lays out and draws as %s (or hits the output budget) in under 2 s",
+  (drawAs) => {
+    const words = [
+      "\u0627\u0644\u0639\u0631\u0628\u064a\u0629",
+      "\u0628\u0650\u0633\u0652\u0645\u0650",
+      "\u0939\u093f\u0928\u094d\u0926\u0940",
+      "\u0915\u094d\u0937\u093f",
+      "\u0644\u0627",
+    ];
+    let content = "";
+    for (let index = 0; ; index++) {
+      const word = `${words[index % words.length] ?? ""} `;
+      if (content.length + word.length > RenderLimits.maxTextLength) break;
+      content += word;
+    }
+    const design: Design = {
+      version: 0,
+      canvas: { width: 700, height: 100 },
+      assets: {
+        fonts: {
+          n: { ...fontAssets.naskh, fallback: ["d"], drawAs },
+          d: { ...fontAssets.devanagari, drawAs },
+        },
+      },
+      layers: [{ type: "text", content: "{{text}}", width: 680, font: "n", fontSize: 12 }],
+    };
+    const started = performance.now();
+    const result = renderSvg(design, { data: { text: content } });
+    const elapsed = performance.now() - started;
+    expect(elapsed).toBeLessThan(2000 * loadScale());
+    if (drawAs === "paths") {
+      // Some 12000 outlines of path data pass the output budget: it stops the render, not the shaping work.
+      expect(result).toMatchObject({ ok: false, issues: [{ code: "too-large" }] });
+      return;
+    }
+    if (!result.ok) throw new Error(JSON.stringify(result.issues));
+    expect(result.warnings).toEqual([]);
+    expect(result.report.bytes).toBeLessThan(RenderLimits.maxOutputBytes);
+  },
+);

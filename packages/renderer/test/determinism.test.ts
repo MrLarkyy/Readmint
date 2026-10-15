@@ -7,6 +7,7 @@ import fontFormats from "./renderer-fonts-formats.golden.js";
 import fonts from "./renderer-fonts.golden.js";
 import layout from "./renderer-layout.golden.js";
 import shapes from "./renderer-shapes.golden.js";
+import shaping from "./renderer-shaping.golden.js";
 import text from "./renderer-text.golden.js";
 import { fontAssets, imageAssets } from "./testAssets.js";
 
@@ -44,7 +45,9 @@ test.each(animationDesigns.map(({ name, input }) => [name, input] as const))(
 );
 
 test.each(
-  [...fonts.fixtures, ...fontFormats.fixtures].map(({ name, input }) => [name, input] as const),
+  [...fonts.fixtures, ...fontFormats.fixtures, ...shaping.fixtures].map(
+    ({ name, input }) => [name, input] as const,
+  ),
 )(
   "font fixture %s gives the same bytes after other fonts were subset in the same process",
   (_name, input) => {

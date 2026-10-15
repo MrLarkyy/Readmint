@@ -116,7 +116,14 @@ export class RenderContext {
   useFont(font: LoadedFont): FontUse {
     let use = this.fontUse.get(font.asset);
     if (use === undefined) {
-      use = { font, embedded: new Map(), glyphs: new Set(), embeddedBytes: 0, pathBytes: 0 };
+      use = {
+        font,
+        embedded: new Map(),
+        glyphs: new Set(),
+        privateCodes: new Map(),
+        embeddedBytes: 0,
+        pathBytes: 0,
+      };
       this.fontUse.set(font.asset, use);
     }
     return use;

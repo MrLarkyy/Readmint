@@ -10,10 +10,11 @@ import { resolveStyle } from "./resolveStyle.js";
 import { stripXmlInvalid } from "./stripXmlInvalid.js";
 import { evaluateText } from "./expressions.js";
 import { resolveOptionalNumber } from "./resolveValue.js";
-import type { TextLine, TextRun } from "./TextLine.js";
+import { privateCode } from "./privateCode.js";
+import type { PlacedGlyph, TextLine, TextRun } from "./TextLine.js";
 import type { TextLayout } from "./TextLayout.js";
-import { TextShaper, type ShapedGlyph, type TextShaperOptions } from "./TextShaper.js";
-import { wrapText } from "./wrapText.js";
+import { TextShaper, type ShapedLine, type TextShaperOptions } from "./TextShaper.js";
+import { wrapParagraphs } from "./wrapText.js";
 
 export const defaultFontSize = 16;
 export const defaultLineHeight = 1.2;
@@ -98,7 +99,7 @@ export function resolveText(
     );
     context.textLayouts.set(key, layout);
   }
-  const { lines, drawnAs } = layout;
+  const { lines, drawnAs, privateUse, rtl } = layout;
   const scale = fontSize / primary.font.unitsPerEm;
   const lineAdvance = lineHeight * fontSize;
   const glyphHeight = (primary.font.ascender - primary.font.descender) * scale;
@@ -112,6 +113,8 @@ export function resolveText(
     font: primary,
     fontSize,
     drawnAs,
+    privateUse,
+    rtl,
     fill: resolvePaint(context, fill.value, fill.path, scope),
     baseline: (lineAdvance - glyphHeight) / 2 + primary.font.ascender * scale,
     lineAdvance,
@@ -128,55 +131,76 @@ function layOut(
   contentPath: string,
 ): TextLayout {
   const shaper = new TextShaper(context, options);
-  const shaped = wrapText(content, width, (text) => shaper.measure(text)).map((line) =>
-    shaper.layout(line),
+  const paragraphs = wrapParagraphs(
+    content,
+    width,
+    (text) => shaper.measure(text),
+    (word) => shaper.clusters(word),
   );
+  const shaped = paragraphs.flatMap((paragraph) => {
+    const bidi = shaper.paragraph(paragraph.text);
+    return paragraph.lines.map((line) => shaper.layout(paragraph.text, bidi, line.start, line.end));
+  });
   let widest = 0;
   for (const line of shaped) widest = Math.max(widest, line.width);
   const boxWidth = width ?? widest;
-  const missing: number[] = [];
-  const lines = shaped.map((line) => placeLine(line, boxWidth, alignment, missing));
-  const drawnAs = lines.some((line) => line.runs.some((run) => run.font.drawAs === "paths"))
+  const drawnAs = shaped.some((line) => line.glyphs.some((glyph) => glyph.font?.drawAs === "paths"))
     ? "paths"
     : "font";
+  const lines = shaped.map((line) => placeLine(context, line, boxWidth, alignment, drawnAs));
   record(context, lines, drawnAs);
-  for (const codePoint of missing) {
-    context.missingGlyphs.note(options.referenced, codePoint, contentPath);
+  for (const line of shaped) {
+    for (const glyph of line.glyphs) {
+      if (glyph.font !== undefined) continue;
+      for (const char of glyph.text) {
+        const codePoint = char.codePointAt(0) ?? 0;
+        if (shaper.lacks(codePoint)) {
+          context.missingGlyphs.note(options.referenced, codePoint, contentPath);
+        }
+      }
+    }
   }
-  return { lines, width: boxWidth, drawnAs };
+  const drawn = shaped.flatMap((line) => line.glyphs.filter((glyph) => glyph.font !== undefined));
+  return {
+    lines,
+    width: boxWidth,
+    drawnAs,
+    privateUse: drawnAs === "font" && drawn.some((glyph) => !glyph.plain),
+    rtl: drawn.some((glyph) => glyph.rtl),
+  };
 }
 
 /**
- * Moves a line by its alignment in the box and groups its drawn glyphs into runs of one font; code points no font has
- * go to `missing`. Without an offset the shaped glyphs are the placed ones (no copy per glyph).
+ * Moves a line by its alignment in the box (start and end follow the paragraph's direction) and groups its drawn
+ * glyphs into runs of one font. In font mode a glyph its own character does not draw gets the private-use character
+ * of its font (`privateCode`), assigned here once per cached layout, in layout order. Without an offset a glyph
+ * written as its own character is placed as shaped (no copy per glyph).
  */
 function placeLine(
-  line: { width: number; glyphs: readonly ShapedGlyph[] },
+  context: RenderContext,
+  line: ShapedLine,
   boxWidth: number,
   align: Align,
-  missing: number[],
+  drawnAs: "font" | "paths",
 ): TextLine {
-  const offset =
-    align === "start"
-      ? 0
-      : align === "middle"
-        ? (boxWidth - line.width) / 2
-        : boxWidth - line.width;
+  const free = boxWidth - line.width;
+  const offset = align === "middle" ? free / 2 : (align === "end") !== line.rtl ? free : 0;
   const runs: TextRun[] = [];
-  let current: { font: TextRun["font"]; glyphs: TextRun["glyphs"][number][] } | undefined;
+  let current: { font: TextRun["font"]; glyphs: PlacedGlyph[] } | undefined;
   for (const glyph of line.glyphs) {
-    if (glyph.font === undefined) {
-      missing.push(glyph.codePoint);
-      continue;
-    }
+    if (glyph.font === undefined) continue;
     if (current?.font !== glyph.font) {
       current = { font: glyph.font, glyphs: [] };
       runs.push(current);
     }
+    const codePoint =
+      drawnAs === "font" && !glyph.plain
+        ? privateCode(context.useFont(glyph.font), glyph.glyph)
+        : glyph.codePoint;
     current.glyphs.push(
-      offset === 0
+      offset === 0 && codePoint === glyph.codePoint
         ? glyph
-        : { glyph: glyph.glyph, codePoint: glyph.codePoint, x: offset + glyph.x },
+        : { glyph: glyph.glyph, codePoint, x: offset + glyph.x, y: glyph.y },
     );
   }
   return { width: line.width, runs };

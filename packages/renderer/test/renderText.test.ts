@@ -1,6 +1,8 @@
 import { parseSfnt, type SfntFont } from "@readmint/fonts";
 import type { Design, FontAsset, Layer } from "@readmint/format";
 import { describe, expect, test } from "vitest";
+import { layoutTable, struct } from "../../fonts/test/buildLayoutTables.js";
+import { buildTestFont } from "../../fonts/test/buildTestFont.js";
 import { renderSvg } from "../src/index.js";
 import { fontAssets } from "./testAssets.js";
 
@@ -116,12 +118,12 @@ describe("renderText", () => {
   });
 
   test("a character from a fallback font gets its own tspan with the fallback's family and weight", () => {
-    const { svg } = render([{ type: "text", content: "a★b", font: "m" }], {
+    const { svg } = render([{ type: "text", content: "a\u2605b", font: "m" }], {
       m: { ...fontAssets.medium, fallback: ["s"] },
       s: fontAssets.symbols,
     });
     const found = spans(svg);
-    expect(found.map((span) => span.text)).toEqual(["a", "★", "b"]);
+    expect(found.map((span) => span.text)).toEqual(["a", "\u2605", "b"]);
     expect(found[0]?.attributes).not.toContain("font-family");
     expect(found[1]?.attributes).toContain(
       'font-family="&#39;Readmint Test Symbols&#39;" font-weight="400"',
@@ -141,15 +143,15 @@ describe("renderText", () => {
 
   test("a character no font has is not written, keeps its advance and warns once per font", () => {
     const result = render([
-      { type: "text", content: "a漢b", font: "m", fontSize: 10 },
-      { type: "text", y: 20, content: "漢漣", font: "m" },
+      { type: "text", content: "a\u6f22b", font: "m", fontSize: 10 },
+      { type: "text", y: 20, content: "\u6f22\u6f23", font: "m" },
     ]);
     const [first] = spans(result.svg);
     expect(first?.text).toBe("ab");
     const notdef = (medium.advanceOf(0) * 10) / medium.unitsPerEm;
     const a = (medium.advanceOf(medium.glyphFor(0x61)) * 10) / medium.unitsPerEm;
     expect(xs(first?.attributes ?? "")).toEqual([0, Math.round((a + notdef) * 1000) / 1000]);
-    expect(result.svg).not.toContain("漢");
+    expect(result.svg).not.toContain("\u6f22");
     expect(result.warnings).toEqual([
       {
         path: "/assets/fonts/m",
@@ -192,4 +194,79 @@ test("a missing character is reported for the asset the text names, whose fallba
     },
   ]);
   expect(result.report.fonts.map((font) => font.asset)).toEqual(["bold", "sym"]);
+});
+
+describe("renderText with shaped glyphs", () => {
+  const subsetOf = (svg: string, index = 0): SfntFont => {
+    const base64 = [...svg.matchAll(/url\(data:font\/woff;base64,([^)]+)\)/gu)][index]?.[1] ?? "";
+    const woff = Uint8Array.from(atob(base64), (char) => char.charCodeAt(0));
+    const result = parseSfnt(woff);
+    if (!result.ok) throw new Error(result.message);
+    return result.font;
+  };
+
+  test("plain text writes its own characters and no aria-label or bidi override", () => {
+    const { svg } = render([{ type: "text", content: "AV To", font: "m" }]);
+    expect(svg).not.toContain("aria-label");
+    expect(svg).not.toContain("unicode-bidi");
+    expect(svg).not.toMatch(/[\ue000-\uf8ff]/u);
+  });
+
+  test("a ligature is written as a private-use character its subset maps; the text carries its own text as aria-label", () => {
+    const { svg } = render([{ type: "text", content: "fit", font: "m" }]);
+    expect(svg).toContain('aria-label="fit"');
+    expect(spans(svg).map((span) => span.text)).toEqual(["\ue000t"]);
+    const subset = subsetOf(svg);
+    expect(subset.glyphFor(0xe000)).not.toBe(0);
+    expect(subset.glyphFor(0x74)).not.toBe(0);
+    expect(subset.glyphFor(0x66)).toBe(0);
+    // The ligature is a composite: its components come along, unmapped.
+    expect(subset.numGlyphs).toBeGreaterThanOrEqual(3);
+  });
+
+  test("right-to-left text asks the drawer to keep the order written; marks get a y of their own", () => {
+    const { svg } = render([{ type: "text", content: "\u0628\u0650", font: "n", fontSize: 30 }], {
+      n: fontAssets.naskh,
+    });
+    expect(svg).toContain(' direction="ltr" unicode-bidi="bidi-override"');
+    const [span] = spans(svg);
+    const ys = (/ y="([^"]*)"/u.exec(span?.attributes ?? "")?.[1] ?? "").split(" ").map(Number);
+    expect(ys.length).toBe(xs(span?.attributes ?? "").length);
+    expect(new Set(ys).size).toBeGreaterThan(1);
+  });
+
+  test("past 6400 shaped glyphs a font's private-use characters go on in plane 15, each in a tspan of its own", () => {
+    const count = 6402;
+    const glyphs = [
+      { advance: 500 },
+      ...Array.from({ length: count }, (_, index) => ({
+        codePoints: [0x4e00 + index],
+        advance: 500,
+      })),
+    ];
+    // GPOS raises every glyph, so none is plain and each needs a private-use character.
+    const raise = struct([1, { offset: struct([2, 1, 1, count, 0]) }, 0x0002, { i16: 50 }]);
+    const gpos = layoutTable([{ tag: "kern", lookups: [0] }], [{ type: 1, subtables: [raise] }]);
+    const bytes = buildTestFont({ family: "Many", glyphs, tables: { GPOS: gpos } });
+    const content = String.fromCodePoint(
+      ...Array.from({ length: 6401 }, (_, index) => 0x4e00 + index),
+    );
+    const design: Design = {
+      version: 0,
+      canvas: { width: 300, height: 100 },
+      assets: {
+        fonts: { many: { family: "Many", src: "many.ttf", licence: { embedding: "allowed" } } },
+      },
+      layers: [{ type: "text", content, font: "many", fontSize: 4 }],
+    };
+    const result = renderSvg(design, { assets: { fonts: { many: bytes } } });
+    if (!result.ok) throw new Error(JSON.stringify(result.issues));
+    const found = spans(result.svg);
+    expect(found).toHaveLength(2);
+    expect(Array.from(found[0]?.text ?? "")).toHaveLength(6400);
+    expect(found[0]?.text.startsWith("\ue000")).toBe(true);
+    expect(found[1]?.text).toBe("\u{f0000}");
+    expect(xs(found[1]?.attributes ?? "")).toHaveLength(1);
+    expect(subsetOf(result.svg).glyphFor(0xf0000)).not.toBe(0);
+  });
 });
