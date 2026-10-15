@@ -79,8 +79,9 @@ describe("buildWiki", () => {
       for (const match of text.matchAll(/\]\(([^)\s]+)\)/g)) {
         const target = match[1] ?? "";
         if (/^https?:/.test(target)) {
+          // The examples repository is the one other repository the docs link to.
           expect(target, `${file} links to a repository file`).toMatch(
-            /^https:\/\/example\.test\/o\/r\//,
+            /^(https:\/\/example\.test\/o\/r\/|https:\/\/github\.com\/MrLarkyy\/readmint-template-test$)/,
           );
           continue;
         }

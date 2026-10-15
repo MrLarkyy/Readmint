@@ -85,6 +85,9 @@ importers:
       '@readmint/data-github':
         specifier: workspace:*
         version: link:../data-github
+      '@readmint/examples':
+        specifier: workspace:*
+        version: link:../examples
       '@readmint/format':
         specifier: workspace:*
         version: link:../format
@@ -133,6 +136,8 @@ importers:
       vite:
         specifier: 8.3.4
         version: 8.3.4(@types/node@22.20.5)(yaml@2.9.1)
+
+  packages/examples: {}
 
   packages/expr: {}
 

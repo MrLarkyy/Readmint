@@ -8,7 +8,7 @@ import {
   type ProfileRender,
   type ProfileTheme,
 } from "./profileDesigns.js";
-import { profileExampleProps } from "./profileExampleProps.js";
+import { profileExampleProps } from "@readmint/examples/props";
 import { sampleProfileData, sparseProfileData, worstCaseProfileData } from "./sampleProfileData.js";
 
 /** Chromium and resvg place the 11-13 px monospaced code and terminal text of pinscreen a sub-pixel apart. */
@@ -52,7 +52,7 @@ export function profileGoldenSuite(template: ProfileTemplate): GoldenSuite<Profi
   });
   const [frameSection, frameTime] = frames[template];
   const personal = profileTemplates[template].filter(
-    (section) => profileExampleProps[template][section] !== undefined,
+    (section) => profileExampleProps[template]?.[section] !== undefined,
   );
   return defineGoldenSuite<ProfileRender>({
     name: `profiles-${template}`,

@@ -1,0 +1,24 @@
+{
+  "name": "@readmint/examples",
+  "version": "0.0.0",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "readmint-examples": "./dist/bin.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./props": {
+      "types": "./dist/profileExampleProps.d.ts",
+      "default": "./dist/profileExampleProps.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -b tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json"
+  }
+}
