@@ -34,20 +34,24 @@ image upload, YAML export, raster export.
 Dragging writes whole numbers. It never changes a coordinate or size bound to data, nor the place of a layer a stack
 or grid layout positions (its `x`/`y` are offsets in its slot; the property panel says so): such a drag is refused with
 an issue. A path keeps its size (its data is its shape); a text's handles set its wrapping `width`. In a turned group a
-drag is turned back into the group's coordinates, so the layer follows the pointer; turned layers show no resize
-handles.
+drag is turned back into the group's coordinates, so the layer follows the pointer. Resize handles appear only on a
+layer that neither it nor any group around it turns (whole turns aside): turns that cancel out on the canvas still swap
+what the layer calls width and height.
 
 ## Preview
 
 Every change re-renders with `renderPreview`, which is `renderSvg(design, { data, assets, layerBoxes: true })` and
 nothing more. It runs in a module Web Worker: a hostile design can keep only the worker busy, and a render running
-longer than `EditorLimits.renderTimeoutMs` (10 s) is stopped (the worker is replaced) and reported. A newer edit's
-render always wins: an older result arriving later is dropped.
+longer than `EditorLimits.renderTimeoutMs` (10 s) is stopped (the worker is replaced) and reported. A worker that fails
+(an error, a result it cannot send) is reported at once and replaced for the next render. A newer edit's render always
+wins: an older result arriving later is dropped.
 
 The SVG is shown as an `<img>` of its exact bytes (a blob URL), as the CLI preview and a README show it: its ids and
 styles never meet the page or another copy, and it runs no script. The editor draws its own selection overlay from
 the renderer's `layerBoxes` ([renderer.md](renderer.md#report)), which never change the SVG. The render's issues and
-warnings are listed under the editor with their design pointer; one inside a layer selects it when clicked.
+warnings are listed under the editor with their design pointer; one inside a layer selects it when clicked. After a
+render fails, the image keeps showing the last good render, but clicking the canvas selects nothing until a render
+succeeds (the layer tree still does): the old boxes may no longer match the design.
 
 Exporting the design and rendering it with `readmint render design.json --data <fixture>` gives the preview's bytes;
 a golden suite (`packages/editor/test/editor-session.golden.ts`, Node and Chromium) and a CLI test pin it.
@@ -60,23 +64,37 @@ weight and style come from the font (the file name when it names no family); the
 - The file is refused before it is parsed when it is larger than `EditorLimits.maxFontBytes` (the renderer's
   `maxFontBytes`, 4 MiB); a malformed, unsupported (collection) or over-large font is refused with the parser's
   reason. A font that would make the exported file longer than `DesignLimits.maxSourceLength` (what the CLI reads) is
-  refused, naming both lengths. A refused font leaves the design unchanged.
+  refused, naming both lengths, as is every other edit that would. A refused font leaves the design unchanged.
 - A font whose OS/2 fsType forbids embedding is stored with `licence.embedding: "restricted"`: its text is drawn as
   paths and the font is never embedded. Its embedding control is disabled with the reason, and the command refuses to
   set it to `allowed`; this holds for fonts of imported designs too (their data URIs are read again). Any font may be
-  set to restricted. The licence name (SPDX) is editable.
+  set to restricted. The licence name (SPDX) is editable. Any asset id the format allows works, `constructor` included.
+- Reading the fonts of an imported design is bounded as in the renderer: each distinct source is decoded once, and
+  together they may decode to `EditorLimits.maxTotalFontBytes` (the renderer's `maxTotalFontBytes`, 16 MiB), charged by
+  declared size before anything inflates. The font that crosses it stops the check with an issue; the fonts from it on
+  are not locked in the panel, and the renderer still never embeds a font whose fsType forbids it.
 
 ## Assets given by path
 
 An imported design may name font or image files by path. The asset panel lists them as needing a file; a file picked
-there is used by the preview for this session only (same size limits) and never written into the design, which keeps
+there is used by the preview for this session only (same size limits, checked before the file is read) and never
+written into the design, which keeps
 the path, so the CLI reads the same file next to the design. Image URLs bound to data are not fetched: the editor makes
 no network request at all, and it never handles a token. The renderer's `missing-asset` issue is shown instead.
 
 ## Limits
 
-`EditorLimits`: `maxFixtureBytes` 8 MiB (the CLI's), `maxFontBytes` and `maxImageBytes` 4 MiB (the renderer's),
-`renderTimeoutMs` 10 000. Design files are bounded by `DesignLimits` on import and on every edit.
+`EditorLimits`: `maxFixtureBytes` 8 MiB (the CLI's), `maxFontBytes` and `maxImageBytes` 4 MiB and
+`maxTotalFontBytes` 16 MiB (the renderer's), `renderTimeoutMs` 10 000. Every file the user picks is size-checked before
+it is read. Design files are bounded by `DesignLimits` on import and on every edit: an edit that would make the exported
+file longer than `maxSourceLength` is refused.
+
+## Content Security Policy
+
+The app's page sets `default-src 'none'; script-src 'self'; worker-src 'self'; style-src 'self'; img-src 'self' blob:
+data:; font-src data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'`: only the app's own
+scripts, worker and stylesheet load, nothing inline runs, and the page makes no request (the dev server alone allows
+`connect-src 'self'` for its reload socket). A test builds the app and drives it in Chromium under this policy.
 
 ## Bundle
 
