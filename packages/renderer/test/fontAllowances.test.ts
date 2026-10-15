@@ -8,6 +8,7 @@ import { readTableDirectory } from "../../fonts/src/readTableDirectory.js";
 import { SfntReader } from "../../fonts/src/SfntReader.js";
 import { TRUETYPE_FLAVOR } from "../../fonts/src/sfntFlavor.js";
 import { writeSfnt } from "../../fonts/src/writeSfnt.js";
+import { bytesKey, sameBytes } from "../src/bytesKey.js";
 import { RenderLimits, renderSvg, type RenderOptions } from "../src/index.js";
 
 const licence = { embedding: "allowed" } as const;
@@ -148,5 +149,81 @@ describe("font subsets are bounded per render, not per subset", () => {
       layers.slice(0, 10),
     );
     expect(renderSvg(fewer, options).ok).toBe(true);
+  });
+});
+
+/** FNV-1a state after `bytes`, from `state` (as bytesKey computes it). */
+function fnv(bytes: Iterable<number>, state = 0x811c9dc5): number {
+  let hash = state;
+  for (const byte of bytes) hash = Math.imul(hash ^ byte, 0x01000193);
+  return hash >>> 0;
+}
+
+function tail(value: number): number[] {
+  return [value >>> 24, (value >>> 16) & 0xff, (value >>> 8) & 0xff, value & 0xff];
+}
+
+/**
+ * Two different fonts of one length whose content keys collide: the symbols font, and the same with the star's advance
+ * widened, each followed by four bytes (outside every table) found by a birthday search over the tails.
+ */
+function collidingFonts(): [Uint8Array, Uint8Array] {
+  const plain = readmintTestSymbols();
+  const wide = plain.slice();
+  const hmtx = readTableDirectory(new SfntReader(wide)).get("hmtx")?.offset ?? 0;
+  new DataView(wide.buffer).setUint16(hmtx + 2 * 4, 900);
+  const startPlain = fnv(plain);
+  const startWide = fnv(wide);
+  const seen = new Map<number, number>();
+  for (let value = 0; value < 200_000; value++) seen.set(fnv(tail(value), startPlain), value);
+  for (let value = 0; ; value++) {
+    const match = seen.get(fnv(tail(value), startWide));
+    if (match === undefined) continue;
+    return [
+      Uint8Array.from([...plain, ...tail(match)]),
+      Uint8Array.from([...wide, ...tail(value)]),
+    ];
+  }
+}
+
+describe("the content key of supplied font bytes", () => {
+  test("two different fonts whose keys collide each draw with their own font", () => {
+    const [plain, wide] = collidingFonts();
+    expect(bytesKey(plain)).toBe(bytesKey(wide));
+    expect(sameBytes(plain, wide)).toBe(false);
+    const fonts = {
+      p: { family: "Readmint Test Symbols", src: "p.ttf", licence },
+      w: { family: "Readmint Test Symbols", src: "w.ttf", licence },
+    };
+    const result = renderSvg(
+      design(fonts, [
+        { type: "text", content: "★★", font: "p", fontSize: 10 },
+        { type: "text", y: 20, content: "★★", font: "w", fontSize: 10 },
+      ]),
+      { assets: { fonts: { p: plain, w: wide } } },
+    );
+    if (!result.ok) throw new Error(JSON.stringify(result.issues));
+    const xs = [...result.svg.matchAll(/<tspan[^>]* x="([^"]*)"/gu)].map((match) => match[1]);
+    expect(xs).toEqual(["0 7.8", "0 9"]);
+    expect(result.report.fonts.map((font) => font.asset)).toEqual(["p", "w"]);
+  });
+
+  test("bytes over maxFontBytes are refused before they are hashed", () => {
+    /** Throws when anything walks its bytes, as hashing does. */
+    class Untouchable extends Uint8Array {
+      override [Symbol.iterator](): never {
+        throw new Error("the oversize bytes were hashed");
+      }
+    }
+    const result = renderSvg(
+      design({ f: { family: "Readmint Test Symbols", src: "f.ttf", licence } }, [
+        { type: "text", content: "★", font: "f" },
+      ]),
+      { assets: { fonts: { f: new Untouchable(2000) } }, limits: { maxFontBytes: 1000 } },
+    );
+    expect(result).toMatchObject({
+      ok: false,
+      issues: [{ path: "/assets/fonts/f", code: "asset-too-large" }],
+    });
   });
 });

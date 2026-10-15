@@ -130,18 +130,15 @@ function readFontOnce(
   const key = supplied instanceof Uint8Array ? supplied : asset.src;
   const known = context.parsedFonts.get(key);
   if (known !== undefined) return known;
-  const sameContent = supplied instanceof Uint8Array ? bytesKey(supplied) : undefined;
-  if (supplied instanceof Uint8Array && sameContent !== undefined) {
-    const shared = context.fontsByContent
-      .get(sameContent)
-      ?.find((candidate) => sameBytes(candidate.bytes, supplied));
-    if (shared !== undefined) {
-      context.parsedFonts.set(key, shared.read);
-      return shared.read;
-    }
-  }
   const name = echo(assetId);
+  // Size first (fontBytes refuses bytes over maxFontBytes), then the content key: nothing oversize is hashed.
   const { bytes, mime } = fontBytes(context, assetId, asset, assetPath);
+  const contentKey = supplied instanceof Uint8Array ? bytesKey(bytes) : undefined;
+  const sameContent = contentKey === undefined ? undefined : context.fontsByContent.get(contentKey);
+  if (sameContent !== undefined && sameBytes(sameContent.bytes, bytes)) {
+    context.parsedFonts.set(key, sameContent.read);
+    return sameContent.read;
+  }
   const left = context.fontBytesLeft;
   const total = () =>
     context.fail(
@@ -167,10 +164,10 @@ function readFontOnce(
   context.fontBytesLeft = left - parsed.font.sfntBytes;
   const read = { font: parsed.font, mime };
   context.parsedFonts.set(key, read);
-  if (supplied instanceof Uint8Array && sameContent !== undefined) {
-    const list = context.fontsByContent.get(sameContent) ?? [];
-    list.push({ bytes: supplied, read });
-    context.fontsByContent.set(sameContent, list);
+  // One entry per key: a font whose key collides with another's is decoded and charged on its own, so crafted
+  // collisions cost one comparison each, never a scan.
+  if (contentKey !== undefined && sameContent === undefined) {
+    context.fontsByContent.set(contentKey, { bytes, read });
   }
   return read;
 }

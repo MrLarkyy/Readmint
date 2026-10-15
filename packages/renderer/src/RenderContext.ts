@@ -40,12 +40,12 @@ export class RenderContext {
     { font: SfntFont; mime: string | undefined }
   >();
   /**
-   * Parsed fonts of supplied bytes by content (`bytesKey`), so equal bytes in different arrays (any caller: the CLI,
-   * the editor, an API user) are decoded and charged once too.
+   * Parsed fonts of supplied bytes by content (`bytesKey`, confirmed byte for byte), so equal bytes in different
+   * arrays (any caller: the CLI, the editor, an API user) are decoded and charged once too. One entry per key.
    */
   readonly fontsByContent = new Map<
     string,
-    { bytes: Uint8Array; read: { font: SfntFont; mime: string | undefined } }[]
+    { bytes: Uint8Array; read: { font: SfntFont; mime: string | undefined } }
   >();
   /** Decoded font bytes the render may still take (`maxTotalFontBytes`). */
   fontBytesLeft: number;
