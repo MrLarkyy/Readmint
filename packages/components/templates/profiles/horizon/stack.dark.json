@@ -2,17 +2,26 @@
   "$schema": "https://raw.githubusercontent.com/MrLarkyy/Readmint/main/packages/format/schema/design-v0.schema.json",
   "version": 0,
   "title": "Stack",
-  "description": "The most used languages as columns, and a ticker of everything the author has worked with.",
+  "description": "The languages of the public repositories and the tools behind the work, in columns.",
   "canvas": {
     "width": 840,
-    "height": 372
+    "height": 190
   },
   "assets": {
     "fonts": {
-      "display": {
-        "family": "Archivo Condensed",
-        "src": "fonts/ArchivoCondensed-ExtraBold.ttf",
-        "weight": 800,
+      "xbold": {
+        "family": "Archivo ExtraCondensed",
+        "src": "fonts/ArchivoExtraCondensed-Bold.ttf",
+        "weight": 700,
+        "licence": {
+          "embedding": "allowed",
+          "name": "OFL-1.1"
+        }
+      },
+      "sc": {
+        "family": "Archivo SemiCondensed",
+        "src": "fonts/ArchivoSemiCondensed-Regular.ttf",
+        "weight": 400,
         "licence": {
           "embedding": "allowed",
           "name": "OFL-1.1"
@@ -26,221 +35,228 @@
           "embedding": "allowed",
           "name": "OFL-1.1"
         }
-      },
-      "monoM": {
-        "family": "Geist Mono",
-        "src": "fonts/GeistMono-Medium.ttf",
-        "weight": 500,
-        "licence": {
-          "embedding": "allowed",
-          "name": "OFL-1.1"
-        }
       }
     }
   },
   "animation": {
-    "duration": 36000,
-    "loop": true
+    "duration": 1500,
+    "loop": false
   },
   "components": {
     "card": {
-      "description": "The section: a rounded panel in the theme's colours; the theme prop is the only switch between light and dark.",
       "props": {
         "theme": {
           "type": "enum",
           "values": ["light", "dark"],
           "default": "light"
+        },
+        "labels": {
+          "type": "array",
+          "default": []
+        },
+        "items": {
+          "type": "array",
+          "default": []
         }
       },
       "layers": [
         {
+          "type": "text",
+          "x": 0,
+          "y": 7.99,
+          "content": "STACK",
+          "font": "xbold",
+          "fontSize": 15,
+          "letterSpacing": 0.9,
+          "fill": "{{ props.theme == \"dark\" ? \"#F0EEEA\" : \"#141414\" }}"
+        },
+        {
           "type": "rect",
           "x": 0,
-          "y": 0,
+          "y": 34,
           "width": 840,
-          "height": 372,
-          "fill": "{{ props.theme == \"dark\" ? \"#121110\" : \"#f4efe6\" }}"
-        },
-        {
-          "type": "rect",
-          "x": 40,
-          "y": 36,
-          "width": 760,
-          "height": 6,
-          "fill": "{{ props.theme == \"dark\" ? \"#ff7a3d\" : \"#ff5a1f\" }}"
+          "height": 1,
+          "fill": "{{ props.theme == \"dark\" ? \"#F0EEEA\" : \"#141414\" }}"
         },
         {
           "type": "text",
-          "x": 40,
-          "y": 54,
-          "content": "THE STACK",
-          "font": "monoM",
-          "fontSize": 12,
-          "fill": "{{ props.theme == \"dark\" ? \"#ff7a3d\" : \"#ff5a1f\" }}"
-        },
-        {
-          "type": "group",
-          "children": [
-            {
-              "type": "rect",
-              "x": 0,
-              "y": "{{ 140 - (github.languages[k].share / ((github.languages[0].share) | max(0.01)) * 130 | max(2)) }}",
-              "width": 70,
-              "height": "{{ (github.languages[k].share / ((github.languages[0].share) | max(0.01)) * 130) | max(2) }}",
-              "fill": "{{ k == 0 ? (props.theme == \"dark\" ? \"#ff7a3d\" : \"#ff5a1f\") : (props.theme == \"dark\" ? \"#f2ede4\" : \"#141414\") }}"
-            },
-            {
-              "type": "group",
-              "x": 0,
-              "y": 148,
-              "width": 76,
-              "height": 16,
-              "clip": true,
-              "children": [
-                {
-                  "type": "text",
-                  "x": 0,
-                  "y": 0,
-                  "content": "{{ github.languages[k].name | upper | truncate(9) }}",
-                  "font": "mono",
-                  "fontSize": 11,
-                  "fill": "{{ props.theme == \"dark\" ? \"#9a948a\" : \"#6b645a\" }}"
-                }
-              ]
-            },
-            {
-              "type": "group",
-              "x": 0,
-              "y": 164,
-              "width": 76,
-              "height": 16,
-              "clip": true,
-              "children": [
-                {
-                  "type": "text",
-                  "x": 0,
-                  "y": 0,
-                  "content": "{{ github.languages[k].share | percent(0) }}",
-                  "font": "monoM",
-                  "fontSize": 12,
-                  "fill": "{{ props.theme == \"dark\" ? \"#f2ede4\" : \"#141414\" }}"
-                }
-              ]
-            }
-          ],
-          "x": "{{ 40 + k * 100 }}",
-          "y": 64,
-          "repeat": {
-            "each": "{{ [0, 1, 2, 3, 4, 5, 6] }}",
-            "as": "k"
-          },
-          "if": "{{ github.languages[k] }}"
-        },
-        {
-          "type": "text",
-          "x": 40,
-          "y": 120,
-          "content": "No language data yet.",
-          "font": "mono",
-          "fontSize": 13,
-          "fill": "{{ props.theme == \"dark\" ? \"#9a948a\" : \"#6b645a\" }}",
-          "if": "{{ !(github.languages | length) }}"
-        },
-        {
-          "type": "rect",
-          "x": 40,
-          "y": 256,
-          "width": 760,
-          "height": 2,
-          "fill": "{{ props.theme == \"dark\" ? \"#f2ede4\" : \"#141414\" }}"
-        },
-        {
-          "type": "text",
-          "x": 40,
-          "y": 268,
-          "content": "WORKED WITH",
+          "x": 0,
+          "y": 53.495,
+          "content": "languages",
           "font": "mono",
           "fontSize": 11,
-          "fill": "{{ props.theme == \"dark\" ? \"#9a948a\" : \"#6b645a\" }}",
-          "letterSpacing": 1.5
-        },
-        {
-          "type": "rect",
-          "x": 0,
-          "y": 296,
-          "width": 840,
-          "height": 52,
-          "fill": "{{ props.theme == \"dark\" ? \"#ff7a3d\" : \"#ff5a1f\" }}"
+          "fill": "{{ props.theme == \"dark\" ? \"#948F88\" : \"#6E6E6E\" }}"
         },
         {
           "type": "group",
-          "x": 0,
-          "y": 296,
-          "width": 840,
-          "height": 52,
-          "clip": true,
+          "repeat": {
+            "each": "{{ [github.languages[0], github.languages[1], github.languages[2]] }}",
+            "as": "lang",
+            "index": "li"
+          },
+          "if": "{{ lang }}",
           "children": [
             {
               "type": "group",
-              "children": [
-                {
-                  "type": "group",
-                  "children": [
-                    {
-                      "type": "text",
-                      "x": 0,
-                      "y": 0,
-                      "content": "{{ (github.languages[j % ((github.languages | length) | min(12))].name | upper | truncate(12)) }}",
-                      "font": "display",
-                      "fontSize": 24,
-                      "fill": "#141414"
-                    },
-                    {
-                      "type": "rect",
-                      "x": 150,
-                      "y": 9,
-                      "width": 8,
-                      "height": 8,
-                      "fill": "#141414"
-                    }
-                  ],
-                  "x": "{{ j * 170 }}",
-                  "repeat": {
-                    "each": "{{ [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71] }}",
-                    "as": "j"
-                  },
-                  "if": "{{ j < ((github.languages | length) | min(12)) * 6 }}"
-                }
-              ],
-              "y": 14,
               "animate": {
-                "x": {
+                "opacity": {
                   "keyframes": [
+                    {
+                      "offset": 0,
+                      "value": 1
+                    },
                     {
                       "offset": 0,
                       "value": 0
                     },
                     {
                       "offset": 1,
-                      "value": "{{ 0 - ((github.languages | length) | min(12)) * 170 }}"
+                      "value": 0
+                    },
+                    {
+                      "offset": 1,
+                      "value": 1
                     }
                   ],
-                  "duration": 36000
+                  "duration": "{{ 300 + li * 60 + 1 }}"
                 }
-              }
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "x": 0,
+                  "y": "{{ 92 + li * 23 - 14.01 }}",
+                  "content": "{{ lang.name | truncate(18) }} {{ lang.share * 100 | round }}%",
+                  "font": "sc",
+                  "fontSize": 15,
+                  "fill": "{{ props.theme == \"dark\" ? \"#F0EEEA\" : \"#141414\" }}",
+                  "animate": {
+                    "opacity": {
+                      "keyframes": [
+                        {
+                          "offset": 0,
+                          "value": 1
+                        },
+                        {
+                          "offset": 0,
+                          "value": 0
+                        },
+                        {
+                          "offset": 1,
+                          "value": 1
+                        }
+                      ],
+                      "duration": 350,
+                      "delay": "{{ 300 + li * 60 }}"
+                    }
+                  }
+                }
+              ]
             }
-          ],
-          "if": "{{ github.languages[0] }}"
+          ]
         },
         {
-          "type": "text",
-          "x": 40,
-          "y": 314,
-          "content": "Nothing to show yet.",
-          "font": "mono",
-          "fontSize": 13,
-          "fill": "{{ props.theme == \"dark\" ? \"#9a948a\" : \"#6b645a\" }}",
-          "if": "{{ !github.languages[0] }}"
+          "type": "group",
+          "repeat": {
+            "each": "{{ props.labels }}",
+            "as": "label",
+            "index": "ci"
+          },
+          "if": "{{ ci < 4 }}",
+          "children": [
+            {
+              "type": "rect",
+              "x": "{{ (ci + 1) * 168 }}",
+              "y": 48,
+              "width": 1,
+              "height": 136,
+              "fill": "{{ props.theme == \"dark\" ? \"#2A2C30\" : \"#E2E2E2\" }}"
+            },
+            {
+              "type": "group",
+              "x": "{{ (ci + 1) * 168 + 16 }}",
+              "y": 48,
+              "width": 148,
+              "height": 140,
+              "clip": true,
+              "children": [
+                {
+                  "type": "group",
+                  "x": "{{ 0 - ((ci + 1) * 168 + 16) }}",
+                  "y": -48,
+                  "children": [
+                    {
+                      "type": "text",
+                      "x": "{{ (ci + 1) * 168 + 16 }}",
+                      "y": 53.495,
+                      "content": "{{ label | lower | truncate(20) }}",
+                      "font": "mono",
+                      "fontSize": 11,
+                      "fill": "{{ props.theme == \"dark\" ? \"#948F88\" : \"#6E6E6E\" }}"
+                    },
+                    {
+                      "type": "group",
+                      "animate": {
+                        "opacity": {
+                          "keyframes": [
+                            {
+                              "offset": 0,
+                              "value": 1
+                            },
+                            {
+                              "offset": 0,
+                              "value": 0
+                            },
+                            {
+                              "offset": 1,
+                              "value": 0
+                            },
+                            {
+                              "offset": 1,
+                              "value": 1
+                            }
+                          ],
+                          "duration": "{{ 420 + ci * 120 + 1 }}"
+                        }
+                      },
+                      "children": [
+                        {
+                          "type": "text",
+                          "x": "{{ (ci + 1) * 168 + 16 }}",
+                          "y": 75.49,
+                          "content": "{{ props.items[ci] | default(\"\") }}",
+                          "font": "sc",
+                          "fontSize": 15,
+                          "lineHeight": 1.5333,
+                          "fill": "{{ props.theme == \"dark\" ? \"#F0EEEA\" : \"#141414\" }}",
+                          "animate": {
+                            "opacity": {
+                              "keyframes": [
+                                {
+                                  "offset": 0,
+                                  "value": 1
+                                },
+                                {
+                                  "offset": 0,
+                                  "value": 0
+                                },
+                                {
+                                  "offset": 1,
+                                  "value": 1
+                                }
+                              ],
+                              "duration": 350,
+                              "delay": "{{ 420 + ci * 120 }}"
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
         }
       ]
     }
