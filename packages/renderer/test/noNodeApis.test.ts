@@ -6,6 +6,8 @@ import { describe, expect, test } from "vitest";
 const packagesDir = join(import.meta.dirname, "..", "..");
 // expr is part of the render path: the renderer evaluates every binding with it.
 const shared = ["renderer", "fonts", "expr"];
+// Pure ECMAScript npm code the fonts package decodes and encodes with (WOFF zlib, WOFF2 Brotli).
+const allowedPackages = ["fflate", "brotli/decompress.js"];
 
 function sources(name: string): { file: string; code: string }[] {
   const dir = join(packagesDir, name, "src");
@@ -50,6 +52,7 @@ describe("shared renderer code uses only ECMAScript", () => {
           const specifier = match[1] ?? "";
           expect(
             specifier.startsWith("./") ||
+              allowedPackages.includes(specifier) ||
               specifier === "@readmint/format" ||
               specifier === "@readmint/fonts" ||
               specifier === "@readmint/expr",
