@@ -164,9 +164,36 @@ describe("TextShaper with canonically equivalent text", () => {
   const builtFonts: Record<string, FontAsset> = {
     d: { family: "Built", src: "d.ttf", licence: { embedding: "allowed" }, fallback: ["m"] },
     p: { family: "Built", src: "p.ttf", licence: { embedding: "allowed" }, fallback: ["m"] },
+    e: { family: "Built", src: "e.ttf", licence: { embedding: "allowed" }, fallback: ["m"] },
+    k: { family: "Built", src: "k.ttf", licence: { embedding: "allowed" } },
+    j: { family: "Built", src: "j.ttf", licence: { embedding: "allowed" } },
+    s: { family: "Built", src: "s.ttf", licence: { embedding: "allowed" } },
     m: fontAssets.medium,
   };
-  const assets = { fonts: { d: decomposedOnly, p: precomposedOnly } };
+  const assets = {
+    fonts: {
+      d: decomposedOnly,
+      p: precomposedOnly,
+      e: built(0x63, 0x65),
+      k: built(0xac01),
+      j: built(0xac00, 0xac01),
+      s: built(0x56, 0x69, 0x74, 0x1ec7),
+    },
+  };
+
+  function renderBuilt(asset: string, content: string) {
+    const result = renderSvg(
+      {
+        version: 0,
+        canvas: { width: 200, height: 60 },
+        assets: { fonts: builtFonts },
+        layers: [{ type: "text", content, font: asset }],
+      },
+      { assets },
+    );
+    if (!result.ok) throw new Error(JSON.stringify(result.issues));
+    return result;
+  }
 
   function builtLine(asset: string, text: string) {
     const context = new RenderContext(
@@ -217,5 +244,34 @@ describe("TextShaper with canonically equivalent text", () => {
       ["p", 0xe9, true],
     ]);
     expect(drawn.glyphs[1]?.text).toBe("e\u0301");
+  });
+
+  test("every spelling of a cluster renders to the same SVG, without missing glyphs", () => {
+    const cases: [string, string[]][] = [
+      // Only e: the whole cluster takes the fallback that has it, for both spellings.
+      ["e", ["c\u00e9", "ce\u0301"]],
+      // Only the syllable U+AC01: neither U+AC00 nor conjoining jamo.
+      ["k", ["\uac01", "\u1100\u1161\u11a8", "\uac00\u11a8"]],
+      // Syllables, no conjoining jamo.
+      ["j", ["\uac01", "\u1100\u1161\u11a8"]],
+      // A subset with U+1EC7 but neither U+00EA, U+1EB9 nor the marks.
+      ["s", ["Vi\u1ec7t", "Vie\u0323\u0302t", "Vie\u0302\u0323t", "Vi\u1eb9\u0302t"]],
+    ];
+    for (const [asset, spellings] of cases) {
+      const results = spellings.map((content) => renderBuilt(asset, content));
+      for (const result of results) {
+        expect(result.warnings).toEqual([]);
+        expect(result.svg).toBe(results[0]?.svg);
+      }
+    }
+    const { line: korean } = builtLine("j", "\u1100\u1161\u11a8");
+    expect(korean.glyphs.map((glyph) => [glyph.font?.asset, glyph.codePoint, glyph.plain])).toEqual(
+      [["j", 0xac01, true]],
+    );
+    const { line: fallback } = builtLine("e", "ce\u0301");
+    expect(fallback.glyphs.map((glyph) => [glyph.font?.asset, glyph.codePoint])).toEqual([
+      ["e", 0x63],
+      ["m", 0xe9],
+    ]);
   });
 });

@@ -100,17 +100,20 @@ Drawn in document order, first at the back. Layer `id` and `name` are not emitte
 - **Every glyph is placed by the renderer**, which shapes text itself (`shapeText` of `@readmint/fonts`, the same
   TypeScript in Node and browsers, no WebAssembly):
   - **Clusters and fallback**: the text is split into character clusters (a base with its marks, joiners, variation
-    selectors and other default ignorables; a Devanagari conjunct; the conjoining jamo of a Hangul syllable; an emoji
-    ZWJ sequence). A cluster's base takes the first of the text's font and its `fallback` fonts that has it as
-    normalized for that font (below: a font with `e` and U+0301 has U+00E9); the whole cluster stays in that font when
-    the font has all of it so normalized, else a mark, joiner or variation selector stays in its base's font when that
-    font has it and takes its own fallback otherwise (and then cannot attach to the base).
+    selectors and other default ignorables; a Devanagari conjunct; the conjoining jamo of a Hangul syllable; letters
+    that compose canonically, such as Kirat Rai vowel signs; an emoji ZWJ sequence). A cluster takes the first of the
+    text's font and its `fallback` fonts that has all of it as normalized for that font (below: a font with `e` and
+    U+0301 has U+00E9, one with only U+AC01 has its conjoining jamo). When none has all of it, its base takes the first
+    font that has the base, and a mark, joiner or variation selector stays in its base's font when that font has it
+    and takes its own fallback otherwise (and then cannot attach to the base).
   - **Normalization**: before its characters become glyphs, each cluster is normalized against the font's `cmap`, as
     HarfBuzz does: fully decomposed by the canonical decompositions of Unicode 16.0.0 (a singleton such as U+212B
     ANGSTROM SIGN or a CJK compatibility ideograph is kept when the font has it), its marks stably sorted by combining
     class (in HarfBuzz's modified order: Arabic shadda before the vowel marks, Hebrew points in SBL order; a run of
     more than 32 marks stays as written), then recomposed by Unicode canonical composition (composition exclusions and
-    blocking honoured) only into characters the font has. So `e` U+0301, U+00E9 and any other canonically equivalent
+    blocking honoured): when the font has every character of the fully composed cluster (its NFC), that is drawn, so
+    a precomposed character the font has is kept even without the composites on the way to it (U+1EC7 without
+    U+1EB9, U+AC01 without U+AC00); otherwise a pair composes only into a character the font has. So `e` U+0301, U+00E9 and any other canonically equivalent
     spelling (marks in either order) draw the same glyphs and give the same SVG bytes in a font with either form; the
     tables are the package's own, never `String.prototype.normalize` or `Intl`. Compatibility forms (NFKC) are not
     folded.

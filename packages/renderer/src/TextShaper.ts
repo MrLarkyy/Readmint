@@ -92,7 +92,8 @@ export class TextShaper {
   /** Widths of the strings measured for wrapping (words repeat): at most one entry per word of the text. */
   private readonly widths = new Map<string, number>();
   private readonly shapedRuns = new Map<string, ShapedRun>();
-  private readonly fontOf = new Map<number, number>();
+  /** The font covering each cluster text (`fontCovering`), a single character included. */
+  private readonly fontOf = new Map<string, number>();
   /** Cluster texts as each font maps them, keyed by font index and text. */
   private readonly normalized = new Map<string, string>();
   private readonly fallbacks = new Map<number, LoadedFont>();
@@ -234,9 +235,9 @@ export class TextShaper {
   }
 
   /**
-   * The font of every UTF-16 unit of [start, end): a cluster's base picks the first font that has it; the whole
-   * cluster stays in that font when the font covers it as shaping maps it, else each further character stays in that
-   * font when it has the character (or the character is ignorable) and takes its own otherwise.
+   * The font of every UTF-16 unit of [start, end): a cluster takes the first font that covers all of it as shaping maps
+   * it; when none does, its base takes the first font that has it and each further character stays in that font when
+   * it has the character (or the character is ignorable) and takes its own otherwise.
    */
   private clusterFonts(paragraph: string, start: number, end: number): number[] {
     const fonts = new Array<number>(end - start).fill(missing);
@@ -244,11 +245,12 @@ export class TextShaper {
     const starts = clusterStarts(text);
     starts.forEach((from, at) => {
       const to = starts[at + 1] ?? text.length;
-      const base = this.fontFor(text.codePointAt(from) ?? 0);
-      if (base !== missing && covers(this.font(base).font, text.slice(from, to))) {
-        fonts.fill(base, from, to);
+      const whole = this.fontCovering(text.slice(from, to));
+      if (whole !== missing) {
+        fonts.fill(whole, from, to);
         return;
       }
+      const base = this.fontFor(text.codePointAt(from) ?? 0);
       for (let index = from; index < to; index++) {
         const codePoint = text.codePointAt(index) ?? 0;
         let font: number;
@@ -274,14 +276,18 @@ export class TextShaper {
 
   /** The first font (primary, then fallbacks) that covers the character; `missing` when none does. */
   private fontFor(codePoint: number): number {
-    let found = this.fontOf.get(codePoint);
+    return this.fontCovering(String.fromCodePoint(codePoint));
+  }
+
+  /** The first font (primary, then fallbacks) that covers a cluster's text; `missing` when none does. */
+  private fontCovering(text: string): number {
+    let found = this.fontOf.get(text);
     if (found === undefined) {
       found = missing;
-      const char = String.fromCodePoint(codePoint);
       for (let index = 0; found === missing && index <= this.fallbackIds.length; index++) {
-        if (covers(this.font(index).font, char)) found = index;
+        if (covers(this.font(index).font, text)) found = index;
       }
-      this.fontOf.set(codePoint, found);
+      this.fontOf.set(text, found);
     }
     return found;
   }
