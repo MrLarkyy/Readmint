@@ -223,8 +223,11 @@ and `pinscreen` "no pushes yet" and "no commits yet"; the sections that do not r
 - **Square root without a filter.** The expression language has no square root: heights use chords of the square root
   through 0, 1, 4, 16 and 64 (clamped at 64 a day; a chord is at most 6 % below the root).
 - **Text without measuring.** Geist Mono advances 0.6 em, so a token of the Pinscreen editor sits at `columns x 8.4`
-  pixels; free text is cut with `truncate` and held in a `clip` group. Keep every clip group inside the canvas: resvg-js
-  2.6.2 aborts the process on a clip group whose box lies wholly outside it.
+  pixels; free text is cut with `truncate` and held in a `clip` group. A clip group (or other layer of its own) lying
+  wholly off the canvas draws nothing there; the renderer leaves it out ([renderer.md](renderer.md#layers)), so such a
+  design still renders and rasterizes. A few far layers are still written (very large text or a very wide stroke just
+  past the canvas, a turned group far from its centre); raster export of those refuses with `raster-image`, so keep
+  layers on the canvas.
 
 ### Bytes per section
 
