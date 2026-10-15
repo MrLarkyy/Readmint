@@ -16,9 +16,13 @@ export const montserrat = {
   woff2: load("Montserrat-Medium.woff2"),
 };
 
-/** Noto Naskh Arabic 2.021 and Noto Sans Devanagari 2.007, subsets with every layout table; see the fonts README. */
+/**
+ * Noto Naskh Arabic 2.021 (`arabicMarks` adds U+0653-U+0658 and the modifier marks) and Noto Sans Devanagari 2.007,
+ * subsets with every layout table; see the fonts README.
+ */
 export const noto = {
   arabic: load("NotoNaskhArabic-Regular.ttf"),
+  arabicMarks: load("NotoNaskhArabic-Marks.ttf"),
   devanagari: load("NotoSansDevanagari-Regular.ttf"),
 };
 

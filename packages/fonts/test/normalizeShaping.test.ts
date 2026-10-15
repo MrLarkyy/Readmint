@@ -1,7 +1,7 @@
 import { expect, test } from "vitest";
 import { normalizeForFont, shapeText, type SfntFont } from "../src/index.js";
 import { buildTestFont } from "./buildTestFont.js";
-import { parse } from "./testFonts.js";
+import { noto, parse } from "./testFonts.js";
 
 const square = [
   [
@@ -92,4 +92,38 @@ test("a font with only the precomposed syllable draws it for every spelling", ()
     expect(run.glyphs).toEqual([syllable.glyphFor(0xac01)]);
     expect(run.clusters).toEqual([0]);
   }
+});
+
+test("Arabic modifier marks shape nearest the base for every equivalent spelling", () => {
+  const naskh = parse(noto.arabicMarks);
+  const [hamza, fatha] = [0x654, 0x64e].map((codePoint) => naskh.glyphFor(codePoint));
+  expect([hamza, fatha]).not.toContain(0);
+  for (const [text, twin] of [
+    ["\u0628\u064e\u0654", "\u0628\u0654\u064e"],
+    ["\u0627\u0654\u0653", "\u0623\u0653"],
+    ["\u0627\u0653\u0654", "\u0622\u0654"],
+  ] as const) {
+    const run = shapeText(naskh, text, { rtl: true });
+    const other = shapeText(naskh, twin, { rtl: true });
+    expect(other.glyphs).toEqual(run.glyphs);
+    expect(other.advances).toEqual(run.advances);
+    expect(other.xOffsets).toEqual(run.xOffsets);
+    expect(other.yOffsets).toEqual(run.yOffsets);
+    expect(other.glyphs).not.toContain(0);
+  }
+  const glyphs = shapeText(naskh, "\u0628\u064e\u0654").glyphs;
+  expect(glyphs.indexOf(hamza ?? 0)).toBeGreaterThan(0);
+  expect(glyphs.indexOf(hamza ?? 0)).toBeLessThan(glyphs.indexOf(fatha ?? 0));
+  expect(normalizeForFont(naskh, "\u0628\u064e\u0654")).toBe("\u0628\u0654\u064e");
+  expect(normalizeForFont(naskh, "\u0627\u0654\u0653")).toBe("\u0623\u0653");
+  expect(normalizeForFont(naskh, "\u0627\u0653\u0654")).toBe("\u0622\u0654");
+});
+
+test("marks on a tatweel in an Arabic run move like those on a letter", () => {
+  const naskh = parse(noto.arabicMarks);
+  const [hamza, fatha] = [0x654, 0x64e].map((codePoint) => naskh.glyphFor(codePoint));
+  const glyphs = shapeText(naskh, String.fromCodePoint(0x628, 0x640, 0x64e, 0x654)).glyphs;
+  expect(glyphs).not.toContain(0);
+  expect(glyphs.indexOf(hamza ?? 0)).toBeGreaterThan(0);
+  expect(glyphs.indexOf(hamza ?? 0)).toBeLessThan(glyphs.indexOf(fatha ?? 0));
 });

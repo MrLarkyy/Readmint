@@ -15,6 +15,7 @@ import montserratMediumOtf from "./fonts/Montserrat-Medium.otf?inline";
 import montserratMedium from "./fonts/Montserrat-Medium.ttf?inline";
 import montserratMediumWoff from "./fonts/Montserrat-Medium.woff?inline";
 import montserratMediumWoff2 from "./fonts/Montserrat-Medium.woff2?inline";
+import notoNaskhArabicMarks from "./fonts/NotoNaskhArabic-Marks.ttf?inline";
 import notoNaskhArabic from "./fonts/NotoNaskhArabic-Regular.ttf?inline";
 import notoSansDevanagari from "./fonts/NotoSansDevanagari-Regular.ttf?inline";
 import readmintTestSymbols from "./fonts/ReadmintTestSymbols.ttf?inline";
@@ -23,8 +24,9 @@ const ofl = { embedding: "allowed", name: "OFL-1.1" } as const;
 
 /**
  * Montserrat (OFL-1.1, fsType 0, typographic family "Montserrat"): 8.000 as TTF, 7.222 as OTF, WOFF and WOFF2;
- * Readmint Test Symbols (OFL-1.1, made in this repository); subsets of Noto Naskh Arabic 2.021 and Noto Sans
- * Devanagari 2.007 (OFL-1.1, fsType 0) with every layout table. See fonts/README.md.
+ * Readmint Test Symbols (OFL-1.1, made in this repository); subsets of Noto Naskh Arabic 2.021 (two: the second
+ * adds the maddah, hamza and modifier marks) and Noto Sans Devanagari 2.007 (OFL-1.1, fsType 0) with every layout
+ * table. See fonts/README.md.
  */
 export const fontAssets = {
   medium: { family: "Montserrat", src: montserratMedium, weight: 500, licence: ofl },
@@ -38,6 +40,7 @@ export const fontAssets = {
     licence: ofl,
   },
   naskh: { family: "Noto Naskh Arabic", src: notoNaskhArabic, weight: 400, licence: ofl },
+  naskhMarks: { family: "Noto Naskh Arabic", src: notoNaskhArabicMarks, weight: 400, licence: ofl },
   devanagari: {
     family: "Noto Sans Devanagari",
     src: notoSansDevanagari,

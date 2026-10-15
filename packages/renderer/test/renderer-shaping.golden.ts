@@ -15,6 +15,19 @@ function text(content: string, font: string, extra: Partial<Layer> = {}): Layer 
 const arabicWord = "\u0627\u0644\u0639\u0631\u0628\u064a\u0629";
 
 /**
+ * U+0628 U+064E U+0654, U+0628 U+0650 U+0655, U+0627 U+0653 U+0654 (beh fatha hamza above, beh kasra hamza below,
+ * alef maddah hamza above): the hamzas, modifier marks, stack nearest the beh before the fatha and the kasra (UAX #53);
+ * behind the maddah that leads the class 230 marks, the hamza stays on top (U+0622 U+0654).
+ */
+export const arabicModifierMarks = "\u0628\u064e\u0654 \u0628\u0650\u0655 \u0627\u0653\u0654";
+
+/** Spellings canonically equivalent to `arabicModifierMarks`, the marks of different classes in other orders. */
+export const arabicModifierMarkSpellings = [
+  "\u0628\u0654\u064e \u0628\u0655\u0650 \u0622\u0654",
+  "\u0628\u064e\u0654 \u0628\u0655\u0650 \u0627\u0653\u0654",
+];
+
+/**
  * Texts written decomposed (one Vietnamese mark pair out of canonical order) and the same texts precomposed: each
  * decomposed pair must render to exactly the SVG of its precomposed twin.
  */
@@ -57,6 +70,12 @@ export const shapingPairs: readonly FontPair[] = [
     height: 70,
     // U+0628 U+0650 U+0633 U+0652 U+0645 U+0650: beh kasra, seen sukun, meem kasra.
     layers: [text("\u0628\u0650\u0633\u0652\u0645\u0650", "naskh", { fontSize: 32 })],
+  },
+  {
+    name: "arabic-modifier-marks",
+    fonts: { naskhMarks: fontAssets.naskhMarks },
+    height: 70,
+    layers: [text(arabicModifierMarks, "naskhMarks", { fontSize: 32 })],
   },
   {
     name: "arabic-lam-alef",

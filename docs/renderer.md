@@ -122,8 +122,14 @@ Drawn in document order, first at the back. Layer `id` and `name` are not emitte
     HarfBuzz does: fully decomposed by the canonical decompositions of Unicode 16.0.0 (a singleton such as U+212B
     ANGSTROM SIGN or a CJK compatibility ideograph is kept when the font has it), its marks stably sorted by combining
     class (in HarfBuzz's modified order: Arabic shadda before the vowel marks, Hebrew points in SBL order; a run of
-    more than 32 marks stays as written), then recomposed by Unicode canonical composition (composition exclusions and
-    blocking honoured): when the font has every character of the fully composed cluster (its NFC), that is drawn, so
+    more than 32 marks stays as written); in a cluster of Arabic script (its first letter that is not Common or
+    Inherited; a cluster without one, such as marks on a tatweel U+0640 or a dotted circle, takes its run's), the modifier combining marks of UAX #53 (U+0654, U+0655, U+0658, U+06DC, U+06E3, U+06E7, U+06E8,
+    U+08CA-U+08CB, U+08CD-U+08CF, U+08D3, U+08F3) that lead the marks of their class (220, then 230) then move to the
+    start of the run, as HarfBuzz does, so they stack nearest the base, before the vowel marks; a modifier behind
+    another mark of its class keeps its place (U+0627 U+0653 U+0654 keeps hamza on top of maddah: U+0622 U+0654).
+    Then the cluster is recomposed by Unicode canonical composition (composition exclusions and blocking honoured; a
+    moved mark keeps its class and blocks every later mark of its class or lower, so U+0627 U+0654 U+0653 and
+    U+0627 U+064E U+0654 U+0653 in a font without U+0623 keep their maddah apart from the alef): when the font has every character of the fully composed cluster (its NFC), that is drawn, so
     a precomposed character the font has is kept even without the composites on the way to it (U+1EC7 without
     U+1EB9, U+AC01 without U+AC00); otherwise a pair composes only into a character the font has. So `e` U+0301, U+00E9 and any other canonically equivalent
     spelling (marks in either order) draw the same glyphs and give the same SVG bytes in a font with either form; the
@@ -184,8 +190,9 @@ Drawn in document order, first at the back. Layer `id` and `name` are not emitte
   Thai, Bengali, Tamil, Khmer, Myanmar, the scripts HarfBuzz's USE shaper handles, ...) gets the font's GSUB and GPOS
   features through the default shaper, without syllable reordering. Only the default language system is used (no
   design field names a language, so Urdu or Marathi forms are not chosen). Normalization is canonical only (no NFKC),
-  leaves a run of more than 32 marks unsorted and does not reorder Arabic modifier marks (U+0654, U+0655, ...) as
-  HarfBuzz does; a character missing from the font is not replaced by a similar one, except the space variants and
+  leaves a run of more than 32 marks unsorted (and its Arabic modifier marks unmoved), moves modifier marks only in
+  clusters of Arabic script (not on a Latin letter, nor on a tatweel or U+25CC in a run of another script) and reorders no other script's marks beyond
+  the modified classes; a character missing from the font is not replaced by a similar one, except the space variants and
   U+2011 (Text, Space and hyphen fallbacks). No vertical text, no variable-font axes,
   no fallback shaping for fonts without layout tables (Arabic presentation forms). Characters of one word in different
   fonts do not join or attach across the font change.
@@ -325,7 +332,9 @@ budget?, maxBytes? })`, `encodeWoff`, `decodeWoff`, `glyphClosure`, `OutlineBudg
   U+FB2A) are drawn from their base and nukta or point by the font's own features, not from the font's precomposed
   glyph. Since RM-60, a space variant (U+00A0, U+2000-U+200A, U+202F, U+205F, U+3000) or U+2011 a font lacks is drawn
   from the font's own space or hyphen glyph, no longer reported as `missing-glyph` or taken from a `fallback` font:
-  a primary without U+2009 but with a fallback that has it now draws its own space at 1/5 em.
+  a primary without U+2009 but with a fallback that has it now draws its own space at 1/5 em. Since RM-59, Arabic text
+  with modifier marks (U+0654, U+0655, U+0658, U+06DC, ...) stacks them nearest the base, before the vowel marks
+  (U+0628 U+064E U+0654 draws the hamza under the fatha), so such text can draw differently.
 - **Dependencies**: `fflate` 0.8.3 (MIT; zlib inflate for WOFF input, deflate for the subsets) and `brotli` 1.3.3
   (MIT, its decoder a port of Google's Apache-2.0 decoder; only `brotli/decompress.js`, for WOFF2 input) with `base64-js`
   1.5.1 (MIT). Both are pure ECMAScript and run the same in Node and browsers. In the Action bundle they add about

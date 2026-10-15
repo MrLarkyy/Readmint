@@ -135,8 +135,13 @@ test("normalization takes at most 70 steps per code point, the same on every cal
   ];
   const dialytika = new Array<number>(100_000).fill(0x344);
   const syllables = Array.from({ length: 50_000 }, (_, index) => 0xac01 + (index % 11_000));
+  // Arabic clusters of beh and 31 marks, half of them modifier marks: sorted and moved every time.
+  const arabicMarks = [0x64e, 0x654, 0x650, 0x655];
+  const arabic = Array.from({ length: 96_000 }, (_, index) =>
+    index % 32 === 0 ? 0x628 : (arabicMarks[index % 4] ?? 0),
+  );
   const everything = () => true;
-  for (const source of [alternating, dialytika, syllables]) {
+  for (const source of [alternating, dialytika, syllables, arabic]) {
     for (const clusters of [new Array<number>(source.length).fill(0), source.map((_, i) => i)]) {
       const first = normalizeCharacters(source, clusters, everything);
       expect(first.steps).toBeLessThanOrEqual(70 * source.length);

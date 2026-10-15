@@ -24,7 +24,7 @@ const zwj = 0x200d;
 
 /**
  * Shapes one run of text in one font (OpenType layout as HarfBuzz does it): characters normalized against the font's
- * cmap per cluster (`normalizeCharacters`: canonically decomposed, marks ordered, recomposed into what the font maps,
+ * cmap per cluster (`normalizeCharacters`: canonically decomposed, marks ordered (Arabic modifier marks first), recomposed into what the font maps,
  * so canonically equivalent texts shape alike), to glyphs through the cmap (a space variant the font lacks takes the U+0020 glyph with the HarfBuzz fallback advance, U+2011 the U+2010 or U+002D glyph; mirrored in a right-to-left run), the script's shaper (Arabic joining, Devanagari syllables and reordering, or the
  * default), GSUB lookups stage by stage, default ignorables removed, advances, GPOS lookups (or the legacy kern
  * table), mark advances zeroed and attachments resolved. Pure and deterministic: integer font units, no clock,
@@ -43,13 +43,14 @@ export function shapeTextCounted(
   const layout = FontLayout.of(font);
   const rtl = options.rtl ?? false;
   const kerning = options.kerning ?? true;
+  const script = options.script ?? firstScript(text);
   const plan = layout.plan({
-    script: options.script ?? firstScript(text),
+    script,
     rtl,
     kerning,
     ligatures: options.ligatures ?? true,
   });
-  const characters = decode(font, text, plan, rtl);
+  const characters = decode(font, text, plan, script, rtl);
   const budget = options.budget ?? ShapingBudget.forText(text.length);
   const buffer = new GlyphBuffer(characters, budget, maxBufferLength(characters.length));
   const state: ShapingState = { font, layout, plan, buffer };
@@ -77,11 +78,19 @@ function firstScript(text: string): ScriptCode {
 
 /**
  * One glyph per normalized character, its cluster the start of its character cluster (`clusterStarts`: a base with
- * its marks and joiners), as HarfBuzz forms grapheme clusters and normalizes them before shaping.
+ * its marks and joiners), as HarfBuzz forms grapheme clusters and normalizes them before shaping. A cluster without a
+ * script of its own (marks on a tatweel or a dotted circle) is normalized as the run's script.
  */
-function decode(font: SfntFont, text: string, plan: ShapePlan, rtl: boolean): GlyphInfo[] {
+function decode(
+  font: SfntFont,
+  text: string,
+  plan: ShapePlan,
+  script: ScriptCode,
+  rtl: boolean,
+): GlyphInfo[] {
   const characters: GlyphInfo[] = [];
-  const normalized = normalizeText(text, (codePoint) => font.glyphFor(codePoint) !== 0);
+  const maps = (codePoint: number) => font.glyphFor(codePoint) !== 0;
+  const normalized = normalizeText(text, maps, "font", script);
   normalized.codePoints.forEach((codePoint, index) => {
     const info = glyphInfo(
       glyphForCharacter(font, codePoint),
