@@ -1,6 +1,7 @@
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+// Reached through the workspace alias, not a dependency: no browser-side package may list the CLI.
 import { ExitCode, runCli } from "@readmint/cli";
 import { afterEach, beforeEach, expect, test } from "vitest";
 import { exportDesign, importDesign, renderPreview } from "../src/index.js";

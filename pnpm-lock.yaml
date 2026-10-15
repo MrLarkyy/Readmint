@@ -108,9 +108,6 @@ importers:
         specifier: workspace:*
         version: link:../renderer
     devDependencies:
-      '@readmint/cli':
-        specifier: workspace:*
-        version: link:../cli
       '@readmint/golden':
         specifier: workspace:*
         version: link:../golden

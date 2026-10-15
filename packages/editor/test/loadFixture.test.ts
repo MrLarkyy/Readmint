@@ -1,3 +1,4 @@
+// Reached through the workspace alias, not a dependency: no browser-side package may list the CLI.
 import { maxFixtureBytes } from "@readmint/cli";
 import { expect, test } from "vitest";
 import { createEditorState, EditorLimits, loadFixture, newDesign } from "../src/index.js";
