@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { renderSvg } from "@readmint/renderer";
 import { describe, expect, test } from "vitest";
 import { profileTemplates } from "../../components/src/index.js";
-import { stripFontData } from "../../components/test/profileDesigns.js";
+import { stripFontData } from "../../components/test/stripFontData.js";
 import { sampleProfileData } from "../../components/test/sampleProfileData.js";
 import { loadDesignAssets, loadDesignFile } from "../src/index.js";
 

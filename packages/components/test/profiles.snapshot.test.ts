@@ -1,6 +1,7 @@
 import { expect, test } from "vitest";
 import { profileTemplates, type ProfileTemplate } from "../src/index.js";
-import { loadProfile, renderProfile, stripFontData, type ProfileTheme } from "./profileDesigns.js";
+import { loadProfile, renderProfile, type ProfileTheme } from "./profileDesigns.js";
+import { stripFontData } from "./stripFontData.js";
 import { sampleProfileData } from "./sampleProfileData.js";
 
 const themes: readonly ProfileTheme[] = ["light", "dark"];
