@@ -115,7 +115,7 @@ export const maximalDesign = {
         src: "fonts/body.otf",
         weight: 400,
         style: "italic",
-        licence: { embedding: "allowed", name: "OFL-1.1" },
+        licence: { embedding: "allowed", name: "OFL-1.1", reservedFontName: false },
         drawAs: "paths",
         fallback: ["symbols"],
         kerning: false,
