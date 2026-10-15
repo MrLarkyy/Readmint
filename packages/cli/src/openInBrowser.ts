@@ -1,12 +1,18 @@
 import { spawn as nodeSpawn } from "node:child_process";
+import path from "node:path";
+import { previewSecretLength } from "./previewSecret.js";
 
 export interface OpenInBrowserOptions {
   readonly platform?: NodeJS.Platform;
   readonly spawn?: typeof nodeSpawn;
+  /** Where `SystemRoot` is read from (Windows opener path); `process.env` when absent. */
+  readonly env?: Readonly<Record<string, string | undefined>>;
 }
 
 /** The only shapes `preview` prints: plain, and under the 43-character session secret. */
-const previewAddress = /^http:\/\/127\.0\.0\.1:\d{1,5}\/(?:[A-Za-z0-9_-]{43}\/)?$/;
+const previewAddress = new RegExp(
+  `^http://127\.0\.0\.1:\d{1,5}/(?:[A-Za-z0-9_-]{${String(previewSecretLength)}}/)?$`,
+);
 
 /**
  * Hands a preview address to the default browser: no shell, detached, output ignored, the address one argument.
@@ -17,7 +23,7 @@ export function openInBrowser(url: string, options: OpenInBrowserOptions = {}): 
   if (!previewAddress.test(url)) return Promise.reject(new Error("not a preview address"));
   const platform = options.platform ?? process.platform;
   const spawn = options.spawn ?? nodeSpawn;
-  const [command, args] = opener(platform, url);
+  const [command, args] = opener(platform, url, options.env ?? process.env);
   return new Promise((resolve, reject) => {
     const child = spawn(command, args, {
       detached: true,
@@ -38,8 +44,19 @@ export function openInBrowser(url: string, options: OpenInBrowserOptions = {}): 
   });
 }
 
-function opener(platform: NodeJS.Platform, url: string): readonly [string, readonly string[]] {
-  if (platform === "win32") return ["rundll32.exe", ["url.dll,FileProtocolHandler", url]];
+/** By full path: Windows searches the current directory first, where a downloaded repository could plant a program. */
+export function rundll32Path(env: Readonly<Record<string, string | undefined>>): string {
+  const root = env["SystemRoot"];
+  const base = root !== undefined && path.win32.isAbsolute(root) ? root : "C:\Windows";
+  return path.win32.join(base, "System32", "rundll32.exe");
+}
+
+function opener(
+  platform: NodeJS.Platform,
+  url: string,
+  env: Readonly<Record<string, string | undefined>>,
+): readonly [string, readonly string[]] {
+  if (platform === "win32") return [rundll32Path(env), ["url.dll,FileProtocolHandler", url]];
   if (platform === "darwin") return ["open", [url]];
   return ["xdg-open", [url]];
 }

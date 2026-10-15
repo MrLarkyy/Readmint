@@ -131,7 +131,9 @@ async function renderUpdate(
 async function openAddress(address: string, io: CliIo): Promise<void> {
   if (io.signal?.aborted === true) return;
   try {
-    await (io.openUrl ?? openInBrowser)(address);
+    await (
+      io.openUrl ?? ((url) => openInBrowser(url, io.env === undefined ? {} : { env: io.env }))
+    )(address);
   } catch (error) {
     const code = errnoCode(error);
     const suffix = code !== undefined && /^[A-Z][A-Z0-9_]{1,31}$/.test(code) ? ` (${code})` : "";

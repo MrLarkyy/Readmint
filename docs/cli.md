@@ -187,9 +187,11 @@ The preview is for this computer only:
   the printed address into the browser instead of using `--open`.
 
 Without `--open` nothing is opened. With it the address opens in the default browser right after it is printed. If the
-opener cannot start (no desktop session, no `xdg-open`), the preview prints `preview: cannot open a browser; open the
+opener itself cannot be started (for example no `xdg-open`), the preview prints `preview: cannot open a browser; open the
 address above` (with the system error code in parentheses when there is one), keeps serving, and the exit code is
-unchanged. The opener's own output is discarded, and an opener that hangs does not delay Ctrl+C.
+unchanged. An opener that starts but then fails (no desktop session, no browser) is not detected: copy the printed
+address. On Windows the opener is started by its full path under `SystemRoot` (default `C:\Windows`), never found
+through the current folder. The opener's own output is discarded, and an opener that hangs does not delay Ctrl+C.
 
 A port in use, or one the system refuses, is exit code 3.
 

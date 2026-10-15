@@ -1,10 +1,12 @@
 import type { spawn } from "node:child_process";
 import { EventEmitter } from "node:events";
 import { expect, test, vi } from "vitest";
+import { previewSecret } from "../src/previewSecret.js";
 import { openInBrowser } from "../src/openInBrowser.js";
 
 const address = "http://127.0.0.1:4870/";
-const secretAddress = `http://127.0.0.1:4870/${"a".repeat(43)}/`;
+const secret = previewSecret();
+const secretAddress = `http://127.0.0.1:4870/${secret}/`;
 
 function stub() {
   const child = Object.assign(new EventEmitter(), { unref: vi.fn() });
@@ -17,7 +19,7 @@ function stub() {
 }
 
 test.each([
-  ["win32", "rundll32.exe", ["url.dll,FileProtocolHandler", address]],
+  ["win32", "C:\Windows\System32\rundll32.exe", ["url.dll,FileProtocolHandler", address]],
   ["darwin", "open", [address]],
   ["linux", "xdg-open", [address]],
 ] as const)(
@@ -54,7 +56,7 @@ test("a start failure rejects with the code and without the address", async () =
   );
   const error = (await opened.catch((caught: unknown) => caught)) as Error & { code?: string };
   expect(error.code).toBe("ENOENT");
-  expect(JSON.stringify(error) + error.message).not.toContain("aaaa");
+  expect(JSON.stringify(error) + error.message).not.toContain(secret);
 });
 
 test.each(["file:///x", "-a x", "http://evil.example/", "http://127.0.0.1:1/x/", `${address} `])(
@@ -65,3 +67,16 @@ test.each(["file:///x", "-a x", "http://evil.example/", "http://127.0.0.1:1/x/",
     expect(calls).toEqual([]);
   },
 );
+
+test.each([
+  [{ SystemRoot: "D:\WinNT" }, "D:\WinNT\System32\rundll32.exe"],
+  [{ SystemRoot: "relative" }, "C:\Windows\System32\rundll32.exe"],
+  [{ SystemRoot: ".\x" }, "C:\Windows\System32\rundll32.exe"],
+  [{}, "C:\Windows\System32\rundll32.exe"],
+])("the Windows opener is the full path for %o", async (env, expected) => {
+  const { child, calls, fake } = stub();
+  const opened = openInBrowser(address, { platform: "win32", spawn: fake, env });
+  child.emit("spawn");
+  await opened;
+  expect(calls[0]?.command).toBe(expected);
+});
