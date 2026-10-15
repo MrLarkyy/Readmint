@@ -14,6 +14,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "vitest run",
+    "wiki": "tsc -b packages/wiki/tsconfig.build.json && node packages/wiki/dist/bin.js docs .wiki-out",
     "golden:update": "vitest run --mode golden-update --project node",
     "schema:update": "vitest run --mode schema-update --project node packages/format/test/schemaFile.test.ts"
   },
