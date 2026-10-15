@@ -83,7 +83,11 @@ importers:
         specifier: workspace:*
         version: link:../data
 
-  packages/editor: {}
+  packages/editor:
+    dependencies:
+      '@readmint/format':
+        specifier: workspace:*
+        version: link:../format
 
   packages/expr: {}
 
