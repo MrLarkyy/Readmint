@@ -164,8 +164,31 @@ function tail(value: number): number[] {
 }
 
 /**
+ * The tails `findCollidingTails` returns for the symbols font. Its search walks some 65 million candidates (seconds
+ * idle, past a minute under full-suite load), so the test uses its result and searches only when the symbols font
+ * changed, to fail with the new pair.
+ */
+const COLLIDING_TAILS = { plain: 89_481, wide: 65_314_304 } as const;
+
+/**
+ * A birthday search for four-byte tails (`plain`, `wide`) after which the FNV states `startPlain` and `startWide`
+ * become equal.
+ */
+function findCollidingTails(
+  startPlain: number,
+  startWide: number,
+): { plain: number; wide: number } {
+  const seen = new Map<number, number>();
+  for (let value = 0; value < 200_000; value++) seen.set(fnv(tail(value), startPlain), value);
+  for (let value = 0; ; value++) {
+    const match = seen.get(fnv(tail(value), startWide));
+    if (match !== undefined) return { plain: match, wide: value };
+  }
+}
+
+/**
  * Two different fonts of one length whose content keys collide: the symbols font, and the same with the star's advance
- * widened, each followed by four bytes (outside every table) found by a birthday search over the tails.
+ * widened, each followed by four bytes (outside every table) from `COLLIDING_TAILS`.
  */
 function collidingFonts(): [Uint8Array, Uint8Array] {
   const plain = readmintTestSymbols();
@@ -174,16 +197,15 @@ function collidingFonts(): [Uint8Array, Uint8Array] {
   new DataView(wide.buffer).setUint16(hmtx + 2 * 4, 900);
   const startPlain = fnv(plain);
   const startWide = fnv(wide);
-  const seen = new Map<number, number>();
-  for (let value = 0; value < 200_000; value++) seen.set(fnv(tail(value), startPlain), value);
-  for (let value = 0; ; value++) {
-    const match = seen.get(fnv(tail(value), startWide));
-    if (match === undefined) continue;
-    return [
-      Uint8Array.from([...plain, ...tail(match)]),
-      Uint8Array.from([...wide, ...tail(value)]),
-    ];
+  const { plain: plainTail, wide: wideTail } = COLLIDING_TAILS;
+  if (fnv(tail(plainTail), startPlain) !== fnv(tail(wideTail), startWide)) {
+    const found = findCollidingTails(startPlain, startWide);
+    throw new Error(`the symbols font changed: set COLLIDING_TAILS to ${JSON.stringify(found)}`);
   }
+  return [
+    Uint8Array.from([...plain, ...tail(plainTail)]),
+    Uint8Array.from([...wide, ...tail(wideTail)]),
+  ];
 }
 
 describe("the content key of supplied font bytes", () => {

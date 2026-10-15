@@ -49,6 +49,9 @@ export default defineConfig(({ mode }) => ({
         extends: true,
         test: {
           name: "browser",
+          // After the node project: its workers take every core, and a browser test waits on Chromium and on this
+          // process (commands, the Node render of each golden) — starved, a golden's first fixture took 15-30 s.
+          sequence: { groupOrder: 1 },
           include: ["packages/*/test/**/*.browser.test.ts"],
           browser: {
             enabled: true,

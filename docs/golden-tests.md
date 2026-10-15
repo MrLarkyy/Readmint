@@ -125,6 +125,8 @@ set. Look at the changed PNGs before committing them.
 ## Browser tests locally
 
 Browser tests need Chromium: `pnpm exec playwright install --only-shell chromium` (once; CI adds `--with-deps`).
+`pnpm test` runs the browser project after the node project (`sequence.groupOrder`), so Chromium and the Node side of
+each browser golden never compete with the node workers for the cores.
 
 The browser goldens also run in CI on Linux Chromium. Reproduce that run with the command below. It mounts the
 checkout read-only and works on a copy without `node_modules`, so the host checkout and its dependencies stay
