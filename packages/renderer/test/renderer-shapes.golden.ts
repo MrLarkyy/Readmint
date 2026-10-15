@@ -175,5 +175,31 @@ export default defineGoldenSuite<RenderFixture>({
         },
       },
     },
+    {
+      // Bars bottom-aligned by a row stack: each copy's bounds come from its own evaluated data.
+      name: "path-template-d",
+      input: {
+        ...design([
+          {
+            type: "group",
+            x: 10,
+            y: 10,
+            height: 60,
+            layout: { type: "stack", direction: "row", gap: 4, align: "end" },
+            children: [
+              {
+                type: "path",
+                d: "M0 {{ 4 | min(item) }} L6 0 L12 {{ 4 | min(item) }} V{{ item }} H0 Z",
+                fill: "#2ea043",
+                stroke: "#116329",
+                strokeWidth: 1,
+                repeat: { each: "{{ heights }}" },
+              },
+            ],
+          },
+        ]),
+        data: { heights: [12, 36, 20, 60, 4, 28, 48] },
+      },
+    },
   ],
 });
