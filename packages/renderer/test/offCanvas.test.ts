@@ -1,5 +1,7 @@
+import { parseSfnt } from "@readmint/fonts";
 import type { AnimationTrack, Colour, Design, Layer } from "@readmint/format";
 import { describe, expect, test } from "vitest";
+import { buildTestFont, type TestGlyph } from "../../fonts/test/buildTestFont.js";
 import { renderSvg, type RenderOptions } from "../src/index.js";
 import { fontAssets, imageAssets } from "./testAssets.js";
 
@@ -249,6 +251,178 @@ describe("animation", () => {
     const input = design([anchor, group], timeline);
     expect(render(input, { time: 0 })).not.toContain(probe);
     expect(render(input, { time: 1000 })).toContain(probe);
+  });
+});
+
+describe("tight bounds: turns, glyph boxes and stroke joins", () => {
+  const turnedGroup = (child: Layer, rotation = 45): Layer => ({
+    type: "group",
+    width: 100,
+    height: 100,
+    rotation,
+    opacity: 0.5,
+    children: [child],
+  });
+  const bigText = (x: number): Layer => ({
+    type: "text",
+    x,
+    y: 0,
+    content: "Hi",
+    font: "medium",
+    fontSize: 300,
+    fill: probe,
+    opacity: 0.5,
+  });
+  const wideStroke = (x: number): Layer => ({
+    type: "path",
+    x,
+    y: 0,
+    d: "M0 0 H40 V40 H0 Z",
+    fill: "none",
+    stroke: probe,
+    strokeWidth: 100,
+    opacity: 0.5,
+  });
+  const src = fontAssets.medium.src;
+  const medium = parseSfnt(
+    Uint8Array.from(atob(src.slice(src.indexOf(",") + 1)), (char) => char.charCodeAt(0)),
+  );
+  if (!medium.ok) throw new Error(medium.message);
+  // Where the left edge of the head box around the first pen position (x) meets the right edge of the canvas.
+  const textEdge = 100 - (300 / medium.font.unitsPerEm) * medium.font.boundingBox.xMin;
+
+  test.each<[string, Layer]>([
+    ["a group turned 45 degrees with a far child", turnedGroup(rect(500, 500))],
+    ["text of size 300 at x 350", bigText(350)],
+    ["a path with stroke 100 at x 300", wideStroke(300)],
+  ])("%s is left out", (_name, layer) => {
+    const svg = render(design([anchor, layer]));
+    expect(svg).not.toContain(probe);
+    expect(svg).toContain(other);
+  });
+
+  test.each<[string, Layer]>([
+    [
+      "a child a 30-degree turn brings onto the canvas",
+      turnedGroup(rect(95, 60, { width: 20, height: 20 }), 30),
+    ],
+    ["text whose glyph box just reaches the canvas", bigText(textEdge)],
+    ["a path whose stroke reaches the canvas", wideStroke(140)],
+    [
+      "the same stroke at x 300 as a rounded square: joins at arcs are padded by twice the width",
+      {
+        ...wideStroke(300),
+        d: "M10 0 H30 A10 10 0 0 1 40 10 V30 A10 10 0 0 1 30 40 H10 A10 10 0 0 1 0 30 V10 A10 10 0 0 1 10 0 Z",
+      } as Layer,
+    ],
+  ])("%s is kept", (_name, layer) => {
+    expect(render(design([anchor, layer]))).toContain(probe);
+  });
+
+  test("text just past the glyph box edge is left out", () => {
+    expect(render(design([anchor, bigText(textEdge + 2)]))).not.toContain(probe);
+  });
+
+  test("a turned text is bounded by the turn of its glyphs", () => {
+    const text: Layer = {
+      type: "text",
+      x: 0,
+      y: 0,
+      width: 300,
+      content: "Hi",
+      font: "medium",
+      fontSize: 20,
+      fill: probe,
+      opacity: 0.5,
+    };
+    expect(render(design([anchor, text]))).toContain(probe);
+    expect(render(design([anchor, { ...text, rotation: 90 }]))).not.toContain(probe);
+  });
+
+  test("a frame turns children by the interval of a rotation track", () => {
+    const timeline = { animation: { duration: 1000, loop: false } };
+    const group = (child: Layer): Layer => ({
+      type: "group",
+      width: 100,
+      height: 100,
+      animate: { rotation: track(0, 45) },
+      children: [child],
+    });
+    const far = design([anchor, group(rect(500, 500, { opacity: 0.5 }))], timeline);
+    expect(render(far, { time: 1000 })).not.toContain(probe);
+    const near = design(
+      [anchor, group(rect(40, 105, { width: 20, height: 20, opacity: 0.5 }))],
+      timeline,
+    );
+    expect(render(near, { time: 0 })).not.toContain(probe);
+    expect(render(near, { time: 1000 })).toContain(probe);
+  });
+
+  describe("with fonts built for the test", () => {
+    const square = (
+      codePoint: number,
+      [xMin, yMin, xMax, yMax]: readonly [number, number, number, number],
+    ): TestGlyph => ({
+      codePoints: [codePoint],
+      advance: 500,
+      contours: [
+        [
+          [xMin, yMin, true],
+          [xMax, yMin, true],
+          [xMax, yMax, true],
+          [xMin, yMax, true],
+        ],
+      ],
+    });
+    const asset = (family: string, fallback?: string[]) => ({
+      family,
+      src: `${family}.ttf`,
+      licence: { embedding: "allowed" as const },
+      ...(fallback === undefined ? {} : { fallback }),
+    });
+    const small = buildTestFont({
+      family: "Small",
+      glyphs: [{ advance: 500 }, square(0x41, [0, 0, 100, 100])],
+    });
+    const bytes = {
+      empty: buildTestFont({
+        family: "Empty",
+        glyphs: [{ advance: 500 }, { codePoints: [0x41], advance: 500 }],
+      }),
+      small,
+      smallWide: small,
+      wide: buildTestFont({
+        family: "Wide",
+        glyphs: [{ advance: 500 }, square(0x42, [-3000, 0, 100, 100])],
+      }),
+    };
+    const text = (x: number, font: string, content: string, fontSize: number): string =>
+      render(
+        design(
+          [anchor, { type: "text", x, y: 0, content, font, fontSize, fill: probe, opacity: 0.5 }],
+          {
+            assets: {
+              fonts: {
+                empty: asset("Empty"),
+                small: asset("Small"),
+                smallWide: asset("Small", ["wide"]),
+                wide: asset("Wide"),
+              },
+            },
+          },
+        ),
+        { assets: { fonts: bytes } },
+      );
+
+    test("a degenerate head box keeps the em box, 1 em left of the pen", () => {
+      expect(text(250, "empty", "A", 300)).toContain(probe);
+      expect(text(450, "empty", "A", 300)).not.toContain(probe);
+    });
+
+    test("a fallback run is bounded by the head box of its own font", () => {
+      expect(text(150, "small", "A", 100)).not.toContain(probe);
+      expect(text(150, "smallWide", "AB", 100)).toContain(probe);
+    });
   });
 });
 
