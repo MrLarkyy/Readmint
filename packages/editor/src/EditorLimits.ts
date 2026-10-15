@@ -13,6 +13,8 @@ export const EditorLimits = Object.freeze({
   maxImageBytes: 4_194_304,
   /** A preview render running longer is stopped (its worker terminated) and reported. */
   renderTimeoutMs: 10_000,
+  /** A raster export running longer is stopped (its worker terminated) and reported. */
+  rasterTimeoutMs: 120_000,
 });
 
 export type EditorLimits = typeof EditorLimits;

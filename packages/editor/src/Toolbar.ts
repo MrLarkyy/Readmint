@@ -6,6 +6,9 @@ export interface ToolbarActions {
   newDesign(): void;
   importFile(file: File): void;
   exportDesign(): void;
+  exportYaml(): void;
+  exportPng(): void;
+  exportWebp(): void;
   addLayer(type: NewLayerType): void;
   uploadFont(file: File): void;
   loadFixture(file: File): void;
@@ -15,7 +18,7 @@ export interface ToolbarActions {
 const layerTypes: readonly NewLayerType[] = ["rect", "ellipse", "text", "group"];
 const zooms = [0.5, 1, 2, 4];
 
-/** New, import, export, add a layer, upload a font, load fixture data, zoom. */
+/** New, import, export (JSON, YAML, PNG, WebP), add a layer, upload a font, load fixture data, zoom. */
 export class Toolbar {
   readonly root: HTMLElement;
 
@@ -30,8 +33,17 @@ export class Toolbar {
     this.file("Import design", "import", ".json,.yaml,.yml,application/json", (file) => {
       actions.importFile(file);
     });
-    this.button("Export", "export", () => {
+    this.button("Export JSON", "export", () => {
       actions.exportDesign();
+    });
+    this.button("Export YAML", "export-yaml", () => {
+      actions.exportYaml();
+    });
+    this.button("Export PNG", "export-png", () => {
+      actions.exportPng();
+    });
+    this.button("Export WebP", "export-webp", () => {
+      actions.exportWebp();
     });
     for (const type of layerTypes) {
       this.button(`Add ${type}`, `add-${type}`, () => {

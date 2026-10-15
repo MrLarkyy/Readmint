@@ -1,4 +1,4 @@
-import { RenderLimits } from "@readmint/renderer";
+import { decodeBase64, encodeBase64, RenderLimits } from "@readmint/renderer";
 import { encodePng } from "./encodePng.js";
 import { OutputBudget } from "./OutputBudget.js";
 import { RasterError } from "./RasterError.js";
@@ -34,7 +34,14 @@ export function inlineWebpAssets(
     let png = cache.get(base64);
     if (png === undefined) {
       if (codec === undefined) throw new Error("a WebP image needs the WebP codec");
-      const image = firstFrame(new Uint8Array(Buffer.from(base64, "base64")), codec);
+      const decoded = decodeBase64(base64);
+      if (decoded === undefined) {
+        throw new RasterError(
+          "raster-image",
+          "a WebP image cannot be drawn: its base64 data is malformed",
+        );
+      }
+      const image = firstFrame(decoded, codec);
       // Only resvg reads this PNG, at once: fast compression is enough.
       const bytes = encodePng(
         image.data,
@@ -43,7 +50,7 @@ export function inlineWebpAssets(
         new OutputBudget(Number.POSITIVE_INFINITY, "PNG"),
         1,
       );
-      png = `data:image/png;base64,${Buffer.from(bytes).toString("base64")}`;
+      png = `data:image/png;base64,${encodeBase64(bytes)}`;
       cache.set(base64, png);
     }
     return `${start}${png}${end}`;

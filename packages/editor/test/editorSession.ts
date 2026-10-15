@@ -54,3 +54,15 @@ export function editorSession(restricted = false): EditorState {
   ];
   return commands.reduce(step, createEditorState(newDesign(320, 120)));
 }
+
+/**
+ * What the built app's page makes by hand: an empty canvas, the test font uploaded and a text layer added. Its raster
+ * exports are pinned in `editorRasterParity.ts` like the session's.
+ */
+export function appSession(): EditorState {
+  const commands: ((state: EditorState) => EditorState)[] = [
+    (s) => uploadFont(s, testFonts.ttf),
+    (s) => addLayer(s, "text"),
+  ];
+  return commands.reduce(step, createEditorState(newDesign()));
+}

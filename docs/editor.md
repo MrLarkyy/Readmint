@@ -25,11 +25,13 @@ workspace and no UI framework: the DOM views are small classes that dispatch com
 - **Fonts**: upload a TTF, OTF, WOFF or WOFF2 file (see below).
 - **Fixture data**: load a JSON file of data namespaces, as the CLI's `--data` file; bindings render against it.
 - **Import and export**: import a JSON or YAML design file (validated with the format's limits); export the design as
-  `design.json` (two-space JSON, a final line feed, the same bytes for the same design). The export re-imports to the
-  same design.
+  `design.json` (two-space JSON, a final line feed, the same bytes for the same design), as `design.yaml` (YAML 1.2,
+  keys in the design's own order, no anchors; refused with an `export` issue naming both lengths when it would pass the
+  YAML reader's 1 MiB, then export JSON), or as `design.png` / `design.webp` ([below](#raster-export)). A file export
+  re-imports to the same design; an image is what the CLI renders.
 
 Not in this version: undo, animation editing (animated designs import and preview, their timeline is not edited),
-image upload, YAML export, raster export.
+image upload, APNG or GIF export, and scale, frame rate or quality settings for the raster export.
 
 Dragging writes whole numbers. It never changes a coordinate or size bound to data, nor the place of a layer a stack
 or grid layout positions (its `x`/`y` are offsets in its slot; the property panel says so): such a drag is refused with
@@ -55,6 +57,25 @@ succeeds (the layer tree still does): the old boxes may no longer match the desi
 
 Exporting the design and rendering it with `readmint render design.json --data <fixture>` gives the preview's bytes;
 a golden suite (`packages/editor/test/editor-session.golden.ts`, Node and Chromium) and a CLI test pin it.
+
+## Raster export
+
+The toolbar's "Export PNG" and "Export WebP" make the image the CLI makes for the same design and fixture data:
+`readmint render design.json --data data.json --format png|webp` with its defaults (scale 2, lossless WebP). The export
+is `renderSvg(design, { data, assets, time })` for each frame, as the CLI renders it, passed to `exportRaster` of
+`@readmint/raster/browser` ([raster.md](raster.md#in-the-browser)): a still design gives a still image, a design with a
+timeline an animated WebP (a PNG of its first frame). The files are `design.png` and `design.webp`.
+
+It runs in a module Web Worker started for the export and terminated when it ends: the worker fetches the two
+WebAssembly files from the app's own origin, exports, and answers with the bytes. Nothing of raster export is in the
+initial chunk or the preview worker; the worker file is loaded only when a button is clicked. One export runs at a time
+(a second click is reported as an `export` issue); one running longer than `EditorLimits.rasterTimeoutMs` (120 s) is
+stopped and reported, as is a worker that fails. The rasterizer's own limits (`RasterLimits`, as in the CLI) apply, and
+a refusal reaches the issue list in its words.
+
+The bytes are pinned: `packages/editor/test/editorRasterParity.ts` holds the SHA-256 of the CLI's PNG and WebP of
+test designs made through the editor's commands; Node (the CLI and the export code), Chromium (the export code, and
+the mounted editor with its real worker) and the built app (a download from its page) must all match it.
 
 ## Fonts and licences
 
@@ -85,12 +106,13 @@ An imported design may name font or image files by path. The asset panel lists t
 there is used by the preview for this session only (same size limits, checked before the file is read) and never
 written into the design, which keeps
 the path, so the CLI reads the same file next to the design. Image URLs bound to data are not fetched: the editor makes
-no network request at all, and it never handles a token. The renderer's `missing-asset` issue is shown instead.
+no network request but the raster worker's fetch of its two WebAssembly files from the app's own origin, and it never
+handles a token. The renderer's `missing-asset` issue is shown instead.
 
 ## Limits
 
 `EditorLimits`: `maxFixtureBytes` 8 MiB (the CLI's), `maxFontBytes` and `maxImageBytes` 4 MiB and
-`maxTotalFontBytes` 16 MiB (the renderer's), `renderTimeoutMs` 10 000. Every file the user picks is size-checked before
+`maxTotalFontBytes` 16 MiB (the renderer's), `renderTimeoutMs` 10 000, `rasterTimeoutMs` 120 000. Every file the user picks is size-checked before
 it is read. Design files are bounded by `DesignLimits` on import and on every edit: an edit that would make the exported
 file longer than `maxSourceLength` is refused.
 
@@ -99,13 +121,23 @@ file longer than `maxSourceLength` is refused.
 The app's page sets `default-src 'none'; script-src 'self'; worker-src 'self'; style-src 'self'; img-src 'self' blob:
 data:; font-src data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'`: only the app's own
 scripts, worker and stylesheet load, nothing inline runs, and the page makes no request (the dev server alone allows
-`connect-src 'self'` for its reload socket). A test builds the app and drives it in Chromium under this policy.
+`connect-src 'self'` for its reload socket). A test builds the app and drives it in Chromium under this policy, raster
+export included: the policy of the page does not apply to its workers, which take the policy of the headers their own
+files are served with. A host that serves the app with a policy header must allow, for the raster worker,
+`connect-src 'self'` (it fetches the two WebAssembly files) and `script-src 'wasm-unsafe-eval'` (it compiles them); the
+page itself needs neither.
 
 ## Bundle
 
-The initial chunk holds the editor and the format's validation (about 20 kB gzip, budget 120 kB). The YAML parser and
-the font parser load on first use; the renderer lives only in the preview worker (budget 250 kB gzip). A test bundles
-the app and checks both budgets and which chunk holds what.
+The initial chunk holds the editor and the format's validation (about 20 kB gzip, budget 120 kB). The YAML parser
+(reading and writing) and the font parser load on first use; the renderer lives only in the two workers: the preview
+worker (budget 250 kB gzip) and the raster worker, which also holds the rasterizer and the encoders (about 184 kB gzip,
+budget 230 kB). The two WebAssembly files (resvg 2.5 MB, libwebp 0.5 MB) are separate assets, never inlined, fetched
+only by a raster export. A test bundles the app and checks the budgets, which chunk holds what, that the rasterizer is
+in the raster worker alone, and that the editor pins the WebAssembly packages to the versions `@readmint/raster` pins.
+The app build also writes `licences/THIRD-PARTY.txt`: the name, version, licence and licence texts of every npm
+package bundled into the page or a worker (fflate, gifenc, yaml, the font and WebAssembly packages), made by the
+same script as the Action bundle's banner, with the notices of the WebAssembly code (resvg's Rust crates, libwebp).
 
 ## API
 
@@ -120,7 +152,8 @@ import {
 
 const editor = mountEditor(document.getElementById("app")!, {
   initial: design, // optional, default an empty canvas
-  save: ({ name, text }) => store(name, text), // optional, default a download
+  save: ({ name, text }) => store(name, text), // optional, default a download (design.json, design.yaml)
+  saveImage: ({ name, mimeType, bytes }) => store(name, bytes), // optional, default a download (design.png, design.webp)
 });
 editor.dispatch((state) => moveLayer(state, "/layers/0", 10, 0));
 ```
