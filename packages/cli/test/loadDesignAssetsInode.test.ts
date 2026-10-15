@@ -7,11 +7,13 @@ import { type CliTree, makeCliTree } from "./cliTree.js";
 /** Stats as an SMB share, a FUSE mount or a virtual drive may report them: device and inode 0 for every file. */
 vi.mock("node:fs/promises", async (importOriginal) => {
   const real = await importOriginal<typeof import("node:fs/promises")>();
-  const zeroed = <T extends object>(stats: T): T =>
-    Object.assign(Object.create(Object.getPrototypeOf(stats) as object) as T, stats, {
-      dev: 0n,
-      ino: 0n,
-    });
+  const zeroed = <T extends object | undefined>(stats: T): T =>
+    stats === undefined
+      ? stats
+      : (Object.assign(Object.create(Object.getPrototypeOf(stats) as object), stats, {
+          dev: 0n,
+          ino: 0n,
+        }) as T);
   return {
     ...real,
     stat: async (...args: Parameters<typeof real.stat>) => zeroed(await real.stat(...args)),
