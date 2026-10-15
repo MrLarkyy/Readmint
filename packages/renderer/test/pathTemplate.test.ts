@@ -90,11 +90,22 @@ describe("a path d template", () => {
     expect("svg" in result).toBe(false);
   });
 
-  test("an evaluated d longer than any string an expression may give fails", () => {
+  test("text built from placeholders longer than any string an expression may give fails binding", () => {
     const result = render([{ type: "path", d: "M0 0{{ steps }}{{ steps }}", fill: "#000" }], {
       steps: " l1 1".repeat(15_000),
     });
-    expect(result).toMatchObject({ ok: false, issues: [{ path: "/layers/0/d" }] });
+    expect(result).toMatchObject({
+      ok: false,
+      issues: [{ path: "/layers/0/d", code: "binding" }],
+    });
+  });
+
+  test("a single placeholder giving data over maxLength characters fails range at d", () => {
+    const shape = `M0 0${" l1 1".repeat(20_000)}`;
+    expect(shape.length).toBeGreaterThan(100_000);
+    const result = render([{ type: "path", d: "{{ shape }}", fill: "#000" }], { shape });
+    expect(result).toMatchObject({ ok: false, issues: [{ path: "/layers/0/d", code: "range" }] });
+    expect("svg" in result).toBe(false);
   });
 
   test("an evaluated arc under a draw track fails range at the track", () => {

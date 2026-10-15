@@ -177,17 +177,28 @@ class Walker {
     const shortest = Math.min(
       ...strings.map((option) => (option.kind === "string" ? option.minLength : 0)),
     );
+    // The string form whose shape the value has reports what it breaks (a template `d` that is too long says length).
+    const shaped =
+      typeof value === "string"
+        ? strings.find(
+            (option) =>
+              option.kind === "string" &&
+              option.pattern !== undefined &&
+              compile(option.pattern).test(value),
+          )
+        : undefined;
     if (binding !== undefined && typeof value === "string" && value.startsWith("{{"))
       this.visit(binding, value, path);
     else if (typeof value !== "string" || strings.length === 0)
       this.add(path, "type", `expected ${label}`);
-    else if (value.length < shortest)
+    else if (shaped !== undefined) this.visit(shaped, value, path);
+    else if (codePoints(value, shortest) < shortest)
       this.add(
         path,
         "length",
         shortest === 1 ? "must not be empty" : `must be at least ${String(shortest)} characters`,
       );
-    else if (value.length > longest)
+    else if (codePoints(value, longest + 1) > longest)
       this.add(path, "length", `must be at most ${String(longest)} characters`);
     else this.add(path, "pattern", `${quoteInput(value)} is not ${label}`);
   }

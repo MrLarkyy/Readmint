@@ -271,7 +271,7 @@ Output:
   dash pattern again at every subpath (each `M`, and the segment after a `Z`), so every subpath draws from its own start
   at the pace of the longest one, and shorter subpaths are complete earlier. The length is computed (lines exactly,
   curves as 32 chords each, `+ - * /` and `Math.sqrt` only), because resvg ignores `pathLength`. Paths with arcs cannot
-  `draw` (their length needs trigonometry).
+  `draw` (their length needs trigonometry); an arc a template `d` gives under a `draw` track is `range` at the track.
 - `x`, `y`, `rotation` and `scale` each get a `<g>` of their own around the element, outermost first in that order,
   whose CSS animates only that group's `transform` (the element keeps its own `transform` for its static `rotation`).
   With a rotation or scale the groups sit in `<g transform="translate(cx cy)">` and the element is drawn moved by
@@ -341,20 +341,20 @@ keyframes before any is resolved. Fixed limits: 10000 items per `repeat` (expr, 
 
 ## Issues
 
-| code                   | meaning                                                                                                                                                                                                                                             |
-| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `binding`              | an expression failed to compile or evaluate, the step budget ran out, a repeat `each` is not a list or has more than 10000 items, or its `as`/`index` names are unreadable or equal (the message names expr's error code)                           |
-| `type`                 | a value of the wrong kind (also a prop of the wrong type, a list or object written into text)                                                                                                                                                       |
-| `range`                | a number outside the format's range, a keyframe offset below the one before it, a `time` outside [0, 86400000]                                                                                                                                      |
-| `missing-asset`        | an asset path without supplied bytes, or a reference to no asset                                                                                                                                                                                    |
-| `asset-format`         | not an accepted image or a malformed font (also one found broken when its glyphs, kerning or subset are read, or a table that decompresses past its declared size); a data URI type that does not match                                             |
-| `asset-too-large`      | over a byte, side or frame limit; a font past its outline budget or whose subset could not fit the output budget                                                                                                                                    |
-| `unsupported-font`     | a font collection (TTC, or WOFF2 with several fonts), CFF2 outlines or a CFF FontMatrix other than 1/unitsPerEm                                                                                                                                     |
-| `font-not-embeddable`  | warning: the licence or the fsType forbids embedding; the font's text is drawn as paths (once per asset)                                                                                                                                            |
-| `too-large`            | the SVG passes `maxOutputBytes`, a text passes `maxTextLength`, the repeats pass `maxRepeatCopies` (at the `repeat` that crossed it), the tracks pass `maxAnimationKeyframes` (at the track that crossed it), components nest deeper than 64 levels |
-| `font-family-mismatch` | warning: the asset family differs from the family inside the font                                                                                                                                                                                   |
-| `missing-glyph`        | warning: characters neither the font nor its fallbacks have; they are not drawn and keep the `.notdef` advance (once per font asset, up to ten named)                                                                                               |
-| `animation-cut`        | warning: a track runs past the end of the timeline and is cut there (once per track, however many copies)                                                                                                                                           |
+| code                   | meaning                                                                                                                                                                                                                                                |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `binding`              | an expression failed to compile or evaluate, the step budget ran out, a repeat `each` is not a list or has more than 10000 items, or its `as`/`index` names are unreadable or equal (the message names expr's error code)                              |
+| `type`                 | a value of the wrong kind (also a prop of the wrong type, a list or object written into text)                                                                                                                                                          |
+| `range`                | a number outside the format's range, a keyframe offset below the one before it, a `time` outside [0, 86400000], a template `d` that gives empty, over-long (100000) or non-path data (at `d`), an arc a template `d` gives under `draw` (at the track) |
+| `missing-asset`        | an asset path without supplied bytes, or a reference to no asset                                                                                                                                                                                       |
+| `asset-format`         | not an accepted image or a malformed font (also one found broken when its glyphs, kerning or subset are read, or a table that decompresses past its declared size); a data URI type that does not match                                                |
+| `asset-too-large`      | over a byte, side or frame limit; a font past its outline budget or whose subset could not fit the output budget                                                                                                                                       |
+| `unsupported-font`     | a font collection (TTC, or WOFF2 with several fonts), CFF2 outlines or a CFF FontMatrix other than 1/unitsPerEm                                                                                                                                        |
+| `font-not-embeddable`  | warning: the licence or the fsType forbids embedding; the font's text is drawn as paths (once per asset)                                                                                                                                               |
+| `too-large`            | the SVG passes `maxOutputBytes`, a text passes `maxTextLength`, the repeats pass `maxRepeatCopies` (at the `repeat` that crossed it), the tracks pass `maxAnimationKeyframes` (at the track that crossed it), components nest deeper than 64 levels    |
+| `font-family-mismatch` | warning: the asset family differs from the family inside the font                                                                                                                                                                                      |
+| `missing-glyph`        | warning: characters neither the font nor its fallbacks have; they are not drawn and keep the `.notdef` advance (once per font asset, up to ten named)                                                                                                  |
+| `animation-cut`        | warning: a track runs past the end of the timeline and is cut there (once per track, however many copies)                                                                                                                                              |
 
 ## Report
 

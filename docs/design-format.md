@@ -154,7 +154,9 @@ Every layer has `type` (required) and these optional properties:
   characters (`"M0 {{ 24 - props.height }} h8 V24 h-8 Z"`), so a shape can follow the data. A placeholder here ends at
   its first `}}`. The renderer writes the placeholders in as text
   ([expressions](expressions.md#placeholders-and-text)) and holds the result to the same rules: empty, longer than
-  100000 characters or with any other character is a `range` issue at `d` and nothing is drawn.
+  100000 characters or with any other character is a `range` issue at `d` and nothing is drawn. A `d` that is exactly
+  one placeholder (`"{{ shape }}"`) takes a data string whole, so its length is checked only there; text built from
+  several placeholders stops earlier, at the 100000 characters an expression may produce (`binding`).
 - `content` of a text: at most 10000 characters; `{{...}}` placeholders may appear anywhere in it and are written into
   the text ([expressions](expressions.md#placeholders-and-text)).
 - A text needs a font: its own `font` or one from its `style`.

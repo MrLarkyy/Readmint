@@ -126,10 +126,12 @@ describe("path data templates", () => {
     ]);
   });
 
-  test("a template longer than an expression text may be fails", () => {
+  test("a template longer than an expression text may be fails length", () => {
     const long = `M0 {{ 1 }}${" L1 1".repeat(2000)}`;
     expect(long.length).toBeGreaterThan(PathData.maxTemplateLength);
-    expect(issuesOf(path(long)).issues).toMatchObject([{ path: "/layers/0/d", code: "pattern" }]);
+    expect(issuesOf(path(long)).issues).toEqual([
+      { path: "/layers/0/d", code: "length", message: "must be at most 10000 characters" },
+    ]);
   });
 
   test("a d over maxLength characters fails length, a template too", () => {
