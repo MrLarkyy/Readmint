@@ -14,3 +14,8 @@ User guide: [the wiki](https://github.com/MrLarkyy/Readmint/wiki), generated fro
 Set up the GitHub Action: [docs/action.md](docs/action.md).
 Contribution calendar, starter templates (stats card, isometric card, banner, language bars, profile card, light and
 dark) and three full profile templates (Year Ring, Horizon, Pinscreen): [docs/components.md](docs/components.md).
+
+## Licence
+
+Readmint is released under the [MIT licence](LICENSE). The fonts bundled with it keep their own licences (SIL Open
+Font License), which sit next to the font files in their folders.
