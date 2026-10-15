@@ -87,3 +87,28 @@ test("libwebp's notice follows wasm-webp's own licence", async () => {
   );
   expect(banner).toContain(" * Additional IP Rights Grant (Patents)");
 });
+
+test("the resvg crate list gives every crate a version and real notices, no template placeholders", () => {
+  const list = readFileSync(
+    join(import.meta.dirname, "..", "scripts", "licences", "resvg-wasm-crates.txt"),
+    "utf8",
+  );
+  const table = list.slice(0, list.indexOf("\n----- ")).split("\n\n").at(-1) ?? "";
+  const rows = table.split("\n").filter((line) => line.trim() !== "");
+  expect(rows.length).toBeGreaterThan(60);
+  for (const row of rows) expect(row, row).toMatch(/^[A-Za-z0-9_-]+ +\d+\.\d+\.\d+\S* /);
+  // The how-to-apply appendix of the Apache License is part of its verbatim text and holds a template on purpose.
+  const notices = list.replace(
+    /APPENDIX: How to apply the Apache License to your work\.[\s\S]*?limitations under the License\./g,
+    "",
+  );
+  for (const placeholder of [
+    "<year>",
+    "<copyright holders>",
+    "<owner>",
+    "[yyyy]",
+    "[name of copyright owner]",
+  ]) {
+    expect(notices, placeholder).not.toContain(placeholder);
+  }
+});
