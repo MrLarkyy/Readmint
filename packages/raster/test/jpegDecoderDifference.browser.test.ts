@@ -1,27 +1,7 @@
 import resvgUrl from "@resvg/resvg-wasm/index_bg.wasm?url";
 import { initWasm, Resvg } from "@resvg/resvg-wasm";
 import { beforeAll, expect, test } from "vitest";
-import { jpegChannelTolerance, lossyJpegs } from "./jpegDecoderTolerance.js";
-
-function size(uri: string): { width: number; height: number } {
-  const binary = atob(uri.slice(uri.indexOf(",") + 1));
-  for (let at = 2; at + 9 < binary.length;) {
-    const marker = binary.charCodeAt(at + 1);
-    const length = (binary.charCodeAt(at + 2) << 8) | binary.charCodeAt(at + 3);
-    if (marker >= 0xc0 && marker <= 0xc2) {
-      return {
-        height: (binary.charCodeAt(at + 5) << 8) | binary.charCodeAt(at + 6),
-        width: (binary.charCodeAt(at + 7) << 8) | binary.charCodeAt(at + 8),
-      };
-    }
-    at += 2 + length;
-  }
-  throw new Error("no frame header");
-}
-
-function svgOf(uri: string, width: number, height: number): string {
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${String(width)}" height="${String(height)}"><image width="${String(width)}" height="${String(height)}" href="${uri}"/></svg>`;
-}
+import { jpegChannelTolerance, lossyJpegs, svgOf } from "./jpegDecoderTolerance.js";
 
 /** The few browser APIs used; the package compiles without the DOM library, which would leak into its Node code. */
 interface Browser {
@@ -79,8 +59,8 @@ beforeAll(async () => {
 test.each(lossyJpegs.map((jpeg) => [jpeg.name, jpeg] as const))(
   "Chromium and resvg draw %s within the pinned channel tolerance, every pixel",
   async (_name, jpeg) => {
-    const { width, height } = size(jpeg.uri);
-    const svg = svgOf(jpeg.uri, width, height);
+    const { width, height } = jpeg;
+    const svg = svgOf(jpeg);
     const chromium = await chromiumPixels(svg, width, height);
     const resvg = resvgPixels(svg);
     expect(resvg.length).toBe(width * height * 4);
