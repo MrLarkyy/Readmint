@@ -1,4 +1,13 @@
-import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  cpSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -7,6 +16,7 @@ import {
   buildExamples,
   compareExamples,
   profileExampleProps,
+  runExamples,
   writeExamples,
   type ExampleFile,
   type ExamplesOptions,
@@ -219,5 +229,97 @@ describe("writeExamples and compareExamples", () => {
     expect(readFileSync(join(out, ".git", "config"), "utf8")).toBe("keep");
     expect(readFileSync(join(out, "NOTES.md"), "utf8")).toBe("mine");
     expect(compareExamples(out, files)).toEqual([]);
+  });
+});
+
+describe("symbolic links", () => {
+  function link(target: string, path: string): boolean {
+    try {
+      symlinkSync(target, path, "junction");
+      return true;
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "EPERM") return false;
+      throw error;
+    }
+  }
+  const files = buildExamples(templatesDir, options);
+  const template = templates[0] ?? "";
+
+  it("refuses a designs folder that links elsewhere and deletes nothing", () => {
+    const out = temp();
+    const sibling = join(out, "sibling");
+    mkdirSync(join(out, template), { recursive: true });
+    mkdirSync(sibling);
+    writeFileSync(join(sibling, "keep.json"), "{}");
+    if (!link(sibling, join(out, template, "designs"))) return;
+    expect(() => writeExamples(out, files)).toThrow(/symbolic link/);
+    expect(() => compareExamples(out, files)).toThrow(/symbolic link/);
+    expect(readFileSync(join(sibling, "keep.json"), "utf8")).toBe("{}");
+  });
+
+  it("refuses a link inside a template folder", () => {
+    const dir = temp();
+    cpSync(templatesDir, dir, { recursive: true });
+    const target = join(dir, "outside");
+    mkdirSync(target);
+    if (!link(target, join(dir, "profiles", template, "fonts", "x"))) return;
+    expect(() => buildExamples(dir, options)).toThrow(/symbolic link/);
+  });
+});
+
+describe("runExamples", () => {
+  function run(...argv: string[]): { code: number; out: string; err: string } {
+    let out = "";
+    let err = "";
+    const code = runExamples(argv, {
+      stdout: (text) => (out += text),
+      stderr: (text) => (err += text),
+    });
+    return { code, out, err };
+  }
+
+  it.each([
+    [[]],
+    [[templatesDir]],
+    [[templatesDir, "a", "b"]],
+    [[templatesDir, "a", "--nope"]],
+    [[templatesDir, "a", "--login"]],
+  ])("answers %j with usage and exit 2", (argv) => {
+    const { code, err } = run(...argv);
+    expect(code).toBe(2);
+    expect(err).toContain("usage: readmint-examples");
+  });
+
+  it("writes, then reports in sync with exit 0", () => {
+    const out = temp();
+    const written = run(templatesDir, out);
+    expect(written.code).toBe(0);
+    expect(written.out).toMatch(/^wrote \d+ files to .*, removed 0\n$/);
+    expect(run(templatesDir, out, "--check")).toEqual({
+      code: 0,
+      out: "the examples repository is in sync\n",
+      err: "",
+    });
+  });
+
+  it("lists missing, differing and stale files with --check and exits 1", () => {
+    const out = temp();
+    run(templatesDir, out);
+    const template = templates[0] ?? "";
+    rmSync(join(out, "README.md"));
+    writeFileSync(join(out, template, "designs", "header.json"), "{}\n");
+    writeFileSync(join(out, template, "designs", "stale.json"), "{}\n");
+    const { code, out: lines, err } = run(templatesDir, out, "--check");
+    expect(code).toBe(1);
+    expect(lines).toBe(
+      `missing: README.md\ndiffers: ${template}/designs/header.json\nstale: ${template}/designs/stale.json\n`,
+    );
+    expect(err).toContain("3 files out of sync");
+  });
+
+  it("reports a failure as exit 1 with its message", () => {
+    const { code, err } = run(join(templatesDir, "nowhere"), temp());
+    expect(code).toBe(1);
+    expect(err).toContain("nowhere");
   });
 });

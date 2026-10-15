@@ -5,3 +5,4 @@ export type { ExamplesOptions } from "./ExamplesOptions.js";
 export { generatedFiles } from "./generatedFiles.js";
 export { profileExampleProps, type ExampleProp } from "./profileExampleProps.js";
 export { writeExamples } from "./writeExamples.js";
+export { runExamples, type ExamplesIo } from "./runExamples.js";

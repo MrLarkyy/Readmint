@@ -1,33 +1,25 @@
-import { readdirSync, readFileSync, statSync } from "node:fs";
+import { lstatSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { ExampleFile } from "./ExampleFile.js";
 import type { ExamplesOptions } from "./ExamplesOptions.js";
 import { exampleRootReadme } from "./exampleRootReadme.js";
-import { exampleTemplateReadme, readmeTitle } from "./templateReadme.js";
+import { exampleTemplateReadme } from "./exampleTemplateReadme.js";
+import { listFiles } from "./listFiles.js";
+import { readmeTitle } from "./readmeTitle.js";
+import { assertNoLink } from "./assertNoLink.js";
 import { exampleWorkflow } from "./exampleWorkflow.js";
 
 const byCodeUnit = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
 const sectionOf = (file: string): string => file.replace(/(\.dark)?\.json$/, "");
 const readText = (path: string): string => readFileSync(path, "utf8").replace(/\r\n/g, "\n");
 
-/** Every file below `dir`, as POSIX paths relative to it, sorted. */
-export function listFiles(dir: string): string[] {
-  const found: string[] = [];
-  const walk = (relative: string): void => {
-    for (const name of readdirSync(join(dir, relative)).sort(byCodeUnit)) {
-      const path = relative === "" ? name : `${relative}/${name}`;
-      if (statSync(join(dir, path)).isDirectory()) walk(path);
-      else found.push(path);
-    }
-  };
-  walk("");
-  return found;
-}
-
 /** The template folders of `profilesDir`: those named in `props` first, in its order, then the rest sorted. */
 function discoverTemplates(profilesDir: string, props: ExamplesOptions["props"]): string[] {
   const folders = readdirSync(profilesDir)
-    .filter((name) => statSync(join(profilesDir, name)).isDirectory())
+    .filter((name) => {
+      assertNoLink(join(profilesDir, name));
+      return lstatSync(join(profilesDir, name)).isDirectory();
+    })
     .sort(byCodeUnit);
   for (const name of Object.keys(props)) {
     if (!folders.includes(name)) {

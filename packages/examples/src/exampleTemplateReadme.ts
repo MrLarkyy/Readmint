@@ -1,12 +1,7 @@
 import type { ExamplesOptions } from "./ExamplesOptions.js";
+import { readmeTitle } from "./readmeTitle.js";
 
-export const defaultRepositoryUrl = "https://github.com/MrLarkyy/Readmint";
-
-export function readmeTitle(readme: string, template: string): string {
-  const title = /^# (.+)$/m.exec(readme)?.[1]?.trim();
-  if (title === undefined || title === "") throw new Error(`${template}/README.md: no "# " title`);
-  return title;
-}
+const defaultRepositoryUrl = "https://github.com/MrLarkyy/Readmint";
 
 /** The html block below "## The README" of a template README, fences dropped. */
 function readmeSnippet(readme: string, template: string): string {
