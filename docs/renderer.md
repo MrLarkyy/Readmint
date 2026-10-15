@@ -453,8 +453,17 @@ budget?, maxBytes? })`, `encodeWoff`, `decodeWoff`, `glyphClosure`, `OutlineBudg
   sum modulo 2^16 and draw its low byte). Where the data runs out without any marker the file is a cut one (above).
   Measured with built files of exact symbols and the gradient, `progressive.jpg` and `sof3-8bit-rgb.jpg` broken in
   place, every kind pinned in both outputs (`packages/renderer/test/jpegEntropyCases.ts`: Chromium 156, resvg-wasm
-  2.6.2). Lossy pixel values the two decoders round apart (up to 2 levels) are a separate matter. The check is
-  bounded (see Limits) and takes about 100 ms for a 3 MB baseline file, 200 ms for a progressive one.
+  2.6.2). The check is bounded (see Limits) and takes about 100 ms for a 3 MB baseline file, 200 ms for a progressive
+  one.
+
+- Lossy pixel values the two decoders round apart are bounded by a pinned tolerance: at most 2 levels per channel
+  (`jpegChannelTolerance`, `packages/raster/test/jpegDecoderTolerance.ts`), as libjpeg-turbo (Chromium) and
+  jpeg-decoder (resvg) round the IDCT and the chroma upsampling apart. Measured over every pixel and channel at native
+  size (Chromium 156.0.8078.4, resvg-wasm 2.6.2; `jpegDecoderDifference.browser.test.ts`): `gradient.jpg` (baseline
+  4:2:0) 2, `progressive.jpg` 2, `baseline-422-restart-rows.jpg` 1, `progressive-420-restart3.jpg` 1. The test fails
+  on a difference above the tolerance, on a changed measurement and on a tolerance above the largest measured one, so
+  a browser or decoder update shows up there; the fixtures are tiny (32x16, 37x23), so larger photographs are not
+  probed.
 
 - A lossless JPEG (SOF3) is accepted only where Chromium and resvg draw the same pixels: resvg-wasm 2.6.2 decodes with
   jpeg-decoder 0.3.1, whose lossless path copies the stored samples without any colour transform (it ignores JFIF,
