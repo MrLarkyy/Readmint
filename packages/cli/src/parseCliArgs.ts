@@ -18,7 +18,8 @@ type ValueOption =
   | "format"
   | "scale"
   | "frame-rate"
-  | "quality";
+  | "quality"
+  | "login";
 
 const valueOptions: ReadonlySet<string> = new Set<ValueOption>([
   "root",
@@ -31,8 +32,9 @@ const valueOptions: ReadonlySet<string> = new Set<ValueOption>([
   "scale",
   "frame-rate",
   "quality",
+  "login",
 ]);
-const flagOptions: ReadonlySet<string> = new Set(["help", "version", "fetch-images"]);
+const flagOptions: ReadonlySet<string> = new Set(["help", "version", "fetch-images", "github"]);
 
 // No host option, ever: the preview listens on 127.0.0.1 only.
 const allowed: Readonly<Record<DesignCommand, ReadonlySet<ValueOption>>> = {
@@ -46,10 +48,13 @@ const allowed: Readonly<Record<DesignCommand, ReadonlySet<ValueOption>>> = {
     "scale",
     "frame-rate",
     "quality",
+    "login",
   ]),
-  validate: new Set(["root", "data", "locale", "time"]),
-  preview: new Set(["root", "data", "locale", "port"]),
+  validate: new Set(["root", "data", "locale", "time", "login"]),
+  preview: new Set(["root", "data", "locale", "port", "login"]),
 };
+/** Prefixes of GitHub tokens (classic, OAuth, user-to-server, server-to-server, refresh, fine-grained). */
+const tokenShaped = /^(?:-{1,2}[^=]*=)?(?:gh[pousr]_|github_pat_)/;
 
 /** Latest frame time the renderer takes (`renderSvg` `time`). */
 const maxTime = 86_400_000;
@@ -65,6 +70,7 @@ const formatByExtension: Readonly<Record<string, OutputFormat>> = {
 
 /** Command-line arguments (without node and the script) to a command; throws `CliError` with exit code 2. */
 export function parseCliArgs(argv: readonly string[]): CliCommand {
+  refuseTokens(argv);
   const { tokens } = parseArgs({
     args: [...argv],
     options: {
@@ -72,6 +78,7 @@ export function parseCliArgs(argv: readonly string[]): CliCommand {
       help: { type: "boolean", short: "h" },
       version: { type: "boolean" },
       "fetch-images": { type: "boolean" },
+      github: { type: "boolean" },
     },
     allowPositionals: true,
     strict: false,
@@ -108,12 +115,17 @@ export function parseCliArgs(argv: readonly string[]): CliCommand {
   for (const name of values.keys()) {
     if (!allowed[command].has(name)) usage(`option --${name} does not apply to ${command}`);
   }
+  const github = flags.has("github");
+  if (github && values.has("data")) usage("--github and --data exclude each other");
+  if (!github && values.has("login")) usage("option --login needs --github");
   const common: DesignArgs = {
     design,
     ...optional("root", values.get("root")),
     ...optional("data", values.get("data")),
     ...optional("locale", checkLocale(values.get("locale"))),
     ...(flags.has("fetch-images") ? { fetchImages: true } : {}),
+    ...(github ? { github: true } : {}),
+    ...optional("login", values.get("login")),
   };
   const time = values.get("time");
   const timeArgs = time === undefined ? {} : { time: parseTime(time) };
@@ -130,6 +142,25 @@ export function parseCliArgs(argv: readonly string[]): CliCommand {
         port: port === undefined ? defaultPreviewPort : parsePort(port),
       };
     }
+  }
+}
+
+/**
+ * The token is read from the environment only: an argument holding one would sit in the shell history and the
+ * process list, and an error message echoing it would print it. Neither the option nor such a value is ever quoted.
+ */
+function refuseTokens(argv: readonly string[]): void {
+  for (const arg of argv) {
+    if (arg === "--token" || arg.startsWith("--token=")) {
+      usage(
+        "option --token does not exist: the token is read from GH_TOKEN or GITHUB_TOKEN, never from an argument",
+      );
+    }
+  }
+  if (argv.some((arg) => tokenShaped.test(arg))) {
+    usage(
+      "an argument looks like a GitHub token; not printed: the token is read from GH_TOKEN or GITHUB_TOKEN, never from an argument",
+    );
   }
 }
 

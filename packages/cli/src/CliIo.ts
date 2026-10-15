@@ -12,6 +12,12 @@ export interface CliIo {
   readonly signal?: AbortSignal;
   /** How often `preview` checks its input files for changes, in milliseconds; default 300. */
   readonly pollIntervalMs?: number;
-  /** `fetch` for `--fetch-images`, the only network use of the CLI; the global one when absent. */
+  /** `fetch` for `--fetch-images` and `--github`, the only network use of the CLI; the global one when absent. */
   readonly fetch?: ImageFetch;
+  /**
+   * The environment: `GH_TOKEN`, else `GITHUB_TOKEN`, is the token of `--github`; the GitHub load reads it only with
+   * `--github`. `runCli` reads both in every run only to redact them from standard error and the preview page. No
+   * other variable is read.
+   */
+  readonly env?: Readonly<Record<string, string | undefined>>;
 }

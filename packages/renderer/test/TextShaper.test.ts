@@ -1,4 +1,5 @@
 import { ShapingBudget } from "@readmint/fonts";
+import { buildTestFont } from "../../fonts/test/buildTestFont.js";
 import type { Design, FontAsset, Layer } from "@readmint/format";
 import { describe, expect, test } from "vitest";
 import { renderSvg } from "../src/index.js";
@@ -82,8 +83,13 @@ describe("TextShaper", () => {
     expect(latin.glyphs.map((glyph) => glyph.plain)).toEqual([true, true, false, true, true]);
     expect(latin.glyphs[2]?.text).toBe("fi");
     expect(line("\u0627\u0644").glyphs.every((glyph) => !glyph.plain)).toBe(true);
-    const marked = line("e\u0301");
-    expect(marked.glyphs.every((glyph) => glyph.text === "e\u0301" && !glyph.plain)).toBe(true);
+    // Montserrat has U+00E9: e U+0301 is drawn as that one plain character, its text still as written.
+    const composed = line("e\u0301").glyphs;
+    expect(composed.map((glyph) => [glyph.codePoint, glyph.text, glyph.plain])).toEqual([
+      [0xe9, "e\u0301", true],
+    ]);
+    const marked = line("x\u0301");
+    expect(marked.glyphs.every((glyph) => glyph.text === "x\u0301" && !glyph.plain)).toBe(true);
   });
 
   test("letter spacing follows each cluster once and turns off optional ligatures", () => {
@@ -129,5 +135,153 @@ describe("TextShaper", () => {
     expect(once).toEqual(["\ue000", "\ue001"]);
     expect(render([text("fi fl", 0), text("fi fl", 40)])).toEqual([...once, ...once]);
     expect(render([text("fl", 0), text("fi fl", 40)])).toEqual(["\ue000", "\ue001", "\ue000"]);
+  });
+});
+
+describe("TextShaper with canonically equivalent text", () => {
+  const square = [
+    [
+      [0, 0, true],
+      [400, 0, true],
+      [400, 500, true],
+      [0, 500, true],
+    ],
+  ] as const;
+  const built = (...codePoints: number[]) =>
+    buildTestFont({
+      family: "Built",
+      glyphs: [
+        { advance: 500 },
+        ...codePoints.map((codePoint) => ({
+          codePoints: [codePoint],
+          advance: codePoint === 0x301 ? 0 : 500,
+          contours: square,
+        })),
+      ],
+    });
+  const decomposedOnly = built(0x63, 0x65, 0x301);
+  const precomposedOnly = built(0x63, 0x65, 0xe9);
+  const builtFonts: Record<string, FontAsset> = {
+    d: { family: "Built", src: "d.ttf", licence: { embedding: "allowed" }, fallback: ["m"] },
+    p: { family: "Built", src: "p.ttf", licence: { embedding: "allowed" }, fallback: ["m"] },
+    e: { family: "Built", src: "e.ttf", licence: { embedding: "allowed" }, fallback: ["m"] },
+    k: { family: "Built", src: "k.ttf", licence: { embedding: "allowed" } },
+    j: { family: "Built", src: "j.ttf", licence: { embedding: "allowed" } },
+    s: { family: "Built", src: "s.ttf", licence: { embedding: "allowed" } },
+    m: fontAssets.medium,
+  };
+  const assets = {
+    fonts: {
+      d: decomposedOnly,
+      p: precomposedOnly,
+      e: built(0x63, 0x65),
+      k: built(0xac01),
+      j: built(0xac00, 0xac01),
+      s: built(0x56, 0x69, 0x74, 0x1ec7),
+    },
+  };
+
+  function renderBuilt(asset: string, content: string) {
+    const result = renderSvg(
+      {
+        version: 0,
+        canvas: { width: 200, height: 60 },
+        assets: { fonts: builtFonts },
+        layers: [{ type: "text", content, font: asset }],
+      },
+      { assets },
+    );
+    if (!result.ok) throw new Error(JSON.stringify(result.issues));
+    return result;
+  }
+
+  function builtLine(asset: string, text: string) {
+    const context = new RenderContext(
+      {
+        version: 0,
+        canvas: { width: 400, height: 200 },
+        assets: { fonts: builtFonts },
+        layers: [],
+      },
+      { assets },
+    );
+    const instance = new TextShaper(
+      context,
+      {
+        referenced: asset,
+        primary: selectFont(context, asset, undefined, "/layers/0/font"),
+        weight: undefined,
+        fontSize: 20,
+        letterSpacing: 0,
+        path: "/layers/0/content",
+      },
+      ShapingBudget.forText(1000),
+    );
+    return { instance, line: instance.layout(text, instance.paragraph(text), 0, text.length) };
+  }
+
+  test("a font with base and mark draws a precomposed letter itself, not from a fallback", () => {
+    const { instance, line: drawn } = builtLine("d", "c\u00e9");
+    expect(drawn.glyphs.map((glyph) => glyph.font?.asset)).toEqual(["d", "d", "d"]);
+    expect(instance.lacks(0xe9)).toBe(false);
+    const result = renderSvg(
+      {
+        version: 0,
+        canvas: { width: 200, height: 60 },
+        assets: { fonts: builtFonts },
+        layers: [{ type: "text", content: "c\u00e9", font: "d" }],
+      },
+      { assets },
+    );
+    if (!result.ok) throw new Error(JSON.stringify(result.issues));
+    expect(result.warnings).toEqual([]);
+  });
+
+  test("a font with the precomposed letter but not the mark keeps the decomposed letter", () => {
+    const { line: drawn } = builtLine("p", "ce\u0301");
+    expect(drawn.glyphs.map((glyph) => [glyph.font?.asset, glyph.codePoint, glyph.plain])).toEqual([
+      ["p", 0x63, true],
+      ["p", 0xe9, true],
+    ]);
+    expect(drawn.glyphs[1]?.text).toBe("e\u0301");
+  });
+
+  test("every spelling of a cluster renders to the same SVG, without missing glyphs", () => {
+    const cases: [string, string[]][] = [
+      // Only e: the whole cluster takes the fallback that has it, for both spellings.
+      ["e", ["c\u00e9", "ce\u0301"]],
+      // Only the syllable U+AC01: neither U+AC00 nor conjoining jamo.
+      ["k", ["\uac01", "\u1100\u1161\u11a8", "\uac00\u11a8"]],
+      // A default ignorable the font lacks stays in the cluster without hiding the syllable.
+      ["k", ["\uac01\u200b", "\u1100\u1161\u11a8\u200b", "\uac00\u11a8\u200b"]],
+      ["k", ["\uac01\u200d", "\u1100\u1161\u11a8\u200d"]],
+      // Syllables, no conjoining jamo.
+      ["j", ["\uac01", "\u1100\u1161\u11a8"]],
+      // A subset with U+1EC7 but neither U+00EA, U+1EB9 nor the marks.
+      ["s", ["Vi\u1ec7t", "Vie\u0323\u0302t", "Vie\u0302\u0323t", "Vi\u1eb9\u0302t"]],
+    ];
+    for (const [asset, spellings] of cases) {
+      const results = spellings.map((content) => renderBuilt(asset, content));
+      for (const result of results) {
+        expect(result.warnings).toEqual([]);
+        expect(result.svg).toBe(results[0]?.svg);
+      }
+    }
+    for (const content of ["\uac01\u200b", "\u1100\u1161\u11a8\u200b"]) {
+      const { line: zeroWidth } = builtLine("k", content);
+      expect(zeroWidth.glyphs.map((glyph) => [glyph.font?.asset, glyph.codePoint])).toEqual([
+        ["k", 0xac01],
+      ]);
+      expect(renderBuilt("k", content).svg).toContain("\uac01");
+    }
+    const { line: korean } = builtLine("j", "\u1100\u1161\u11a8");
+    expect(korean.glyphs.map((glyph) => [glyph.font?.asset, glyph.codePoint, glyph.plain])).toEqual(
+      [["j", 0xac01, true]],
+    );
+    const { line: fallback } = builtLine("e", "ce\u0301");
+    expect(fallback.glyphs.map((glyph) => [glyph.font?.asset, glyph.codePoint])).toEqual([
+      ["e", 0x63],
+      ["m", 0xe9],
+    ]);
   });
 });

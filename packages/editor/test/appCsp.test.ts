@@ -14,6 +14,8 @@ const font = fileURLToPath(
 
 /** A cold worker and the lazy font parser load over a real server: allow for a slow machine. */
 const wait = { timeout: 30_000 };
+/** Building the app, starting and closing Chromium take far over the 10 s hook default under a full test run. */
+const hookTimeoutMs = 60_000;
 
 let outDir: string;
 let server: PreviewServer;
@@ -32,13 +34,13 @@ beforeAll(async () => {
   });
   url = server.resolvedUrls?.local[0] ?? "";
   browser = await chromium.launch();
-});
+}, hookTimeoutMs);
 
 afterAll(async () => {
   await browser.close();
   await server.close();
   await rm(outDir, { recursive: true, force: true });
-});
+}, hookTimeoutMs);
 
 test("the built app works under its Content-Security-Policy, which blocks inline script", async () => {
   const page = await browser.newPage();

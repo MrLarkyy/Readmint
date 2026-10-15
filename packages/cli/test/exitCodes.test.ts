@@ -230,6 +230,18 @@ describe("a failed write to standard output", () => {
   });
 });
 
+describe("exit code 4", () => {
+  test("is ExitCode.data: --github without a token", async () => {
+    expect(ExitCode.data).toBe(4);
+    const run = await tree.run(["render", "plain.json", "--github"], { env: {} });
+    expect(run).toMatchObject({
+      code: ExitCode.data,
+      stdout: "",
+      stderr: "--github needs a token in GH_TOKEN or GITHUB_TOKEN\n",
+    });
+  });
+});
+
 describe("exit code 70", () => {
   test("a standard output writer that throws", async () => {
     const run = await tree.run(["render", "plain.json"], {

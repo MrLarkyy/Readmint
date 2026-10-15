@@ -100,9 +100,23 @@ Drawn in document order, first at the back. Layer `id` and `name` are not emitte
 - **Every glyph is placed by the renderer**, which shapes text itself (`shapeText` of `@readmint/fonts`, the same
   TypeScript in Node and browsers, no WebAssembly):
   - **Clusters and fallback**: the text is split into character clusters (a base with its marks, joiners, variation
-    selectors and other default ignorables; a Devanagari conjunct; an emoji ZWJ sequence). A cluster's base takes the
-    first of the text's font and its `fallback` fonts whose `cmap` has it; a mark, joiner or variation selector stays
-    in its base's font when that font has it, else takes its own fallback (and then cannot attach to the base).
+    selectors and other default ignorables; a Devanagari conjunct; the conjoining jamo of a Hangul syllable; letters
+    that compose canonically, such as Kirat Rai vowel signs; an emoji ZWJ sequence). A cluster takes the first of the
+    text's font and its `fallback` fonts that has all of it as normalized for that font (below: a font with `e` and
+    U+0301 has U+00E9, one with only U+AC01 has its conjoining jamo). When none has all of it, its base takes the first
+    font that has the base, and a mark, joiner or variation selector stays in its base's font when that font has it
+    and takes its own fallback otherwise (and then cannot attach to the base).
+  - **Normalization**: before its characters become glyphs, each cluster is normalized against the font's `cmap`, as
+    HarfBuzz does: fully decomposed by the canonical decompositions of Unicode 16.0.0 (a singleton such as U+212B
+    ANGSTROM SIGN or a CJK compatibility ideograph is kept when the font has it), its marks stably sorted by combining
+    class (in HarfBuzz's modified order: Arabic shadda before the vowel marks, Hebrew points in SBL order; a run of
+    more than 32 marks stays as written), then recomposed by Unicode canonical composition (composition exclusions and
+    blocking honoured): when the font has every character of the fully composed cluster (its NFC), that is drawn, so
+    a precomposed character the font has is kept even without the composites on the way to it (U+1EC7 without
+    U+1EB9, U+AC01 without U+AC00); otherwise a pair composes only into a character the font has. So `e` U+0301, U+00E9 and any other canonically equivalent
+    spelling (marks in either order) draw the same glyphs and give the same SVG bytes in a font with either form; the
+    tables are the package's own, never `String.prototype.normalize` or `Intl`. Compatibility forms (NFKC) are not
+    folded.
   - **Bidi**: each hard line is a paragraph of the Unicode Bidirectional Algorithm (UAX #9, Unicode 16.0.0): its
     direction comes from its first strong character, explicit embeddings, overrides and isolates and paired brackets
     are honoured, mirrored characters (brackets) take their mirror glyph in right-to-left runs. After wrapping, each
@@ -133,7 +147,7 @@ Drawn in document order, first at the back. Layer `id` and `name` are not emitte
   not a mark, left to right, not itself a private-use character. Every other glyph (a ligature, a joining form, a
   mark, a reordered matra, anything in a right-to-left run) is written as a private-use character (U+E000 upwards,
   then planes 15 and 16 after 6400 glyphs of one font, numbered per font in the order glyphs are first placed) that
-  the font's subset maps to that glyph. Such a `<text>` carries its own text as `aria-label`, so screen readers and
+  the font's subset maps to that glyph. Such a `<text>` carries its own text (in NFC) as `aria-label`, so screen readers and
   copy read the words, not the private-use characters; a text with right-to-left glyphs carries
   `direction="ltr" unicode-bidi="bidi-override"`, so the drawer keeps the visual order written. The embedded subsets
   hold no GSUB, GPOS or `kern`, so neither Chromium nor resvg shapes, kerns, reorders, aligns or substitutes anything;
@@ -148,8 +162,10 @@ Drawn in document order, first at the back. Layer `id` and `name` are not emitte
 - **Remaining limits of shaping**: only Arabic and Devanagari have shapers of their own; every other script (Hebrew,
   Thai, Bengali, Tamil, Khmer, Myanmar, the scripts HarfBuzz's USE shaper handles, ...) gets the font's GSUB and GPOS
   features through the default shaper, without syllable reordering. Only the default language system is used (no
-  design field names a language, so Urdu or Marathi forms are not chosen). No Unicode normalization: a decomposed
-  accent is drawn by the font's `ccmp` and mark positioning, or side by side. No vertical text, no variable-font axes,
+  design field names a language, so Urdu or Marathi forms are not chosen). Normalization is canonical only (no NFKC),
+  leaves a run of more than 32 marks unsorted and does not reorder Arabic modifier marks (U+0654, U+0655, ...) as
+  HarfBuzz does; a character missing from the font is not replaced by a similar one (HarfBuzz draws a missing thin
+  space as a scaled space). No vertical text, no variable-font axes,
   no fallback shaping for fonts without layout tables (Arabic presentation forms). Characters of one word in different
   fonts do not join or attach across the font change.
 - A line break in the content is a hard break. With a `width`, words (split at spaces) fill each line greedily; a word
@@ -188,8 +204,8 @@ Drawn in document order, first at the back. Layer `id` and `name` are not emitte
   bytes in Node and in every browser, and the subset must be byte-identical everywhere. Fonts no text draws with are
   never embedded; fallback fonts are loaded only when a character needs one.
 - **As paths**: an asset with `drawAs: "paths"`, and every font whose licence forbids embedding, is drawn as path
-  data: one `<path>` per text, every glyph's outline placed where the layout put it, `fill-rule="nonzero"`, the text as
-  its `aria-label`, the same fill, opacity and rotation. Nothing of the font is embedded. When any font a text uses is
+  data: one `<path>` per text, every glyph's outline placed where the layout put it, `fill-rule="nonzero"`, the text (in
+  NFC) as its `aria-label`, the same fill, opacity and rotation. Nothing of the font is embedded. When any font a text uses is
   drawn as paths, the whole text is. The path data is checked against `maxOutputBytes` glyph by glyph while it is built.
 - **Licence**: a font is embedded only when its asset declares `licence.embedding: "allowed"` and its OS/2 `fsType`
   permits embedding (neither the restricted-licence bit `0x0002` nor the bitmap-only bit `0x0200`; the stricter reading
@@ -255,7 +271,8 @@ Drawn in document order, first at the back. Layer `id` and `name` are not emitte
   `reservedFontName`: whether its name table states a Reserved Font Name);
   `shapeText(font, text, { script?, rtl?, kerning?, ligatures?, budget? })` shapes one run into a `ShapedRun` (glyphs, UTF-16
   cluster starts, advances and x/y offsets in font units, mark flags, in visual order), spending a `ShapingBudget`
-  (its own, or one shared by many calls: `ShapingBudget.forText(length)`); `resolveLevels(text,
+  (its own, or one shared by many calls: `ShapingBudget.forText(length)`); `normalizeForFont(font, text)`: the
+  characters `shapeText` maps through the font's `cmap` (see Text, Normalization); `normalizeNfc(text)`; `resolveLevels(text,
 direction?)`, `lineLevels(paragraph, start, end)` and `visualOrder(levels)` (UAX #9); `clusterStarts`, `scriptOf`,
   `isDefaultIgnorable`, `isNonSpacingMark` (from the package's own Unicode 16.0.0 tables, never from RegExp property
   escapes or `Intl`, whose Unicode version differs between Node and browsers); `subsetFont(font, codePoints, {
@@ -270,7 +287,15 @@ budget?, maxBytes? })`, `encodeWoff`, `decodeWoff`, `glyphClosure`, `OutlineBudg
   the warning `font-reserved-name`. Since shaping (RM-44), fonts with
   `liga`, `ccmp` or `mark` draw standard ligatures (fi, fl, ...) and attach combining marks, right-to-left text is
   reordered, `align` start and end follow the paragraph direction, pair kerning skips marks its lookup ignores, and
-  font-mode text may hold private-use characters with an `aria-label`. Plain text keeps its exact positions only where the font does nothing but pair kerning to it: contextual alternates (`calt`, e.g. a font that changes the colon in 12:30), `ccmp` or `locl` substitutions of plain Latin, contextual kerning (GPOS 7/8), non-Latin text now kerned under its own script tag, and the lost pair kerning across a script change (two runs) all move or change plain text too.
+  font-mode text may hold private-use characters with an `aria-label`. Plain text keeps its exact positions only where the font does nothing but pair kerning to it: contextual alternates (`calt`, e.g. a font that changes the colon in 12:30), `ccmp` or `locl` substitutions of plain Latin, contextual kerning (GPOS 7/8), non-Latin text now kerned under its own script tag, and the lost pair kerning across a script change (two runs) all move or change plain text too. Since RM-53, text is
+  normalized before shaping: decomposed text recomposes into the font's precomposed letters (now plain characters, as
+  precomposed text always was), a precomposed letter the font lacks is drawn from its base and mark in the same font
+  instead of a fallback or a missing glyph, marks typed out of canonical order are sorted, a text's `aria-label` is
+  written in NFC, a cluster whose font has its base but not its mark (or not the whole cluster as normalized) moves
+  whole, base included, to the first fallback that has all of it (before, only the mark took the fallback and drew
+  unattached; a fallback in another family can now draw the base letter too), and letters excluded from composition (Devanagari U+0958-U+095F, Hebrew presentation forms such as
+  U+FB2A) are drawn from their base and nukta or point by the font's own features, not from the font's precomposed
+  glyph.
 - **Dependencies**: `fflate` 0.8.3 (MIT; zlib inflate for WOFF input, deflate for the subsets) and `brotli` 1.3.3
   (MIT, its decoder a port of Google's Apache-2.0 decoder; only `brotli/decompress.js`, for WOFF2 input) with `base64-js`
   1.5.1 (MIT). Both are pure ECMAScript and run the same in Node and browsers. In the Action bundle they add about
@@ -279,8 +304,8 @@ budget?, maxBytes? })`, `encodeWoff`, `decodeWoff`, `glyphClosure`, `OutlineBudg
   banner takes its MIT and Apache-2.0 texts from `packages/action/scripts/licences/brotli.txt`. The shaping engine
   and its Unicode tables (generated from the Unicode Character Database 16.0.0 by
   `packages/fonts/scripts/generateUnicodeTables.ts`, under the Unicode License V3 kept in the generated file and in
-  `packages/fonts/LICENSE-UNICODE`) need no dependency; they add about 60 kB minified (23 kB gzip, 9 kB of it the
-  tables) to `@readmint/fonts`.
+  `packages/fonts/LICENSE-UNICODE`) need no dependency; they add about 77 kB minified (31 kB gzip, 15 kB of it the
+  tables, the canonical decompositions and combining classes included) to `@readmint/fonts`.
 
 ## Images
 

@@ -8,12 +8,15 @@ import { errnoCode } from "./errnoCode.js";
 import { escapeForLog } from "./escapeForLog.js";
 import { ExitCode } from "./ExitCode.js";
 import { formatIssue } from "./formatIssue.js";
+import { tokenSecrets } from "./githubToken.js";
 import { imageFetching } from "./imageFetching.js";
+import { liveData } from "./liveData.js";
 import type { DesignFile } from "./loadDesignFile.js";
 import { loadRenderInput } from "./loadRenderInput.js";
 import { retryWhileChanging } from "./retryWhileChanging.js";
 import { PreviewServer, type PreviewUpdate } from "./PreviewServer.js";
 import { printLines } from "./printLines.js";
+import { redactSecrets } from "./redactSecrets.js";
 import { renderInput } from "./renderInput.js";
 import { watchedAssetPaths } from "./watchedAssetPaths.js";
 import { watchInputs } from "./watchInputs.js";
@@ -23,9 +26,18 @@ type PreviewArgs = Extract<CliCommand, { name: "preview" }>;
 /**
  * Serves the render on http://127.0.0.1:<port>/ and re-renders when the design, the fixture data or
  * an asset changes; a failing render keeps the last SVG and shows its issues. Ends with exit code 0
- * when `io.signal` aborts.
+ * when `io.signal` aborts. `--github` data is loaded once, before the server starts: a design edit never costs
+ * GitHub requests.
  */
 export async function previewCommand(args: PreviewArgs, io: CliIo): Promise<ExitCode> {
+  const { loadData } = liveData(args, io, io.signal);
+  let live: { readonly data?: Record<string, unknown> };
+  try {
+    live = loadData === undefined ? {} : { data: await loadData() };
+  } catch (error) {
+    if (io.signal?.aborted === true) return ExitCode.ok;
+    throw error;
+  }
   const server = new PreviewServer();
   let port: number;
   try {
@@ -46,10 +58,16 @@ export async function previewCommand(args: PreviewArgs, io: CliIo): Promise<Exit
     const inputs = [path.resolve(io.cwd, args.design)];
     if (args.data !== undefined) inputs.push(path.resolve(io.cwd, args.data));
     let assets: readonly string[] = [];
+    // The page shows the issues too, and it is not standard error: redacted here as well.
+    const secrets = tokenSecrets(io.env ?? {});
     const rebuild = async () => {
-      const update = await renderUpdate(args, io, (file) => {
+      const rendered = await renderUpdate(args, io, live, (file) => {
         assets = watchedAssetPaths(file);
       });
+      const update = {
+        ...rendered,
+        issues: rendered.issues.map((line) => redactSecrets(line, secrets)),
+      };
       if (server.update(update)) await printLines(io.stderr, update.issues);
     };
     const watcher = await watchInputs({
@@ -72,13 +90,19 @@ export async function previewCommand(args: PreviewArgs, io: CliIo): Promise<Exit
 async function renderUpdate(
   args: PreviewArgs,
   io: CliIo,
+  live: { readonly data?: Record<string, unknown> },
   onDesignFile: (file: DesignFile) => void,
 ): Promise<PreviewUpdate> {
   let lines: readonly string[];
   try {
     // A save racing the read is read again, not shown as an issue.
     const input = await retryWhileChanging(() =>
-      loadRenderInput(args, { cwd: io.cwd, onDesignFile, ...imageFetching(args, io, io.signal) }),
+      loadRenderInput(args, {
+        cwd: io.cwd,
+        onDesignFile,
+        ...live,
+        ...imageFetching(args, io, io.signal),
+      }),
     );
     const name = input.file.name;
     const result = renderInput(input, args);

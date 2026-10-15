@@ -5,11 +5,13 @@ import { joiningTypeOf } from "../src/unicode/arabicJoining.js";
 import { bidiClassOf, isStrong } from "../src/unicode/bidiClass.js";
 import { bracketOf } from "../src/unicode/bidiBrackets.js";
 import { mirrorOf } from "../src/unicode/bidiMirror.js";
+import { compositionOf, decompositionOf } from "../src/unicode/canonicalDecomposition.js";
 import {
   isDefaultIgnorable,
   isNonSpacingMark,
   isSpacingMark,
 } from "../src/unicode/characterFlags.js";
+import { combiningClassOf } from "../src/unicode/combiningClass.js";
 import { indicPositionalOf, indicSyllabicOf } from "../src/unicode/indicCategory.js";
 import { scriptOf } from "../src/unicode/scriptOf.js";
 import { ucdVersion } from "../src/unicode/ucdTables.js";
@@ -116,6 +118,32 @@ test("brackets and mirrors", () => {
   expect(mirrorOf(0x3c)).toBe(0x3e);
   expect(mirrorOf(0x3e)).toBe(0x3c);
   expect(mirrorOf(0x41)).toBeUndefined();
+});
+
+test("combining classes, canonical decompositions and compositions", () => {
+  expect(combiningClassOf(0x0301)).toBe(230);
+  expect(combiningClassOf(0x0323)).toBe(220);
+  expect(combiningClassOf(0x094d)).toBe(9);
+  expect(combiningClassOf(0x0041)).toBe(0);
+  expect(decompositionOf(0x00e9)).toEqual([0x65, 0x301]);
+  expect(decompositionOf(0x1ec7)).toEqual([0x1eb9, 0x302]);
+  expect(decompositionOf(0x212b)).toEqual([0xc5]);
+  expect(decompositionOf(0x0041)).toBeUndefined();
+  expect(compositionOf(0x65, 0x301)).toBe(0xe9);
+  // Excluded from composition: script-specific (U+0958), singleton (U+212B), non-starter (U+0344).
+  expect(decompositionOf(0x0958)).toEqual([0x915, 0x93c]);
+  expect(compositionOf(0x0915, 0x093c)).toBeUndefined();
+  expect(compositionOf(0x308, 0x301)).toBeUndefined();
+  // Hangul, algorithmic: GAG = GA + G, GA = G + A.
+  expect(decompositionOf(0xac01)).toEqual([0xac00, 0x11a8]);
+  expect(decompositionOf(0xac00)).toEqual([0x1100, 0x1161]);
+  expect(compositionOf(0x1100, 0x1161)).toBe(0xac00);
+  expect(compositionOf(0xac00, 0x11a8)).toBe(0xac01);
+  expect(compositionOf(0xac01, 0x11a8)).toBeUndefined();
+});
+
+test("ucdTables.ts stays within its 34 kB budget", () => {
+  expect(read("src/unicode/ucdTables.ts").length).toBeLessThanOrEqual(34_000);
 });
 
 test("the Unicode notice survives the TypeScript emit of ucdTables.ts", () => {

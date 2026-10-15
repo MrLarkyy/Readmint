@@ -12,11 +12,13 @@ export { formatIssue } from "./formatIssue.js";
 export { loadDesignAssets } from "./loadDesignAssets.js";
 export { loadDesignFile, type DesignFile, type DesignFileOptions } from "./loadDesignFile.js";
 export { loadFixtureData, maxFixtureBytes } from "./loadFixtureData.js";
+export { loadLiveData, type LiveDataOptions, liveDataTimeoutMs } from "./loadLiveData.js";
 export { loadRenderInput, type RenderInput, type RenderInputOptions } from "./loadRenderInput.js";
 export { localeProblem } from "./localeProblem.js";
 export { type OutputFormat, outputExtension, outputFormats } from "./OutputFormat.js";
 export { quoteForLog } from "./quoteForLog.js";
 export { readAsset, readResolvedAsset, type AssetReadLimits } from "./readAsset.js";
+export { redactSecrets } from "./redactSecrets.js";
 export { RemoteImageError, type RemoteImageErrorCode } from "./RemoteImageError.js";
 export {
   defaultImageHosts,

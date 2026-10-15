@@ -48,7 +48,10 @@ export interface PathNode extends NodeBase, ShapeStyle {
 
 export interface TextNode extends NodeBase {
   readonly kind: "text";
-  /** The text after filling placeholders: the accessible name of text drawn as paths. */
+  /**
+   * The text after filling placeholders, in NFC: the accessible name of text drawn as paths or with private-use
+   * characters, the same bytes for canonically equivalent texts (as their glyphs are).
+   */
   readonly text: string;
   readonly lines: readonly TextLine[];
   /** The font the text names (after weight matching); fallback runs carry their own. */

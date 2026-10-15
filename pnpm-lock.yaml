@@ -60,6 +60,9 @@ importers:
       '@readmint/data':
         specifier: workspace:*
         version: link:../data
+      '@readmint/data-github':
+        specifier: workspace:*
+        version: link:../data-github
       '@readmint/expr':
         specifier: workspace:*
         version: link:../expr
@@ -214,6 +217,8 @@ importers:
       '@readmint/golden':
         specifier: workspace:*
         version: link:../golden
+
+  packages/wiki: {}
 
 packages:
 

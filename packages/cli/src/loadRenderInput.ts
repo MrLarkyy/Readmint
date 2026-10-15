@@ -25,6 +25,11 @@ export interface RenderInputOptions {
   /** Data the caller already loaded (the Action's); used instead of `args.data`. */
   readonly data?: Record<string, unknown>;
   /**
+   * Loads the data once the design file and its assets are valid (`--github`), used instead of `args.data` when
+   * `data` is absent: a broken design fails before any request.
+   */
+  readonly loadData?: () => Promise<Record<string, unknown>>;
+  /**
    * How images bound from data are fetched; absent, nothing is fetched and a design with one fails
    * `image-not-fetched` when there is data (without data its bytes stay missing and only a render fails).
    */
@@ -32,8 +37,8 @@ export interface RenderInputOptions {
 }
 
 /**
- * Design file, then its assets, then the fixture data, then the images bound from data; throws `CliError` at the
- * first failure.
+ * Design file, then its assets, then the data (given, loaded by `loadData`, or the fixture file), then the images
+ * bound from data; throws `CliError` at the first failure.
  */
 export async function loadRenderInput(
   args: DesignArgs,
@@ -47,7 +52,11 @@ export async function loadRenderInput(
   const fileAssets = await loadDesignAssets(file);
   const data =
     options.data ??
-    (args.data === undefined ? undefined : await loadFixtureData(args.data, options.cwd));
+    (options.loadData === undefined
+      ? args.data === undefined
+        ? undefined
+        : await loadFixtureData(args.data, options.cwd)
+      : await options.loadData());
   const assets = await withBoundImages(file, fileAssets, data, options.images);
   return data === undefined ? { file, assets } : { file, assets, data };
 }
