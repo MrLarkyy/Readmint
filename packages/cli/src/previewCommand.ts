@@ -47,7 +47,11 @@ export async function previewCommand(args: PreviewArgs, io: CliIo): Promise<Exit
   const secret = loadData === undefined ? undefined : previewSecret();
   const launchToken = secret !== undefined && args.open === true ? previewSecret() : undefined;
   const server = new PreviewServer(
-    secret === undefined ? {} : launchToken === undefined ? { secret } : { secret, launchToken },
+    secret === undefined
+      ? {}
+      : launchToken === undefined
+        ? { secret }
+        : { secret, launchToken, onLaunchReused: () => void warnLaunchReused(io) },
   );
   let port: number;
   try {
@@ -132,6 +136,17 @@ async function renderUpdate(
     else lines = [`internal error: ${error instanceof Error ? error.message : String(error)}`];
   }
   return { issues: lines.map(escapeForLog) };
+}
+
+/** One constant line: no address, no token. Never rethrows. */
+async function warnLaunchReused(io: CliIo): Promise<void> {
+  try {
+    await printLines(io.stderr, [
+      "preview: the one-time launch address was used again; if your browser shows forbidden, someone else may have opened it first: stop the preview and start it again",
+    ]);
+  } catch {
+    // standard error closed: nothing left to tell
+  }
 }
 
 /** Never rethrows and never prints the opener's message: it can echo the address, which holds the launch token. */
