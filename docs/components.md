@@ -225,9 +225,10 @@ and `pinscreen` "no pushes yet" and "no commits yet"; the sections that do not r
 - **Text without measuring.** Geist Mono advances 0.6 em, so a token of the Pinscreen editor sits at `columns x 8.4`
   pixels; free text is cut with `truncate` and held in a `clip` group. A clip group (or other layer of its own) lying
   wholly off the canvas draws nothing there; the renderer leaves it out ([renderer.md](renderer.md#layers)), so such a
-  design still renders and rasterizes. A few far layers are still written (very large text or a very wide stroke just
-  past the canvas, a turned group far from its centre); raster export of those refuses with `raster-image`, so keep
-  layers on the canvas.
+  design still renders and rasterizes. A few far layers are still written (a stroke whose joins are padded by twice its
+  width (at an arc, a nearly straight curve or a short segment), a path whose control points or arc box reach the canvas
+  while its curve lies far, and text in a font whose `head` box overstates its glyphs); raster export of those refuses
+  with `raster-image`, so keep layers on the canvas.
 
 ### Bytes per section
 

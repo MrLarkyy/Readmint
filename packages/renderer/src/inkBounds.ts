@@ -1,13 +1,16 @@
-import { pathBounds, type Bounds } from "./pathBounds.js";
+import type { SfntFont } from "@readmint/fonts";
+import type { Bounds } from "./pathBounds.js";
 import { placeBounds, placeThrough, transformSteps } from "./PlacementStep.js";
 import type { GroupNode, RenderNode, TextNode } from "./RenderNode.js";
 import { sampleTransforms, timelinePosition } from "./sampleAnimation.js";
+import { strokeBounds } from "./strokeBounds.js";
 
 /**
  * A box surely containing everything `node` draws, in the coordinates it is drawn in: its own rotation and, in a
- * frame (`time` set), the groups its transform tracks wrap around it. Strokes, miters and glyph overhang are padded
- * generously, never trimmed, and the arithmetic is + - * min max abs only, so every engine decides alike. Undefined
- * when it cannot be known: an animated node of the animated SVG (CSS moves it), or a group around one.
+ * frame (`time` set), the groups its transform tracks wrap around it. Strokes reach their miter tips, glyphs the
+ * head box of their font, turns are bounded by cosine and sine intervals, and the arithmetic is + - * / % round min
+ * max abs and a correctly rounded square root only, so every engine decides alike. Undefined when it cannot be known:
+ * an animated node of the animated SVG (CSS moves it), or a group around one.
  */
 export function inkBounds(
   node: RenderNode,
@@ -66,18 +69,17 @@ function unturned(
     case "ellipse":
       return grown(box(x, y, node.width, node.height), (node.strokeWidth ?? 1) / 2 + 1);
     case "path": {
-      const data = pathBounds(node.d);
-      const drawn =
-        data === undefined
-          ? box(x, y, node.width, node.height)
-          : {
-              minX: data.minX + x,
-              minY: data.minY + y,
-              maxX: data.maxX + x,
-              maxY: data.maxY + y,
-            };
-      // A miter reaches at most `stroke-miterlimit` (4) half widths past the outline.
-      return grown(drawn, 2 * (node.strokeWidth ?? 1) + 1);
+      const strokeWidth = node.strokeWidth ?? 1;
+      const stroke = strokeBounds(node.d, strokeWidth);
+      // No point in the data: the layout box with the longest miter (`stroke-miterlimit` 4 half widths) around it.
+      if (stroke === undefined)
+        return grown(box(x, y, node.width, node.height), 2 * strokeWidth + 1);
+      return {
+        minX: stroke.minX + x - 1,
+        minY: stroke.minY + y - 1,
+        maxX: stroke.maxX + x + 1,
+        maxY: stroke.maxY + y + 1,
+      };
     }
     case "text":
       return textBounds(node, x, y);
@@ -90,7 +92,9 @@ function unturned(
 
 /**
  * The glyphs, not the layout box: right-aligned text in a box wider than the canvas is bounded by where it draws. A
- * glyph reaches from 1 em left of its pen position to 2 em right, from 2 em above its baseline to 1 em below.
+ * glyph lies within the head box of the font its run draws with (fallback runs carry their own), grown by 1 for
+ * rounding; a font whose head box is degenerate gets 1 em left of the pen to 2 em right, 2 em above the baseline to
+ * 1 em below.
  */
 function textBounds(node: TextNode, x: number, y: number): Bounds {
   const size = node.fontSize;
@@ -98,17 +102,35 @@ function textBounds(node: TextNode, x: number, y: number): Bounds {
   node.lines.forEach((line, index) => {
     const baseline = y + node.baseline + index * node.lineAdvance;
     for (const run of line.runs) {
+      const reach = glyphReach(run.font.font, size);
       for (const glyph of run.glyphs) {
         const gx = x + glyph.x;
         const gy = baseline - glyph.y;
-        bounds.minX = Math.min(bounds.minX, gx - size);
-        bounds.maxX = Math.max(bounds.maxX, gx + 2 * size);
-        bounds.minY = Math.min(bounds.minY, gy - 2 * size);
-        bounds.maxY = Math.max(bounds.maxY, gy + size);
+        bounds.minX = Math.min(bounds.minX, gx + reach.left);
+        bounds.maxX = Math.max(bounds.maxX, gx + reach.right);
+        bounds.minY = Math.min(bounds.minY, gy + reach.top);
+        bounds.maxY = Math.max(bounds.maxY, gy + reach.bottom);
       }
     }
   });
   return bounds.minX === Infinity ? box(x, y, node.width, node.height) : bounds;
+}
+
+/** How far a glyph of `font` at `size` reaches from its pen position on the baseline (y down). */
+function glyphReach(
+  font: SfntFont,
+  size: number,
+): { left: number; right: number; top: number; bottom: number } {
+  const { xMin, yMin, xMax, yMax } = font.boundingBox;
+  if (!(xMin < xMax && yMin < yMax))
+    return { left: -size, right: 2 * size, top: -2 * size, bottom: size };
+  const scale = size / font.unitsPerEm;
+  return {
+    left: scale * xMin - 1,
+    right: scale * xMax + 1,
+    top: -scale * yMax - 1,
+    bottom: -scale * yMin + 1,
+  };
 }
 
 /**
