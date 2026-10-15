@@ -4,6 +4,7 @@ export type { BidiParagraph, BidiWork } from "./Bidi.js";
 export type { FontFormat } from "./FontFormat.js";
 export type { GlyphOutline, OutlineCommand } from "./GlyphOutline.js";
 export type { ParseSfntOptions } from "./ParseSfntOptions.js";
+export type { ReservedFontNameHint } from "./ReservedFontNameHint.js";
 export type { ShapedRun } from "./ShapedRun.js";
 export type { ShapeOptions } from "./ShapeOptions.js";
 export type { SubsetOptions } from "./SubsetOptions.js";

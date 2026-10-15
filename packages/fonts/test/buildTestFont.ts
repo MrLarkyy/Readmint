@@ -33,13 +33,16 @@ export interface TestFontOptions {
   readonly cff?: Uint8Array;
   /** Further tables by tag (GDEF, GSUB, GPOS from `buildLayoutTables`), replacing any built here. */
   readonly tables?: Readonly<Record<string, Uint8Array>>;
+  /** Windows name records by name id, replacing the default ones (0-6, 13, 14) or adding to them. */
+  readonly names?: Readonly<Record<number, string>>;
 }
 
 /**
  * A small TrueType (or CFF) font built from a description, byte for byte the same on every run: the tests own every
  * table, so each reader can be checked against values they set (kern pairs, GPOS pairs, composites, fsType). Its name
  * table says what every font made here is: original work of the Readmint contributors under the SIL Open Font
- * License 1.1, no Reserved Font Name.
+ * License 1.1, no Reserved Font Name (unless `names` replaces those records, e.g. to test the Reserved Font Name
+ * policy).
  */
 export function buildTestFont(options: TestFontOptions): Uint8Array {
   const glyphData = options.glyphs.map((glyph) => encodeGlyph(glyph));
@@ -52,7 +55,7 @@ export function buildTestFont(options: TestFontOptions): Uint8Array {
     ["OS/2", os2(options)],
     ["hmtx", hmtx(options.glyphs, boxes)],
     ["cmap", cmap(options.glyphs)],
-    ["name", name(options.family)],
+    ["name", name(options.family, options.names ?? {})],
     [
       "post",
       new ByteWriter(32).u32(0x00030000).u32(0).u32(0).u32(0).u32(0).u32(0).u32(0).u32(0).result(),
@@ -174,8 +177,8 @@ function cmap(glyphs: readonly TestGlyph[]): Uint8Array {
   return buildCmap(entries);
 }
 
-function name(family: string): Uint8Array {
-  const strings: (readonly [number, string])[] = [
+function name(family: string, names: Readonly<Record<number, string>>): Uint8Array {
+  const defaults: (readonly [number, string])[] = [
     [0, "Copyright 2026 The Readmint Contributors"],
     [1, family],
     [2, "Regular"],
@@ -189,6 +192,9 @@ function name(family: string): Uint8Array {
     ],
     [14, "https://openfontlicense.org"],
   ];
+  const chosen = new Map(defaults);
+  for (const [id, text] of Object.entries(names)) chosen.set(Number(id), text);
+  const strings = [...chosen].sort((left, right) => left[0] - right[0]);
   const out = new ByteWriter()
     .u16(0)
     .u16(strings.length)
