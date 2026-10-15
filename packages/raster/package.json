@@ -12,5 +12,19 @@
   "scripts": {
     "build": "tsc -b tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@jsquash/webp": "1.5.0",
+    "@readmint/format": "workspace:*",
+    "@readmint/renderer": "workspace:*",
+    "@resvg/resvg-wasm": "2.6.2",
+    "gifenc": "1.0.3"
+  },
+  "devDependencies": {
+    "@readmint/golden": "workspace:*",
+    "@types/omggif": "1.0.5",
+    "@types/pngjs": "6.0.5",
+    "omggif": "1.0.10",
+    "pngjs": "7.0.0"
   }
 }
