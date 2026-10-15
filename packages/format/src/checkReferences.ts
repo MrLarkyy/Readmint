@@ -119,7 +119,7 @@ class ReferenceWalker {
     for (const name of Object.keys(props)) {
       const definition = props[name] as ComponentPropDefinition;
       if (definition.default === undefined) continue;
-      const failure = propFailure(definition, definition.default);
+      const failure = propFailure(definition, definition.default, true);
       if (failure === "enum")
         this.add(`${path}/${name}/default`, "enum", enumMessage(definition, definition.default));
       else if (failure)
@@ -193,9 +193,10 @@ class ReferenceWalker {
         continue;
       }
       const definition = declared[name] as ComponentPropDefinition;
-      const failure = propFailure(definition, props[name]);
+      const failure = propFailure(definition, props[name], false);
       if (failure === "enum") this.add(at, "enum", enumMessage(definition, props[name]));
-      else if (failure) this.add(at, "type", `expected a ${definition.type} or a {{binding}}`);
+      else if (failure)
+        this.add(at, "type", `expected ${expectation(definition)} or a {{binding}}`);
     }
   }
 
@@ -305,20 +306,37 @@ const colour = ref("Colour");
 
 const listedValues = 8;
 
-function enumMessage(definition: ComponentPropDefinition, value: unknown): string {
-  const values = definition.type === "enum" ? definition.values : [];
+function expectation(definition: ComponentPropDefinition): string {
+  switch (definition.type) {
+    case "array":
+      return "an array";
+    case "enum":
+      return `one of ${listValues(definition.values)}`;
+    default:
+      return `a ${definition.type}`;
+  }
+}
+
+function listValues(values: readonly string[]): string {
   const shown = values
     .slice(0, listedValues)
     .map((item) => quoteInput(item))
     .join(", ");
-  return `expected one of ${shown}${values.length > listedValues ? ", ..." : ""}, got ${quoteInput(String(value))}`;
+  return `${shown}${values.length > listedValues ? ", ..." : ""}`;
+}
+
+function enumMessage(definition: ComponentPropDefinition, value: unknown): string {
+  const values = definition.type === "enum" ? definition.values : [];
+  return `expected one of ${listValues(values)}, got ${quoteInput(String(value))}`;
 }
 
 function propFailure(
   definition: ComponentPropDefinition,
   value: unknown,
+  literal: boolean,
 ): "type" | "enum" | undefined {
-  if (typeof value === "string" && matches(binding, value)) return undefined;
+  const bound = typeof value === "string" && matches(binding, value);
+  if (bound && !literal) return undefined;
   switch (definition.type) {
     case "string":
       return typeof value === "string" ? undefined : "type";
@@ -327,7 +345,7 @@ function propFailure(
     case "boolean":
       return typeof value === "boolean" ? undefined : "type";
     case "color":
-      return typeof value === "string" && matches(colour, value) ? undefined : "type";
+      return typeof value === "string" && (bound || matches(colour, value)) ? undefined : "type";
     case "enum":
       if (typeof value !== "string") return "type";
       return definition.values.includes(value) ? undefined : "enum";

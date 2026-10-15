@@ -430,14 +430,57 @@ describe("enum and array props (RM-50)", () => {
     expect(issuesOf(withProp({ type: "string" }, ["a"])).issues).toMatchObject([
       { path: "/layers/0/props/p", code: "type" },
     ]);
-    expect(issuesOf(withProp({ type: "string" }, {})).issues).toMatchObject([
-      { path: "/layers/0/props/p", code: "type" },
-    ]);
+    const issues = issuesOf(withProp({ type: "string" }, {})).issues;
+    expect(issues).toMatchObject([{ path: "/layers/0/props/p", code: "type" }]);
+    expect(issues[0]?.message).toBe(
+      "expected a string, a number, true or false or a list of prop values",
+    );
   });
 
   test("an unknown prop type stays an enum issue at the type", () => {
     expect(issuesOf(withProp({ type: "list" }, "a")).issues).toMatchObject([
       { path: "/components/c/props/p/type", code: "enum" },
     ]);
+  });
+});
+
+describe("prop messages and literal defaults (RM-50)", () => {
+  const withDefault = (definition: unknown) => ({
+    ...base(),
+    components: { c: { props: { p: definition }, layers: [] } },
+  });
+
+  test("an enum default that looks like a binding is an enum issue", () => {
+    expect(
+      issuesOf(withDefault({ type: "enum", values: ["a"], default: "{{ x }}" })).issues,
+    ).toMatchObject([{ path: "/components/c/props/p/default", code: "enum" }]);
+  });
+
+  test("a number default that looks like a binding is a type issue", () => {
+    expect(issuesOf(withDefault({ type: "number", default: "{{ x }}" })).issues).toMatchObject([
+      { path: "/components/c/props/p/default", code: "type" },
+    ]);
+  });
+
+  test("string and color defaults with braces are literal text and stay valid", () => {
+    expect(validateDesign(withDefault({ type: "string", default: "{{ x }}" })).ok).toBe(true);
+    expect(validateDesign(withDefault({ type: "color", default: "{{ x }}" })).ok).toBe(true);
+  });
+
+  const instance = (definition: unknown, value: unknown) => ({
+    ...withDefault(definition),
+    layers: [{ type: "component", ref: "c", props: { p: value } }],
+  });
+
+  test("a wrong enum prop value names the allowed values", () => {
+    expect(issuesOf(instance({ type: "enum", values: ["a", "b"] }, 5)).issues[0]?.message).toBe(
+      'expected one of "a", "b" or a {{binding}}',
+    );
+  });
+
+  test("a wrong array prop value says an array", () => {
+    expect(issuesOf(instance({ type: "array" }, 5)).issues[0]?.message).toBe(
+      "expected an array or a {{binding}}",
+    );
   });
 });

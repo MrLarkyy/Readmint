@@ -48,7 +48,8 @@ apply unchanged:
   (default `item`) and its position under `index` (default `index`); inside a component `props`, the definition's
   defaults overlaid by the instance's props (a prop given as a binding is evaluated in the instance's scope, then
   checked against the declared type, an `enum` prop against its `values`, an `array` prop for being an array; a
-  mismatch is a `type` issue at the instance prop). A repeat in the component can iterate an array prop.
+  mismatch is a `type` issue at the instance prop). A repeat in the component can iterate an array prop. Defaults and literal list items are used as written, never
+  evaluated.
 
 Each design string is compiled once per render. All evaluations of a render draw from one expr step budget
 (`maxExpressionSteps`, below); once it is spent the render fails with a `binding` issue of expr code `budget`. An

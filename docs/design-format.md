@@ -209,7 +209,10 @@ Component layers read their props as bindings (`{{props.label}}`).
 An `enum` prop takes a string that is one of `values` (1 to 64 strings of 1 to 128 characters); a `default` not listed
 is an `enum` issue at `.../default`. An `array` prop takes a list: a literal list of at most 1000 strings, numbers or
 booleans (more is `count`, an object item is `type`), or a binding yielding any array, for example a list of data
-objects. A `repeat: { each: "{{ props.days }}" }` in the component iterates it, under the usual repeat limits.
+objects. A `repeat: { each: "{{ props.days }}" }` in the component iterates it, under the usual repeat limits. The items of a literal list are not evaluated (`["{{ user.login }}"]` holds the braces
+as text). A prop `default` is a literal value, never evaluated: a binding-shaped default of an `enum`, `array`, `number`
+or `boolean` prop is an issue (`enum` or `type` at `.../default`), and the braces in a `string` or `color` default are
+literal text.
 
 A `component` layer must reference an existing component, may set only declared props, must set every required one,
 and each value must match the declared type (a `color` is a colour) unless it is a binding; a literal value an `enum`

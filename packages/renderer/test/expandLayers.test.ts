@@ -256,7 +256,10 @@ describe("components", () => {
       },
       { data: { list: [1, 2, 3, 4] }, limits: { maxRepeatCopies: 3 } },
     );
-    expect(result.ok).toBe(false);
+    expect(result).toMatchObject({
+      ok: false,
+      issues: [{ path: "/components/days/layers/0/repeat", code: "too-large" }],
+    });
   });
 
   test("a bound prop of the wrong type is an issue at the instance prop", () => {
