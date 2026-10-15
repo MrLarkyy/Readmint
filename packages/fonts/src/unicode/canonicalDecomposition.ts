@@ -1,3 +1,4 @@
+import { combiningClassOf } from "./combiningClass.js";
 import { decodeVarints } from "./decodeVarints.js";
 import { decompositionTriples } from "./ucdTables.js";
 
@@ -13,11 +14,14 @@ const pairKey = 0x110000;
 
 let decompositions: Map<number, readonly [number] | readonly [number, number]> | undefined;
 let compositions: Map<number, number> | undefined;
+/** Starters that compose with a starter before them (the second of such a primary composite), Hangul aside. */
+let backwardStarters: Set<number> | undefined;
 
 function decode(): void {
   const numbers = decodeVarints(decompositionTriples);
   const decomposed = new Map<number, readonly [number] | readonly [number, number]>();
   const composed = new Map<number, number>();
+  const backward = new Set<number>();
   let codePoint = 0;
   for (let index = 0; index + 2 < numbers.length; index += 3) {
     codePoint += numbers[index] ?? 0;
@@ -26,10 +30,14 @@ function decode(): void {
     const last = numbers[index + 2] ?? 0;
     const second = Math.floor(last / 2);
     decomposed.set(codePoint, second === 0 ? [first] : [first, second]);
-    if (last % 2 === 0) composed.set(first * pairKey + second, codePoint);
+    if (last % 2 === 0) {
+      composed.set(first * pairKey + second, codePoint);
+      if (combiningClassOf(first) === 0 && combiningClassOf(second) === 0) backward.add(second);
+    }
   }
   decompositions = decomposed;
   compositions = composed;
+  backwardStarters = backward;
 }
 
 /**
@@ -74,4 +82,22 @@ export function compositionOf(first: number, second: number): number | undefined
   }
   if (compositions === undefined) decode();
   return compositions?.get(first * pairKey + second);
+}
+
+/**
+ * Whether the full canonical decomposition of a character starts with a starter that composes with a starter before
+ * it (Kirat Rai U+16D67 and the vowels made of it, Indic two-part vowel signs). Hangul vowels and trailing consonants
+ * are left to the syllable rules of UAX #29.
+ */
+export function composesWithStarterBefore(codePoint: number): boolean {
+  if (backwardStarters === undefined) decode();
+  let first = codePoint;
+  for (
+    let mapping = decompositionOf(first);
+    mapping !== undefined;
+    mapping = decompositionOf(first)
+  ) {
+    first = mapping[0];
+  }
+  return backwardStarters?.has(first) === true;
 }

@@ -1,5 +1,7 @@
 import { isDefaultIgnorable, isNonSpacingMark, isSpacingMark } from "./unicode/characterFlags.js";
 import { isStrong } from "./unicode/bidiClass.js";
+import { composesWithStarterBefore } from "./unicode/canonicalDecomposition.js";
+import { combiningClassOf } from "./unicode/combiningClass.js";
 import { indicSyllabicOf } from "./unicode/indicCategory.js";
 
 const zwj = 0x200d;
@@ -64,7 +66,9 @@ function joinsSyllable(previous: Jamo, next: Jamo): boolean {
  * variation selectors and other default ignorables (which are never drawn on their own), a symbol after ZWJ (emoji
  * sequences: UAX #29 GB11 without Extended_Pictographic data, so any character that is not strong (a letter)), a
  * Devanagari conjunct (consonant, virama, consonant: UAX #29 GB9c), the conjoining jamo of a Hangul syllable (GB6-GB8,
- * so a decomposed syllable recomposes before shaping), a pair of regional indicators. Close to UAX #29
+ * so a decomposed syllable recomposes before shaping), a character whose decomposition starts with a letter that
+ * composes canonically with a starter before it (Kirat Rai vowel signs: UAX #15 composes such starters only when
+ * adjacent, so normalizing per cluster is NFC), a pair of regional indicators. Close to UAX #29
  * grapheme clusters, from this package's Unicode tables only, so every engine splits the same way. A cluster holds at
  * most 32 code points (like the stream-safe text format's 30 non-starters): a longer run of marks or conjuncts goes
  * on in a new cluster, so the work per cluster stays bounded.
@@ -90,6 +94,7 @@ export function clusterStarts(text: string): number[] {
         (previous === zwj && !isStrong(codePoint)) ||
         (linker && isDevanagariConsonant(codePoint)) ||
         joinsSyllable(jamoOf(previous), jamoOf(codePoint)) ||
+        (combiningClassOf(previous) === 0 && composesWithStarterBefore(codePoint)) ||
         (isRegionalIndicator(codePoint) && regionalIndicators % 2 === 1));
     if (!joins) {
       starts.push(index);

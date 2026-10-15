@@ -30,6 +30,12 @@ test("the conjoining jamo of a Hangul syllable stay together (UAX #29 GB6-GB8)",
   expect(clusterStarts(`${"\u1100".repeat(39)}\u1161`)).toEqual([0, 32]);
 });
 
+test("starters that compose canonically stay together (Kirat Rai vowels)", () => {
+  expect(clusterStarts(String.fromCodePoint(0x16d63, 0x16d67, 0x16d67, 0x16d63))).toEqual([0, 6]);
+  expect(clusterStarts(String.fromCodePoint(0x16d69, 0x16d67))).toEqual([0]);
+  expect(clusterStarts("ab")).toEqual([0, 1]);
+});
+
 test("an empty text has no clusters", () => {
   expect(clusterStarts("")).toEqual([]);
 });
