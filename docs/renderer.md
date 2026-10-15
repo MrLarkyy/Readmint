@@ -359,7 +359,8 @@ budget?, maxBytes? })`, `encodeWoff`, `decodeWoff`, `glyphClosure`, `OutlineBudg
     order; a Huffman table selector above 3 (above 1 in SOF0); a Huffman table no DHT defines yet (libjpeg-turbo then
     uses its default tables, jpeg-decoder draws nothing), except tables 0 and 1 of a sequential scan after an AVI1 APP0
     (Motion JPEG: both use the default tables); a Huffman table with a code of all ones (libjpeg fails on it, though
-    only where a scan uses it); a quantization table no DQT defines; a sequential (SOF0, SOF1)
+    only where a scan uses it); a DC table holding a category above 15 (16 lossless) that a scan decodes differences
+    with (libjpeg fails to build it, jpeg-decoder only on decoding one); a quantization table no DQT defines; a sequential (SOF0, SOF1)
     scan whose spectral selection is not 0-63 (or 0-0) or whose successive approximation is not 0; progressive
     parameters jpeg-decoder rejects; more than 10 blocks per MCU; a scan of a component already complete (jpeg-decoder
     skips it, libjpeg applies it); a quantization table redefined between two scans of one component;
@@ -376,7 +377,32 @@ budget?, maxBytes? })`, `encodeWoff`, `decodeWoff`, `glyphClosure`, `OutlineBudg
   output draws, so it stays accepted; of a progressive (SOF2) one Chromium draws what its scans hold and resvg
   nothing, so it is refused; a lossless one is refused (below). Every rule is pinned in both outputs (`packages/renderer/test/jpegStructureCases.ts`
   and `jpegMarkers.ts`: Chromium 156, resvg-wasm 2.6.2); a few that both draw nothing for are refused to name the
-  reason. Corrupt entropy-coded data inside a well-formed scan is not checked.
+  reason.
+
+- The image data of every scan, lossless too, is decoded to its Huffman symbols, never to pixels (no dequantization,
+  no IDCT), the way both decoders walk it: MCU order (interleaved, `ceil(W/8Hmax)` x `ceil(H/8Vmax)` MCUs of `h` x `v`
+  blocks per component; non-interleaved, the component's own blocks), restart intervals (the RSTn due in sequence
+  after the padding bits, predictors and end-of-band run starting over), end-of-band runs and the correction bits of
+  refinement scans, which take a history of nonzero coefficients per block of a progressive frame. Refused, as
+  Chromium draws what it decoded and resvg nothing or other pixels: a code no code of up to 16 bits matches; a DC
+  difference of category 12-15; a run of coefficients past the end of the block (sequential) or band (progressive,
+  first or refinement scan); an end-of-band run (EOBn) in a sequential scan (jpeg-decoder reads its bits and skips the
+  next blocks' coefficients, libjpeg ends the block); a refinement coefficient of a size other than 1; another marker
+  than the restart marker due, or none, where a restart interval ends. Refused fail-closed, as the probe found them
+  drawn alike in some files and apart in others: image data a marker cuts short before its last block (libjpeg fills
+  the rest grey or leaves it as earlier scans had it, jpeg-decoder decodes zero bits, which agree only by chance);
+  bytes between the padding and a restart marker (libjpeg skips any, jpeg-decoder looks only a few bytes ahead); a DC
+  value past 2047 either way or an AC value of more than 10 bits, beyond what 8-bit samples give (alike while the
+  dequantized value fits 16 bits, apart past it, as Chromium's libjpeg-turbo dequantizes in 16 bits); a
+  non-interleaved scan whose blocks the two count differently (a component sampled 2 under a largest 4: libjpeg
+  rounds the component's width up to blocks, jpeg-decoder pads it to whole MCUs; from the source, not drawable in the
+  32x16 probe). Accepted, as both draw them alike: padding bits other than ones, bytes after the last block up to the
+  next marker, an end-of-band run past the end of the scan, and lossless differences of category 9-16 (both keep the
+  sum modulo 2^16 and draw its low byte). Where the data runs out without any marker the file is a cut one (above).
+  Measured with built files of exact symbols and the gradient, `progressive.jpg` and `sof3-8bit-rgb.jpg` broken in
+  place, every kind pinned in both outputs (`packages/renderer/test/jpegEntropyCases.ts`: Chromium 156, resvg-wasm
+  2.6.2). Lossy pixel values the two decoders round apart (up to 2 levels) are a separate matter. The check is
+  bounded (see Limits) and takes about 100 ms for a 3 MB baseline file, 200 ms for a progressive one.
 
 - A lossless JPEG (SOF3) is accepted only where Chromium and resvg draw the same pixels: resvg-wasm 2.6.2 decodes with
   jpeg-decoder 0.3.1, whose lossless path copies the stored samples without any colour transform (it ignores JFIF,
@@ -387,7 +413,8 @@ budget?, maxBytes? })`, `encodeWoff`, `decodeWoff`, `glyphClosure`, `OutlineBudg
   starts `Adobe` is at least 12 bytes long with transform 0 (libjpeg takes the last one, so all must agree); (4) no DRI;
   (5) the first scan holds `R` `G` `B` in frame order, each on Huffman tables 0 (selector byte 0), predictor 1-7, no
   spectral end, successive approximation or point transform; (6) its image data, read once past stuffed zeros
-  (`FF 00`) and fill bytes, ends at the end-of-image marker (EOI): a file cut before or inside the scan, one without
+  (`FF 00`) and fill bytes, holds one difference symbol per sample (checked like any scan, above) and ends at the
+  end-of-image marker (EOI): a file cut before or inside the scan, one without
   EOI, a second scan, a restart marker or any other marker before EOI is refused (a DCT file cut after its frame
   header is still read). Chromium draws the rows it has of a cut file and resvg nothing; of two scans Chromium draws
   the first and resvg the second. Anything else is `asset-format` with `JPEG frame type 0xC3 (lossless) is
@@ -543,6 +570,11 @@ each text by its own budget, max(16384, 128 x its length) operations, which fail
 the whole render by 4000000 shaping operations, every text together (an internal bound like the outline work, not a
 `RenderLimits` field), which fails as `asset-too-large` at the content of the text that crossed it, naming its font.
 A text laid out once is shaped once, however many copies draw it.
+The JPEG symbol check (see Images) is bounded by two fixed limits, not `RenderLimits` fields, each an `asset-format`
+naming it: 134217728 (2^27) decoding steps per file (a block or MCU visited, a run of empty bands in a first AC scan
+counting once), and a progressive frame of at most 8388608 (2^23) blocks over all its components, whose nonzero
+history (64 MiB at most) is checked before any is allocated; both stay far above a 4 MiB file of the largest image the
+raster output takes.
 
 ## Issues
 

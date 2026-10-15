@@ -1,15 +1,14 @@
 import type { Bytes } from "./Bytes.js";
+import { HuffmanTable } from "./HuffmanTable.js";
+import { type EntropyScan, JpegEntropy } from "./JpegEntropy.js";
+import { entropyRefusal, resvgDiffers, undrawable } from "./jpegRefusals.js";
 import type { LosslessJpeg } from "./LosslessJpeg.js";
 import { nextJpegMarker } from "./nextJpegMarker.js";
 import { skipEntropyData } from "./skipEntropyData.js";
+import { standardHuffmanTables } from "./standardHuffmanTables.js";
 
 const hex = (value: number) => `0x${value.toString(16).toUpperCase().padStart(2, "0")}`;
 
-/** Chromium draws it, resvg (jpeg-decoder 0.3.1) draws nothing or other pixels. */
-const resvgDiffers = (what: string) =>
-  `JPEG ${what} is refused, because Chromium and resvg draw it differently`;
-/** Neither output draws it: refused to name the reason instead of an empty box. */
-const undrawable = (what: string) => `JPEG ${what} is refused, because neither output draws it`;
 const baselineTable = (table: number, where: string) =>
   `JPEG baseline (SOF0) ${where} Huffman table ${String(table)}, which is refused, because resvg draws it empty; ` +
   "baseline allows tables 0 and 1";
@@ -48,17 +47,23 @@ const isAppOrTable = (marker: number) =>
  * quantization table it cannot build, an Adobe transform above 2, a marker after the image data other than a table,
  * APPn, COM or a restart right after the data, a sequential scan with spectral or successive approximation values,
  * scan components out of frame order, a component left incomplete or scanned after it is complete, CMYK) and reads
- * JFIF, Adobe and the component ids in another order and up to EOI, where libjpeg stops at the first scan. A
- * sequential (SOF0, SOF1) file cut before EOI draws nothing in both, so its walk just ends; of a progressive one cut
- * before EOI Chromium draws what its scans hold and resvg nothing, so it is refused (lossless: `LosslessJpeg`). Each rule is pinned against both outputs in
- * test/jpegStructureCases.ts and test/jpegMarkers.ts (Chromium 156, resvg-wasm 2.6.2).
+ * JFIF, Adobe and the component ids in another order and up to EOI, where libjpeg stops at the first scan. The image
+ * data of every scan is decoded to its Huffman symbols by `JpegEntropy`, which refuses where the two decoders part
+ * ways on it. A sequential (SOF0, SOF1) file cut before EOI draws nothing in both, so its walk just ends; of a
+ * progressive one cut before EOI Chromium draws what its scans hold and resvg nothing, so it is refused (lossless:
+ * `LosslessJpeg`). Each rule is pinned against both outputs in test/jpegStructureCases.ts, test/jpegMarkers.ts and
+ * test/jpegEntropyCases.ts (Chromium 156, resvg-wasm 2.6.2).
  */
 export class JpegStructure {
   private frame: number | undefined;
   private components: Component[] = [];
-  /** The Huffman tables defined so far, each true where it has a code of all ones (libjpeg fails on it when used). */
-  private readonly dcTables = new Map<number, boolean>();
-  private readonly acTables = new Map<number, boolean>();
+  /** The Huffman tables defined so far. */
+  private readonly dcTables = new Map<number, HuffmanTable>();
+  private readonly acTables = new Map<number, HuffmanTable>();
+  /** The restart interval of the latest DRI. */
+  private restartInterval = 0;
+  /** The symbol check of the image data; none for a frame of zero size, which the sniffer refuses. */
+  private entropy: JpegEntropy | undefined;
   /** An AVI1 APP0 (Motion JPEG) has been read: jpeg-decoder then fills in the default tables 0 and 1. */
   private mjpeg = false;
   /** How often each quantization table has been defined. */
@@ -71,8 +76,10 @@ export class JpegStructure {
   segmentProblem(marker: number, bytes: Bytes, offset: number, length: number): string | undefined {
     if (marker === 0xdb) return this.quantizationProblem(bytes, offset, length);
     if (marker === 0xc4) return this.huffmanProblem(bytes, offset, length);
-    if (marker === 0xdd && length !== 4)
-      return undrawable("restart interval segment of an invalid length");
+    if (marker === 0xdd) {
+      if (length !== 4) return undrawable("restart interval segment of an invalid length");
+      this.restartInterval = bytes.u16be(offset + 2);
+    }
     if (marker === 0xe0) this.readApp0(bytes, offset + 2, length - 2);
     if (marker === 0xee) return this.adobeProblem(bytes, offset + 2, length - 2);
     return undefined;
@@ -98,6 +105,9 @@ export class JpegStructure {
         latched: undefined,
       });
     }
+    const height = bytes.u16be(offset + 3);
+    const width = bytes.u16be(offset + 5);
+    if (width > 0 && height > 0) this.entropy = new JpegEntropy(width, height, this.components);
     if (marker === 0xc3) return undefined;
     if (count === 4)
       return resvgDiffers("frame of 4 components (CMYK or YCCK), which resvg draws empty,");
@@ -127,16 +137,24 @@ export class JpegStructure {
     if (lossless.lossless) {
       const problem = lossless.problemAtScan(bytes, offset);
       if (problem !== undefined) return problem;
-      const tableProblem = this.tableProblem("DC", 0, false);
+      const tableProblem = this.tableProblem("DC", 0, false, 16);
       if (tableProblem !== undefined) return tableProblem;
-      const end = skipEntropyData(bytes.data, offset + bytes.u16be(offset), false);
+      const data = offset + bytes.u16be(offset);
+      const table = this.dcTables.get(0);
+      const fault =
+        table === undefined ? undefined : this.entropy?.losslessFault(bytes.data, data, table);
+      if (fault !== undefined) return entropyRefusal(fault);
+      const end = skipEntropyData(bytes.data, data, false);
       return lossless.problemAfterImageData(end?.marker);
     }
     let scan = offset;
     for (;;) {
       const scanProblem = this.scanProblem(bytes, scan);
       if (scanProblem !== undefined) return scanProblem;
-      let next = skipEntropyData(bytes.data, scan + bytes.u16be(scan), true);
+      const data = scan + bytes.u16be(scan);
+      const fault = this.entropy?.scanFault(bytes.data, data, this.entropyScan(bytes, scan));
+      if (fault !== undefined) return entropyRefusal(fault);
+      let next = skipEntropyData(bytes.data, data, true);
       for (;;) {
         if (next === undefined) return this.cutProblem();
         const marker = next.marker;
@@ -216,7 +234,12 @@ export class JpegStructure {
       if (codes > 256 || codes > end - at - 17) {
         return undrawable("Huffman table segment of an invalid length");
       }
-      (id >> 4 === 0 ? this.dcTables : this.acTables).set(table, allOnes);
+      const counts = Array.from({ length: 16 }, (_, index) => bytes.u8(at + 1 + index));
+      const symbols = bytes.data.slice(at + 17, at + 17 + codes);
+      (id >> 4 === 0 ? this.dcTables : this.acTables).set(
+        table,
+        new HuffmanTable(counts, symbols, allOnes),
+      );
       at += 17 + codes;
     }
     return undefined;
@@ -280,8 +303,10 @@ export class JpegStructure {
       if (dc > 3 || ac > 3) return undrawable(`scan with Huffman table selector ${hex(tables)}`);
       if (this.frame === 0xc0 && Math.max(dc, ac) > 1)
         return baselineTable(Math.max(dc, ac), "scan selects");
+      // libjpeg builds a DC table only for a scan that decodes DC differences, and then refuses a category above 15.
+      const largest = !progressive || high === 0 ? 15 : undefined;
       const tableProblem =
-        (band[0] === 0 ? this.tableProblem("DC", dc, !progressive) : undefined) ??
+        (band[0] === 0 ? this.tableProblem("DC", dc, !progressive, largest) : undefined) ??
         ((band[1] ?? 0) > 0 ? this.tableProblem("AC", ac, !progressive) : undefined);
       if (tableProblem !== undefined) return tableProblem;
       const definition = this.quantTables.get(component.table);
@@ -314,20 +339,55 @@ export class JpegStructure {
   /**
    * Why a scan on Huffman `table` of `kind` is refused, or undefined. Where no DHT defines it, libjpeg-turbo fills in
    * its default tables 0 and 1 for a sequential scan (jdhuff.c:823), jpeg-decoder only after an AVI1 APP0
-   * (decoder.rs:817), for any scan.
+   * (decoder.rs:817), for any scan. Where libjpeg builds the table for decoding, a symbol above `largest` fails it
+   * (jdhuff.c:257); jpeg-decoder fails only on decoding one.
    */
-  private tableProblem(kind: "DC" | "AC", table: number, sequential: boolean): string | undefined {
-    const allOnes =
-      (kind === "DC" ? this.dcTables : this.acTables).get(table) ??
-      (sequential && this.mjpeg && table <= 1 ? false : undefined);
-    if (allOnes === undefined) {
-      return resvgDiffers(`scan on ${kind} Huffman table ${String(table)}, which no DHT defines,`);
+  private tableProblem(
+    kind: "DC" | "AC",
+    table: number,
+    sequential: boolean,
+    largest?: number,
+  ): string | undefined {
+    const found = this.table(kind, table, sequential);
+    const name = `${kind} Huffman table ${String(table)}`;
+    if (found === undefined) return resvgDiffers(`scan on ${name}, which no DHT defines,`);
+    if (found.allOnes) return resvgDiffers(`scan on ${name}, which has a code of all ones,`);
+    if (largest !== undefined && found.largestSymbol > largest) {
+      return resvgDiffers(`scan on ${name}, which holds a category above ${String(largest)},`);
     }
-    return allOnes
-      ? resvgDiffers(
-          `scan on ${kind} Huffman table ${String(table)}, which has a code of all ones,`,
-        )
-      : undefined;
+    return undefined;
+  }
+
+  /** The Huffman table a scan decodes with: the DHT's, else the default one a Motion JPEG frame brings. */
+  private table(kind: "DC" | "AC", table: number, sequential: boolean): HuffmanTable | undefined {
+    const defined = (kind === "DC" ? this.dcTables : this.acTables).get(table);
+    if (defined !== undefined || !sequential || !this.mjpeg) return defined;
+    return (kind === "DC" ? standardHuffmanTables.dc : standardHuffmanTables.ac)[table];
+  }
+
+  /** The scan header at `offset` (its length field, checked by `scanProblem`) as the entropy check reads it. */
+  private entropyScan(bytes: Bytes, offset: number): EntropyScan {
+    const count = bytes.u8(offset + 2);
+    const parameters = offset + 3 + 2 * count;
+    const progressive = this.frame === 0xc2;
+    const components = Array.from({ length: count }, (_, position) => {
+      const id = bytes.u8(offset + 3 + 2 * position);
+      const tables = bytes.u8(offset + 4 + 2 * position);
+      return {
+        index: this.components.findIndex((component) => component.id === id),
+        dc: this.table("DC", tables >> 4, !progressive),
+        ac: this.table("AC", tables & 0x0f, !progressive),
+      };
+    });
+    return {
+      progressive,
+      components,
+      start: bytes.u8(parameters),
+      end: bytes.u8(parameters + 1),
+      high: bytes.u8(parameters + 2) >> 4,
+      low: bytes.u8(parameters + 2) & 0x0f,
+      restartInterval: this.restartInterval,
+    };
   }
 
   private endProblem(): string | undefined {

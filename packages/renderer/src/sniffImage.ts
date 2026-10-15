@@ -34,8 +34,9 @@ const png = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
 
 /**
  * Format by magic bytes (PNG, JPEG, GIF, WebP), dimensions from the header, the animation frame count and the EXIF
- * orientation, without decoding pixels. Every walk advances on each step and stops at the end of the bytes, so crafted input costs at
- * most one pass. SVG and anything else is refused.
+ * orientation, without decoding pixels. Every walk advances on each step and stops at the end of the bytes, so crafted
+ * input costs at most one pass; a JPEG one more over each scan's Huffman symbols, bounded by `maxEntropySteps`. SVG and
+ * anything else is refused.
  */
 export function sniffImage(data: Uint8Array, maxFrames: number): SniffResult {
   const bytes = new Bytes(data);
@@ -214,9 +215,11 @@ function frameHeaderProblem(bytes: Bytes, offset: number, length: number): strin
  * exactly; past it the walk reads markers as libjpeg (and so Chromium) does, so it finds the same EXIF segments, and a
  * cut-off walk just ends. A marker libjpeg rejects or resvg draws empty, before or after the frame header, refuses the
  * image. `JpegStructure` holds every segment, the frame and, from the first scan on, the rest of the file to EOI to
- * what Chromium and resvg both draw alike. A lossless (SOF3) file is judged at its first scan by `LosslessJpeg`, fed
- * every segment before it on both sides of the frame header (libjpeg fixes the colour space there), then its image
- * data must end at EOI; one cut off before that is refused. Every step advances, so the walk is one pass at most.
+ * what Chromium and resvg both draw alike, the Huffman symbols of every scan's image data included (`JpegEntropy`).
+ * A lossless (SOF3) file is judged at its first scan by `LosslessJpeg`, fed every segment before it on both sides of
+ * the frame header (libjpeg fixes the colour space there), then its image data must end at EOI; one cut off before
+ * that is refused. Every step advances, so the marker walk is one pass at most and the symbol check one more per scan,
+ * bounded by `maxEntropySteps`.
  */
 function sniffJpeg(bytes: Bytes): SniffResult {
   let offset = 2;

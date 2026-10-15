@@ -6,6 +6,7 @@ import { loadScale } from "../../../test-support/loadScale.js";
 import { renderSvg, type RenderOptions } from "../src/index.js";
 import { sniffImage } from "../src/sniffImage.js";
 import { jpegWithExif, orientationTiff, pngWithExif, vp8x, webpWithExif } from "./exifImages.js";
+import { jpegEntropyCases } from "./jpegEntropyCases.js";
 import { jpegFrameFixtures } from "./jpegFrameTypes.js";
 import { jpegStructureCases } from "./jpegStructureCases.js";
 import { acceptedJpegs, refusedJpegs } from "./jpegMarkers.js";
@@ -403,6 +404,39 @@ describe("the JPEG structure Chromium and resvg draw alike", () => {
       expect(result.ok ? "" : result.message).toContain(row.message);
     }
   });
+});
+
+describe("the JPEG image data Chromium and resvg draw alike", () => {
+  const cases = jpegEntropyCases(jpeg);
+
+  test.each(cases.map((row) => [row.name, row] as const))("%s", (_name, row) => {
+    const result = sniffImage(row.bytes, 1000);
+    if (row.message === undefined) {
+      expect(result).toMatchObject({
+        ok: true,
+        info: { mime: "image/jpeg", width: 32, height: 16 },
+      });
+    } else {
+      expect(result.ok).toBe(false);
+      expect(result.ok ? "" : result.message).toContain(row.message);
+    }
+  });
+
+  // Accepted rows both outputs draw alike; a measured refusal names the difference; "may draw it differently" marks a
+  // kind refused fail-closed, whose rows the probe found either way.
+  test.each(cases.map((row) => [row.name, row] as const))(
+    "the rule for %s follows its pins",
+    (_name, row) => {
+      const result = sniffImage(row.bytes, 1000);
+      const message = result.ok ? "" : result.message;
+      if (result.ok) expect(row.chromium).toEqual(row.resvg);
+      else if (message.includes("Chromium and resvg draw it differently"))
+        expect(row.chromium).not.toEqual(row.resvg);
+      else if (message.includes("neither output draws it")) {
+        expect([row.chromium, row.resvg]).toEqual(["nothing", "nothing"]);
+      } else expect(message).toContain("Chromium and resvg may draw it differently");
+    },
+  );
 });
 
 describe("refused input", () => {
