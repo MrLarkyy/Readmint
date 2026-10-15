@@ -384,8 +384,7 @@ function untar(archive: Buffer): Map<string, string> {
 // ---- resolution ----
 
 function pinnedVersions(): Map<string, string[]> {
-  const require = createRequire(new URL("../../raster/package.json", import.meta.url));
-  const wasm = readFileSync(require.resolve("@resvg/resvg-wasm/index_bg.wasm")).toString("latin1");
+  const wasm = wasmText();
   const pins = new Map<string, string[]>();
   for (const match of wasm.matchAll(
     /registry\/src\/[^/]+\/([A-Za-z0-9_-]+?)-(\d+\.\d+\.\d+(?:-[A-Za-z0-9.]+)?)\//g,
@@ -395,6 +394,82 @@ function pinnedVersions(): Map<string, string[]> {
     if (!known.includes(version)) pins.set(name, [...known, version]);
   }
   return pins;
+}
+
+function wasmText(): string {
+  const require = createRequire(new URL("../../raster/package.json", import.meta.url));
+  return readFileSync(require.resolve("@resvg/resvg-wasm/index_bg.wasm")).toString("latin1");
+}
+
+/** Crates of the standard library std links on wasm32-unknown-unknown, with or without its default `backtrace`. */
+const standardDeps = [
+  "hashbrown",
+  "compiler_builtins",
+  "dlmalloc",
+  "rustc-demangle",
+  "cfg-if",
+  "libc",
+  "miniz_oxide",
+  "adler",
+  "addr2line",
+  "gimli",
+  "object",
+];
+const standardPathCrates = ["core", "alloc", "std", "panic_abort", "unwind", "std_detect"];
+
+/**
+ * The standard library of the rustc commit the binary names (`/rustc/<commit>/library/...`): its own crates under
+ * rust-lang/rust's licence files at that commit, and its crates.io dependencies at the versions that commit's
+ * Cargo.lock holds (the binary's `/rust/deps/<crate>-<version>/` paths must agree), each with its own licence files.
+ */
+async function standardLibrary(): Promise<
+  { name: string; version: string; licence: string; texts: { file: string; text: string }[] }[]
+> {
+  const wasm = wasmText();
+  const commit = /\/rustc\/([0-9a-f]{40})\//.exec(wasm)?.[1];
+  if (commit === undefined) throw new Error("the binary names no rustc commit");
+  const raw = (path: string): Promise<string> =>
+    get(`https://raw.githubusercontent.com/rust-lang/rust/${commit}/${path}`).then((response) =>
+      response.text(),
+    );
+  const release = (await raw("src/version")).trim();
+  const lock = await raw("Cargo.lock");
+  const texts = await Promise.all(
+    ["COPYRIGHT", "LICENSE-APACHE", "LICENSE-MIT"].map(async (file) => ({
+      file,
+      text: await raw(file),
+    })),
+  );
+  const version = `${release}-nightly (rustc ${commit.slice(0, 12)}, standard library)`;
+  const rows = standardPathCrates.map((name) => ({
+    name,
+    version,
+    licence: "MIT OR Apache-2.0",
+    texts,
+  }));
+  const named = new Map(
+    [...wasm.matchAll(/\/rust\/deps\/([A-Za-z0-9_-]+?)-(\d+\.\d+\.\d+)\//g)].map((match) => [
+      match[1] ?? "",
+      match[2] ?? "",
+    ]),
+  );
+  for (const name of standardDeps) {
+    const versions = [
+      ...lock.matchAll(
+        new RegExp(`\\[\\[package\\]\\]\\nname = "${name}"\\nversion = "([^"]+)"`, "g"),
+      ),
+    ].map((match) => match[1] ?? "");
+    const pick = named.get(name) ?? (versions.length === 1 ? versions[0] : undefined);
+    if (pick === undefined || !versions.includes(pick)) {
+      throw new Error(`no single ${name} version in the standard library's Cargo.lock`);
+    }
+    const files = await crateFiles(name, pick);
+    rows.push({ name, version: pick, licence: files.licence, texts: [...files.texts] });
+  }
+  for (const name of named.keys()) {
+    if (!standardDeps.includes(name)) throw new Error(`the binary names std dependency ${name}`);
+  }
+  return rows;
 }
 
 async function choose(
@@ -569,6 +644,10 @@ async function main(): Promise<void> {
     );
     rows.push({ name: crate.name, version: crate.version, licence: crate.licence, texts });
   }
+  for (const row of await standardLibrary()) {
+    if (!rows.some((known) => known.name === row.name && known.version === row.version))
+      rows.push(row);
+  }
   rows.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
   const width = Math.max(...rows.map((row) => row.name.length));
   const groups = new Map<string, string[]>();
@@ -590,7 +669,8 @@ async function main(): Promise<void> {
     "2024-03-26 (its publication) with the versions the binary names pinned; build-time crates left out. Each crate's",
     "licence files follow the list, copied verbatim from its published .crate (or its git repository); a text several",
     "crates ship identically is printed once, naming them all. Where a crate offers a choice (A OR B), it is used under",
-    "any of the licences whose text it ships.",
+    "any of the licences whose text it ships. The Rust standard library the binary was built with (core, alloc, std",
+    "and their runtime crates for wasm32, versions from that rustc commit's Cargo.lock) is listed too.",
     "",
     ...rows.map(
       (row) =>

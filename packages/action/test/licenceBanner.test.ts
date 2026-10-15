@@ -112,3 +112,26 @@ test("the resvg crate list gives every crate a version and real notices, no temp
     expect(notices, placeholder).not.toContain(placeholder);
   }
 });
+
+test("every crate the resvg binary names, the standard library included, is a row of the list", () => {
+  const list = readFileSync(
+    join(import.meta.dirname, "..", "scripts", "licences", "resvg-wasm-crates.txt"),
+    "utf8",
+  );
+  const rows = new Set(
+    (list.slice(0, list.indexOf("\n----- ")).split("\n\n").at(-1) ?? "")
+      .split("\n")
+      .map((line) => line.split(" ")[0]),
+  );
+  const raster = createRequire(join(import.meta.dirname, "..", "..", "raster", "package.json"));
+  const wasm = readFileSync(raster.resolve("@resvg/resvg-wasm/index_bg.wasm")).toString("latin1");
+  const named = new Set([
+    ...[...wasm.matchAll(/registry\/src\/[^/]+\/([A-Za-z0-9_-]+?)-\d+\.\d+\.\d+/g)].map(
+      (m) => m[1],
+    ),
+    ...[...wasm.matchAll(/\/rust\/deps\/([A-Za-z0-9_-]+?)-\d+\.\d+\.\d+/g)].map((m) => m[1]),
+    ...[...wasm.matchAll(/\/rustc\/[0-9a-f]{40}\/library\/([A-Za-z0-9_-]+)\//g)].map((m) => m[1]),
+  ]);
+  expect(named.size).toBeGreaterThanOrEqual(40);
+  for (const name of named) expect(rows.has(name), name).toBe(true);
+});
