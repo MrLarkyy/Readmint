@@ -163,7 +163,9 @@ there is used by the preview for this session only (same size limits, checked be
 written into the design, which keeps
 the path, so the CLI reads the same file next to the design. Image URLs bound to data are not fetched: the editor makes
 no network request but the raster worker's fetch of its two WebAssembly files from the app's own origin, and it never
-handles a token. The renderer's `missing-asset` issue is shown instead.
+handles a token. The renderer's `missing-asset` issue is shown instead. Only an asset given by path takes a file:
+`attachAsset` refuses one for an embedded (`data:`) or bound asset with an `asset` issue, as the CLI never reads a file
+for those and the preview would otherwise draw bytes the CLI does not.
 
 ## Limits
 
