@@ -127,7 +127,7 @@ an organisation login fails to load.
 
 The profile status, the pinned repositories, the recent pushes and the weekly commits (`github.status`, `github.pinned`,
 `github.pushes`) come from two extra requests. A token that may not read them leaves those fields empty and the
-templates show their plain fallback lines; the run goes on. Private repositories never appear in them, with any token
+templates show their plain fallback lines; the run goes on and the log gets one `::warning::` line naming the missing parts (never the token). Private repositories never appear in them, with any token
 ([data-github.md](data-github.md#pinned-repositories-pushes-and-status)).
 
 The token is used for the GitHub data only. It is never printed: log lines, errors and step outputs are redacted (also

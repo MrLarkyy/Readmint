@@ -13,6 +13,7 @@ export async function loadActionData(
   config: ActionConfig,
   workspace: string,
   fetch?: GitHubFetch,
+  onPartial?: (parts: readonly string[]) => void,
 ): Promise<Record<string, unknown>> {
   try {
     if (config.dataFile !== undefined) return await loadFixtureData(config.dataFile, workspace);
@@ -20,6 +21,7 @@ export async function loadActionData(
       token: config.token,
       ...(config.login === "" ? {} : { login: config.login }),
       ...(fetch === undefined ? {} : { fetch }),
+      ...(onPartial === undefined ? {} : { onPartial }),
     });
   } catch (error) {
     if (error instanceof CliError) throw new ActionError("data", error.lines);

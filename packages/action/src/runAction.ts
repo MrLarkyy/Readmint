@@ -46,7 +46,11 @@ export async function runAction(env: Env, deps: ActionDeps): Promise<number> {
       push = { repo, branch };
     }
 
-    const data = await loadActionData(config, workspace, deps.fetch);
+    const data = await loadActionData(config, workspace, deps.fetch, (parts) => {
+      log.warning(
+        `GitHub data is incomplete (${parts.join(", ")}): github.status, github.pushes and github.pinned[].weeklyCommits may be empty`,
+      );
+    });
     if (config.formats.some((format) => format !== "svg")) await loadRaster(deps);
     const rendered = await renderAll(plan, workspace, data, {
       ...(config.locale === undefined ? {} : { locale: config.locale }),
