@@ -129,8 +129,9 @@ action, which caches the pnpm store keyed by `pnpm-lock.yaml`.
 
 - `static`: build, typecheck, lint, format check.
 - `bundle`: build, editor app, Action bundle and its smoke run.
-- `test`: the Vitest suite in five shards (`node` 1/3 to 3/3, `browser` 1/2 and 2/2). The browser shards also cache the
-  Playwright download (`~/.cache/ms-playwright`, keyed by the lockfile) and install the system dependencies.
+- `test`: the Vitest suite in five shards (`node` 1/3 to 3/3, `browser` 1/2 and 2/2). Every shard caches the
+  Playwright download (`~/.cache/ms-playwright`, keyed by the lockfile) and installs Chromium with its system
+  dependencies, because the `node` project has `appCsp.test.ts`, which drives it.
 - `windows-paths`: the CLI and Action tests on Windows.
 
 To reproduce one shard locally: `pnpm exec vitest run --project node --shard=1/3`.
