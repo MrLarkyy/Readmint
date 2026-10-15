@@ -107,7 +107,7 @@ describe("runGit", { timeout: 30_000 }, () => {
       await writeFile(file, '#!/bin/sh\npwd -P\nfor a in "$@"; do echo "$a"; done\n');
       await chmod(file, 0o755);
       const result = await runGit(["rev-parse", "HEAD"], {
-        cwd: workspace,
+        cwd: path.relative(process.cwd(), workspace),
         env: envWithPath(empty),
         timeoutMs: 30_000,
       });

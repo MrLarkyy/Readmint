@@ -1,6 +1,7 @@
 import { spawn } from "node:child_process";
 import path from "node:path";
 import { findExecutable, withSearchPath } from "./findExecutable.js";
+import { withLibraryPaths } from "./withLibraryPaths.js";
 import type { GitResult, GitRunOptions, GitRunner } from "./GitRunner.js";
 
 /** Most bytes kept of each output stream; git's answers here are short. */
@@ -17,7 +18,10 @@ const maxOutputBytes = 1024 * 1024;
 export const runGit: GitRunner = async (args, options) => {
   const platform = process.platform;
   const workspace = path.resolve(options.cwd);
-  const env = withSearchPath(options.env, { platform, cwd: workspace });
+  const env = withLibraryPaths(withSearchPath(options.env, { platform, cwd: workspace }), {
+    platform,
+    cwd: workspace,
+  });
   const file = await findExecutable("git", { platform, env, cwd: workspace });
   if (file === undefined) return { code: null, stdout: "", stderr: "git could not run (ENOENT)" };
   return spawnGit(file, ["-C", workspace, ...args], { ...options, env });

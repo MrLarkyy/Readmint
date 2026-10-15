@@ -73,7 +73,7 @@ function pathKey(
 }
 
 /** The absolute entries of `searchPath` outside `cwd`, as written (`raw`) and resolved (`dir`). */
-function searchDirs(
+export function searchDirs(
   platform: NodeJS.Platform,
   searchPath: string,
   cwd: string,
