@@ -150,6 +150,26 @@ describe("render to a raster image", () => {
     expect(size(bytes)).toEqual([80, 48]);
   });
 
+  test("writes a PNG of a design with a clip group three canvas heights below", async () => {
+    await tree.file("far.json", {
+      ...plainDesign,
+      layers: [
+        ...plainDesign.layers,
+        {
+          type: "group",
+          y: 30,
+          width: 10,
+          height: 10,
+          clip: true,
+          children: [{ type: "rect", width: 10, height: 10, fill: "#cf222e" }],
+        },
+      ],
+    });
+    const run = await tree.run(["render", "far.json", "--out", "out/far.png"]);
+    expect(run).toMatchObject({ code: ExitCode.ok, stdout: "", stderr: "" });
+    expect(size(await readFile(join(tree.root, "out", "far.png")))).toEqual([40, 20]);
+  });
+
   test("--scale and --time shape a still PNG of an animated design", async () => {
     const run = await tree.run([
       "render",

@@ -68,6 +68,7 @@ function render(context: RenderContext, options: RenderOptions): RenderResult {
     ValueRanges.canvasSide,
     scope,
   );
+  context.placement.setCanvas(width, height);
   const background = resolvePaint(context, canvas.background, "/canvas/background", scope);
   const nodes = expandLayers(context, design.layers, "/layers", scope);
   countImageUses(context, nodes);

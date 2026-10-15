@@ -1,5 +1,6 @@
 import { formatNumber } from "./formatNumber.js";
 import { opacityAttribute, rotation, transformAttribute } from "./nodeAttributes.js";
+import type { PlacementStep } from "./PlacementStep.js";
 import type { RenderContext } from "./RenderContext.js";
 import type { GroupNode } from "./RenderNode.js";
 import { renderLayer } from "./renderLayer.js";
@@ -27,6 +28,17 @@ export function renderGroup(context: RenderContext, node: GroupNode, extra = "")
   writer.write(
     `<g${transformAttribute(translate, rotation(node, 0, 0))}${opacityAttribute(node)}${clip}${extra}>`,
   );
-  for (const child of node.children) renderLayer(context, child);
+  context.placement.within(groupSteps(node), () => {
+    for (const child of node.children) renderLayer(context, child);
+  });
   writer.write("</g>");
+}
+
+/** The group's transform as written: the translation outside, the turn about the box centre inside. */
+function groupSteps(node: GroupNode): PlacementStep[] {
+  const steps: PlacementStep[] = [{ kind: "translate", x: node.x, y: node.y }];
+  if (node.rotation !== undefined && node.rotation !== 0) {
+    steps.push({ kind: "turn", degrees: node.rotation, cx: node.width / 2, cy: node.height / 2 });
+  }
+  return steps;
 }
