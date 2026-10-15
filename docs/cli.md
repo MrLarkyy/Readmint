@@ -190,7 +190,8 @@ The preview is for this computer only:
   then shows the forbidden hint: stop the preview and start it again, which makes a new secret. On a shared computer,
   copying the printed address into the browser leaves nothing on any command line. If the first open already shows
   the forbidden hint (some openers fetch the address themselves before starting the browser), open the printed address
-  instead.
+  instead. When the spent launch address is requested again, the preview prints one warning line on standard error
+  (once per run; it holds neither the address nor the token) and the reply stays the same 403.
 
 Without `--open` nothing is opened. With it the address (with `--github` the one-time launch address, which leads to
 the printed one) opens in the default browser right after it is printed. If the

@@ -30,3 +30,21 @@ test.each([
   expect(launch.take(path)).toBe(false);
   expect(launch.take(`/${token}`)).toBe(true);
 });
+
+test("reuse is reported once, only after the path was taken", () => {
+  const launch = new LaunchPath(token);
+  expect(launch.reused(`/${token}`)).toBe(false);
+  expect(launch.take(`/${token}`)).toBe(true);
+  expect(launch.reused("/other")).toBe(false);
+  expect(launch.reused(`/${token}/`)).toBe(false);
+  expect(launch.reused(`/${token}`)).toBe(true);
+  expect(launch.reused(`/${token}`)).toBe(false);
+  expect(launch.take(`/${token}`)).toBe(false);
+});
+
+test("a discarded path never reports a reuse", () => {
+  const launch = new LaunchPath(token);
+  expect(launch.take(`/${token}`)).toBe(true);
+  launch.discard();
+  expect(launch.reused(`/${token}`)).toBe(false);
+});

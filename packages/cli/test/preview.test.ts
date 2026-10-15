@@ -555,8 +555,20 @@ describe("one-time launch address", () => {
     await Promise.all(servers.splice(0).map((server) => server.close()));
   });
 
+  let reused = 0;
+
+  beforeEach(() => {
+    reused = 0;
+  });
+
   async function launchServer(): Promise<number> {
-    const server = new PreviewServer({ secret, launchToken });
+    const server = new PreviewServer({
+      secret,
+      launchToken,
+      onLaunchReused: () => {
+        reused += 1;
+      },
+    });
     servers.push(server);
     const { port } = await server.listen(0);
     server.update({ svg: "<svg/>", issues: [] });
@@ -661,6 +673,47 @@ describe("one-time launch address", () => {
     expect(refused.status).toBe(403);
     expect((await get(port, `/x${secret}/`)).status).toBe(403);
     expect((await get(port, `/${launchToken}`)).status).toBe(303);
+  });
+
+  test("a second GET reports the reuse once, the first and a third do not", async () => {
+    const port = await launchServer();
+    expect((await get(port, `/${launchToken}`)).status).toBe(303);
+    expect(reused).toBe(0);
+    await expectUnknownPath(port, await get(port, `/${launchToken}`));
+    expect(reused).toBe(1);
+    await expectUnknownPath(port, await get(port, `/${launchToken}`));
+    expect(reused).toBe(1);
+  });
+
+  test.each(["HEAD", "POST"])("%s of the spent path reports nothing", async (method) => {
+    const port = await launchServer();
+    expect((await get(port, `/${launchToken}`)).status).toBe(303);
+    await get(port, `/${launchToken}`, { method });
+    await get(port, `/${launchToken}/`);
+    await get(port, `/${launchToken}x`);
+    expect(reused).toBe(0);
+  });
+
+  test("no report once the secret address discarded the launch address", async () => {
+    const port = await launchServer();
+    expect((await get(port, `/${launchToken}`)).status).toBe(303);
+    expect((await get(port, `/${secret}/status`)).status).toBe(200);
+    await get(port, `/${launchToken}`);
+    expect(reused).toBe(0);
+  });
+
+  test("a throwing callback does not change the reply", async () => {
+    const server = new PreviewServer({
+      secret,
+      launchToken,
+      onLaunchReused: () => {
+        throw new Error("boom");
+      },
+    });
+    servers.push(server);
+    const { port } = await server.listen(0);
+    await get(port, `/${launchToken}`);
+    await expectUnknownPath(port, await get(port, `/${launchToken}`));
   });
 
   test("two concurrent GETs give exactly one 303", async () => {
