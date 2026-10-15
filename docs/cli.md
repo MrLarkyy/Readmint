@@ -107,7 +107,9 @@ or SIGTERM, exit code 0). The page shows the SVG exactly as `render` writes it a
 design file, the fixture data and every asset file the design declares (also one that does not exist yet). A change
 counts once it reads the same on two consecutive checks, so the preview renders again up to about 600 ms after a save
 and the page reloads; a file still being written is not rendered half done, and a file that changes on every check is
-not rendered until it stops changing. A render that fails keeps the last good SVG and shows the issues.
+not rendered until it stops changing. A save that lands while a file is being read (an editor writing a temporary
+file and renaming it over the design or an asset) is read again, up to four reads about 150 ms apart in all, before
+"changed while it was being read" is shown. A render that fails keeps the last good SVG and shows the issues.
 
 The preview is for this computer only:
 
