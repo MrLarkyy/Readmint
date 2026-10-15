@@ -68,7 +68,9 @@ weight and style come from the font (the file name when it names no family); the
 - A font whose OS/2 fsType forbids embedding is stored with `licence.embedding: "restricted"`: its text is drawn as
   paths and the font is never embedded. Its embedding control is disabled with the reason, and the command refuses to
   set it to `allowed`; this holds for fonts of imported designs too (their data URIs are read again). Any font may be
-  set to restricted. The licence name (SPDX) is editable. Any asset id the format allows works, `constructor` included.
+  set to restricted. The licence name (SPDX) is editable. An edit changes only the field it names: every other licence
+  field (`reservedFontName` included) and asset field is kept. Any asset id the format allows works, `constructor`
+  included.
 - Reading the fonts of an imported design (or of attached font files) is bounded as in the renderer: each distinct
   source is decoded once, and a font may decode to no more than what is left of `EditorLimits.maxTotalFontBytes` (the
   renderer's `maxTotalFontBytes`, 16 MiB): a WOFF or WOFF2 declaring more is refused before it inflates anything, and a

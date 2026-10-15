@@ -14,8 +14,9 @@ export interface FontAssetChange {
 }
 
 /**
- * Changes a font asset. Its embedding can always be restricted, but never set to `allowed` when the font's own OS/2
- * fsType forbids embedding (the stricter reading wins, as in the renderer): that change is refused.
+ * Changes a font asset; every field and licence field the change does not name (`reservedFontName`, `fallback`, ...)
+ * stays as it is. Its embedding can always be restricted, but never set to `allowed` when the font's own OS/2 fsType
+ * forbids embedding (the stricter reading wins, as in the renderer): that change is refused.
  */
 export function setFontAsset(state: EditorState, id: string, change: FontAssetChange): EditorState {
   const fonts = state.design.assets?.fonts;
@@ -31,11 +32,15 @@ export function setFontAsset(state: EditorState, id: string, change: FontAssetCh
       childPointer(childPointer(path, "licence"), "embedding"),
     );
   }
+  // Every licence field the change does not name is kept as it is (reservedFontName and any later one).
   const name = "licenceName" in change ? change.licenceName : asset.licence.name;
-  const licence = {
-    embedding: change.embedding ?? asset.licence.embedding,
-    ...(name === undefined || name === "" ? {} : { name }),
-  };
+  const licence = Object.fromEntries(
+    Object.entries({
+      ...asset.licence,
+      embedding: change.embedding ?? asset.licence.embedding,
+      name: name === "" ? undefined : name,
+    }).filter(([, value]) => value !== undefined),
+  );
   const changed = new Map<string, unknown>(
     (["family", "weight", "style", "drawAs"] as const)
       .filter((key) => key in change)

@@ -1,4 +1,4 @@
-import { DesignLimits } from "@readmint/format";
+import { DesignLimits, type Design } from "@readmint/format";
 import { RenderLimits } from "@readmint/renderer";
 import { describe, expect, test } from "vitest";
 import {
@@ -6,11 +6,15 @@ import {
   checkFonts,
   createEditorState,
   EditorLimits,
+  exportDesign,
+  type FontAssetChange,
+  importDesign,
   newDesign,
   renderPreview,
   setFontAsset,
   uploadFont,
 } from "../src/index.js";
+import { encodeBase64 } from "../src/base64.js";
 import { testFonts } from "./testFonts.js";
 
 const empty = createEditorState(newDesign());
@@ -166,5 +170,69 @@ describe("font asset ids named like Object.prototype members", () => {
   test("an id no font has is refused, even when a prototype has it", () => {
     const next = setFontAsset(empty, "constructor", { embedding: "restricted" });
     expect(next.issues).toMatchObject([{ source: "font", message: "no such font" }]);
+  });
+});
+
+describe("setFontAsset keeps every field it does not change", () => {
+  const src = `data:font/ttf;base64,${encodeBase64(testFonts.ttf.bytes)}`;
+  const designWith = (reservedFontName: boolean): Design => ({
+    ...newDesign(),
+    assets: {
+      fonts: {
+        m: {
+          family: "Montserrat",
+          src,
+          weight: 500,
+          licence: { embedding: "allowed", name: "OFL-1.1", reservedFontName },
+          kerning: false,
+        },
+      },
+    },
+    layers: [{ type: "text", content: "Hi", font: "m", fontSize: 20, fill: "#000000" }],
+  });
+  const changes: [string, FontAssetChange][] = [
+    ["an embedding change", { embedding: "allowed" }],
+    ["a name change", { licenceName: "OFL-1.1-no-RFN" }],
+    ["a name removal", { licenceName: "" }],
+  ];
+
+  test.each(
+    [true, false].flatMap((reserved) =>
+      changes.map(([what, change]) => [reserved, what, change] as const),
+    ),
+  )("reservedFontName %s survives %s", async (reserved, _what, change) => {
+    const edited = setFontAsset(createEditorState(designWith(reserved)), "m", change);
+    expect(edited.issues).toEqual([]);
+    const reopened = await importDesign(exportDesign(edited.design));
+    const asset = reopened.ok ? reopened.value.assets?.fonts?.m : undefined;
+    expect(asset?.licence.reservedFontName).toBe(reserved);
+    expect(asset).toMatchObject({ weight: 500, kerning: false });
+    const result = renderPreview(edited);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.svg.includes("@font-face")).toBe(!reserved);
+    expect(result.warnings.map((warning) => warning.code)).toEqual(
+      reserved ? ["font-reserved-name"] : [],
+    );
+  });
+
+  test("the name is set and removed without touching the other licence fields", () => {
+    const state = createEditorState(designWith(true));
+    const renamed = setFontAsset(state, "m", { licenceName: "OFL-1.1-RFN" });
+    expect(renamed.design.assets?.fonts?.m?.licence).toEqual({
+      embedding: "allowed",
+      name: "OFL-1.1-RFN",
+      reservedFontName: true,
+    });
+    const unnamed = setFontAsset(renamed, "m", { licenceName: "" });
+    expect(unnamed.design.assets?.fonts?.m?.licence).toEqual({
+      embedding: "allowed",
+      reservedFontName: true,
+    });
+    const restricted = setFontAsset(unnamed, "m", { embedding: "restricted" });
+    expect(restricted.design.assets?.fonts?.m?.licence).toEqual({
+      embedding: "restricted",
+      reservedFontName: true,
+    });
   });
 });
