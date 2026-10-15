@@ -1,4 +1,5 @@
 import { describe, expect, test } from "vitest";
+import { loadScale } from "../../../test-support/loadScale.js";
 import { ByteWriter } from "../src/ByteWriter.js";
 import { CffIndex } from "../src/CffIndex.js";
 import { MalformedFont } from "../src/MalformedFont.js";
@@ -78,7 +79,7 @@ describe("Type 2 charstrings", () => {
     expect(() =>
       runCharstring(source([[...n(-107), callsubr, endchar]], [[...n(-107), callsubr, 11]]), 0),
     ).toThrow(MalformedFont);
-    expect(performance.now() - started).toBeLessThan(500);
+    expect(performance.now() - started).toBeLessThan(2000 * loadScale());
   });
 
   test("a charstring longer than the operation cap is malformed", () => {

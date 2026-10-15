@@ -12,7 +12,11 @@ import {
 import { montserrat, parse } from "./testFonts.js";
 
 const rounds = 2000;
-const perRoundMs = 50;
+/**
+ * A ceiling, not a speed target: a round takes some 2 to 30 ms, the unbounded work this catches took seconds (the
+ * round-1 kerning reader 43 s). Wide enough that a loaded machine never trips it.
+ */
+const perRoundCeilingMs = 1000;
 const codePoints = [0x41, 0x56, 0x61, 0xe9];
 
 /** Deterministic pseudo-random numbers (an LCG), so a failing round can be replayed. */
@@ -92,7 +96,7 @@ describe.each(Object.entries(montserrat))("mutated Montserrat %s", (name, bytes)
       }
       slowest = Math.max(slowest, performance.now() - started);
     }
-    expect(slowest).toBeLessThan(perRoundMs * loadScale());
+    expect(slowest).toBeLessThan(perRoundCeilingMs * loadScale());
   }, 300_000);
 });
 

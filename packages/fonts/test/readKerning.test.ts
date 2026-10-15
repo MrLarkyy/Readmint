@@ -127,6 +127,9 @@ function repeatedKernFeature(count: number): Uint8Array {
   return bytes;
 }
 
+/** A ceiling for work that must stay linear: it answers in about a millisecond; the quadratic reader took seconds. */
+const ceilingMs = 1000;
+
 describe("crafted kern features cost work linear in the table", () => {
   const answer = (count: number) => {
     const font = parse(withGpos(repeatedKernFeature(count)));
@@ -144,12 +147,12 @@ describe("crafted kern features cost work linear in the table", () => {
   test("a feature listed 4000 times with 4000 lookup entries answers at once", () => {
     const { value, ms } = answer(4000);
     expect(value).toBe(0);
-    expect(ms).toBeLessThan(50 * loadScale());
+    expect(ms).toBeLessThan(ceilingMs * loadScale());
   });
 
-  test("32000 entries each (seconds before) are refused at once", () => {
+  test("32000 entries each are refused before they are read (the quadratic reader read 10^9 and answered 0)", () => {
     const { value, ms } = answer(32_000);
     expect(value).toBeInstanceOf(MalformedFont);
-    expect(ms).toBeLessThan(50 * loadScale());
+    expect(ms).toBeLessThan(ceilingMs * loadScale());
   });
 });

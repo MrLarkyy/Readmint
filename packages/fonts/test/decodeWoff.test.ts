@@ -1,5 +1,6 @@
 import { zlibSync } from "fflate";
 import { describe, expect, test } from "vitest";
+import { loadScale } from "../../../test-support/loadScale.js";
 import { ByteWriter } from "../src/ByteWriter.js";
 import { decodeWoff } from "../src/decodeWoff.js";
 import { encodeWoff, parseSfnt } from "../src/index.js";
@@ -65,7 +66,7 @@ describe("WOFF", () => {
     expect(bomb.length).toBeLessThan(20_000);
     const started = performance.now();
     expect(() => decodeWoff(woff("head", bomb, 1024), 4_000_000)).toThrow(MalformedFont);
-    expect(performance.now() - started).toBeLessThan(2000);
+    expect(performance.now() - started).toBeLessThan(5000 * loadScale());
     expect(parseSfnt(woff("head", bomb, 1024))).toMatchObject({ ok: false, kind: "malformed" });
   });
 

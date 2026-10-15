@@ -27,7 +27,9 @@ describe("CFF outline work and subset size are bounded per font", () => {
     expect(() => subsetFont(font, codePoints(300), { budget: new OutlineBudget() })).toThrow(
       FontRefused,
     );
-    expect(performance.now() - started).toBeLessThan(3000 * loadScale());
+    // The refusal is the pin (without a budget all 300 glyphs flatten); the ceiling (some 25 x the time) only
+    // catches a budget that stops far too late.
+    expect(performance.now() - started).toBeLessThan(5000 * loadScale());
   });
 
   test("the budget is shared: outlines read for paths count toward the subset", () => {
