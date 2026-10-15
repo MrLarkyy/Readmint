@@ -185,39 +185,87 @@ function pngExifBlock(
   });
 }
 
+/** SOF0-SOF2: the frame types (baseline, extended and progressive Huffman, 8-bit) every output draws alike. */
 function isFrameHeader(marker: number): boolean {
-  return marker >= 0xc0 && marker <= 0xcf && marker !== 0xc4 && marker !== 0xc8 && marker !== 0xcc;
+  return marker >= 0xc0 && marker <= 0xc2;
+}
+
+/** The segments libjpeg reads (or skips) by their length: DHT, DAC, DQT, DNL, DRI, APPn, COM. */
+function isLengthSegment(marker: number): boolean {
+  return (
+    marker === 0xc4 ||
+    marker === 0xcc ||
+    (marker >= 0xdb && marker <= 0xdd) ||
+    (marker >= 0xe0 && marker <= 0xef) ||
+    marker === 0xfe
+  );
+}
+
+const hex = (value: number) => `0x${value.toString(16).toUpperCase().padStart(2, "0")}`;
+
+/**
+ * Why a JPEG holding `marker` before its image data is refused, or undefined when the walk reads it on. Every marker
+ * libjpeg (and so Chromium) rejects there makes Chromium draw nothing, where resvg may still draw: refusing it keeps
+ * the preview and the raster output alike. Standalone markers (TEM, RSTn) and SOS are the caller's.
+ */
+function jpegMarkerProblem(marker: number, sawFrame: boolean): string | undefined {
+  if (marker === 0xd8) return "JPEG holds a second start-of-image marker";
+  if (marker === 0xd9) return "JPEG ends before its image data";
+  if (isFrameHeader(marker)) return sawFrame ? "JPEG holds a second frame header" : undefined;
+  if (marker === 0xc3 || (marker >= 0xc9 && marker <= 0xcb)) {
+    return `JPEG frame type ${hex(marker)} (lossless or arithmetic coded) is refused, because not every output draws it alike`;
+  }
+  if ((marker >= 0xc5 && marker <= 0xc8) || (marker >= 0xcd && marker <= 0xcf)) {
+    return `JPEG frame type ${hex(marker)} is not supported`;
+  }
+  if (isLengthSegment(marker)) return undefined;
+  return `JPEG holds an unknown marker ${hex(marker)}`;
+}
+
+/** Why the frame header segment at `offset` (its length field) is refused: libjpeg's checks, 8-bit samples only. */
+function frameHeaderProblem(bytes: Bytes, offset: number, length: number): string | undefined {
+  const precision = bytes.u8(offset + 2);
+  if (precision !== 8) {
+    return `JPEG sample precision of ${String(precision)} bits is not supported, only 8 bits`;
+  }
+  const components = bytes.u8(offset + 7);
+  if (components === 0 || length !== 8 + 3 * components) {
+    return "JPEG frame header length is invalid";
+  }
+  return undefined;
 }
 
 /**
  * Walks the segments up to the image data: the size from the frame header, EXIF from any APP1 `Exif` segment before
  * the scan (decoders read every marker up to it). Before the frame header the segments must follow each other
  * exactly; past it the walk reads markers as libjpeg (and so Chromium) does, so it finds the same EXIF segments, and a
- * cut-off walk just ends. Every step advances, so the walk is one pass at most.
+ * cut-off walk just ends. A marker libjpeg rejects, before or after the frame header, refuses the image. Every step
+ * advances, so the walk is one pass at most.
  */
 function sniffJpeg(bytes: Bytes): SniffResult {
   let offset = 2;
   let size: readonly [width: number, height: number] | undefined;
   let exif = false;
   const blocks: OrientationField[] = [];
-  let problem = "JPEG has no frame header before its image data";
   try {
     for (;;) {
       const next = nextMarker(bytes, offset, size !== undefined);
-      if (next === undefined) {
-        problem = "JPEG segment does not start with 0xFF";
-        break;
-      }
+      if (next === undefined)
+        return { ok: false, message: "JPEG segment does not start with 0xFF" };
       const marker = next.marker;
       offset = next.offset;
-      if (marker === 0x01 || (marker >= 0xd0 && marker <= 0xd8)) continue;
-      if (marker === 0xd9 || marker === 0xda) break;
+      if (marker === 0x01 || (marker >= 0xd0 && marker <= 0xd7)) continue;
+      if (marker === 0xda) {
+        if (size === undefined) {
+          return { ok: false, message: "JPEG has no frame header before its image data" };
+        }
+        return found("image/jpeg", size[0], size[1], 1, exif, blocks);
+      }
+      const problem = jpegMarkerProblem(marker, size !== undefined);
+      if (problem !== undefined) return { ok: false, message: problem };
       const length = bytes.u16be(offset);
       if (length < 2) {
-        if (size === undefined) {
-          problem = "JPEG segment length is invalid";
-          break;
-        }
+        if (size === undefined) return { ok: false, message: "JPEG segment length is invalid" };
         // libjpeg skips nothing past such a length (or stops at a table it needs, where nothing is drawn anyway).
         offset += 2;
         continue;
@@ -227,16 +275,17 @@ function sniffJpeg(bytes: Bytes): SniffResult {
         exif = true;
         blocks.push(exifOrientation(bytes.data, offset + 8, offset + length));
       }
-      if (size === undefined && isFrameHeader(marker)) {
+      if (isFrameHeader(marker)) {
+        const frameProblem = frameHeaderProblem(bytes, offset, length);
+        if (frameProblem !== undefined) return { ok: false, message: frameProblem };
         size = [bytes.u16be(offset + 5), bytes.u16be(offset + 3)];
       }
       offset += length;
     }
   } catch (error) {
     if (!(error instanceof Truncated) || size === undefined) throw error;
+    return found("image/jpeg", size[0], size[1], 1, exif, blocks);
   }
-  if (size === undefined) return { ok: false, message: problem };
-  return found("image/jpeg", size[0], size[1], 1, exif, blocks);
 }
 
 /**

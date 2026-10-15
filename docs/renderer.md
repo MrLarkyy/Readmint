@@ -195,6 +195,14 @@ Drawn in document order, first at the back. Layer `id` and `name` are not emitte
 - Checked before anything is decoded: size, then dimensions from the header, then animation frames (GIF image
   descriptors, APNG `acTL`, WebP `ANMF`). `sniffImage(bytes, maxFrames)`, exported, is that check (format, size, frames, EXIF
   and its orientation from the header alone); raster export sizes its image decoding budget with it.
+- A JPEG Chromium would not draw is `asset-format`: libjpeg (and so Chromium) draws nothing at all for it while resvg
+  may still draw it, so the preview and the raster output would differ. Up to the image data (SOS), before or after
+  the frame header, the markers read on are TEM and RST0-7 (no length), and DHT, DAC, DQT, DNL, DRI, APP0-15 and COM
+  (skipped by their length). Refused, the message naming the marker: a second SOI, EOI before the image data, a second
+  frame header, and any other code (`02`-`BF`, `DE`, `DF`, `F0`-`FD`). Only SOF0, SOF1 and SOF2 (baseline, extended
+  and progressive Huffman) with 8-bit samples are accepted: SOF5-7, `C8` and SOF13-15 libjpeg does not draw, and SOF3 and
+  SOF9-11 (lossless, arithmetic) or 12- and 16-bit samples are refused because no output is shown to draw them alike.
+  A frame header whose length is not 8 plus 3 per component, or which has no component, is refused too.
 - EXIF orientation (tag `0x0112` in IFD0 of a JPEG APP1 `Exif` segment, a PNG `eXIf` chunk before or after the image
   data, or a WebP `EXIF` chunk) is applied by the renderer, never by the decoder: browsers honour the tag and resvg
   does not, so leaving it to them would draw the preview and the raster output differently. The inlined copy has every
@@ -207,8 +215,7 @@ Drawn in document order, first at the back. Layer `id` and `name` are not emitte
   sixth may be anything). Before the frame header the segments must follow each other exactly (stray bytes, `FF 00`
   included, are `asset-format`); past it markers are read as libjpeg's `next_marker` reads them: bytes up to a 0xFF
   are skipped, then 0xFF fill bytes, `FF 00` is a stuffed zero and the scan goes on, RSTn and TEM carry no length,
-  and a segment length below 2 skips just the two length bytes. A marker libjpeg rejects there (a second SOI, an
-  unknown code) makes Chromium draw nothing at all, EXIF or not. A PNG or WebP block may start with the same six-byte
+  and a segment length below 2 skips just the two length bytes. A PNG or WebP block may start with the same six-byte
   prefix. The first EXIF block holding an Orientation entry
   decides, its first entry of type SHORT with count 1; a value outside 1-8, another type or count, an entry only in
   IFD1, or a block whose TIFF header or IFD0 lies outside it counts as 1 and is never an error.
