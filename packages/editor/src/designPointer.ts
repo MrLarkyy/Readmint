@@ -1,7 +1,11 @@
-/** Segments that could reach an object's prototype; a pointer naming one is refused. */
-const forbidden = new Set(["__proto__", "constructor", "prototype"]);
+/**
+ * The one key the format never allows (ids start with a letter) and a plain object would treat as its prototype; any
+ * other name, `constructor` and `prototype` included, is an ordinary key: reads go through own properties only and
+ * writes define own properties, so no name reaches a prototype.
+ */
+const prototypeKey = "__proto__";
 
-/** RFC 6901 tokens of a pointer, or undefined when it is malformed or names a forbidden segment. */
+/** RFC 6901 tokens of a pointer, or undefined when it is malformed or names `__proto__`. */
 export function parsePointer(pointer: string): string[] | undefined {
   if (pointer === "") return [];
   if (!pointer.startsWith("/")) return undefined;
@@ -9,7 +13,7 @@ export function parsePointer(pointer: string): string[] | undefined {
     .slice(1)
     .split("/")
     .map((token) => token.replaceAll("~1", "/").replaceAll("~0", "~"));
-  return tokens.some((token) => forbidden.has(token)) ? undefined : tokens;
+  return tokens.includes(prototypeKey) ? undefined : tokens;
 }
 
 /** `key` appended to `parent`, escaped. */

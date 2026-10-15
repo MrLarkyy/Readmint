@@ -8,8 +8,18 @@ describe("parsePointer", () => {
     expect(parsePointer("a")).toBeUndefined();
   });
 
-  test.each(["/__proto__", "/layers/0/constructor", "/a/prototype/b"])("refuses %s", (pointer) => {
+  test.each(["/__proto__", "/layers/0/__proto__/x"])("refuses %s", (pointer) => {
     expect(parsePointer(pointer)).toBeUndefined();
+  });
+
+  test("takes constructor and prototype as ordinary keys (the format allows them as ids)", () => {
+    expect(parsePointer("/assets/fonts/constructor/licence")).toEqual([
+      "assets",
+      "fonts",
+      "constructor",
+      "licence",
+    ]);
+    expect(parsePointer("/a/prototype/b")).toEqual(["a", "prototype", "b"]);
   });
 
   test("childPointer and splitPointer are its inverse", () => {
@@ -27,6 +37,8 @@ describe("getAt", () => {
     expect(getAt(value, "/a/01")).toBeUndefined();
     expect(getAt(value, "/toString")).toBeUndefined();
     expect(getAt(value, "/__proto__")).toBeUndefined();
+    expect(getAt(value, "/constructor")).toBeUndefined();
+    expect(getAt({ constructor: 1 }, "/constructor")).toBe(1);
   });
 });
 
@@ -52,7 +64,7 @@ describe("setAt", () => {
     expect(setAt({ a: 1 }, "/b/c", 1)).toBeUndefined();
     expect(setAt({ a: [1] }, "/a/1", 2)).toBeUndefined();
     expect(setAt({}, "/__proto__/polluted", true)).toBeUndefined();
-    expect(setAt({ a: {} }, "/a/constructor", 1)).toBeUndefined();
+    expect(setAt({ a: {} }, "/a/__proto__/polluted", 1)).toBeUndefined();
     expect(({} as Record<string, unknown>).polluted).toBeUndefined();
   });
 
@@ -61,4 +73,17 @@ describe("setAt", () => {
     expect(Object.hasOwn(next, "toString")).toBe(true);
     expect(Object.getPrototypeOf(next)).toBe(Object.prototype);
   });
+});
+
+test("setAt writes constructor and prototype as own properties, never on a prototype", () => {
+  const next = setAt({ fonts: {} }, "/fonts/constructor", { family: "A" }) as {
+    fonts: Record<string, unknown>;
+  };
+  expect(Object.hasOwn(next.fonts, "constructor")).toBe(true);
+  expect(next.fonts.constructor).toEqual({ family: "A" });
+  expect(Object.getPrototypeOf(next.fonts)).toBe(Object.prototype);
+  const changed = setAt(next, "/fonts/constructor/family", "B") as typeof next;
+  expect(changed.fonts.constructor).toEqual({ family: "B" });
+  expect(({} as { constructor: unknown }).constructor).toBe(Object);
+  expect(setAt({}, "/prototype", 1)).toEqual({ prototype: 1 });
 });

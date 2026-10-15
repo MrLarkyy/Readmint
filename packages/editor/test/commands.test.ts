@@ -1,8 +1,9 @@
-import type { Design } from "@readmint/format";
+import { DesignLimits, type Design } from "@readmint/format";
 import { describe, expect, test } from "vitest";
 import {
   addLayer,
   createEditorState,
+  exportDesign,
   moveLayer,
   newDesign,
   removeLayer,
@@ -190,5 +191,40 @@ describe("reorderLayer, removeLayer, selectLayer", () => {
     expect(selectLayer(three, "/layers/9").selection).toBeUndefined();
     expect(selectLayer(three, "/canvas").issues).toHaveLength(1);
     expect(selectLayer(selectLayer(three, "/layers/1"), undefined).selection).toBeUndefined();
+  });
+});
+
+describe("every edit keeps the design file within maxSourceLength", () => {
+  /** The design with an image whose data URI leaves exactly `spare` characters of the file free. */
+  function nearlyFull(spare: number): EditorState {
+    const base = state([rect]);
+    const prefix = "data:image/png;base64,";
+    const withAsset = (src: string): Design => ({
+      ...base.design,
+      assets: { images: { filler: { src } } },
+    });
+    const overhead = exportDesign(withAsset(`${prefix}A`)).length;
+    const design = withAsset(
+      `${prefix}${"A".repeat(DesignLimits.maxSourceLength - spare - overhead + 1)}`,
+    );
+    expect(exportDesign(design).length).toBe(DesignLimits.maxSourceLength - spare);
+    return createEditorState(design);
+  }
+
+  test("an edit that would make the file too long is refused; the design is unchanged", () => {
+    const full = nearlyFull(60);
+    const named = setLayerProperty(full, "/layers/0", "name", "n".repeat(50));
+    expect(named.design).toBe(full.design);
+    expect(named.issues).toMatchObject([
+      {
+        source: "design",
+        message: new RegExp(
+          `^the design file would be 41943[0-9]{2} characters long, more than the ${String(DesignLimits.maxSourceLength)} a design may have$`,
+          "u",
+        ),
+      },
+    ]);
+    expect(addLayer(full, "rect").design).toBe(full.design);
+    expect(setLayerProperty(full, "/layers/0", "name", "n").issues).toEqual([]);
   });
 });

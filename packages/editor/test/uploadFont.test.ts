@@ -124,10 +124,47 @@ describe("uploadFont", () => {
       {
         source: "font",
         message: new RegExp(
-          `characters long, more than the ${String(DesignLimits.maxSourceLength)} a design may have`,
+          `the design file would be [0-9]+ characters long, more than the ${String(DesignLimits.maxSourceLength)} a design may have`,
           "u",
         ),
       },
     ]);
+  });
+});
+
+describe("font asset ids named like Object.prototype members", () => {
+  test.each(["constructor", "prototype", "toString"])(
+    "a font with the id %s is added, restricted, locked and changed like any other",
+    (id) => {
+      const restricted = uploadFont(empty, {
+        name: `${id}.ttf`,
+        bytes: testFonts.restricted.bytes,
+      });
+      expect(restricted.issues).toEqual([]);
+      expect(Object.keys(restricted.design.assets?.fonts ?? {})).toEqual([id]);
+      expect(restricted.fontChecks[id]).toEqual({ fsType: 2, embeddable: false });
+      const loosened = setFontAsset(restricted, id, { embedding: "allowed" });
+      expect(loosened.design).toBe(restricted.design);
+      expect(loosened.issues).toMatchObject([{ source: "font", message: /fsType/u }]);
+      const named = setFontAsset(restricted, id, { licenceName: "OFL-1.1" });
+      expect(named.issues).toEqual([]);
+      expect(named.design.assets?.fonts?.[id]?.licence).toEqual({
+        embedding: "restricted",
+        name: "OFL-1.1",
+      });
+      expect(checkFonts(createEditorState(named.design)).fontChecks[id]).toEqual({
+        fsType: 2,
+        embeddable: false,
+      });
+
+      const allowed = uploadFont(empty, { name: `${id}.ttf`, bytes: testFonts.ttf.bytes });
+      const tightened = setFontAsset(allowed, id, { embedding: "restricted" });
+      expect(tightened.design.assets?.fonts?.[id]?.licence.embedding).toBe("restricted");
+    },
+  );
+
+  test("an id no font has is refused, even when a prototype has it", () => {
+    const next = setFontAsset(empty, "constructor", { embedding: "restricted" });
+    expect(next.issues).toMatchObject([{ source: "font", message: "no such font" }]);
   });
 });

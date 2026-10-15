@@ -4,6 +4,11 @@ export const EditorLimits = Object.freeze({
   maxFixtureBytes: 8 * 1024 * 1024,
   /** One font file: the renderer's `RenderLimits.maxFontBytes`, checked before the file is parsed. */
   maxFontBytes: 4_194_304,
+  /**
+   * Every font the editor reads to check its licence, together, decoded (WOFF and WOFF2 by their declared size,
+   * before anything inflates); identical sources count once. The renderer's `maxTotalFontBytes`.
+   */
+  maxTotalFontBytes: 16_777_216,
   /** One image file attached for a path-sourced asset: the renderer's `RenderLimits.maxImageBytes`. */
   maxImageBytes: 4_194_304,
   /** A preview render running longer is stopped (its worker terminated) and reported. */

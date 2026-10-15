@@ -1,9 +1,8 @@
-import { DesignLimits, type FontAsset } from "@readmint/format";
+import type { FontAsset } from "@readmint/format";
 import { encodeBase64 } from "./base64.js";
 import { commitDesign, refuse } from "./commitDesign.js";
 import { setAt } from "./designPointer.js";
 import type { EditorState } from "./EditorState.js";
-import { exportDesign } from "./exportDesign.js";
 import { readFontFile } from "./readFontFile.js";
 import { uniqueId } from "./layerAccess.js";
 
@@ -46,15 +45,12 @@ export function uploadFont(state: EditorState, file: FontFile): EditorState {
   const assets = { ...state.design.assets, fonts: { ...fonts, [id]: asset } };
   const candidate = setAt(state.design, "/assets", assets);
   if (candidate === undefined) return refuse(state, "font", `font ${name} could not be added`);
-  const length = exportDesign(candidate).length;
-  if (length > DesignLimits.maxSourceLength) {
-    return refuse(
-      state,
-      "font",
-      `font ${name} would make the design file ${String(length)} characters long, more than the ${String(DesignLimits.maxSourceLength)} a design may have`,
-    );
-  }
-  return commitDesign(state, candidate, { fontChecks: { ...state.fontChecks, [id]: check } });
+  return commitDesign(
+    state,
+    candidate,
+    { fontChecks: { ...state.fontChecks, [id]: check } },
+    "font",
+  );
 }
 
 /** A valid asset id from a file name: letters, digits, `_` and `-`, starting with a letter. */
