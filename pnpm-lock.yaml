@@ -72,6 +72,10 @@ importers:
       '@readmint/renderer':
         specifier: workspace:*
         version: link:../renderer
+    devDependencies:
+      '@readmint/golden':
+        specifier: workspace:*
+        version: link:../golden
 
   packages/components:
     devDependencies:

@@ -120,7 +120,7 @@ Five complete designs that show what the format can do; each is an ordinary desi
 
 `starterTemplates` from `@readmint/components` lists these names. Each file reads `github.*` of the
 [GitHub data source](data-github.md) and nothing else; the numbers are formatted with the `compact`, `number`,
-`percent` and `date` filters, and a missing name, bio or language colour falls back with `default()`.
+`percent` and `date` filters, and a missing or empty name falls back to the login (`github.name || github.login`), and a missing bio or language colour with `default()`.
 
 - **Light and dark.** The canvas has no `background`, so the card sits on whatever page shows it. The one instance in
   `layers` carries the enum prop `theme` (`"light"`, the default, or `"dark"`); the colours are chosen from it
@@ -134,7 +134,7 @@ Five complete designs that show what the format can do; each is an ordinary desi
   (SIL Open Font License 1.1, `OFL.txt` and the sha256 of each file beside them); their `src` is the relative path
   `fonts/Montserrat-Medium.ttf`, resolved against the design file by the CLI and the Action. The banner names its
   headline font `display`: replace its `src`, `family` and `licence` (keep `embedding: "allowed"` only for a font
-  you may embed) to set the banner in your own font.
+  you may embed) to set the banner in your own font. Montserrat has no CJK, Arabic, Devanagari or emoji glyphs: a name or bio in those is not drawn and the render warns `missing-glyph`. Add a font asset that has them and list it in the `fallback` of `body`, `bold` and `display` ([design format](design-format.md#assets)), and mind the size budget below.
 - **Long and missing data.** Names are cut with `truncate`, counts shortened with `compact`, the language list shows
   six rows (`repeat` with `if: {{ i < 6 }}`; a dropped copy takes no slot) or a "No language data yet." line, and a
   streak of 0 days shows "No streak". Golden images pin the light and dark look of every template and the

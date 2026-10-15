@@ -2,7 +2,7 @@
   "$schema": "https://raw.githubusercontent.com/MrLarkyy/Readmint/main/packages/format/schema/design-v0.schema.json",
   "version": 0,
   "title": "Profile banner",
-  "description": "A wide banner with the account name in a display font, the bio under it and a gradient backdrop, light or dark through the theme prop. The headline uses the font asset `display`: replace its src, family and licence in assets.fonts.display (and keep embedding allowed only for a font whose licence permits it) to set the banner in your own font.",
+  "description": "GitHub profile banner with the account name and bio.",
   "canvas": {
     "width": 840,
     "height": 160
@@ -31,7 +31,7 @@
   },
   "components": {
     "card": {
-      "description": "The banner: a gradient panel with three soft discs, the headline in the display font and the bio under it.",
+      "description": "The banner: a gradient panel with three soft discs, the headline in the display font (assets.fonts.display: swap its src, family and licence for your own font) and the bio under it.",
       "props": {
         "theme": {
           "type": "enum",
@@ -63,25 +63,23 @@
                 "color": "{{ props.theme == \"dark\" ? \"#161b22\" : \"#ddf4ff\" }}"
               }
             ]
-          },
-          "stroke": "{{ props.theme == \"dark\" ? \"#30363d\" : \"#d0d7de\" }}",
-          "strokeWidth": 1
+          }
         },
         {
           "type": "ellipse",
           "x": 640,
           "y": -40,
-          "width": 200,
-          "height": 200,
+          "width": 190,
+          "height": 190,
           "fill": "{{ props.theme == \"dark\" ? \"#4493f8\" : \"#0969da\" }}",
           "opacity": 0.12
         },
         {
           "type": "ellipse",
-          "x": 720,
-          "y": 60,
-          "width": 150,
-          "height": 150,
+          "x": 700,
+          "y": 70,
+          "width": 100,
+          "height": 100,
           "fill": "{{ props.theme == \"dark\" ? \"#bc8cff\" : \"#8250df\" }}",
           "opacity": 0.12
         },
@@ -96,11 +94,11 @@
         },
         {
           "type": "text",
-          "content": "{{ github.name | default(github.login) | truncate(22) }}",
+          "content": "{{ (github.name || github.login) | truncate(22) }}",
           "font": "display",
           "x": 32,
           "y": 30,
-          "fontSize": "{{ (github.name | default(github.login) | length) <= 12 ? 48 : ((github.name | default(github.login) | length) <= 16 ? 36 : 28) }}",
+          "fontSize": "{{ ((github.name || github.login) | length) <= 12 ? 48 : (((github.name || github.login) | length) <= 16 ? 36 : 28) }}",
           "letterSpacing": 1,
           "width": 776,
           "fill": {
@@ -122,14 +120,33 @@
           }
         },
         {
-          "type": "text",
-          "content": "{{ github.bio | default(\"\") | truncate(80) }}",
-          "font": "body",
-          "fontSize": 16,
-          "fill": "{{ props.theme == \"dark\" ? \"#9198a1\" : \"#59636e\" }}",
+          "type": "group",
           "x": 32,
           "y": 98,
-          "width": 776
+          "width": 776,
+          "height": 40,
+          "clip": true,
+          "children": [
+            {
+              "type": "text",
+              "content": "{{ github.bio | default(\"\") | truncate(80) }}",
+              "font": "body",
+              "fontSize": 16,
+              "fill": "{{ props.theme == \"dark\" ? \"#9198a1\" : \"#59636e\" }}",
+              "width": 776
+            }
+          ]
+        },
+        {
+          "type": "rect",
+          "x": 0.5,
+          "y": 0.5,
+          "width": 839,
+          "height": 159,
+          "radius": 12,
+          "fill": "none",
+          "stroke": "{{ props.theme == \"dark\" ? \"#30363d\" : \"#d0d7de\" }}",
+          "strokeWidth": 1
         }
       ]
     }

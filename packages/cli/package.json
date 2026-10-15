@@ -16,6 +16,9 @@
     "build": "tsc -b tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json"
   },
+  "devDependencies": {
+    "@readmint/golden": "workspace:*"
+  },
   "dependencies": {
     "@readmint/data": "workspace:*",
     "@readmint/expr": "workspace:*",

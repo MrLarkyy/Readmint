@@ -111,17 +111,60 @@ describe.each(starterTemplates)("%s", (name) => {
   });
 });
 
-test("the language rows show the top six and the sparse account shows the empty state", () => {
+test("the language rows show the top six, the sparse account shows the empty state", () => {
   const rows = (svg: string) => svg.match(/<rect [^>]*height="8"/gu)?.length ?? 0;
   const design = loadStarter("language-bars");
-  expect(rows(renderTemplate({ design, data: sampleGitHubData() }))).toBe(12);
-  expect(rows(renderTemplate({ design, data: sparseGitHubData() }))).toBe(0);
+  const sample = renderTemplate({ design, data: sampleGitHubData() });
+  const sparse = renderTemplate({ design, data: sparseGitHubData() });
+  expect(rows(sample)).toBe(12);
+  expect(sample).not.toContain("No language data yet.");
+  expect(rows(sparse)).toBe(0);
+  expect(sparse).toContain("No language data yet.");
 });
+
+test.each(["banner", "stats-card", "profile-card"] as const)(
+  "%s falls back to the login for an empty or missing name",
+  (name) => {
+    const { github } = sparseGitHubData();
+    const login = { github: { ...github, login: "octocat" } };
+    for (const empty of ["", null]) {
+      const svg = renderTemplate({
+        design: loadStarter(name),
+        data: { github: { ...login.github, name: empty } },
+      });
+      expect(svg).toContain("octocat");
+    }
+  },
+);
 
 test("a streak of zero days shows 'No streak' instead of its length and dates", () => {
   const design = loadStarter("profile-card");
   expect(renderTemplate({ design, data: sparseGitHubData() })).toContain("No streak");
   expect(renderTemplate({ design, data: sampleGitHubData() })).not.toContain("No streak");
+});
+
+test("a streak of one day reads '1 day'", () => {
+  const { github } = sampleGitHubData();
+  const one = { length: 1, start: "2026-01-02", end: "2026-01-02" };
+  const svg = renderTemplate({
+    design: loadStarter("profile-card"),
+    data: {
+      github: {
+        ...github,
+        contributions: { ...github.contributions, streaks: { current: one, longest: one } },
+      },
+    },
+  });
+  expect(svg).toContain(">1 day<");
+  expect(svg).not.toContain("1 days");
+});
+
+test("the description of every starter is for a reader of the image, not the author", () => {
+  for (const name of starterTemplates) {
+    const description = loadStarter(name).description ?? "";
+    expect(description, name).not.toMatch(/theme|prop|assets|src|licence/u);
+    expect(description.length, name).toBeGreaterThan(20);
+  }
 });
 
 describe("the renderer has no special case for a template", () => {

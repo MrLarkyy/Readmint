@@ -25,6 +25,18 @@ export default defineGoldenSuite<TemplateRender>({
         input: { design: withRootProps(loadStarter(name), { theme: "dark" }), data },
       },
     ]),
+    {
+      name: "banner-multiline",
+      input: {
+        design: loadStarter("banner"),
+        data: {
+          github: {
+            ...data.github,
+            bio: ["Line one", "Line two", "Line three", "Line four", "Line five"].join("\n"),
+          },
+        },
+      },
+    },
     ...(["stats-card", "banner", "language-bars", "profile-card"] as const).map((name) => ({
       name: `${name}-long`,
       input: { design: loadStarter(name), data: worstCaseGitHubData() },

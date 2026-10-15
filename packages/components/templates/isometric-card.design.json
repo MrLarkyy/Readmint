@@ -2,7 +2,7 @@
   "$schema": "https://raw.githubusercontent.com/MrLarkyy/Readmint/main/packages/format/schema/design-v0.schema.json",
   "version": 0,
   "title": "Isometric contribution card",
-  "description": "The contribution calendar as isometric pillars under a heading with the year's total, light or dark through the theme prop of the root instance, on a transparent canvas.",
+  "description": "Contribution calendar of the last year drawn as isometric pillars, with the total number of contributions.",
   "canvas": {
     "width": 704,
     "height": 420

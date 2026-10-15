@@ -2,7 +2,7 @@
   "$schema": "https://raw.githubusercontent.com/MrLarkyy/Readmint/main/packages/format/schema/design-v0.schema.json",
   "version": 0,
   "title": "Profile card",
-  "description": "A full GitHub profile card: name and login, stats, the contribution calendar as isometric pillars and the current and longest streaks, all from github.*, light or dark through the theme prop of the root instance, on a transparent canvas.",
+  "description": "GitHub profile card with name, stats, contribution calendar and streaks.",
   "canvas": {
     "width": 840,
     "height": 384
@@ -122,7 +122,7 @@
         },
         {
           "type": "text",
-          "content": "{{ props.length | number }} days",
+          "content": "{{ props.length | number }} {{ props.length == 1 ? \"day\" : \"days\" }}",
           "font": "bold",
           "fontSize": 18,
           "fill": "{{ props.theme == \"dark\" ? \"#e6edf3\" : \"#1f2328\" }}",
@@ -330,7 +330,7 @@
         },
         {
           "type": "text",
-          "content": "{{ github.name | default(github.login) | truncate(26) }}",
+          "content": "{{ (github.name || github.login) | truncate(26) }}",
           "font": "bold",
           "fontSize": 20,
           "fill": "{{ props.theme == \"dark\" ? \"#e6edf3\" : \"#1f2328\" }}",
