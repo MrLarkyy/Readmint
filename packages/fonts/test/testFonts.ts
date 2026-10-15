@@ -16,6 +16,12 @@ export const montserrat = {
   woff2: load("Montserrat-Medium.woff2"),
 };
 
+/** Noto Naskh Arabic 2.021 and Noto Sans Devanagari 2.007, subsets with every layout table; see the fonts README. */
+export const noto = {
+  arabic: load("NotoNaskhArabic-Regular.ttf"),
+  devanagari: load("NotoSansDevanagari-Regular.ttf"),
+};
+
 export function parse(bytes: Uint8Array): SfntFont {
   const result = parseSfnt(bytes);
   if (!result.ok) throw new Error(result.message);

@@ -10,3 +10,8 @@ const table = new RangeTable(bidiClassRuns);
 export function bidiClassOf(codePoint: number): BidiClass {
   return bidiClassValues[table.get(codePoint)] ?? "L";
 }
+
+/** The Bidi_Class as its index in `bidiClassValues` (the bidi algorithm works on these). */
+export function bidiClassIndex(codePoint: number): number {
+  return table.get(codePoint);
+}

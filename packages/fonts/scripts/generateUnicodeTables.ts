@@ -314,13 +314,20 @@ function mirrors(): string {
   return pairs(entries);
 }
 
-/** Every n-th test of BidiCharacterTest.txt, so the sample covers the whole file the same way on every run. */
+/**
+ * Every n-th test of BidiCharacterTest.txt and every test with an auto paragraph direction (the file has few), so the
+ * sample covers the whole file the same way on every run.
+ */
 function bidiSample(): string {
   const tests = read("BidiCharacterTest.txt").filter((line) => fields(line) !== undefined);
   const step = Math.floor(tests.length / sampleLines);
-  const sample = tests.filter((_, position) => position % step === 0).slice(0, sampleLines);
+  const sample = tests.filter(
+    (line, position) =>
+      (position % step === 0 && position / step < sampleLines) || fields(line)?.[1] === "2",
+  );
   return [
-    `# Every ${String(step)}th test of BidiCharacterTest-${version}.txt (sha256 ${sources["BidiCharacterTest.txt"]}),`,
+    `# Every ${String(step)}th test and every auto-direction test of BidiCharacterTest-${version}.txt`,
+    `# (sha256 ${sources["BidiCharacterTest.txt"]}),`,
     "# written by packages/fonts/scripts/generateUnicodeTables.ts. Copyright Unicode, Inc.; Unicode License V3,",
     "# see packages/fonts/LICENSE-UNICODE. Fields: code points; paragraph direction (0 LTR, 1 RTL, 2 auto);",
     "# resolved paragraph level; levels (x: removed by X9); visual order of the kept characters.",
