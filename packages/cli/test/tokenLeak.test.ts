@@ -341,6 +341,7 @@ test("--github --open opens a one-time launch address, never the secret one", as
     expect(first.status).toBe(303);
     expect(first.location).toBe(`/${printed.secret}/`);
     expect(first.body).not.toContain(printed.secret);
+    expect((await getRaw(`${new URL(seen).origin}${first.location ?? ""}`)).status).toBe(200);
     const again = await getRaw(seen);
     expect(again.status).toBe(403);
     expect(again.body).toBe("forbidden: open the address the preview printed\n");

@@ -694,12 +694,25 @@ describe("one-time launch address", () => {
     expect(reused).toBe(0);
   });
 
-  test("no report once the secret address discarded the launch address", async () => {
+  test("a launch GET after the redirect was followed reports the reuse once", async () => {
     const port = await launchServer();
     expect((await get(port, `/${launchToken}`)).status).toBe(303);
     expect((await get(port, `/${secret}/status`)).status).toBe(200);
-    await get(port, `/${launchToken}`);
     expect(reused).toBe(0);
+    await expectUnknownPath(port, await get(port, `/${launchToken}`));
+    expect(reused).toBe(1);
+    await get(port, `/${launchToken}`);
+    expect(reused).toBe(1);
+  });
+
+  test("a launch GET after the secret address was used first reports once", async () => {
+    const port = await launchServer();
+    expect((await get(port, `/${secret}/status`)).status).toBe(200);
+    expect(reused).toBe(0);
+    await expectUnknownPath(port, await get(port, `/${launchToken}`));
+    expect(reused).toBe(1);
+    await get(port, `/${launchToken}`);
+    expect(reused).toBe(1);
   });
 
   test("a throwing callback does not change the reply", async () => {
