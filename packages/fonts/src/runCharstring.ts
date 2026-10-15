@@ -1,6 +1,7 @@
 import type { CffIndex } from "./CffIndex.js";
 import type { GlyphOutline, OutlineCommand } from "./GlyphOutline.js";
 import { MalformedFont } from "./MalformedFont.js";
+import type { OutlineBudget } from "./OutlineBudget.js";
 
 /** What a Type 2 charstring of one glyph may refer to. */
 export interface CharstringSource {
@@ -20,8 +21,12 @@ export const maxOperations = 20_000;
  * The outline a Type 2 charstring draws, flattened to M/L/C/Z in font units: subroutines inlined, hints skipped,
  * `seac` accents composed. The width is skipped (hmtx is the source of advances).
  */
-export function runCharstring(source: CharstringSource, glyph: number): GlyphOutline {
-  return new Interpreter(source, glyph, true).run();
+export function runCharstring(
+  source: CharstringSource,
+  glyph: number,
+  budget?: OutlineBudget,
+): GlyphOutline {
+  return new Interpreter(source, glyph, true, budget).run();
 }
 
 function bias(subrs: CffIndex): number {
@@ -44,6 +49,7 @@ class Interpreter {
     private readonly source: CharstringSource,
     private readonly glyph: number,
     private readonly allowSeac: boolean,
+    private readonly budget: OutlineBudget | undefined,
   ) {
     this.local = source.localSubrs(glyph);
   }
@@ -65,6 +71,7 @@ class Interpreter {
     while (position < code.length && !this.ended) {
       if (++this.operations > maxOperations)
         throw new MalformedFont("CFF charstring runs too long");
+      this.budget?.spend(1);
       const b0 = next();
       if (b0 >= 32 || b0 === 28) {
         this.push(readNumber(b0, next));
@@ -292,7 +299,7 @@ class Interpreter {
     const glyph = this.source.standardGlyph(code);
     if (glyph === undefined)
       throw new MalformedFont("CFF seac names a glyph the font does not have");
-    const outline = new Interpreter(this.source, glyph, false);
+    const outline = new Interpreter(this.source, glyph, false, this.budget);
     outline.operations = this.operations;
     const commands = outline.run();
     this.operations = outline.operations;

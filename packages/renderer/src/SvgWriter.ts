@@ -28,6 +28,11 @@ export class SvgWriter {
 
   constructor(readonly limit: number) {}
 
+  /** Bytes the budget still allows after what is written. */
+  get remaining(): number {
+    return this.limit - this.bytes;
+  }
+
   /** Body markup, in drawing order. */
   write(markup: string): void {
     this.bodyParts.push(markup);

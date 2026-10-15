@@ -3,6 +3,7 @@ import type { FontFormat } from "./FontFormat.js";
 import { FontRefused } from "./FontRefused.js";
 import { GlyfTable } from "./GlyfTable.js";
 import type { GlyphOutline } from "./GlyphOutline.js";
+import type { OutlineBudget } from "./OutlineBudget.js";
 import { MalformedFont } from "./MalformedFont.js";
 import { readCmap } from "./readCmap.js";
 import { readFamilyName } from "./readFamilyName.js";
@@ -13,7 +14,7 @@ import type { SfntReader } from "./SfntReader.js";
 
 const useTypoMetrics = 0x0080;
 
-/** The font of an sfnt: measuring tables read now, outlines and kerning on first use. */
+/** The font of an sfnt: measuring tables and the CFF structure read now, glyph outlines and kerning on first use. */
 export function readFont(
   reader: SfntReader,
   format: "ttf" | "otf",
@@ -35,7 +36,10 @@ export function readFont(
     throw new MalformedFont("font hmtx table is shorter than hhea declares");
   }
   const outlines = outlineKind(tables);
-  const outline = outlineReader(reader, tables, outlines, numGlyphs, reader.i16(head.offset + 50));
+  const outline = outlineReader(reader, tables, outlines, numGlyphs, {
+    indexToLocFormat: reader.i16(head.offset + 50),
+    unitsPerEm,
+  });
   const typo = (reader.u16(os2.offset + 62) & useTypoMetrics) !== 0;
   const vertical = typo ? os2.offset + 68 : hhea.offset + 4;
   const lookup = readCmap(reader, requireTable(tables, "cmap", 4));
@@ -85,28 +89,36 @@ function outlineKind(tables: ReadonlyMap<string, SfntTable>): "glyf" | "cff" {
   throw new MalformedFont("font has neither glyf nor CFF outlines");
 }
 
+/**
+ * Outline reader of the font. A CFF table's structure (INDEXes, DICTs, FontMatrix) is read now, so an unsupported
+ * or broken one is a problem of the parse; glyphs are read on request.
+ */
 function outlineReader(
   reader: SfntReader,
   tables: ReadonlyMap<string, SfntTable>,
   kind: "glyf" | "cff",
   numGlyphs: number,
-  indexToLocFormat: number,
-): (glyph: number) => GlyphOutline {
+  head: { readonly indexToLocFormat: number; readonly unitsPerEm: number },
+): (glyph: number, budget?: OutlineBudget) => GlyphOutline {
   const bytes = (tag: string) => {
     const table = requireTable(tables, tag, 0);
     return reader.slice(table.offset, table.length);
   };
   if (kind === "glyf") {
-    if (indexToLocFormat !== 0 && indexToLocFormat !== 1) {
+    if (head.indexToLocFormat !== 0 && head.indexToLocFormat !== 1) {
       throw new MalformedFont("font head indexToLocFormat is neither 0 nor 1");
     }
-    const glyf = new GlyfTable(bytes("glyf"), bytes("loca"), indexToLocFormat === 1, numGlyphs);
-    return (glyph) => glyf.outline(glyph);
+    const glyf = new GlyfTable(
+      bytes("glyf"),
+      bytes("loca"),
+      head.indexToLocFormat === 1,
+      numGlyphs,
+    );
+    return (glyph, budget) => glyf.outline(glyph, budget);
   }
-  let cff: CffTable | undefined;
-  return (glyph) => {
+  const cff = new CffTable(bytes("CFF "), head.unitsPerEm);
+  return (glyph, budget) => {
     if (glyph >= numGlyphs) throw new MalformedFont(`glyph ${String(glyph)} is outside the font`);
-    cff ??= new CffTable(bytes("CFF "));
-    return cff.outline(glyph);
+    return cff.outline(glyph, budget);
   };
 }

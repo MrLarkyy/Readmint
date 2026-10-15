@@ -47,7 +47,7 @@ function outlineOf(context: RenderContext, font: LoadedFont, glyph: number): Gly
   const key = `${font.asset}\u0000${String(glyph)}`;
   let outline = context.outlines.get(key);
   if (outline === undefined) {
-    outline = withFont(context, font, () => font.font.outline(glyph));
+    outline = withFont(context, font, () => font.font.outline(glyph, font.outlineBudget));
     context.outlines.set(key, outline);
   }
   return outline;

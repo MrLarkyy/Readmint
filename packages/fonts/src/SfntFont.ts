@@ -1,5 +1,6 @@
 import type { FontFormat } from "./FontFormat.js";
 import type { GlyphOutline } from "./GlyphOutline.js";
+import type { OutlineBudget } from "./OutlineBudget.js";
 
 /** Metrics, character mapping, kerning and outlines of a TrueType or OpenType (CFF) font. */
 export interface SfntFont {
@@ -29,8 +30,11 @@ export interface SfntFont {
   bearingOf(glyph: number): number;
   /** Pair kerning between two glyphs in font units, 0 for none. Read on first use: throws `MalformedFont`. */
   kerning(left: number, right: number): number;
-  /** Outline of a glyph in font units. Read on request: throws `MalformedFont` for a broken glyph. */
-  outline(glyph: number): GlyphOutline;
+  /**
+   * Outline of a glyph in font units. Read on request: throws `MalformedFont` for a broken glyph, and `FontRefused`
+   * (`too-large`) when it would pass `budget`.
+   */
+  outline(glyph: number, budget?: OutlineBudget): GlyphOutline;
   /** The bytes of a table (shared with the font), undefined when the font has none. */
   table(tag: string): Uint8Array | undefined;
 }

@@ -1,5 +1,6 @@
 import { describe, expect, test } from "vitest";
-import { encodeWoff, subsetFont, type SfntFont } from "../src/index.js";
+import { glyfTableOf } from "../src/glyphClosure.js";
+import { encodeWoff, MalformedFont, subsetFont, type SfntFont } from "../src/index.js";
 import { CffTable } from "../src/CffTable.js";
 import { encodeCharstring, writeCff } from "../src/writeCff.js";
 import { buildTestFont } from "./buildTestFont.js";
@@ -175,10 +176,21 @@ describe("flattened CFF", () => {
     ] as const;
     const cff = new CffTable(
       writeCff("My Font (Beta)/2", [encodeCharstring([], 500), encodeCharstring(outline, 600)]),
+      1000,
     );
     expect(cff.fontName).toBe("My_Font__Beta__2");
     expect(cff.glyphCount).toBe(2);
     expect(cff.outline(1)).toEqual(outline);
-    expect(new CffTable(writeCff("", [encodeCharstring([], 0)])).fontName).toBe("Subset");
+    expect(new CffTable(writeCff("", [encodeCharstring([], 0)]), 1000).fontName).toBe("Subset");
   });
+});
+
+test("a glyph whose header promises more contours than it holds is MalformedFont (review probe 3)", () => {
+  const bytes = montserrat.ttf.slice();
+  const font = parse(bytes);
+  const glyph = font.glyphFor(0x42);
+  const data = glyfTableOf(font).data(glyph);
+  new DataView(data.buffer, data.byteOffset).setInt16(0, Math.floor(data.length / 2) + 10);
+  expect(() => subsetFont(font, new Map([[0x42, glyph]]))).toThrow(MalformedFont);
+  expect(() => font.outline(glyph)).toThrow(MalformedFont);
 });

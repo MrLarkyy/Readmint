@@ -1,6 +1,7 @@
 # Test fonts
 
-Every font here may be redistributed; its licence sits beside it.
+Every font here may be redistributed under the SIL Open Font License 1.1; the licence text, `OFL.txt`, sits beside
+them.
 
 ## Montserrat (SIL Open Font License 1.1, `OFL.txt`)
 
@@ -19,10 +20,12 @@ Tag `v7.222` (commit `5dae7a4ef9c0bf9fe48dc54fd1076eefaa0a8c7e`) is the newest r
 WOFF2; the WOFF and WOFF2 wrap the TrueType font of that release, the OTF has CFF outlines of the same design and
 metrics. `OFL.txt` is the licence of both releases.
 
-## Readmint Test Symbols (the repository's licence)
+## Readmint Test Symbols (SIL Open Font License 1.1, `OFL.txt`)
 
-`ReadmintTestSymbols.ttf` (`0f3a4a3d308e30c619330ebe44e13cdd4217ed33a89321d2c0281efd0e43646e`) is made by this
-repository and covered by the repository's own licence, like its code; it holds no third-party outlines or names.
+`ReadmintTestSymbols.ttf` (`a7e08e5dfdb18afbdf7236ddc8b6ef2b7b7a9327535dc6eeb067fb6c48a5840e`) is original work:
+Copyright 2026 The Readmint Contributors, licensed under the SIL Open Font License 1.1 with no Reserved Font Name.
+The licence text in `OFL.txt` applies to it (that file's header names Montserrat's copyright; this font's copyright
+line is the one here and in its name table, records 0, 13 and 14). It holds no third-party outlines or names.
 `readmintTestSymbols()` in `packages/fonts/test/readmintTestSymbols.ts` builds it byte for byte (a test compares
 them). It draws U+2605, U+25CF and U+1F536, which Montserrat lacks, so fallback and characters above the BMP
 can be tested.

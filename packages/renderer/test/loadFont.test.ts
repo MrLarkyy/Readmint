@@ -1,7 +1,10 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Design, FontAsset } from "@readmint/format";
+import { parseSfnt } from "@readmint/fonts";
 import { describe, expect, test } from "vitest";
+import { loadScale } from "../../../test-support/loadScale.js";
+import { expandingFont } from "../../fonts/test/buildTestCff.js";
 import { matchWeight } from "../src/loadFont.js";
 import { renderSvg, type RenderOptions } from "../src/index.js";
 import { fontAssets } from "./testAssets.js";
@@ -281,5 +284,88 @@ describe("selection and embedding", () => {
     [600, [600], 600],
   ])("matchWeight(%i, %j) = %i", (desired, available, expected) => {
     expect(matchWeight(desired, available)).toBe(expected);
+  });
+});
+
+/** Medium with the glyph of `codePoint` promising more contours than its bytes hold (review probe 3). */
+function withBrokenGlyph(codePoint: number): Uint8Array {
+  const copy = medium.slice();
+  const parsed = parseSfnt(copy);
+  if (!parsed.ok) throw new Error(parsed.message);
+  const font = parsed.font;
+  const glyf = font.table("glyf");
+  const loca = font.table("loca");
+  const head = font.table("head");
+  if (glyf === undefined || loca === undefined || head === undefined) throw new Error("tables");
+  const long = new DataView(head.buffer, head.byteOffset).getInt16(50) === 1;
+  const locaView = new DataView(loca.buffer, loca.byteOffset);
+  const glyph = font.glyphFor(codePoint);
+  const at = (index: number) =>
+    long ? locaView.getUint32(index * 4) : locaView.getUint16(index * 2) * 2;
+  const length = at(glyph + 1) - at(glyph);
+  new DataView(glyf.buffer, glyf.byteOffset + at(glyph)).setInt16(0, Math.floor(length / 2) + 10);
+  return copy;
+}
+
+describe("fonts that turn out broken or costly when their glyphs are read", () => {
+  test.each(["font", "paths"] as const)(
+    "a glyph that promises more than it holds is asset-format, drawn as %s",
+    (drawAs) => {
+      const result = renderSvg(
+        design({ m: { ...pathFont(), drawAs } }, text("m", { content: "B" })),
+        {
+          assets: { fonts: { m: withBrokenGlyph(0x42) } },
+        },
+      );
+      expect(result).toMatchObject({
+        ok: false,
+        issues: [{ path: "/assets/fonts/m/src", code: "asset-format" }],
+      });
+    },
+  );
+
+  test.each(["font", "paths"] as const)(
+    "CFF glyphs that expand through subroutines stop at the font's outline budget, drawn as %s",
+    (drawAs) => {
+      const content = Array.from({ length: 300 }, (_, index) =>
+        String.fromCodePoint(0x4e00 + index),
+      ).join("");
+      const started = performance.now();
+      const result = renderSvg(
+        design({ m: { ...pathFont("Heavy"), drawAs } }, text("m", { content })),
+        // A budget this large lets the outline work, not the output size, be what stops the render.
+        { assets: { fonts: { m: expandingFont(300) } }, limits: { maxOutputBytes: 100_000_000 } },
+      );
+      expect(result).toMatchObject({
+        ok: false,
+        issues: [{ path: "/assets/fonts/m", code: "asset-too-large" }],
+      });
+      expect(performance.now() - started).toBeLessThan(3000 * loadScale());
+    },
+  );
+
+  test("a CFF subset that could never fit the output budget stops while it is built", () => {
+    const content = Array.from({ length: 10 }, (_, index) =>
+      String.fromCodePoint(0x4e00 + index),
+    ).join("");
+    const result = renderSvg(design({ m: pathFont("Heavy") }, text("m", { content })), {
+      assets: { fonts: { m: expandingFont(10) } },
+      limits: { maxOutputBytes: 20_000 },
+    });
+    expect(result).toMatchObject({
+      ok: false,
+      issues: [{ path: "/assets/fonts/m", code: "asset-too-large" }],
+    });
+    expect(result.ok ? "" : result.issues[0]?.message).toContain("subset passes 80000 bytes");
+  });
+
+  test("a CFF font whose FontMatrix is not 1/unitsPerEm is an unsupported font", () => {
+    const result = renderSvg(design({ m: pathFont("Heavy") }, text("m")), {
+      assets: { fonts: { m: expandingFont(1, 1000, ["0.0005", "0", "0", "0.0005", "0", "0"]) } },
+    });
+    expect(result).toMatchObject({
+      ok: false,
+      issues: [{ path: "/assets/fonts/m/src", code: "unsupported-font" }],
+    });
   });
 });

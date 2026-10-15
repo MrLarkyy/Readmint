@@ -1,5 +1,6 @@
 import type { GlyphOutline, OutlineCommand } from "./GlyphOutline.js";
 import { MalformedFont } from "./MalformedFont.js";
+import type { OutlineBudget } from "./OutlineBudget.js";
 import { SfntReader } from "./SfntReader.js";
 
 /** Points of a TrueType glyph: coordinates, on-curve flags and the last point index of each contour. */
@@ -55,8 +56,10 @@ export class GlyfTable {
     return this.glyf.slice(start, end - start);
   }
 
-  outline(glyph: number): GlyphOutline {
-    return toOutline(this.points(glyph, { components: 0, path: [] }));
+  outline(glyph: number, budget?: OutlineBudget): GlyphOutline {
+    const points = this.points(glyph, { components: 0, path: [] });
+    budget?.spend(points.xs.length + 1);
+    return toOutline(points);
   }
 
   /** Glyphs a composite glyph draws directly (empty for a simple or empty glyph). */
@@ -132,7 +135,8 @@ function forEachComponent(
   }
 }
 
-function componentLength(flags: number): number {
+/** Bytes of one composite component record with these flags. */
+export function componentLength(flags: number): number {
   const args = (flags & argsAreWords) !== 0 ? 4 : 2;
   const scale =
     (flags & haveScale) !== 0

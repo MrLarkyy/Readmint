@@ -1,4 +1,4 @@
-import { embeddingAllowed, parseSfnt, type SfntFont } from "@readmint/fonts";
+import { embeddingAllowed, OutlineBudget, parseSfnt, type SfntFont } from "@readmint/fonts";
 import type { FontAsset } from "@readmint/format";
 import { decodeDataUri } from "./decodeDataUri.js";
 import { ownEntry } from "./ownEntry.js";
@@ -17,6 +17,8 @@ export interface LoadedFont {
   /** `paths` when the asset asks for it or its licence forbids embedding: such a font is never embedded. */
   readonly drawAs: "font" | "paths";
   readonly kerning: boolean;
+  /** Outline work this font may still cost in this render, shared by paths and the subset. */
+  readonly outlineBudget: OutlineBudget;
 }
 
 const defaultWeight = 400;
@@ -122,6 +124,7 @@ export function loadFont(context: RenderContext, assetId: string, asset: FontAss
     font,
     drawAs: drawAs(context, asset, font, assetPath, name),
     kerning: asset.kerning !== false,
+    outlineBudget: new OutlineBudget(),
   };
   context.fonts.set(assetId, loaded);
   return loaded;

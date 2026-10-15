@@ -7,7 +7,8 @@ const off = (x: number, y: number): TestPoint => [x, y, false];
 export const testSymbols = { star: 0x2605, circle: 0x25cf, diamond: 0x1f536 } as const;
 
 /**
- * "Readmint Test Symbols": the repository's own font (same licence as the repository), committed as
+ * "Readmint Test Symbols": original work of the Readmint contributors under the SIL Open Font License 1.1 (no
+ * Reserved Font Name; its name table says so), committed as
  * packages/renderer/test/fonts/ReadmintTestSymbols.ttf. It covers what Montserrat lacks, so a fallback has
  * something to draw, and one code point above the BMP.
  */

@@ -14,7 +14,7 @@ const ofl = { embedding: "allowed", name: "OFL-1.1" } as const;
 
 /**
  * Montserrat (OFL-1.1, fsType 0, typographic family "Montserrat"): 8.000 as TTF, 7.222 as OTF, WOFF and WOFF2;
- * the repository's own Readmint Test Symbols. See fonts/README.md.
+ * Readmint Test Symbols (OFL-1.1, made in this repository). See fonts/README.md.
  */
 export const fontAssets = {
   medium: { family: "Montserrat", src: montserratMedium, weight: 500, licence: ofl },
@@ -25,7 +25,7 @@ export const fontAssets = {
   symbols: {
     family: "Readmint Test Symbols",
     src: readmintTestSymbols,
-    licence: { embedding: "allowed" },
+    licence: ofl,
   },
 } satisfies Record<string, FontAsset>;
 

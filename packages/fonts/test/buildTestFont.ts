@@ -1,6 +1,6 @@
 import { buildCmap } from "../src/buildCmap.js";
 import { ByteWriter } from "../src/ByteWriter.js";
-import { TRUETYPE_FLAVOR } from "../src/sfntFlavor.js";
+import { CFF_FLAVOR, TRUETYPE_FLAVOR } from "../src/sfntFlavor.js";
 import { binarySearchHeader, writeSfnt } from "../src/writeSfnt.js";
 
 /** A point of a quadratic contour: x, y, on-curve. */
@@ -29,11 +29,15 @@ export interface TestFontOptions {
   readonly kern?: readonly (readonly [left: number, right: number, value: number])[];
   /** Pairs for a GPOS PairPos format 1 lookup under feature `kern` of script DFLT. */
   readonly gpos?: readonly (readonly [left: number, right: number, value: number])[];
+  /** A CFF table (`buildTestCff`): the font gets CFF outlines instead of glyf (glyph contours are ignored). */
+  readonly cff?: Uint8Array;
 }
 
 /**
- * A small TrueType font built from a description, byte for byte the same on every run: the tests own every table,
- * so each reader can be checked against values they set (kern pairs, GPOS pairs, composites, fsType).
+ * A small TrueType (or CFF) font built from a description, byte for byte the same on every run: the tests own every
+ * table, so each reader can be checked against values they set (kern pairs, GPOS pairs, composites, fsType). Its name
+ * table says what every font made here is: original work of the Readmint contributors under the SIL Open Font
+ * License 1.1, no Reserved Font Name.
  */
 export function buildTestFont(options: TestFontOptions): Uint8Array {
   const glyphData = options.glyphs.map((glyph) => encodeGlyph(glyph));
@@ -52,6 +56,13 @@ export function buildTestFont(options: TestFontOptions): Uint8Array {
       new ByteWriter(32).u32(0x00030000).u32(0).u32(0).u32(0).u32(0).u32(0).u32(0).u32(0).result(),
     ],
   ]);
+  if (options.kern !== undefined) tables.set("kern", kern(options.kern));
+  if (options.gpos !== undefined) tables.set("GPOS", gpos(options.gpos));
+  if (options.cff !== undefined) {
+    tables.set("CFF ", options.cff);
+    tables.set("maxp", new ByteWriter(6).u32(0x00005000).u16(options.glyphs.length).result());
+    return writeSfnt(CFF_FLAVOR, tables, true);
+  }
   const glyf = new ByteWriter();
   const loca = new ByteWriter();
   for (const data of glyphData) {
@@ -61,8 +72,6 @@ export function buildTestFont(options: TestFontOptions): Uint8Array {
   loca.u32(glyf.length);
   tables.set("glyf", glyf.result());
   tables.set("loca", loca.result());
-  if (options.kern !== undefined) tables.set("kern", kern(options.kern));
-  if (options.gpos !== undefined) tables.set("GPOS", gpos(options.gpos));
   return writeSfnt(TRUETYPE_FLAVOR, tables, true);
 }
 
@@ -164,14 +173,18 @@ function cmap(glyphs: readonly TestGlyph[]): Uint8Array {
 
 function name(family: string): Uint8Array {
   const strings: (readonly [number, string])[] = [
-    [0, "Copyright 2026 the Readmint authors"],
+    [0, "Copyright 2026 The Readmint Contributors"],
     [1, family],
     [2, "Regular"],
     [3, `${family} test`],
     [4, family],
     [5, "Version 1.000"],
     [6, family.replaceAll(" ", "")],
-    [13, "Test font of the Readmint repository; same licence as the repository"],
+    [
+      13,
+      "This Font Software is licensed under the SIL Open Font License, Version 1.1. This license is available with a FAQ at: https://openfontlicense.org",
+    ],
+    [14, "https://openfontlicense.org"],
   ];
   const out = new ByteWriter()
     .u16(0)

@@ -1,6 +1,8 @@
 import { CffIndex } from "./CffIndex.js";
 import type { GlyphOutline } from "./GlyphOutline.js";
+import { FontRefused } from "./FontRefused.js";
 import { MalformedFont } from "./MalformedFont.js";
+import type { OutlineBudget } from "./OutlineBudget.js";
 import { dictOffset, readCffDict, type CffDict } from "./readCffDict.js";
 import { runCharstring, type CharstringSource } from "./runCharstring.js";
 import { SfntReader } from "./SfntReader.js";
@@ -14,8 +16,13 @@ const charstringTypeOp = 1206;
 const rosOp = 1230;
 const fdArrayOp = 1236;
 const fdSelectOp = 1237;
+const fontMatrixOp = 1207;
+const defaultMatrix = [0.001, 0, 0, 0.001, 0, 0];
 
-/** CFF (version 1) outlines, name- or CID-keyed; structures are read once, charstrings run per request. */
+/**
+ * CFF (version 1) outlines, name- or CID-keyed; structures are read once, charstrings run per request. Outlines are
+ * used in font units, so a FontMatrix other than 1/unitsPerEm (scaled, skewed or moved glyphs) is unsupported.
+ */
 export class CffTable implements CharstringSource {
   readonly globalSubrs: CffIndex;
   readonly fontName: string;
@@ -28,7 +35,7 @@ export class CffTable implements CharstringSource {
   private readonly charsetOffset: number;
   private glyphBySid: Map<number, number> | undefined;
 
-  constructor(data: Uint8Array) {
+  constructor(data: Uint8Array, unitsPerEm: number) {
     const reader = new SfntReader(data);
     this.reader = reader;
     if (reader.u8(0) !== 1) throw new MalformedFont("CFF version is not 1");
@@ -45,11 +52,14 @@ export class CffTable implements CharstringSource {
     this.charsetOffset = dictOffset(top, charsetOp, 0);
     if (top.has(rosOp)) {
       const fonts = CffIndex.read(reader, dictOffset(top, fdArrayOp));
-      this.fdSubrs = Array.from({ length: fonts.count }, (_, index) =>
-        this.localSubrsOf(readCffDict(fonts.item(index))),
+      const dicts = Array.from({ length: fonts.count }, (_, index) =>
+        readCffDict(fonts.item(index)),
       );
+      for (const dict of dicts) checkMatrix(fontMatrix(top, dict), unitsPerEm);
+      this.fdSubrs = dicts.map((dict) => this.localSubrsOf(dict));
       this.fdSelect = this.readFdSelect(dictOffset(top, fdSelectOp));
     } else {
+      checkMatrix(top.get(fontMatrixOp) ?? defaultMatrix, unitsPerEm);
       this.privateSubrs = this.localSubrsOf(top);
     }
   }
@@ -58,8 +68,8 @@ export class CffTable implements CharstringSource {
     return this.charStrings.count;
   }
 
-  outline(glyph: number): GlyphOutline {
-    return runCharstring(this, glyph);
+  outline(glyph: number, budget?: OutlineBudget): GlyphOutline {
+    return runCharstring(this, glyph, budget);
   }
 
   charString(glyph: number): Uint8Array {
@@ -141,6 +151,42 @@ export class CffTable implements CharstringSource {
         found.set(first + index, glyph++);
     }
     return found;
+  }
+}
+
+/** A CID-keyed font's Font DICT matrix after the top one (each defaults so that the product is the CFF default). */
+function fontMatrix(top: CffDict, font: CffDict): readonly number[] {
+  const own = font.get(fontMatrixOp);
+  const outer = top.get(fontMatrixOp);
+  if (own === undefined) return outer ?? defaultMatrix;
+  return outer === undefined ? own : multiply(own, outer);
+}
+
+function multiply(a: readonly number[], b: readonly number[]): number[] {
+  const [a0 = 0, a1 = 0, a2 = 0, a3 = 0, a4 = 0, a5 = 0] = a;
+  const [b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0] = b;
+  return [
+    a0 * b0 + a1 * b2,
+    a0 * b1 + a1 * b3,
+    a2 * b0 + a3 * b2,
+    a2 * b1 + a3 * b3,
+    a4 * b0 + a5 * b2 + b4,
+    a4 * b1 + a5 * b3 + b5,
+  ];
+}
+
+function checkMatrix(matrix: readonly number[], unitsPerEm: number): void {
+  const scale = 1 / unitsPerEm;
+  const expected = [scale, 0, 0, scale, 0, 0];
+  const tolerance = scale / 1000;
+  const same =
+    matrix.length === 6 &&
+    expected.every((value, index) => Math.abs((matrix[index] ?? Infinity) - value) <= tolerance);
+  if (!same) {
+    throw new FontRefused(
+      "unsupported",
+      `CFF FontMatrix [${matrix.map(String).join(" ")}] is not 1/unitsPerEm (${String(unitsPerEm)})`,
+    );
   }
 }
 
