@@ -186,6 +186,22 @@ Drawn in document order, first at the back. Layer `id` and `name` are not emitte
   permits embedding (neither the restricted-licence bit `0x0002` nor the bitmap-only bit `0x0200`; the stricter reading
   wins). Otherwise its text is drawn as paths and the render warns `font-not-embeddable` once for the asset; this also
   holds for a restricted font that is only a fallback.
+- **Reserved Font Name**: under the SIL Open Font License a subset is a Modified Version, and a Modified Version may
+  not use a Reserved Font Name (RFN). A font with one is therefore never embedded as a subset: its text is drawn as
+  paths (nothing of the font is embedded) and the render warns `font-reserved-name` once for the asset, also when it
+  is only a fallback. The subset is not renamed instead: it would carry a family name other than the one the SVG asks
+  for, and rasterizers match the name inside the font (see [raster.md](raster.md)). The first of these that applies
+  decides: the asset's `licence.reservedFontName` (`true` forces paths; `false` embeds, e.g. with written
+  permission from the holder of the name), then its SPDX `licence.name` (`OFL-1.0-RFN` and `OFL-1.1-RFN` have one,
+  `OFL-1.0-no-RFN` and `OFL-1.1-no-RFN` none; compared without ASCII case), then the font's name table: the copyright
+  (name 0) or licence description (name 13) says "with Reserved Font Name" (any ASCII case, also "Names") followed by
+  a name, not by the OFL template's `<Reserved Font Name>`, and the font is under the OFL, by its licence records
+  (13 or 14 name the Open Font License, openfontlicense.org or scripts.sil.org/OFL) or by a `licence.name` that
+  starts with `OFL`. The warning points at what decided: `licence/reservedFontName`, `licence/name` or the asset.
+  A restricted font warns only `font-not-embeddable`, and `drawAs: "paths"` draws an RFN font as paths without a
+  warning. Detection reads only the name table (other licence texts, name 7 and the trademark are not read) and
+  decodes at most 131072 characters of names per font, so a crafted table costs nothing; a statement it misses is
+  declared with `licence.reservedFontName: true`.
 - **Fallback**: `fallback` lists up to 8 font asset ids, tried in order for each character the font lacks. It is not
   transitive (a fallback's own fallbacks are not used), and within each fallback's family the weight and style of the
   text are matched as for the text's own font. A fallback character gets its own `<tspan>` with the fallback's
@@ -227,7 +243,8 @@ Drawn in document order, first at the back. Layer `id` and `name` are not emitte
 - **`@readmint/fonts`**: `parseSfnt(bytes, { maxBytes? })` reads TTF, OTF, WOFF and WOFF2 into an `SfntFont` (metrics,
   `glyphFor`, `advanceOf`, `bearingOf`, `kerning` (the GPOS kern lookups applied to the pair by the shaping engine,
   else the `kern` table), `outline(glyph, budget?)`, `table(tag)`, `container`, `outlines`, and `sfntBytes`: the size
-  of the sfnt it was read from, decoded, which the renderer charges against `maxTotalFontBytes`);
+  of the sfnt it was read from, decoded, which the renderer charges against `maxTotalFontBytes`; and
+  `reservedFontName`: `none`, `stated` or `stated-ofl`, what the name table says about a Reserved Font Name);
   `shapeText(font, text, { script?, rtl?, kerning?, ligatures?, budget? })` shapes one run into a `ShapedRun` (glyphs, UTF-16
   cluster starts, advances and x/y offsets in font units, mark flags, in visual order), spending a `ShapingBudget`
   (its own, or one shared by many calls: `ShapingBudget.forText(length)`); `resolveLevels(text,
@@ -240,7 +257,9 @@ budget?, maxBytes? })`, `encodeWoff`, `decodeWoff`, `glyphClosure`, `OutlineBudg
   [design-format.md](design-format.md#versioning)): pair kerning is on by default, so text is placed slightly
   differently than before (`kerning: false` per font asset turns it off); `font-not-embeddable` is a warning (the text
   is drawn as paths) where the render used to fail; a text gradient spans the layout box, not the glyph ink. A caller
-  that treated `font-not-embeddable` as a failure must now look at the warnings. Since shaping (RM-44), fonts with
+  that treated `font-not-embeddable` as a failure must now look at the warnings. Since RM-45, a font with a Reserved
+  Font Name (declared by its asset, or stated in its name table) that was embedded as a subset is drawn as paths with
+  the warning `font-reserved-name`. Since shaping (RM-44), fonts with
   `liga`, `ccmp` or `mark` draw standard ligatures (fi, fl, ...) and attach combining marks, right-to-left text is
   reordered, `align` start and end follow the paragraph direction, pair kerning skips marks its lookup ignores, and
   font-mode text may hold private-use characters with an `aria-label`. Plain text keeps its exact positions only where the font does nothing but pair kerning to it: contextual alternates (`calt`, e.g. a font that changes the colon in 12:30), `ccmp` or `locl` substitutions of plain Latin, contextual kerning (GPOS 7/8), non-Latin text now kerned under its own script tag, and the lost pair kerning across a script change (two runs) all move or change plain text too.
@@ -426,6 +445,7 @@ A text laid out once is shaped once, however many copies draw it.
 | `asset-too-large`      | over a byte, side or frame limit; a font past its outline budget or whose subset could not fit the output budget; a text that brings the render past its shaping bound (at the text)                                                                      |
 | `unsupported-font`     | a font collection (TTC, or WOFF2 with several fonts), CFF2 outlines or a CFF FontMatrix other than 1/unitsPerEm                                                                                                                                           |
 | `font-not-embeddable`  | warning: the licence or the fsType forbids embedding; the font's text is drawn as paths (once per asset)                                                                                                                                                  |
+| `font-reserved-name`   | warning: the font has a Reserved Font Name (declared, or stated in its name table), so no subset may be embedded; its text is drawn as paths (once per asset, at what decided)                                                                            |
 | `too-large`            | the SVG passes `maxOutputBytes`, a text passes `maxTextLength`, the repeats pass `maxRepeatCopies` (at the `repeat` that crossed it), the tracks pass `maxAnimationKeyframes` (at the track that crossed it), components nest deeper than 64 levels       |
 | `font-family-mismatch` | warning: the asset family differs from the family inside the font                                                                                                                                                                                         |
 | `missing-glyph`        | warning: characters neither the font nor its fallbacks have; they are not drawn and keep the `.notdef` advance (once per font asset, up to ten named)                                                                                                     |
