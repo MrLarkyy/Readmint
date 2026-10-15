@@ -1,7 +1,6 @@
 import type { FontFormat } from "./FontFormat.js";
 import type { GlyphOutline } from "./GlyphOutline.js";
 import type { OutlineBudget } from "./OutlineBudget.js";
-import type { ReservedFontNameHint } from "./ReservedFontNameHint.js";
 
 /**
  * Metrics, character mapping, kerning and outlines of a TrueType or OpenType (CFF) font; `shapeText` reads its
@@ -25,8 +24,11 @@ export interface SfntFont {
   readonly weightClass: number;
   /** Typographic family (name 16), else the family (name 1); empty when the font names none. */
   readonly familyName: string;
-  /** What the name table says about a Reserved Font Name (a hint: the font asset's licence can decide otherwise). */
-  readonly reservedFontName: ReservedFontNameHint;
+  /**
+   * The name table states a Reserved Font Name (name 0 or 13 says "with Reserved Font Name" followed by a name): a
+   * hint, the font asset's licence can decide otherwise.
+   */
+  readonly reservedFontName: boolean;
   readonly numGlyphs: number;
   /** Bytes of the sfnt the font is read from: the file itself, or what its WOFF / WOFF2 decoded to. */
   readonly sfntBytes: number;

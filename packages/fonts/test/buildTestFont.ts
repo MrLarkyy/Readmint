@@ -33,8 +33,8 @@ export interface TestFontOptions {
   readonly cff?: Uint8Array;
   /** Further tables by tag (GDEF, GSUB, GPOS from `buildLayoutTables`), replacing any built here. */
   readonly tables?: Readonly<Record<string, Uint8Array>>;
-  /** Windows name records by name id, replacing the default ones (0-6, 13, 14) or adding to them. */
-  readonly names?: Readonly<Record<number, string>>;
+  /** Windows name records by name id, replacing the default ones (0-6, 13, 14), adding to them or (null) removing them. */
+  readonly names?: Readonly<Record<number, string | null>>;
 }
 
 /**
@@ -177,7 +177,7 @@ function cmap(glyphs: readonly TestGlyph[]): Uint8Array {
   return buildCmap(entries);
 }
 
-function name(family: string, names: Readonly<Record<number, string>>): Uint8Array {
+function name(family: string, names: Readonly<Record<number, string | null>>): Uint8Array {
   const defaults: (readonly [number, string])[] = [
     [0, "Copyright 2026 The Readmint Contributors"],
     [1, family],
@@ -193,7 +193,10 @@ function name(family: string, names: Readonly<Record<number, string>>): Uint8Arr
     [14, "https://openfontlicense.org"],
   ];
   const chosen = new Map(defaults);
-  for (const [id, text] of Object.entries(names)) chosen.set(Number(id), text);
+  for (const [id, text] of Object.entries(names)) {
+    if (text === null) chosen.delete(Number(id));
+    else chosen.set(Number(id), text);
+  }
   const strings = [...chosen].sort((left, right) => left[0] - right[0]);
   const out = new ByteWriter()
     .u16(0)

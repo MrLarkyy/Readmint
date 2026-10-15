@@ -197,9 +197,8 @@ Drawn in document order, first at the back. Layer `id` and `name` are not emitte
   permission from the holder of the name), then its SPDX `licence.name` (`OFL-1.0-RFN` and `OFL-1.1-RFN` have one,
   `OFL-1.0-no-RFN` and `OFL-1.1-no-RFN` none; compared without ASCII case), then the font's name table: the copyright
   (name 0) or licence description (name 13) says "with Reserved Font Name" (any ASCII case, also "Names") followed by
-  a name, not by the OFL template's `<Reserved Font Name>`, and the font is under the OFL, by its licence records
-  (13 or 14 name the Open Font License, openfontlicense.org or scripts.sil.org/OFL) or by a `licence.name` that
-  starts with `OFL`. The warning points at what decided: `licence/reservedFontName`, `licence/name` or the asset.
+  a name, not by the OFL template's `<Reserved Font Name>` (so the OFL text itself, which only defines the term, is no
+  statement), whatever licence the font or its asset names. The warning points at what decided: `licence/reservedFontName`, `licence/name` or the asset.
   A restricted font warns only `font-not-embeddable`, and `drawAs: "paths"` draws an RFN font as paths without a
   warning. Detection reads only the name table (other licence texts, name 7 and the trademark are not read) and
   decodes at most 131072 characters of names per font, so a crafted table costs nothing; a statement it misses is
@@ -246,7 +245,7 @@ Drawn in document order, first at the back. Layer `id` and `name` are not emitte
   `glyphFor`, `advanceOf`, `bearingOf`, `kerning` (the GPOS kern lookups applied to the pair by the shaping engine,
   else the `kern` table), `outline(glyph, budget?)`, `table(tag)`, `container`, `outlines`, and `sfntBytes`: the size
   of the sfnt it was read from, decoded, which the renderer charges against `maxTotalFontBytes`; and
-  `reservedFontName`: `none`, `stated` or `stated-ofl`, what the name table says about a Reserved Font Name);
+  `reservedFontName`: whether its name table states a Reserved Font Name);
   `shapeText(font, text, { script?, rtl?, kerning?, ligatures?, budget? })` shapes one run into a `ShapedRun` (glyphs, UTF-16
   cluster starts, advances and x/y offsets in font units, mark flags, in visual order), spending a `ShapingBudget`
   (its own, or one shared by many calls: `ShapingBudget.forText(length)`); `resolveLevels(text,

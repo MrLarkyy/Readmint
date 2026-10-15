@@ -222,8 +222,8 @@ const noRfnLicences = new Set(["OFL-1.0-NO-RFN", "OFL-1.1-NO-RFN"]);
 
 /**
  * Whether the font has a Reserved Font Name, and what decided it: the asset's `licence.reservedFontName`, else its
- * SPDX `licence.name` (`OFL-*-RFN`, `OFL-*-no-RFN`), else the name table's statement in a font licensed under the OFL
- * (by its own records or by `licence.name`). SPDX identifiers compare without ASCII case.
+ * SPDX `licence.name` (`OFL-*-RFN`, `OFL-*-no-RFN`), else the font's name table. SPDX identifiers compare without
+ * ASCII case.
  */
 function reservedFontName(
   asset: FontAsset,
@@ -243,11 +243,9 @@ function reservedFontName(
     return { path: pointer(licencePath, "name"), reason: `is licensed ${echo(licence)}` };
   }
   if (noRfnLicences.has(spdx)) return undefined;
-  const hint = font.reservedFontName;
-  if (hint === "stated-ofl" || (hint === "stated" && spdx.startsWith("OFL"))) {
-    return { path: assetPath, reason: "states a Reserved Font Name in its name table" };
-  }
-  return undefined;
+  return font.reservedFontName
+    ? { path: assetPath, reason: "states a Reserved Font Name in its name table" }
+    : undefined;
 }
 
 function asciiUpper(text: string): string {

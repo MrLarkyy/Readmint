@@ -181,7 +181,7 @@ an embedded subset is a Modified Version, which may not use that name, so its te
 `font-reserved-name`. `licence.reservedFontName` decides when set (`true`: it has one; `false`: embed anyway, e.g.
 with written permission), else an SPDX `name` of `OFL-1.0-RFN` / `OFL-1.1-RFN` (has one) or `OFL-1.0-no-RFN` /
 `OFL-1.1-no-RFN` (has none), else the renderer reads the font's name table (a copyright or licence record saying
-"with Reserved Font Name ..." in an OFL font). TrueType, OpenType (CFF), WOFF and WOFF2 are read. How fonts, images
+"with Reserved Font Name ..." followed by a name). TrueType, OpenType (CFF), WOFF and WOFF2 are read. How fonts, images
 and layouts render: [renderer.md](renderer.md).
 
 **image**: `src` (required), `width`, `height` (intrinsic size, `(0, 100000]`).

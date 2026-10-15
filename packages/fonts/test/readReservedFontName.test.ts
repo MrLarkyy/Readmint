@@ -10,25 +10,34 @@ import { readmintTestSymbols } from "./readmintTestSymbols.js";
 import { montserrat, noto, parse, sameBytes } from "./testFonts.js";
 
 const glyphs = [{ advance: 500 }, { codePoints: [0x41], advance: 600 }];
-const fontWith = (names: Readonly<Record<number, string>>) =>
+const fontWith = (names: Readonly<Record<number, string | null>>) =>
   parse(buildTestFont({ family: "Rfn", glyphs, names }));
 
 const rfnCopyright = 'Copyright 2026 The Rfn Authors, with Reserved Font Name "Rfn".';
 const otherLicence = "Licensed under the Example Font Licence 2.0.";
 
 describe("the Reserved Font Name hint of a name table", () => {
-  test("a copyright naming a Reserved Font Name in an OFL font is stated-ofl", () => {
-    expect(fontWith({ 0: rfnCopyright }).reservedFontName).toBe("stated-ofl");
+  test("a copyright naming a Reserved Font Name states one", () => {
+    expect(fontWith({ 0: rfnCopyright }).reservedFontName).toBe(true);
   });
 
   test("the statement in the licence description (name 13) counts too", () => {
     const description = `${rfnCopyright} This Font Software is licensed under the SIL Open Font License, Version 1.1.`;
-    expect(fontWith({ 13: description }).reservedFontName).toBe("stated-ofl");
+    expect(fontWith({ 13: description }).reservedFontName).toBe(true);
   });
 
-  test("a statement without an OFL licence record is only stated", () => {
-    const font = fontWith({ 0: rfnCopyright, 13: otherLicence, 14: "https://example.org/licence" });
-    expect(font.reservedFontName).toBe("stated");
+  test("a statement counts whatever licence the font names, also without licence records", () => {
+    const other = fontWith({
+      0: rfnCopyright,
+      13: otherLicence,
+      14: "https://example.org/licence",
+    });
+    expect(other.reservedFontName).toBe(true);
+    expect(fontWith({ 0: rfnCopyright, 13: null, 14: null }).reservedFontName).toBe(true);
+  });
+
+  test("the licence URL (name 14) is not read for a statement", () => {
+    expect(fontWith({ 14: rfnCopyright }).reservedFontName).toBe(false);
   });
 
   test("the OFL text itself, which defines the term, names no Reserved Font Name", () => {
@@ -36,7 +45,7 @@ describe("the Reserved Font Name hint of a name table", () => {
       '"Reserved Font Name" refers to any names specified as such after the copyright statement(s). ' +
       "No Modified Version of the Font Software may use the Reserved Font Name(s) unless explicit written " +
       "permission is granted by the corresponding Copyright Holder.";
-    expect(fontWith({ 13: definitions }).reservedFontName).toBe("none");
+    expect(fontWith({ 13: definitions }).reservedFontName).toBe(false);
   });
 
   test.each([
@@ -46,22 +55,22 @@ describe("the Reserved Font Name hint of a name table", () => {
   ])(
     "the OFL template placeholder or a phrase naming nothing is not a statement: %s",
     (copyright) => {
-      expect(fontWith({ 0: copyright }).reservedFontName).toBe("none");
+      expect(fontWith({ 0: copyright }).reservedFontName).toBe(false);
     },
   );
 
   test("case, plural and line breaks do not hide a statement", () => {
     expect(fontWith({ 0: "COPYRIGHT 2026, WITH RESERVED FONT NAME RFN." }).reservedFontName).toBe(
-      "stated-ofl",
+      true,
     );
     expect(
       fontWith({ 0: "Copyright 2026, with Reserved\r\nFont  Names “Rfn” and “Rfn Sans”." })
         .reservedFontName,
-    ).toBe("stated-ofl");
+    ).toBe(true);
   });
 
   test("the default test font and every committed font state no Reserved Font Name", () => {
-    expect(fontWith({}).reservedFontName).toBe("none");
+    expect(fontWith({}).reservedFontName).toBe(false);
     for (const bytes of [
       montserrat.ttf,
       montserrat.otf,
@@ -71,14 +80,14 @@ describe("the Reserved Font Name hint of a name table", () => {
       noto.devanagari,
       readmintTestSymbols(),
     ]) {
-      expect(parse(bytes).reservedFontName).toBe("none");
+      expect(parse(bytes).reservedFontName).toBe(false);
     }
   });
 
   test("a truncated name table is no hint, never a throw", () => {
     const table = new ByteWriter().u16(0).u16(100).u16(6).result();
     expect(readReservedFontName(new SfntReader(table), { offset: 0, length: table.length })).toBe(
-      "none",
+      false,
     );
   });
 
@@ -93,7 +102,7 @@ describe("the Reserved Font Name hint of a name table", () => {
     const reader = new SfntReader(bytes);
     const name = { offset: 0, length: bytes.length };
     const started = performance.now();
-    expect(readReservedFontName(reader, name)).toBe("none");
+    expect(readReservedFontName(reader, name)).toBe(false);
     const strings = readNameStrings(reader, name, [0]);
     expect(performance.now() - started).toBeLessThan(1000 * loadScale());
     expect(strings).toHaveLength(Math.floor(maxNameCodeUnits / 32_767));

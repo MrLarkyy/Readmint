@@ -19,7 +19,7 @@ const glyphs = [
 const statement = 'Copyright 2026 The Rfn Authors, with Reserved Font Name "Rfn".';
 
 /** Readmint test font "Rfn" whose copyright states a Reserved Font Name (`names` replaces the default records). */
-function rfnFont(names: Readonly<Record<number, string>> = { 0: statement }): Uint8Array {
+function rfnFont(names: Readonly<Record<number, string | null>> = { 0: statement }): Uint8Array {
   return buildTestFont({ family: "Rfn", glyphs, names });
 }
 
@@ -133,15 +133,18 @@ describe("a font with a Reserved Font Name is never embedded as a subset", () =>
     },
   );
 
-  test("a statement in a font that does not say it is OFL counts only when the asset declares an OFL licence", () => {
-    const bytes = rfnFont({ 0: statement, 13: "Licensed under the Example Font Licence.", 14: "" });
-    const undeclared = renderSvg(design({ r: rfnAsset() }), supplied(bytes));
-    expect(warnings(undeclared)).toEqual([]);
-    expect(embedded(undeclared)).toBe(true);
-    const ofl = rfnAsset({ licence: { embedding: "allowed", name: "OFL-1.1" } });
-    const declared = renderSvg(design({ r: ofl }), supplied(bytes));
-    expect(warnings(declared)).toEqual([{ path: "/assets/fonts/r", code: "font-reserved-name" }]);
-    expect(embedded(declared)).toBe(false);
+  test.each([
+    ["another licence", { 0: statement, 13: "Licensed under the Example Font Licence.", 14: "" }],
+    ["no licence records", { 0: statement, 13: null, 14: null }],
+  ])("a statement counts in a font with %s, whatever licence the asset names", (_name, names) => {
+    for (const licence of [
+      { embedding: "allowed" },
+      { embedding: "allowed", name: "OFL-1.1" },
+    ] as const) {
+      const result = renderSvg(design({ r: rfnAsset({ licence }) }), supplied(rfnFont(names)));
+      expect(warnings(result)).toEqual([{ path: "/assets/fonts/r", code: "font-reserved-name" }]);
+      expect(embedded(result)).toBe(false);
+    }
   });
 
   test("drawAs paths draws a Reserved Font Name font as paths without a warning", () => {
