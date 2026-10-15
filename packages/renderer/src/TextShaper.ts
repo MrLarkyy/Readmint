@@ -3,6 +3,7 @@ import {
   isDefaultIgnorable,
   isNonSpacingMark,
   lineLevels,
+  normalizeForFont,
   resolveLevels,
   scriptOf,
   shapeText,
@@ -10,6 +11,7 @@ import {
   type BidiParagraph,
   type ScriptCode,
   type ShapedRun,
+  type SfntFont,
   type ShapingBudget,
 } from "@readmint/fonts";
 import { fontFallbacks, selectFont, type LoadedFont } from "./loadFont.js";
@@ -23,9 +25,9 @@ import { withFont } from "./withFont.js";
 export interface ShapedGlyph {
   readonly font: LoadedFont | undefined;
   readonly glyph: number;
-  /** The first character of the glyph's cluster. */
+  /** The first character of the glyph's cluster as the font maps it (`normalizeForFont`: U+00E9 for e U+0301). */
   readonly codePoint: number;
-  /** The characters of the glyph's cluster, in logical order. */
+  /** The characters of the glyph's cluster as written, in logical order. */
   readonly text: string;
   /** Pen position plus the glyph's offset, from the left of the line. */
   readonly x: number;
@@ -78,9 +80,11 @@ const isPrivateUse = (codePoint: number) =>
 /**
  * Lays out text with the fonts' own shaping (`shapeText` of @readmint/fonts, the same code in Node and browsers):
  * each character cluster takes the first of the primary font and its fallbacks that has its base (a mark, joiner or
- * variation selector stays with its base's font when that font has it); a paragraph's bidi levels split it into runs
- * of one font, script and level, each shaped once and cached; runs are put in visual order (UAX #9 L2); letter
- * spacing follows every cluster. Positions are summed left to right, so every engine adds the same numbers. Every
+ * variation selector stays with its base's font when that font has it). Fonts are judged on the characters shaping
+ * maps (`normalizeForFont`): a font with e and U+0301 has U+00E9, one with U+00E9 has e U+0301, so canonically
+ * equivalent texts take the same fonts and glyphs. A paragraph's bidi levels split it into runs of one font, script
+ * and level, each shaped once and cached; runs are put in visual order (UAX #9 L2); letter spacing follows every
+ * cluster. Positions are summed left to right, so every engine adds the same numbers. Every
  * shaping call of the text (each word measured, each run laid out) spends one shared `budget`, so a hostile font
  * cannot cost a fresh allowance per word.
  */
@@ -89,6 +93,8 @@ export class TextShaper {
   private readonly widths = new Map<string, number>();
   private readonly shapedRuns = new Map<string, ShapedRun>();
   private readonly fontOf = new Map<number, number>();
+  /** Cluster texts as each font maps them, keyed by font index and text. */
+  private readonly normalized = new Map<string, string>();
   private readonly fallbacks = new Map<number, LoadedFont>();
   private readonly fallbackIds: readonly string[];
 
@@ -162,10 +168,11 @@ export class TextShaper {
     shaped.glyphs.forEach((glyph, index) => {
       const cluster = run.start + (shaped.clusters[index] ?? 0);
       const text = paragraph.slice(cluster, ends.get(cluster) ?? run.end);
-      const codePoint = text.codePointAt(0) ?? 0;
+      const mapped = this.normalize(run.font, text);
+      const codePoint = mapped.codePointAt(0) ?? 0;
       const xOffset = shaped.xOffsets[index] ?? 0;
       const yOffset = shaped.yOffsets[index] ?? 0;
-      const single = text.length === (codePoint > 0xffff ? 2 : 1);
+      const single = mapped.length === (codePoint > 0xffff ? 2 : 1);
       glyphs.push({
         font: glyph === 0 ? undefined : drawn,
         glyph,
@@ -227,48 +234,67 @@ export class TextShaper {
   }
 
   /**
-   * The font of every UTF-16 unit of [start, end): a cluster's base picks the first font that has it; the rest of the
-   * cluster stays in that font when it has the character (or the character is ignorable), else takes its own.
+   * The font of every UTF-16 unit of [start, end): a cluster's base picks the first font that has it; the whole
+   * cluster stays in that font when the font covers it as shaping maps it, else each further character stays in that
+   * font when it has the character (or the character is ignorable) and takes its own otherwise.
    */
   private clusterFonts(paragraph: string, start: number, end: number): number[] {
     const fonts = new Array<number>(end - start).fill(missing);
     const text = paragraph.slice(start, end);
-    const starts = new Set(clusterStarts(text));
-    let base = missing;
-    for (let index = 0; index < text.length; index++) {
-      const codePoint = text.codePointAt(index) ?? 0;
-      let font: number;
-      if (starts.has(index)) {
-        font = this.fontFor(codePoint);
-        base = font;
-      } else if (
-        base !== missing &&
-        (isDefaultIgnorable(codePoint) || this.font(base).font.glyphFor(codePoint) !== 0)
-      ) {
-        font = base;
-      } else {
-        font = isDefaultIgnorable(codePoint) ? base : this.fontFor(codePoint);
+    const starts = clusterStarts(text);
+    starts.forEach((from, at) => {
+      const to = starts[at + 1] ?? text.length;
+      const base = this.fontFor(text.codePointAt(from) ?? 0);
+      if (base !== missing && covers(this.font(base).font, text.slice(from, to))) {
+        fonts.fill(base, from, to);
+        return;
       }
-      fonts[index] = font;
-      if (codePoint > 0xffff) {
-        fonts[index + 1] = font;
-        index++;
+      for (let index = from; index < to; index++) {
+        const codePoint = text.codePointAt(index) ?? 0;
+        let font: number;
+        if (index === from) {
+          font = base;
+        } else if (
+          base !== missing &&
+          (isDefaultIgnorable(codePoint) || this.font(base).font.glyphFor(codePoint) !== 0)
+        ) {
+          font = base;
+        } else {
+          font = isDefaultIgnorable(codePoint) ? base : this.fontFor(codePoint);
+        }
+        fonts[index] = font;
+        if (codePoint > 0xffff) {
+          fonts[index + 1] = font;
+          index++;
+        }
       }
-    }
+    });
     return fonts;
   }
 
-  /** The first font (primary, then fallbacks) with a glyph for the character; `missing` when none has one. */
+  /** The first font (primary, then fallbacks) that covers the character; `missing` when none does. */
   private fontFor(codePoint: number): number {
     let found = this.fontOf.get(codePoint);
     if (found === undefined) {
       found = missing;
+      const char = String.fromCodePoint(codePoint);
       for (let index = 0; found === missing && index <= this.fallbackIds.length; index++) {
-        if (this.font(index).font.glyphFor(codePoint) !== 0) found = index;
+        if (covers(this.font(index).font, char)) found = index;
       }
       this.fontOf.set(codePoint, found);
     }
     return found;
+  }
+
+  /** A cluster's text as font `index` maps it (`normalizeForFont`), cached per font and text. */
+  private normalize(index: number, text: string): string {
+    const key = `${String(index)}|${text}`;
+    let mapped = this.normalized.get(key);
+    if (mapped === undefined) {
+      mapped = normalizeForFont(this.font(index).font, text);
+      this.normalized.set(key, mapped);
+    }
+    return mapped;
   }
 
   /** Shapes a run once per text (repeated words share the result). */
@@ -315,6 +341,20 @@ export class TextShaper {
     this.fallbacks.set(index, loaded);
     return loaded;
   }
+}
+
+/**
+ * Whether a font draws a text as shaping maps it: every character of `normalizeForFont` has a glyph or is a default
+ * ignorable, and at least one has a glyph.
+ */
+function covers(font: SfntFont, text: string): boolean {
+  let drawn = false;
+  for (const char of normalizeForFont(font, text)) {
+    const codePoint = char.codePointAt(0) ?? 0;
+    if (font.glyphFor(codePoint) !== 0) drawn = true;
+    else if (!isDefaultIgnorable(codePoint)) return false;
+  }
+  return drawn;
 }
 
 function isLowSurrogateAt(text: string, index: number): boolean {

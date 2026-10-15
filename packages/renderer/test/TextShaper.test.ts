@@ -1,4 +1,5 @@
 import { ShapingBudget } from "@readmint/fonts";
+import { buildTestFont } from "../../fonts/test/buildTestFont.js";
 import type { Design, FontAsset, Layer } from "@readmint/format";
 import { describe, expect, test } from "vitest";
 import { renderSvg } from "../src/index.js";
@@ -82,8 +83,13 @@ describe("TextShaper", () => {
     expect(latin.glyphs.map((glyph) => glyph.plain)).toEqual([true, true, false, true, true]);
     expect(latin.glyphs[2]?.text).toBe("fi");
     expect(line("\u0627\u0644").glyphs.every((glyph) => !glyph.plain)).toBe(true);
-    const marked = line("e\u0301");
-    expect(marked.glyphs.every((glyph) => glyph.text === "e\u0301" && !glyph.plain)).toBe(true);
+    // Montserrat has U+00E9: e U+0301 is drawn as that one plain character, its text still as written.
+    const composed = line("e\u0301").glyphs;
+    expect(composed.map((glyph) => [glyph.codePoint, glyph.text, glyph.plain])).toEqual([
+      [0xe9, "e\u0301", true],
+    ]);
+    const marked = line("x\u0301");
+    expect(marked.glyphs.every((glyph) => glyph.text === "x\u0301" && !glyph.plain)).toBe(true);
   });
 
   test("letter spacing follows each cluster once and turns off optional ligatures", () => {
@@ -129,5 +135,87 @@ describe("TextShaper", () => {
     expect(once).toEqual(["\ue000", "\ue001"]);
     expect(render([text("fi fl", 0), text("fi fl", 40)])).toEqual([...once, ...once]);
     expect(render([text("fl", 0), text("fi fl", 40)])).toEqual(["\ue000", "\ue001", "\ue000"]);
+  });
+});
+
+describe("TextShaper with canonically equivalent text", () => {
+  const square = [
+    [
+      [0, 0, true],
+      [400, 0, true],
+      [400, 500, true],
+      [0, 500, true],
+    ],
+  ] as const;
+  const built = (...codePoints: number[]) =>
+    buildTestFont({
+      family: "Built",
+      glyphs: [
+        { advance: 500 },
+        ...codePoints.map((codePoint) => ({
+          codePoints: [codePoint],
+          advance: codePoint === 0x301 ? 0 : 500,
+          contours: square,
+        })),
+      ],
+    });
+  const decomposedOnly = built(0x63, 0x65, 0x301);
+  const precomposedOnly = built(0x63, 0x65, 0xe9);
+  const builtFonts: Record<string, FontAsset> = {
+    d: { family: "Built", src: "d.ttf", licence: { embedding: "allowed" }, fallback: ["m"] },
+    p: { family: "Built", src: "p.ttf", licence: { embedding: "allowed" }, fallback: ["m"] },
+    m: fontAssets.medium,
+  };
+  const assets = { fonts: { d: decomposedOnly, p: precomposedOnly } };
+
+  function builtLine(asset: string, text: string) {
+    const context = new RenderContext(
+      {
+        version: 0,
+        canvas: { width: 400, height: 200 },
+        assets: { fonts: builtFonts },
+        layers: [],
+      },
+      { assets },
+    );
+    const instance = new TextShaper(
+      context,
+      {
+        referenced: asset,
+        primary: selectFont(context, asset, undefined, "/layers/0/font"),
+        weight: undefined,
+        fontSize: 20,
+        letterSpacing: 0,
+        path: "/layers/0/content",
+      },
+      ShapingBudget.forText(1000),
+    );
+    return { instance, line: instance.layout(text, instance.paragraph(text), 0, text.length) };
+  }
+
+  test("a font with base and mark draws a precomposed letter itself, not from a fallback", () => {
+    const { instance, line: drawn } = builtLine("d", "c\u00e9");
+    expect(drawn.glyphs.map((glyph) => glyph.font?.asset)).toEqual(["d", "d", "d"]);
+    expect(instance.lacks(0xe9)).toBe(false);
+    const result = renderSvg(
+      {
+        version: 0,
+        canvas: { width: 200, height: 60 },
+        assets: { fonts: builtFonts },
+        layers: [{ type: "text", content: "c\u00e9", font: "d" }],
+      },
+      { assets },
+    );
+    if (!result.ok) throw new Error(JSON.stringify(result.issues));
+    expect(result.warnings).toEqual([]);
+  });
+
+  test("a font with the precomposed letter but not the mark keeps the decomposed letter", () => {
+    const { line: drawn } = builtLine("p", "ce\u0301");
+    expect(drawn.glyphs.map((glyph) => [glyph.font?.asset, glyph.codePoint, glyph.plain])).toEqual([
+      ["p", 0x63, true],
+      ["p", 0xe9, true],
+    ]);
+    expect(drawn.glyphs[1]?.text).toBe("e\u0301");
   });
 });

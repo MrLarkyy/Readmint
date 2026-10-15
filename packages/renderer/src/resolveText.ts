@@ -1,4 +1,4 @@
-import { ShapingBudget } from "@readmint/fonts";
+import { normalizeNfc, ShapingBudget } from "@readmint/fonts";
 import { ValueRanges, type TextLayer } from "@readmint/format";
 import type { Scope } from "@readmint/expr";
 import { selectFont } from "./loadFont.js";
@@ -102,7 +102,7 @@ export function resolveText(
     );
     context.textLayouts.set(key, layout);
   }
-  const { lines, drawnAs, privateUse, rtl } = layout;
+  const { text, lines, drawnAs, privateUse, rtl } = layout;
   const scale = fontSize / primary.font.unitsPerEm;
   const lineAdvance = lineHeight * fontSize;
   const glyphHeight = (primary.font.ascender - primary.font.descender) * scale;
@@ -111,7 +111,7 @@ export function resolveText(
     ...base,
     width: layout.width,
     height: lines.length * lineAdvance,
-    text: content,
+    text,
     lines,
     font: primary,
     fontSize,
@@ -167,6 +167,7 @@ function layOut(
   }
   const drawn = shaped.flatMap((line) => line.glyphs.filter((glyph) => glyph.font !== undefined));
   return {
+    text: normalizeNfc(content),
     lines,
     width: boxWidth,
     drawnAs,
