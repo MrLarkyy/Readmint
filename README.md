@@ -19,3 +19,6 @@ dark) and three full profile templates (Year Ring, Horizon, Pinscreen): [docs/co
 
 Readmint is released under the [MIT licence](LICENSE). The fonts bundled with it keep their own licences (SIL Open
 Font License), which sit next to the font files in their folders.
+
+The Unicode tables in [`packages/fonts`](packages/fonts/LICENSE-UNICODE) and the CLDR locale tables in
+[`packages/expr`](packages/expr/LICENSE-CLDR) are under the Unicode License v3.
