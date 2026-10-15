@@ -1,8 +1,16 @@
 import { describe, expect, test } from "vitest";
+import { EntropyBudget, maxRenderEntropySteps } from "../src/EntropyBudget.js";
+import { renderSvg } from "../src/index.js";
+import { sniffCache } from "../src/SniffCache.js";
 import { sniffImage } from "../src/sniffImage.js";
 import gradientJpeg from "./assets/gradient.jpg?inline";
+import { colourDesign, colourImages } from "./colourImages.js";
 import { dataUriBytes, toDataUri } from "./exifImages.js";
-import { jpegEntropyCases } from "./jpegEntropyCases.js";
+import {
+  costlyProgressiveJpeg,
+  costlyProgressiveSteps,
+  jpegEntropyCases,
+} from "./jpegEntropyCases.js";
 import { jpegFrameFixtures } from "./jpegFrameTypes.js";
 import { type DrawnOutcome, drawnOutcome, jpegStructureCases } from "./jpegStructureCases.js";
 import { acceptedJpegs, refusedJpegs } from "./jpegMarkers.js";
@@ -185,4 +193,33 @@ describe("Chromium draws the genuine JPEG frame types the sniffer refuses", () =
         expect(await pixelAt(row.bytes)).toEqual(row.chromiumPixel);
     },
   );
+});
+
+/** The result of sniffing the costly progressive JPEG and the steps it charged. */
+function sniffCostly() {
+  const budget = new EntropyBudget();
+  const result = sniffImage(costlyProgressiveJpeg(), 1000, budget);
+  return { result, steps: maxRenderEntropySteps - budget.remaining };
+}
+
+describe("the sniff cache in Chromium", () => {
+  test("a hit gives the result and charges the steps the Node project measures", () => {
+    sniffCache.clear();
+    const cold = sniffCostly();
+    const warm = sniffCostly();
+    expect(sniffCache.stats).toMatchObject({ hits: 1, misses: 1, entries: 1 });
+    expect(warm).toEqual(cold);
+    expect(cold.steps).toBe(costlyProgressiveSteps);
+  });
+
+  test("a repeated render of a colour-tagged JPEG writes the SVG of an empty cache", () => {
+    sniffCache.clear();
+    const row = colourImages.find((image) => image.mime === "image/jpeg");
+    const design = colourDesign(row?.uri ?? "");
+    const cold = renderSvg(design);
+    const misses = sniffCache.stats.misses;
+    const warm = renderSvg(design);
+    expect(sniffCache.stats.misses).toBe(misses);
+    expect(warm).toEqual(cold);
+  });
 });
