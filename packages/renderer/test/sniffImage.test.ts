@@ -5,6 +5,7 @@ import { describe, expect, test } from "vitest";
 import { loadScale } from "../../../test-support/loadScale.js";
 import { renderSvg, type RenderOptions } from "../src/index.js";
 import { sniffImage } from "../src/sniffImage.js";
+import { jpegWithExif, orientationTiff, pngWithExif } from "./exifImages.js";
 
 const assets = join(import.meta.dirname, "assets");
 const read = (name: string) => new Uint8Array(readFileSync(join(assets, name)));
@@ -96,7 +97,7 @@ describe("dimensions per format", () => {
   ])("%s", (_name, data, mime, width, height, frames) => {
     expect(sniffImage(data, 1000)).toEqual({
       ok: true,
-      info: { mime, width, height, frames, exif: false },
+      info: { mime, width, height, frames, exif: false, orientation: 1, orientationFields: [] },
     });
   });
 
@@ -180,6 +181,85 @@ describe("EXIF data", () => {
     ["gif", gif, false],
   ])("%s", (_name, data, exif) => {
     expect(sniffImage(data, 1000)).toMatchObject({ ok: true, info: { exif } });
+  });
+});
+
+describe("EXIF orientation", () => {
+  const webpWithExif = (...blocks: Uint8Array[]) =>
+    vp8x(0x08, ...blocks.map((block) => bytes("EXIF", u32le(block.length), [...block])));
+
+  test.each([1, 3, 6, 8])("orientation %i", (orientation) => {
+    const block = orientationTiff(orientation);
+    for (const data of [
+      jpegWithExif(jpeg, block),
+      jpegWithExif(jpeg, orientationTiff(orientation, true)),
+      pngWithExif(png, block),
+      pngWithExif(png, block, "after-data"),
+      webpWithExif(block),
+    ]) {
+      expect(sniffImage(data, 1000)).toMatchObject({
+        ok: true,
+        info: { exif: true, orientation, orientationFields: [{ orientation }] },
+      });
+    }
+  });
+
+  test("stored width and height stay as they are", () => {
+    expect(sniffImage(pngWithExif(png, orientationTiff(6)), 1000)).toMatchObject({
+      ok: true,
+      info: { width: 24, height: 16, orientation: 6 },
+    });
+  });
+
+  test("where each block lies, and the PNG chunk its CRC covers", () => {
+    const result = sniffImage(pngWithExif(png, orientationTiff(6)), 1000);
+    // The eXIf chunk follows IHDR at 33: its type at 37, its data (the TIFF block) at 41, its 26 bytes end at 67.
+    expect(result).toMatchObject({
+      ok: true,
+      info: { orientationFields: [{ entries: [51], checksum: { start: 37, end: 67 } }] },
+    });
+    const jpegResult = sniffImage(jpegWithExif(jpeg, orientationTiff(6)), 1000);
+    // APP1 at 2, its length at 4, "Exif" + two zero bytes at 6, the TIFF block at 12, IFD0 entry at 12 + 10.
+    expect(jpegResult.ok && jpegResult.info.orientationFields).toEqual([
+      { orientation: 6, littleEndian: false, entries: [22] },
+    ]);
+  });
+
+  test.each([
+    ["png", pngWithExif(pngWithExif(png, orientationTiff(6), "after-data"), orientationTiff(3))],
+    ["jpeg", jpegWithExif(jpegWithExif(jpeg, orientationTiff(6)), orientationTiff(3))],
+    ["webp", webpWithExif(orientationTiff(3), orientationTiff(6))],
+  ])("in a %s with two blocks the first in the file wins; both are found", (_name, data) => {
+    expect(sniffImage(data, 1000)).toMatchObject({
+      ok: true,
+      info: { orientation: 3, orientationFields: [{ orientation: 3 }, { orientation: 6 }] },
+    });
+  });
+
+  test.each([
+    ["png", png],
+    ["jpeg", jpeg],
+    ["webp", webp],
+    ["gif", gif],
+    ["jpeg with an Exif block without orientation", exifJpeg],
+    ["png with an eXIf chunk without orientation", exifPng],
+    ["webp with only the EXIF flag", vp8x(0x08)],
+  ])("%s is orientation 1", (_name, data) => {
+    expect(sniffImage(data, 1000)).toMatchObject({
+      ok: true,
+      info: { orientation: 1, orientationFields: [] },
+    });
+  });
+
+  test("an eXIf chunk cut off before its CRC is not rewritable and does not count", () => {
+    const data = pngWithExif(png, orientationTiff(6), "after-data").subarray(
+      0,
+      png.length - 12 + 36,
+    );
+    expect(sniffImage(data, 1000)).toMatchObject({
+      ok: true,
+      info: { exif: true, orientation: 1, orientationFields: [] },
+    });
   });
 });
 

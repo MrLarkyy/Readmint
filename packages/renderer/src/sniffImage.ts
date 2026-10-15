@@ -1,3 +1,5 @@
+import { exifOrientation, type Orientation, type OrientationField } from "./exifOrientation.js";
+
 export type ImageMime = "image/png" | "image/jpeg" | "image/gif" | "image/webp";
 
 export interface ImageInfo {
@@ -11,6 +13,13 @@ export interface ImageInfo {
    * the stored width and height may not be the drawn ones.
    */
   readonly exif: boolean;
+  /**
+   * EXIF orientation of the first EXIF block holding an Orientation entry, 1 without one; `width` and `height` are
+   * the stored size, before it applies.
+   */
+  readonly orientation: Orientation;
+  /** Every EXIF block with an Orientation entry, in file order: what `uprightImage` sets to 1. */
+  readonly orientationFields: readonly OrientationField[];
 }
 
 export type SniffResult =
@@ -63,8 +72,8 @@ class Bytes {
 const png = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
 
 /**
- * Format by magic bytes (PNG, JPEG, GIF, WebP), dimensions from the header and the animation frame count, without
- * decoding pixels. Every walk advances on each step and stops at the end of the bytes, so crafted input costs at
+ * Format by magic bytes (PNG, JPEG, GIF, WebP), dimensions from the header, the animation frame count and the EXIF
+ * orientation, without decoding pixels. Every walk advances on each step and stops at the end of the bytes, so crafted input costs at
  * most one pass. SVG and anything else is refused.
  */
 export function sniffImage(data: Uint8Array, maxFrames: number): SniffResult {
@@ -110,9 +119,12 @@ function found(
   height: number,
   frames: number,
   exif: boolean,
+  blocks: readonly OrientationField[] = [],
 ): SniffResult {
   if (width === 0 || height === 0) return { ok: false, message: "the image declares a zero size" };
-  return { ok: true, info: { mime, width, height, frames, exif } };
+  const orientationFields = blocks.filter((block) => block.entries.length > 0);
+  const orientation = orientationFields[0]?.orientation ?? 1;
+  return { ok: true, info: { mime, width, height, frames, exif, orientation, orientationFields } };
 }
 
 function sniffPng(bytes: Bytes, maxFrames: number): SniffResult {
@@ -121,28 +133,56 @@ function sniffPng(bytes: Bytes, maxFrames: number): SniffResult {
   const height = bytes.u32be(20);
   let frames = 1;
   let exif = false;
+  const blocks: OrientationField[] = [];
   let offset = 8;
   for (;;) {
     const length = bytes.u32be(offset);
     const type = bytes.ascii(offset + 4, 4);
     if (type === "acTL") frames = Math.min(bytes.u32be(offset + 8), maxFrames + 1);
-    if (type === "eXIf") exif = true;
+    if (type === "eXIf") {
+      exif = true;
+      pngExifBlock(bytes, offset, length, blocks);
+    }
     if (type === "IDAT" || type === "IEND") break;
     offset += 12 + length;
   }
-  return found("image/png", width, height, frames, exif || pngExifAfter(bytes, offset));
+  if (pngExifAfter(bytes, offset, blocks)) exif = true;
+  return found("image/png", width, height, frames, exif, blocks);
 }
 
-/** An `eXIf` chunk after the image data: some decoders read it there too. A cut-off walk just ends. */
-function pngExifAfter(bytes: Bytes, start: number): boolean {
+/**
+ * `eXIf` chunks after the image data, their blocks collected into `blocks`: some decoders read them there too. A
+ * cut-off walk just ends.
+ */
+function pngExifAfter(bytes: Bytes, start: number, blocks: OrientationField[]): boolean {
+  let exif = false;
   let offset = start;
   while (offset + 8 <= bytes.data.length) {
+    const length = bytes.u32be(offset);
     const type = bytes.ascii(offset + 4, 4);
-    if (type === "eXIf") return true;
-    if (type === "IEND") return false;
-    offset += 12 + bytes.u32be(offset);
+    if (type === "IEND") break;
+    if (type === "eXIf") {
+      exif = true;
+      pngExifBlock(bytes, offset, length, blocks);
+    }
+    offset += 12 + length;
   }
-  return false;
+  return exif;
+}
+
+/** The EXIF block of the `eXIf` chunk at `offset`, when the whole chunk, CRC included, lies inside the data. */
+function pngExifBlock(
+  bytes: Bytes,
+  offset: number,
+  length: number,
+  blocks: OrientationField[],
+): void {
+  const end = offset + 8 + length;
+  if (end + 4 > bytes.data.length) return;
+  blocks.push({
+    ...exifOrientation(bytes.data, offset + 8, end),
+    checksum: { start: offset + 4, end },
+  });
 }
 
 function isFrameHeader(marker: number): boolean {
@@ -157,6 +197,7 @@ function sniffJpeg(bytes: Bytes): SniffResult {
   let offset = 2;
   let size: readonly [width: number, height: number] | undefined;
   let exif = false;
+  const blocks: OrientationField[] = [];
   let problem = "JPEG has no frame header before its image data";
   try {
     for (;;) {
@@ -174,7 +215,10 @@ function sniffJpeg(bytes: Bytes): SniffResult {
         problem = "JPEG segment length is invalid";
         break;
       }
-      if (marker === 0xe1 && length >= 8 && bytes.ascii(offset + 2, 6) === "Exif\0\0") exif = true;
+      if (marker === 0xe1 && length >= 8 && bytes.ascii(offset + 2, 6) === "Exif\0\0") {
+        exif = true;
+        blocks.push(exifOrientation(bytes.data, offset + 8, offset + length));
+      }
       if (size === undefined && isFrameHeader(marker)) {
         size = [bytes.u16be(offset + 5), bytes.u16be(offset + 3)];
       }
@@ -184,7 +228,7 @@ function sniffJpeg(bytes: Bytes): SniffResult {
     if (!(error instanceof Truncated) || size === undefined) throw error;
   }
   if (size === undefined) return { ok: false, message: problem };
-  return found("image/jpeg", size[0], size[1], 1, exif);
+  return found("image/jpeg", size[0], size[1], 1, exif, blocks);
 }
 
 function skipSubBlocks(bytes: Bytes, start: number): number {
@@ -248,16 +292,20 @@ function sniffWebp(bytes: Bytes, maxFrames: number): SniffResult {
   const flags = bytes.u8(20);
   // The EXIF flag of VP8X, or an EXIF chunk even where the flag is missing.
   let exif = (flags & 0x08) !== 0;
+  const blocks: OrientationField[] = [];
   let frames = 0;
   let offset = 12;
   while (offset + 8 <= bytes.data.length && frames <= maxFrames) {
     const type = bytes.ascii(offset, 4);
-    if (type === "ANMF") frames++;
-    if (type === "EXIF") exif = true;
     const size = bytes.u32le(offset + 4);
+    if (type === "ANMF") frames++;
+    if (type === "EXIF") {
+      exif = true;
+      blocks.push(exifOrientation(bytes.data, offset + 8, offset + 8 + size));
+    }
     offset += 8 + size + (size % 2);
   }
-  if ((flags & 0x02) === 0) return found("image/webp", width, height, 1, exif);
+  if ((flags & 0x02) === 0) return found("image/webp", width, height, 1, exif, blocks);
   if (frames === 0) return { ok: false, message: "animated WebP holds no frame" };
-  return found("image/webp", width, height, frames, exif);
+  return found("image/webp", width, height, frames, exif, blocks);
 }

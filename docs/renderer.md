@@ -194,7 +194,17 @@ Drawn in document order, first at the back. Layer `id` and `name` are not emitte
   type differs from the sniffed one is `asset-format`. The bytes are re-encoded as a data URI of the sniffed type.
 - Checked before anything is decoded: size, then dimensions from the header, then animation frames (GIF image
   descriptors, APNG `acTL`, WebP `ANMF`). `sniffImage(bytes, maxFrames)`, exported, is that check (format, size, frames, EXIF
-  from the header alone); raster export sizes its image decoding budget with it.
+  and its orientation from the header alone); raster export sizes its image decoding budget with it.
+- EXIF orientation (tag `0x0112` in IFD0 of a JPEG APP1 `Exif` segment, a PNG `eXIf` chunk before or after the image
+  data, or a WebP `EXIF` chunk) is applied by the renderer, never by the decoder: browsers honour the tag and resvg
+  does not, so leaving it to them would draw the preview and the raster output differently. The inlined copy has every
+  Orientation entry rewritten to SHORT 1 in place (same length, so no offset moves; a PNG `eXIf` chunk gets its CRC
+  recomputed); the asset's own bytes are never changed. The `<image>` then sits at `x="0" y="0"` with the layer's width
+  and height (swapped for orientations 5-8) and `transform="matrix(...)"` maps that box onto the layer's, so `fit`
+  works on the upright picture; a layer `rotation` comes first in the `transform` list and turns the result around the
+  layer's centre. Orientation 1 (or none) draws exactly as before. The first EXIF block holding an Orientation entry
+  decides, its first entry of type SHORT with count 1; a value outside 1-8, another type or count, an entry only in
+  IFD1, or a block whose header or IFD0 lies outside it counts as 1 and is never an error.
 - `fit`: `contain` (default) = `preserveAspectRatio="xMidYMid meet"`, `cover` = `xMidYMid slice`, `fill` = `none`.
   `alt` becomes `aria-label`.
 - An image drawn once is an `<image>` holding its data URI. Image data drawn more than once (a `repeat`, several
@@ -204,7 +214,7 @@ Drawn in document order, first at the back. Layer `id` and `name` are not emitte
   opacity and rotation. A `<use>` with an `alt` gets `role="img"` beside its `aria-label`, so it keeps the accessible
   name an `<image>` has. Animation classes and transform groups apply to the `<use>` as to an `<image>`. An image
   with EXIF data (JPEG APP1 `Exif`, PNG `eXIf`, WebP `EXIF`) is never shared and stays an inline `<image>` at every
-  use, because browsers apply its orientation, which a symbol sized from the stored pixels would not follow.
+  use, each carrying its own orientation transform.
 - An animated GIF, APNG or WebP is inlined as is; browsers play it, rasterizers draw the first frame. The Node golden
   rasterizer (resvg-js 2.6.2) cannot decode WebP, so WebP has unit tests but no golden image. Raster export draws WebP
   all the same: it swaps each WebP for a PNG of the same pixels (the first frame of an animation) in its own copy of the

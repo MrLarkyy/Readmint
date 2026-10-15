@@ -3,6 +3,13 @@ import gradientJpeg from "./assets/gradient.jpg?inline";
 import patternPng from "./assets/pattern.png?inline";
 import tallWebp from "./assets/tall.webp?inline";
 import twoFramesGif from "./assets/two-frames.gif?inline";
+import {
+  dataUriBytes,
+  jpegWithExif,
+  orientationTiff,
+  pngWithExif,
+  toDataUri,
+} from "./exifImages.js";
 import montserratExtraBold from "./fonts/Montserrat-ExtraBold.ttf?inline";
 import montserratMediumOtf from "./fonts/Montserrat-Medium.otf?inline";
 import montserratMedium from "./fonts/Montserrat-Medium.ttf?inline";
@@ -54,3 +61,15 @@ export const imageAssets = {
   webp: { src: tallWebp },
   gif: { src: twoFramesGif },
 };
+
+/** The PNG with an `eXIf` chunk (valid CRC) saying `orientation`, as a `data:` URI. */
+export function exifPng(orientation: number): { src: string } {
+  const bytes = pngWithExif(dataUriBytes(patternPng), orientationTiff(orientation));
+  return { src: toDataUri("image/png", bytes) };
+}
+
+/** The JPEG with an APP1 `Exif` segment (little-endian TIFF) saying `orientation`, as a `data:` URI. */
+export function exifJpeg(orientation: number): { src: string } {
+  const bytes = jpegWithExif(dataUriBytes(gradientJpeg), orientationTiff(orientation, true));
+  return { src: toDataUri("image/jpeg", bytes) };
+}
