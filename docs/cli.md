@@ -45,6 +45,7 @@ data it fails `image-binding`.
 | `--frame-rate <n>` | `render`             | frames per second sampled from the animation, a whole number in 1..60 (`gif` 1..50); default 30, `gif` 25; raster formats only                                                                                                                                                                                                        |
 | `--quality <n>`    | `render`             | lossy WebP at this quality, a whole number in 1..100; default lossless; `webp` output only (any other format is a usage error)                                                                                                                                                                                                        |
 | `--port <n>`       | `preview`            | port in 0..65535; default 4870, `0` picks a free one                                                                                                                                                                                                                                                                                  |
+| `--open`           | `preview`            | opens the printed address (with `--github` the secret one) in the default browser: `rundll32 url.dll` on Windows, `open` on macOS, `xdg-open` elsewhere; if that cannot start, one line says so and the preview keeps serving                                                                                                         |
 | `--fetch-images`   | all                  | fetches the images whose `src` is bound to data (https, allowed hosts only, no credentials; see [asset-loading.md](asset-loading.md#images-bound-from-data)); without it a design with one fails `image-not-fetched` (with `--data` or `--github`) and no image is requested (only `--github` makes requests then, to the GitHub API) |
 | `--github`         | all                  | loads the live GitHub data as `{ github }` with the token from `GH_TOKEN`, else `GITHUB_TOKEN` ([Live GitHub data](#live-github-data)); excludes `--data`                                                                                                                                                                             |
 | `--login <login>`  | all                  | the GitHub login `--github` loads; default the token's owner; only with `--github`                                                                                                                                                                                                                                                    |
@@ -180,13 +181,23 @@ The preview is for this computer only:
   `/<secret>`), never a file: any other path is 404, any method but GET and HEAD 405;
 - the SVG is served with a Content Security Policy that allows only inline styles and `data:` images and fonts, the page
   with one that allows only its own script and requests;
-- at most 8 pages can follow the changes at once; a ninth event stream is refused with 503.
+- at most 8 pages can follow the changes at once; a ninth event stream is refused with 503;
+- with `--github --open` the address, secret included, passes through the opener's command line to the browser; on
+  Linux and macOS other users of the computer can read a running process's command line, so on a shared computer copy
+  the printed address into the browser instead of using `--open`.
+
+Without `--open` nothing is opened. With it the address opens in the default browser right after it is printed. If the
+opener itself cannot be started (for example no `xdg-open`), the preview prints `preview: cannot open a browser; open the
+address above` (with the system error code in parentheses when there is one), keeps serving, and the exit code is
+unchanged. An opener that starts but then fails (no desktop session, no browser) is not detected: copy the printed
+address. On Windows the opener is started by its full path under `SystemRoot` (default `C:\Windows`), never found
+through the current folder. The opener's own output is discarded, and an opener that hangs does not delay Ctrl+C.
 
 A port in use, or one the system refuses, is exit code 3.
 
 ## Programmatic use
 
-`@readmint/cli` exports `runCli(argv, io)` (returns the exit code, never throws; `CliIo.env` is the environment `--github` takes its token
+`@readmint/cli` exports `runCli(argv, io)` (returns the exit code, never throws; `CliIo.openUrl` opens the `preview --open` address, the platform's opener when absent; `CliIo.env` is the environment `--github` takes its token
 from, `bin` passes `process.env`), `ExitCode`, `CliError`, `CliIo`,
 `escapeForLog`, `quoteForLog`, `formatIssue`, `localeProblem(locale)` (why a tag cannot be the `--locale`, `undefined` when it can; the Action's `locale` input uses it too), `outputFormats` and `outputExtension(format)` (the `OutputFormat`s and their file extension, `apng` → `png`), and the loaders the commands share: `loadDesignFile`, `loadDesignAssets`,
 `loadFixtureData` (with `maxFixtureBytes`, its size cap), `loadLiveData` (the `--github` load: `LiveDataOptions` with

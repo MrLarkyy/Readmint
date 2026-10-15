@@ -37,4 +37,4 @@ export type CliCommand =
   | { readonly name: "version" }
   | (DesignArgs & RenderArgs & { readonly name: "render" })
   | (DesignArgs & { readonly name: "validate"; readonly time?: number })
-  | (DesignArgs & { readonly name: "preview"; readonly port: number });
+  | (DesignArgs & { readonly name: "preview"; readonly port: number; readonly open?: boolean });

@@ -14,10 +14,12 @@ export interface CliIo {
   readonly pollIntervalMs?: number;
   /** `fetch` for `--fetch-images` and `--github`, the only network use of the CLI; the global one when absent. */
   readonly fetch?: ImageFetch;
+  /** Opens the `preview --open` address in a browser; `openInBrowser` when absent, tests inject one. */
+  readonly openUrl?: (url: string) => Promise<void>;
   /**
    * The environment: `GH_TOKEN`, else `GITHUB_TOKEN`, is the token of `--github`; the GitHub load reads it only with
-   * `--github`. `runCli` reads both in every run only to redact them from standard error and the preview page. No
-   * other variable is read.
+   * `--github`. `runCli` reads both in every run only to redact them from standard error and the preview page. `preview --open` on Windows
+   * also reads `SystemRoot` (the path of the opener). No other variable is read.
    */
   readonly env?: Readonly<Record<string, string | undefined>>;
 }

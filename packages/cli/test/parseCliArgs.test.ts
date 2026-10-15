@@ -75,3 +75,17 @@ test.each(["gho_", "ghu_", "ghs_", "ghr_", "github_pat_"])(
     expect(usageError(["render", "a.json", `${prefix}abc`]).message).not.toContain(prefix);
   },
 );
+
+test("preview takes --open; render and validate refuse it", () => {
+  expect(parseCliArgs(["preview", "d.json", "--open"])).toMatchObject({
+    name: "preview",
+    open: true,
+  });
+  expect(parseCliArgs(["preview", "d.json"])).not.toHaveProperty("open");
+  for (const name of ["render", "validate"]) {
+    expect(() => parseCliArgs([name, "d.json", "--open"])).toThrow(
+      `option --open does not apply to ${name}`,
+    );
+  }
+  expect(() => parseCliArgs(["preview", "d.json", "--open=1"])).toThrow("takes no value");
+});
