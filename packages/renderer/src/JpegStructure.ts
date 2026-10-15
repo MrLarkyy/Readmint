@@ -48,15 +48,19 @@ const isAppOrTable = (marker: number) =>
  * quantization table it cannot build, an Adobe transform above 2, a marker after the image data other than a table,
  * APPn, COM or a restart right after the data, a sequential scan with spectral or successive approximation values,
  * scan components out of frame order, a component left incomplete or scanned after it is complete, CMYK) and reads
- * JFIF, Adobe and the component ids in another order and up to EOI, where libjpeg stops at the first scan. A file cut
- * before EOI draws nothing in both, so its walk just ends. Each rule is pinned against both outputs in
+ * JFIF, Adobe and the component ids in another order and up to EOI, where libjpeg stops at the first scan. A
+ * sequential (SOF0, SOF1) file cut before EOI draws nothing in both, so its walk just ends; of a progressive one cut
+ * before EOI Chromium draws what its scans hold and resvg nothing, so it is refused (lossless: `LosslessJpeg`). Each rule is pinned against both outputs in
  * test/jpegStructureCases.ts and test/jpegMarkers.ts (Chromium 156, resvg-wasm 2.6.2).
  */
 export class JpegStructure {
   private frame: number | undefined;
   private components: Component[] = [];
-  private readonly dcTables = new Set<number>();
-  private readonly acTables = new Set<number>();
+  /** The Huffman tables defined so far, each true where it has a code of all ones (libjpeg fails on it when used). */
+  private readonly dcTables = new Map<number, boolean>();
+  private readonly acTables = new Map<number, boolean>();
+  /** An AVI1 APP0 (Motion JPEG) has been read: jpeg-decoder then fills in the default tables 0 and 1. */
+  private mjpeg = false;
   /** How often each quantization table has been defined. */
   private readonly quantTables = new Map<number, number>();
   private readonly libjpeg: ColourMarks = { jfif: false, adobe: undefined };
@@ -117,12 +121,14 @@ export class JpegStructure {
   /**
    * Why the file is refused from its first scan header at `offset` (its length field) on, or undefined: every scan
    * header, the image data skipped in one pass, the markers between the scans and at EOI the whole file. Where the
-   * data runs out, the walk ends without a problem (a lossless file is refused), as neither output draws it.
+   * data runs out, the walk ends with `cutProblem`.
    */
   scansProblem(bytes: Bytes, offset: number, lossless: LosslessJpeg): string | undefined {
     if (lossless.lossless) {
       const problem = lossless.problemAtScan(bytes, offset);
       if (problem !== undefined) return problem;
+      const tableProblem = this.tableProblem("DC", 0, false);
+      if (tableProblem !== undefined) return tableProblem;
       const end = skipEntropyData(bytes.data, offset + bytes.u16be(offset), false);
       return lossless.problemAfterImageData(end?.marker);
     }
@@ -132,7 +138,7 @@ export class JpegStructure {
       if (scanProblem !== undefined) return scanProblem;
       let next = skipEntropyData(bytes.data, scan + bytes.u16be(scan), true);
       for (;;) {
-        if (next === undefined) return undefined;
+        if (next === undefined) return this.cutProblem();
         const marker = next.marker;
         if (marker === 0) return resvgDiffers("image data with fill bytes before a stuffed zero");
         if (marker === 0xd9) return this.endProblem();
@@ -149,6 +155,16 @@ export class JpegStructure {
       }
       scan = next.offset;
     }
+  }
+
+  /**
+   * Why a file of this frame that ends before EOI is refused, or undefined: neither output draws a cut sequential file,
+   * Chromium draws what the scans of a cut progressive one hold and resvg nothing.
+   */
+  cutProblem(): string | undefined {
+    return this.frame === 0xc2
+      ? resvgDiffers("progressive file that ends before its end-of-image marker")
+      : undefined;
   }
 
   private quantizationProblem(bytes: Bytes, offset: number, length: number): string | undefined {
@@ -185,26 +201,32 @@ export class JpegStructure {
       }
       let codes = 0;
       let code = 0;
+      let allOnes = false;
       for (let bits = 1; bits <= 16; bits++) {
         const count = bytes.u8(at + bits);
         codes += count;
         code = code * 2 + count;
-        // libjpeg's check (no code of all ones), stricter than jpeg-decoder's, which builds every table at once.
-        if (code >= 1 << bits && count > 0)
+        // jpeg-decoder builds every table where it is defined and fails on more codes than fit; a code of all ones it
+        // takes, libjpeg fails on it only in a scan that uses the table.
+        if (code > 1 << bits)
           return resvgDiffers(`Huffman table ${hex(id)} of invalid code lengths`);
+        if (code === 1 << bits && count > 0) allOnes = true;
       }
       if (codes === 0) return resvgDiffers(`Huffman table ${hex(id)} without codes`);
       if (codes > 256 || codes > end - at - 17) {
         return undrawable("Huffman table segment of an invalid length");
       }
-      (id >> 4 === 0 ? this.dcTables : this.acTables).add(table);
+      (id >> 4 === 0 ? this.dcTables : this.acTables).set(table, allOnes);
       at += 17 + codes;
     }
     return undefined;
   }
 
   private readApp0(bytes: Bytes, start: number, size: number): void {
-    if (size < 5 || bytes.ascii(start, 5) !== "JFIF\0") return;
+    if (size < 5) return;
+    const name = bytes.ascii(start, 5);
+    if (name === "AVI1\0") this.mjpeg = true;
+    if (name !== "JFIF\0") return;
     this.decoder.jfif = true;
     if (!this.scanned && size >= 14) this.libjpeg.jfif = true;
   }
@@ -258,13 +280,10 @@ export class JpegStructure {
       if (dc > 3 || ac > 3) return undrawable(`scan with Huffman table selector ${hex(tables)}`);
       if (this.frame === 0xc0 && Math.max(dc, ac) > 1)
         return baselineTable(Math.max(dc, ac), "scan selects");
-      // libjpeg-turbo fills in its default tables for a sequential scan, jpeg-decoder draws nothing.
-      if (band[0] === 0 && !this.dcTables.has(dc)) {
-        return resvgDiffers(`scan on DC Huffman table ${String(dc)}, which no DHT defines,`);
-      }
-      if ((band[1] ?? 0) > 0 && !this.acTables.has(ac)) {
-        return resvgDiffers(`scan on AC Huffman table ${String(ac)}, which no DHT defines,`);
-      }
+      const tableProblem =
+        (band[0] === 0 ? this.tableProblem("DC", dc, !progressive) : undefined) ??
+        ((band[1] ?? 0) > 0 ? this.tableProblem("AC", ac, !progressive) : undefined);
+      if (tableProblem !== undefined) return tableProblem;
       const definition = this.quantTables.get(component.table);
       if (definition === undefined) {
         return undrawable(
@@ -290,6 +309,25 @@ export class JpegStructure {
       if (low === 0) component.done.fill(true, band[0], (band[1] ?? 0) + 1);
     }
     return undefined;
+  }
+
+  /**
+   * Why a scan on Huffman `table` of `kind` is refused, or undefined. Where no DHT defines it, libjpeg-turbo fills in
+   * its default tables 0 and 1 for a sequential scan (jdhuff.c:823), jpeg-decoder only after an AVI1 APP0
+   * (decoder.rs:817), for any scan.
+   */
+  private tableProblem(kind: "DC" | "AC", table: number, sequential: boolean): string | undefined {
+    const allOnes =
+      (kind === "DC" ? this.dcTables : this.acTables).get(table) ??
+      (sequential && this.mjpeg && table <= 1 ? false : undefined);
+    if (allOnes === undefined) {
+      return resvgDiffers(`scan on ${kind} Huffman table ${String(table)}, which no DHT defines,`);
+    }
+    return allOnes
+      ? resvgDiffers(
+          `scan on ${kind} Huffman table ${String(table)}, which has a code of all ones,`,
+        )
+      : undefined;
   }
 
   private endProblem(): string | undefined {

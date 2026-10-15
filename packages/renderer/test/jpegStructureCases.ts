@@ -51,6 +51,7 @@ interface FlatComponent {
 function flatJpeg(
   components: readonly FlatComponent[],
   scans: readonly (readonly number[])[],
+  dcTable: readonly number[] = oneCode(0x00),
 ): Uint8Array {
   const hMax = Math.max(...components.map(({ h }) => h));
   const vMax = Math.max(...components.map(({ v }) => v));
@@ -84,7 +85,7 @@ function flatJpeg(
       components.length,
       ...components.flatMap(({ id, h, v }) => [id, (h << 4) | v, 0]),
     ]),
-    ...segment(0xc4, [...oneCode(0x00), ...oneCode(0x10)]),
+    ...segment(0xc4, [...dcTable, ...oneCode(0x10)]),
     ...scans.flatMap((ids) => {
       const scanned = ids.flatMap((id) => components.filter((component) => component.id === id));
       return [
@@ -96,6 +97,33 @@ function flatJpeg(
     0xd9,
   ]);
 }
+
+/**
+ * A Motion JPEG frame as cameras write it: an AVI1 APP0, no DHT (the decoder brings the default tables of T.81 Annex
+ * K), 32x16 YCbCr at 1x1, luma on tables 0 and chroma on tables 1, every block DC 0 and EOB (luma DC `00`, AC
+ * `1010`; chroma DC `00`, AC `00`), so flat grey 128.
+ */
+function motionJpegFrame(): Uint8Array {
+  const mcu = "00101000000000";
+  const bits = mcu.repeat(8);
+  const data = Array.from({ length: bits.length / 8 }, (_, index) =>
+    Number.parseInt(bits.slice(index * 8, index * 8 + 8), 2),
+  );
+  return new Uint8Array([
+    0xff,
+    0xd8,
+    ...segment(0xe0, [0x41, 0x56, 0x49, 0x31, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]),
+    ...segment(0xdb, [0, ...new Array<number>(64).fill(1)]),
+    ...segment(0xc0, [8, 0, 16, 0, 32, 3, 1, 0x11, 0, 2, 0x11, 0, 3, 0x11, 0]),
+    ...segment(0xda, [3, 1, 0x00, 2, 0x11, 3, 0x11, 0, 63, 0]),
+    ...data,
+    0xff,
+    0xd9,
+  ]);
+}
+
+/** A DC table whose codes `0` (category 0) and `1` (category 1) fill length 1, so the second is all ones. */
+const allOnesDcTable = [0x00, 2, ...new Array<number>(15).fill(0), 0, 1];
 
 const at1x1 = (...ids: number[]) => ids.map((id) => ({ id, h: 1, v: 1 }));
 
@@ -551,5 +579,38 @@ export function jpegStructureCases(gradient: Uint8Array): JpegStructureCase[] {
     { name: "grey", bytes: flatJpeg(at1x1(1), [[1]]), ...both(grey) },
     { name: "grey sampled 2x2", bytes: flatJpeg([{ id: 1, h: 2, v: 2 }], [[1]]), ...both(grey) },
     { name: "progressive", bytes: progressive, ...both(scaled) },
+    { name: "a Motion JPEG frame (AVI1, no DHT)", bytes: motionJpegFrame(), ...both(grey) },
+    {
+      name: "an unused Huffman table with a code of all ones",
+      bytes: inserted(gradient, frame.at, segment(0xc4, [0x13, ...allOnesDcTable.slice(1)])),
+      ...both(ycbcr),
+    },
+    { name: "a baseline file without EOI", bytes: gradient.slice(0, eoi), ...both("nothing") },
+    {
+      name: "a baseline file cut inside its image data",
+      bytes: gradient.slice(0, scan.end + Math.floor((eoi - scan.end) / 2)),
+      ...both("nothing"),
+    },
+    {
+      name: "a scan on a Huffman table with a code of all ones",
+      bytes: flatJpeg(at1x1(1, 2, 3), [[1, 2, 3]], allOnesDcTable),
+      message: "which has a code of all ones",
+      chromium: "nothing",
+      resvg: grey,
+    },
+    {
+      name: "a progressive file without EOI",
+      bytes: progressive.slice(0, progressive.length - 2),
+      message: "progressive file that ends before its end-of-image marker",
+      chromium: scaled,
+      resvg: "nothing",
+    },
+    {
+      name: "a progressive file cut before its last scan",
+      bytes: progressive.slice(0, progressiveScans[3]),
+      message: "progressive file that ends before its end-of-image marker",
+      chromium: [0, 21, 245],
+      resvg: "nothing",
+    },
   ];
 }

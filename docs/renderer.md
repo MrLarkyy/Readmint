@@ -331,15 +331,17 @@ budget?, maxBytes? })`, `encodeWoff`, `decodeWoff`, `glyphClosure`, `OutlineBudg
   resvg draws nothing, on much that libjpeg reads or ignores, and reads the colour space differently. Past the first
   scan the sniffer skips the image data (stuffed zeros, fill bytes, RST0-7) up to the next marker; only SOS, DHT, DQT,
   DRI, APP0-15, COM and EOI may follow (a restart marker only right after the data). Refused, wherever they are:
-  - segments: an Adobe APP14 (`Adobe�`, 12 bytes or more) with a transform above 2; a DQT table of precision above 1,
-    with a zero entry, an id above 3 or a wrong length; a DHT table without codes, with code lengths no Huffman code
-    has, of class above 1 or id above 3, or a wrong length; in a baseline (SOF0) file, past its frame header, a DHT of
+  - segments: an Adobe APP14 (`Adobe\0`, 12 bytes or more) with a transform above 2; a DQT table of precision above
+    1, with a zero entry, an id above 3 or a wrong length; a DHT table without codes, with more codes of a length than
+    fit, of class above 1 or id above 3, or a wrong length; in a baseline (SOF0) file, past its frame header, a DHT of
     table 2 or 3 (jpeg-decoder allows tables 0 and 1 there; before the frame header any); a DRI whose length is not 4;
   - frames: 4 components (CMYK and YCCK: resvg draws them empty), any count but 1 or 3, a component id twice,
     sampling factors outside 1-4 or not an integral ratio of the largest, a quantization table above 3;
   - scans: a header of a wrong length or 0 or more than 4 components; a component the frame lacks or out of frame
     order; a Huffman table selector above 3 (above 1 in SOF0); a Huffman table no DHT defines yet (libjpeg-turbo then
-    uses its default tables, jpeg-decoder draws nothing); a quantization table no DQT defines; a sequential (SOF0, SOF1)
+    uses its default tables, jpeg-decoder draws nothing), except tables 0 and 1 of a sequential scan after an AVI1 APP0
+    (Motion JPEG: both use the default tables); a Huffman table with a code of all ones (libjpeg fails on it, though
+    only where a scan uses it); a quantization table no DQT defines; a sequential (SOF0, SOF1)
     scan whose spectral selection is not 0-63 (or 0-0) or whose successive approximation is not 0; progressive
     parameters jpeg-decoder rejects; more than 10 blocks per MCU; a scan of a component already complete (jpeg-decoder
     skips it, libjpeg applies it); a quantization table redefined between two scans of one component;
@@ -352,8 +354,9 @@ budget?, maxBytes? })`, `encodeWoff`, `decodeWoff`, `glyphClosure`, `OutlineBudg
     up to EOI.
 
   Several scans, restart markers, tables, APPn and COM between the scans and before EOI stay accepted, as does a
-  table 2 defined before a baseline frame header. A file that ends before EOI is read as far as it goes: neither
-  output draws a cut baseline file. Every rule is pinned in both outputs (`packages/renderer/test/jpegStructureCases.ts`
+  table 2 defined before a baseline frame header. A file that ends before EOI: a sequential (SOF0, SOF1) one neither
+  output draws, so it stays accepted; of a progressive (SOF2) one Chromium draws what its scans hold and resvg
+  nothing, so it is refused; a lossless one is refused (below). Every rule is pinned in both outputs (`packages/renderer/test/jpegStructureCases.ts`
   and `jpegMarkers.ts`: Chromium 156, resvg-wasm 2.6.2); a few that both draw nothing for are refused to name the
   reason. Corrupt entropy-coded data inside a well-formed scan is not checked.
 

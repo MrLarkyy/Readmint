@@ -268,6 +268,8 @@ function sniffJpeg(bytes: Bytes): SniffResult {
   } catch (error) {
     if (!(error instanceof Truncated) || size === undefined) throw error;
     if (lossless.lossless) return { ok: false, message: lossless.problemWhenTruncated() };
+    const cutProblem = structure.cutProblem();
+    if (cutProblem !== undefined) return { ok: false, message: cutProblem };
     return found("image/jpeg", size[0], size[1], 1, exif, blocks);
   }
 }
