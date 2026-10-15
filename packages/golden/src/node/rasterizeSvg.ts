@@ -8,6 +8,10 @@ import { Resvg } from "@resvg/resvg-js";
  * Renders an SVG to PNG bytes without system fonts, so the result does not depend on the machine. `buffers` are font
  * files in memory (resvg-js 2.6.2 reads fonts only from files: each is written once to a temporary file named by
  * its SHA-256).
+ *
+ * resvg-js 2.6.2 aborts the whole process (a native panic, no exception) on a layer of its own (opacity, clip,
+ * symbol) lying beyond twice the canvas. The renderer's SVG never has one: it leaves out such layers wholly off the
+ * canvas. A hand-written SVG given to the golden must avoid them.
  */
 export function rasterizeSvg(
   svg: string,

@@ -57,6 +57,39 @@ export default defineGoldenSuite<RenderFixture>({
       ]),
     },
     {
+      // Every red layer lies wholly off the canvas, beyond the twice its size resvg aborts at, so none is written.
+      name: "off-canvas-layers",
+      input: design([
+        box(60, 40, "#0969da", { x: 10, y: 10 }),
+        {
+          type: "group",
+          x: 10,
+          y: 300,
+          width: 60,
+          height: 40,
+          clip: true,
+          children: [box(80, 60, "#cf222e")],
+        },
+        {
+          type: "group",
+          x: 80,
+          y: 10,
+          width: 70,
+          height: 40,
+          clip: true,
+          children: [box(40, 40, "#cf222e", { x: 400 })],
+        },
+        box(60, 40, "#cf222e", { x: -480, y: 10, opacity: 0.5 }),
+        {
+          type: "group",
+          width: 160,
+          height: 100,
+          rotation: 60,
+          children: [box(20, 20, "#1a7f37", { x: 70, y: 105, opacity: 0.6 })],
+        },
+      ]),
+    },
+    {
       name: "gradient-clip-repeat",
       input: design(
         [

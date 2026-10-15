@@ -64,6 +64,11 @@ scripts on its own but a path as one shape) in Chromium.
 resvg-js 2.6.2 does not decode WebP images: a WebP draws nothing in the Node PNG while Chromium draws it, so a fixture
 with a WebP image fails the browser leg. Cover WebP with unit tests instead.
 
+resvg-js 2.6.2 aborts the whole test process (a native panic, no exception) on a layer of its own (an opacity, a clip,
+a `<symbol>`) lying beyond twice the canvas. The renderer's SVG never has one ([renderer.md](renderer.md#layers)); a
+hand-written SVG given to `rasterizeSvg` must avoid it. `renderer-layout/off-canvas-layers` and
+`renderer-animation/off-canvas-slide-in-t*` pin that renderer SVG with such layers draws.
+
 ## Raster export
 
 The golden rasterizer stays resvg-js 2.6.2 (native, tests only). Raster export ([raster.md](raster.md)) draws with
