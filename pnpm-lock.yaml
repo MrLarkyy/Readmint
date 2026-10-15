@@ -218,6 +218,8 @@ importers:
         specifier: workspace:*
         version: link:../golden
 
+  packages/wiki: {}
+
 packages:
 
   '@blazediff/core@1.10.0':

@@ -13,3 +13,4 @@ AGENTS.md
 CLAUDE.md
 *.tsbuildinfo
 .vitest/
+.wiki-out/
