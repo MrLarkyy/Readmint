@@ -12,6 +12,8 @@ export interface ActionConfig {
   readonly scale: number;
   /** Frames per second of an animated raster output; absent: 30, GIF 25. */
   readonly frameRate?: number;
+  /** Lossy WebP quality, 1..100, for the webp outputs; absent: lossless. */
+  readonly quality?: number;
   /** GitHub data token; empty when `dataFile` is given. Never printed. */
   readonly token: string;
   /** GitHub login to load; empty: the token's owner. */

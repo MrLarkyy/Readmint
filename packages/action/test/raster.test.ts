@@ -47,6 +47,27 @@ test("writes every format of every design; the snippet shows the first with the 
   );
 });
 
+test("quality makes the webp output lossy and leaves the other formats as they were", async () => {
+  const plain = await tree.run({ ...dryRun, formats: "webp, png", scale: "1" });
+  expect(plain.code, plain.log).toBe(0);
+  const lossless = await readFile(join(tree.root, "readmint", "card.webp"));
+  const png = await readFile(join(tree.root, "readmint", "card.png"));
+  const run = await tree.run({ ...dryRun, formats: "webp, png", scale: "1", quality: "80" });
+  expect(run.code, run.log).toBe(0);
+  const lossy = await readFile(join(tree.root, "readmint", "card.webp"));
+  expect(lossless.includes(Buffer.from("VP8L", "latin1"))).toBe(true);
+  expect(lossy.includes(Buffer.from("VP8 ", "latin1"))).toBe(true);
+  expect(lossy.includes(Buffer.from("VP8L", "latin1"))).toBe(false);
+  expect((await readFile(join(tree.root, "readmint", "card.png"))).equals(png)).toBe(true);
+});
+
+test("quality without a webp format fails before anything is written", async () => {
+  const run = await tree.run({ ...dryRun, formats: "png", quality: "80" });
+  expect(run.code).toBe(1);
+  expect(run.log).toContain("input quality applies to webp output only");
+  expect(existsSync(join(tree.root, "readmint"))).toBe(false);
+});
+
 test("apng writes <stem>.png at the default scale", async () => {
   const run = await tree.run({ ...dryRun, formats: "apng" });
   expect(run.code).toBe(0);

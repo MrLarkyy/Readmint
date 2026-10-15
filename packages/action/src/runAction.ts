@@ -52,6 +52,7 @@ export async function runAction(env: Env, deps: ActionDeps): Promise<number> {
       ...(config.locale === undefined ? {} : { locale: config.locale }),
       scale: config.scale,
       ...(config.frameRate === undefined ? {} : { frameRate: config.frameRate }),
+      ...(config.quality === undefined ? {} : { quality: config.quality }),
     });
     for (const warning of rendered.warnings) log.warning(warning);
     const written = await writeOutputs(workspace, config.outputDir, rendered.files);

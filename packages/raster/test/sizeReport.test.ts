@@ -9,6 +9,7 @@ import {
   dataUri,
   loopDesign,
   onceDesign,
+  photoDesign,
   shapesDesign,
   textDesign,
 } from "./rasterFixtures.js";
@@ -67,6 +68,7 @@ const fixtures: readonly [string, Design][] = [
   ["loop", loopDesign],
   ["once", onceDesign],
   ["card", cardDesign],
+  ["photo", photoDesign],
 ];
 
 const formats: readonly RasterFormat[] = ["png", "webp", "apng", "gif"];
@@ -82,6 +84,13 @@ test("every fixture in every format stays under the output limit; the report lis
       );
       cells.push(`${String(output.bytes.length)} (${String(output.frames)} fr)`);
     }
+    const lossy = await exportRaster(designInput(design), { format: "webp", quality: 75 });
+    expect(lossy.bytes.length, `${name} webp q75`).toBeLessThanOrEqual(RasterLimits.maxOutputBytes);
+    cells.push(`${String(lossy.bytes.length)} (${String(lossy.frames)} fr)`);
+    if (name === "photo") {
+      const lossless = await exportRaster(designInput(design), { format: "webp" });
+      expect(lossy.bytes.length).toBeLessThan(lossless.bytes.length);
+    }
     rows.push(`| ${name} | ${cells.join(" | ")} |`);
   }
   mkdirSync(reportDir, { recursive: true });
@@ -92,8 +101,8 @@ test("every fixture in every format stays under the output limit; the report lis
       "",
       `Bytes per fixture and format at the default scale (2) and frame rate (30, GIF 25); limit ${String(RasterLimits.maxOutputBytes)}.`,
       "",
-      `| fixture | ${formats.join(" | ")} |`,
-      `|---|${formats.map(() => "---").join("|")}|`,
+      `| fixture | ${[...formats, "webp q75"].join(" | ")} |`,
+      `|---|${[...formats, "webp q75"].map(() => "---").join("|")}|`,
       ...rows,
       "",
     ].join("\n"),

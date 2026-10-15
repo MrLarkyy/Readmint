@@ -39,6 +39,7 @@ loaded, used or not, so a broken reference fails `validate` too.
 | `--format <name>`  | `render`             | `svg`, `png`, `webp`, `apng` or `gif`; default from the `--out` extension (`.png`, `.apng`, `.webp`, `.gif`), else `svg`; a raster format without `--out` is a usage error                                                        |
 | `--scale <n>`      | `render`             | raster pixels per design pixel, 1..4 (up to three decimals); default 2; raster formats only                                                                                                                                       |
 | `--frame-rate <n>` | `render`             | frames per second sampled from the animation, a whole number in 1..60 (`gif` 1..50); default 30, `gif` 25; raster formats only                                                                                                    |
+| `--quality <n>`    | `render`             | lossy WebP at this quality, a whole number in 1..100; default lossless; `webp` output only (any other format is a usage error)                                                                                                    |
 | `--port <n>`       | `preview`            | port in 0..65535; default 4870, `0` picks a free one                                                                                                                                                                              |
 
 An option a command does not take, an unknown option, a missing or extra argument and a bad value are usage errors

@@ -9,7 +9,16 @@ import { quoteForLog } from "./quoteForLog.js";
 
 type DesignCommand = "render" | "validate" | "preview";
 type ValueOption =
-  "root" | "data" | "locale" | "time" | "out" | "port" | "format" | "scale" | "frame-rate";
+  | "root"
+  | "data"
+  | "locale"
+  | "time"
+  | "out"
+  | "port"
+  | "format"
+  | "scale"
+  | "frame-rate"
+  | "quality";
 
 const valueOptions: ReadonlySet<string> = new Set<ValueOption>([
   "root",
@@ -21,12 +30,23 @@ const valueOptions: ReadonlySet<string> = new Set<ValueOption>([
   "format",
   "scale",
   "frame-rate",
+  "quality",
 ]);
 const flagOptions: ReadonlySet<string> = new Set(["help", "version"]);
 
 // No host option, ever: the preview listens on 127.0.0.1 only.
 const allowed: Readonly<Record<DesignCommand, ReadonlySet<ValueOption>>> = {
-  render: new Set(["root", "data", "locale", "time", "out", "format", "scale", "frame-rate"]),
+  render: new Set([
+    "root",
+    "data",
+    "locale",
+    "time",
+    "out",
+    "format",
+    "scale",
+    "frame-rate",
+    "quality",
+  ]),
   validate: new Set(["root", "data", "locale", "time"]),
   preview: new Set(["root", "data", "locale", "port"]),
 };
@@ -126,11 +146,16 @@ function renderArgs(values: ReadonlyMap<ValueOption, string>): Omit<RenderArgs, 
         usage(`option --${name} applies to png, webp, apng and gif output only`);
     }
   }
+  const quality = values.get("quality");
+  if (quality !== undefined && format !== "webp") {
+    usage("option --quality applies to webp output only");
+  }
   return {
     format,
     ...optional("out", out),
     ...(scale === undefined ? {} : { scale: parseScale(scale) }),
     ...(frameRate === undefined ? {} : { frameRate: parseFrameRate(frameRate, format) }),
+    ...(quality === undefined ? {} : { quality: parseQuality(quality) }),
   };
 }
 
@@ -163,6 +188,14 @@ function parseFrameRate(text: string, format: OutputFormat): number {
     );
   }
   return frameRate;
+}
+
+function parseQuality(text: string): number {
+  const quality = /^\d{1,3}$/.test(text) ? Number(text) : Number.NaN;
+  if (!(quality >= 1 && quality <= 100)) {
+    usage(`--quality must be a whole number in 1..100, got ${quoteForLog(text)}`);
+  }
+  return quality;
 }
 
 function optional<K extends string>(key: K, value: string | undefined): { [P in K]?: string } {

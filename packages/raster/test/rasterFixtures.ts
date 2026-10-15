@@ -146,3 +146,47 @@ export const onceDesign = design(
   ],
   { background: "#ffffff", animation: { duration: 400, loop: false } },
 );
+
+/** A seeded, smooth-ish noise picture as a PNG: photo-like pixels that lossless coding handles poorly. */
+function noisePng(width: number, height: number): Uint8Array {
+  const png = new PNG({ width, height });
+  let seed = 12_345;
+  const next = (): number => {
+    seed = (Math.imul(seed, 1_664_525) + 1_013_904_223) >>> 0;
+    return seed >>> 24;
+  };
+  const clamp = (value: number): number => Math.min(255, Math.max(0, Math.round(value)));
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const at = (y * width + x) * 4;
+      const base = 128 + 80 * Math.sin(x / 9) * Math.cos(y / 7);
+      png.data[at] = clamp(base + (next() % 40) - 20);
+      png.data[at + 1] = clamp(base * 0.8 + (next() % 40) - 20);
+      png.data[at + 2] = clamp(255 - base + (next() % 40) - 20);
+      png.data[at + 3] = 255;
+    }
+  }
+  return new Uint8Array(PNG.sync.write(png));
+}
+
+/** A noisy photo-like picture with a moving element on top, 400 ms: the case lossy WebP is for. */
+export const photoDesign = design(
+  96,
+  64,
+  [
+    { type: "image", asset: "photo", x: 0, y: 0, width: 96, height: 64 },
+    {
+      type: "rect",
+      x: 4,
+      y: 4,
+      width: 20,
+      height: 20,
+      fill: "#ffffff",
+      animate: { x: track(0, 60) },
+    },
+  ],
+  {
+    animation: { duration: 400 },
+    assets: { images: { photo: { src: dataUri("image/png", noisePng(96, 64)) } } },
+  },
+);

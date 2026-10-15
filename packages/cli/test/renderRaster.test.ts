@@ -71,6 +71,28 @@ describe("render options", () => {
     ).toMatchObject({ format: "gif", scale: 1.5, frameRate: 50 });
   });
 
+  test("quality is parsed for webp", () => {
+    expect(parseCliArgs(["render", "d.json", "--out", "a.webp", "--quality", "80"])).toMatchObject({
+      format: "webp",
+      quality: 80,
+    });
+    for (const quality of ["1", "100"]) {
+      expect(
+        parseCliArgs([
+          "render",
+          "d.json",
+          "--format",
+          "webp",
+          "--out",
+          "a.x",
+          "--quality",
+          quality,
+        ]),
+      ).toMatchObject({ quality: Number(quality) });
+    }
+    expect(parseCliArgs(["render", "d.json", "--out", "a.webp"])).not.toHaveProperty("quality");
+  });
+
   test.each([
     [["--format", "png"], "--format png needs --out"],
     [["--format", "jpeg", "--out", "a.jpg"], "--format must be one of svg, png, webp, apng, gif"],
@@ -84,6 +106,13 @@ describe("render options", () => {
       ["--out", "a.gif", "--frame-rate", "51"],
       "--frame-rate must be a whole number in 1..50 for gif",
     ],
+    [["--out", "a.webp", "--quality", "0"], "--quality must be a whole number in 1..100"],
+    [["--out", "a.webp", "--quality", "101"], "--quality must be a whole number in 1..100"],
+    [["--out", "a.webp", "--quality", "abc"], "--quality must be a whole number in 1..100"],
+    [["--out", "a.webp", "--quality", "8.5"], "--quality must be a whole number in 1..100"],
+    [["--out", "a.png", "--quality", "80"], "option --quality applies to webp output only"],
+    [["--out", "a.gif", "--quality", "80"], "option --quality applies to webp output only"],
+    [["--quality", "80"], "option --quality applies to webp output only"],
     [["--scale", "2"], "option --scale applies to png, webp, apng and gif output only"],
     [["--out", "a.svg", "--frame-rate", "10"], "option --frame-rate applies to png, webp"],
   ])("%j is a usage error naming the range", async (args, message) => {
@@ -98,6 +127,9 @@ describe("render options", () => {
       const run = await tree.run([command, "plain.json", "--format", "png"]);
       expect(run.code).toBe(ExitCode.usage);
       expect(run.stderr).toContain(`option --format does not apply to ${command}`);
+      const quality = await tree.run([command, "plain.json", "--quality", "80"]);
+      expect(quality.code).toBe(ExitCode.usage);
+      expect(quality.stderr).toContain(`option --quality does not apply to ${command}`);
     }
   });
 });
@@ -172,6 +204,27 @@ describe("render to a raster image", () => {
     const run = await tree.run(["render", "wide.json", "--out", "out/wide.webp"]);
     expect(run.code).toBe(ExitCode.invalid);
     expect(await readFile(join(tree.root, "out", "wide.webp"), "utf8")).toBe("old");
+  });
+
+  test("--quality writes lossy WebP frames, the same bytes every time", async () => {
+    const args = ["render", "animated.json", "--frame-rate", "10", "--quality", "70", "--out"];
+    expect((await tree.run([...args, "out/one.webp"])).code).toBe(ExitCode.ok);
+    expect((await tree.run([...args, "out/two.webp"])).code).toBe(ExitCode.ok);
+    const one = await readFile(join(tree.root, "out", "one.webp"));
+    expect(one.includes(Buffer.from("VP8 ", "latin1"))).toBe(true);
+    expect(one.includes(Buffer.from("VP8L", "latin1"))).toBe(false);
+    expect(one.equals(await readFile(join(tree.root, "out", "two.webp")))).toBe(true);
+    const lossless = await tree.run([
+      "render",
+      "animated.json",
+      "--frame-rate",
+      "10",
+      "--out",
+      "out/plain.webp",
+    ]);
+    expect(lossless.code).toBe(ExitCode.ok);
+    const plain = await readFile(join(tree.root, "out", "plain.webp"));
+    expect(plain.includes(Buffer.from("VP8L", "latin1"))).toBe(true);
   });
 
   test("two renders write the same bytes", async () => {

@@ -6,17 +6,17 @@ of the golden tests, so a raster image looks like the SVG the renderer wrote; th
 
 ## Formats
 
-| format | file    | still design             | animated design                                        |
-| ------ | ------- | ------------------------ | ------------------------------------------------------ |
-| `png`  | `.png`  | PNG                      | a still PNG: the frame at `time`, else the first frame |
-| `apng` | `.png`  | PNG (nothing to animate) | animated PNG                                           |
-| `webp` | `.webp` | lossless WebP            | animated WebP, every frame lossless                    |
-| `gif`  | `.gif`  | GIF                      | animated GIF                                           |
+| format | file    | still design               | animated design                                              |
+| ------ | ------- | -------------------------- | ------------------------------------------------------------ |
+| `png`  | `.png`  | PNG                        | a still PNG: the frame at `time`, else the first frame       |
+| `apng` | `.png`  | PNG (nothing to animate)   | animated PNG                                                 |
+| `webp` | `.webp` | WebP (lossless by default) | animated WebP, every frame lossless, or lossy with `quality` |
+| `gif`  | `.gif`  | GIF                        | animated GIF                                                 |
 
 A design is animated when it has an `animation` timeline ([design-format.md](design-format.md#animation)) and no
 `time` is asked for; with a `time`, every format writes that one frame as a still image.
 
-PNG, APNG and WebP keep every pixel and its alpha exactly as resvg draws it. GIF has at most 256 colours per frame and
+PNG, APNG and WebP keep every pixel and its alpha exactly as resvg draws it, except WebP with a `quality`, which is lossy: its pixels approximate resvg's drawing (the alpha channel stays exact). GIF has at most 256 colours per frame and
 1-bit alpha: each frame gets its own palette (pnnquant over its opaque pixels), a pixel below half opacity is
 transparent and any other is drawn opaque in its own colour, so soft edges over a transparent background turn hard.
 Give a GIF design a background for smooth edges.
@@ -28,10 +28,14 @@ Give a GIF design a background for smooth edges.
 | format     | `--format`     | `formats`    | `svg`        | svg, png, webp, apng, gif |
 | scale      | `--scale`      | `scale`      | 2            | 1..4                      |
 | frame rate | `--frame-rate` | `frame-rate` | 30, `gif` 25 | 1..60, `gif` 1..50        |
+| quality    | `--quality`    | `quality`    | lossless     | 1..100, `webp` only       |
 
 `scale` multiplies the design size: a 420 x 120 design exported at scale 2 is an 840 x 240 image, sharp on high-density
 screens. The Action's README snippet gives a raster `<img>` the design's `width` and `height`, so it shows at the
 design's size.
+
+`quality` switches WebP, still and animated, to lossy frames at that libwebp quality. It is for photo-heavy animations
+that pass the 5 MiB output limit as lossless WebP. The same quality gives the same bytes; any other format refuses it.
 
 ## Timing and looping
 
@@ -64,19 +68,19 @@ while encoding and stops at the frame that passes it. A failure is a `RasterErro
 writes no file (an existing `--out` stays as it was), the Action writes nothing at all. The message names the measured
 value, the limit and a fix.
 
-| code                           | limit (`RasterLimits`)                                 | default                                     | fix                                                               |
-| ------------------------------ | ------------------------------------------------------ | ------------------------------------------- | ----------------------------------------------------------------- |
-| `raster-too-large`             | `maxSide`: pixels per side                             | 4096                                        | lower the scale (for example to 1)                                |
-| `raster-too-many-frames`       | `maxFrames`: sampled frames                            | 1000                                        | lower the frame rate                                              |
-| `raster-too-long`              | `maxDuration`: ms of the timeline                      | 60000                                       | shorten the animation                                             |
-| `raster-too-many-pixels`       | `maxTotalPixels`: all frames                           | 268435456                                   | lower the scale or the frame rate                                 |
-| `raster-too-many-image-pixels` | `maxImagePixels`: image pixels decoded (below)         | 268435456                                   | draw large images fewer times or smaller, or lower the frame rate |
-| `raster-output-too-large`      | `maxOutputBytes`: encoded file                         | 5242880 (5 MiB, GitHub's image proxy limit) | lower the scale or the frame rate, or export SVG                  |
-| `raster-font`                  | text needs a TTF, OTF or WOFF font carrying its family |                                             | give the font asset as TTF, OTF or WOFF                           |
-| `raster-image`                 | an image resvg or libwebp cannot read                  |                                             | fix or replace the image                                          |
-| `raster-options`               | a format, scale, frame rate or time out of range       |                                             |                                                                   |
+| code                           | limit (`RasterLimits`)                                    | default                                     | fix                                                                          |
+| ------------------------------ | --------------------------------------------------------- | ------------------------------------------- | ---------------------------------------------------------------------------- |
+| `raster-too-large`             | `maxSide`: pixels per side                                | 4096                                        | lower the scale (for example to 1)                                           |
+| `raster-too-many-frames`       | `maxFrames`: sampled frames                               | 1000                                        | lower the frame rate                                                         |
+| `raster-too-long`              | `maxDuration`: ms of the timeline                         | 60000                                       | shorten the animation                                                        |
+| `raster-too-many-pixels`       | `maxTotalPixels`: all frames                              | 268435456                                   | lower the scale or the frame rate                                            |
+| `raster-too-many-image-pixels` | `maxImagePixels`: image pixels decoded (below)            | 268435456                                   | draw large images fewer times or smaller, or lower the frame rate            |
+| `raster-output-too-large`      | `maxOutputBytes`: encoded file                            | 5242880 (5 MiB, GitHub's image proxy limit) | lower the scale or the frame rate, or export SVG (WebP: or give a `quality`) |
+| `raster-font`                  | text needs a TTF, OTF or WOFF font carrying its family    |                                             | give the font asset as TTF, OTF or WOFF                                      |
+| `raster-image`                 | an image resvg or libwebp cannot read                     |                                             | fix or replace the image                                                     |
+| `raster-options`               | a format, scale, frame rate, quality or time out of range |                                             |                                                                              |
 
-The fixes are worded for the CLI options (`--scale`, `--frame-rate`) and the Action inputs (`scale`, `frame-rate`)
+The fixes are worded for the CLI options (`--scale`, `--frame-rate`, `--quality`) and the Action inputs (`scale`, `frame-rate`, `quality`)
 alike.
 
 resvg decodes an image every time it draws it, in every frame. The renderer writes an image used by several layers (or a
@@ -119,7 +123,7 @@ import { exportRaster, initRaster, RasterError, RasterLimits } from "@readmint/r
 
 const output = await exportRaster(
   { frame: (time) => renderSvg(design, { time }).svg, animation: design.animation },
-  { format: "webp", scale: 2, frameRate: 30 },
+  { format: "webp", scale: 2, frameRate: 30, quality: 80 }, // quality: omit for lossless WebP
 );
 // output: { bytes, format, mimeType, width, height, displayWidth, displayHeight, frames, duration }
 ```
@@ -135,12 +139,12 @@ the editor does not use it.
 
 ## Dependencies and licences
 
-| package                   | licence                                           | what for                                                                                                                                               |
-| ------------------------- | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `@resvg/resvg-wasm` 2.6.2 | MPL-2.0 (Rust crates: MIT, Apache-2.0, BSD, Zlib) | the rasterizer: resvg compiled to WebAssembly (2.5 MB), bundleable where the native resvg-js is not                                                    |
-| `wasm-webp` 0.1.0         | MIT (libwebp: BSD-3-Clause)                       | lossless WebP encoding and decoding: libwebp 1.3.2 (built from 6c484cbf, which carries the CVE-2023-4863 fix) in WebAssembly, 0.5 MB                   |
-| `gifenc` 1.0.3            | MIT                                               | GIF palettes (pnnquant) and LZW encoding, 10 kB of JavaScript                                                                                          |
-| `fflate` 0.8.3            | MIT                                               | zlib compression of PNG and APNG, and WOFF inflation: plain JavaScript, so a PNG's bytes depend on its pixels alone, on every machine and Node version |
+| package                   | licence                                           | what for                                                                                                                                                     |
+| ------------------------- | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `@resvg/resvg-wasm` 2.6.2 | MPL-2.0 (Rust crates: MIT, Apache-2.0, BSD, Zlib) | the rasterizer: resvg compiled to WebAssembly (2.5 MB), bundleable where the native resvg-js is not                                                          |
+| `wasm-webp` 0.1.0         | MIT (libwebp: BSD-3-Clause)                       | WebP encoding (lossless; lossy with `quality`) and decoding: libwebp 1.3.2 (built from 6c484cbf, which carries the CVE-2023-4863 fix) in WebAssembly, 0.5 MB |
+| `gifenc` 1.0.3            | MIT                                               | GIF palettes (pnnquant) and LZW encoding, 10 kB of JavaScript                                                                                                |
+| `fflate` 0.8.3            | MIT                                               | zlib compression of PNG and APNG, and WOFF inflation: plain JavaScript, so a PNG's bytes depend on its pixels alone, on every machine and Node version       |
 
 wasm-webp never frees a decoded image and does not check a failed decode, so each export gets its own libwebp instance
 (its memory goes with the export) and a decode that returns the instance's memory at address 0 counts as failed.

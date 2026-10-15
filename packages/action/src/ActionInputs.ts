@@ -14,6 +14,7 @@ export const ActionInputs = Object.freeze({
   formats: { required: false, default: "svg", runnerDefault: false },
   scale: { required: false, default: "2", runnerDefault: false },
   "frame-rate": { required: false, default: "", runnerDefault: false },
+  quality: { required: false, default: "", runnerDefault: false },
   token: { required: false, default: "${{ github.token }}", runnerDefault: true },
   login: { required: false, default: "${{ github.repository_owner }}", runnerDefault: true },
   "data-file": { required: false, default: "", runnerDefault: false },

@@ -28,6 +28,7 @@ export interface RenderAllOptions {
   readonly locale?: string;
   readonly scale?: number;
   readonly frameRate?: number;
+  readonly quality?: number;
 }
 
 /**

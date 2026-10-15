@@ -55,6 +55,7 @@ interface Settings {
   readonly scale: number;
   readonly frameRate: number;
   readonly time: number | undefined;
+  readonly quality: number | undefined;
   readonly limits: RasterLimits;
 }
 
@@ -66,7 +67,7 @@ interface Timeline {
 /**
  * Rasterizes the renderer's SVG into a PNG, WebP, APNG or GIF that matches resvg's drawing of the same SVG. A design
  * with a timeline (and no `time`) becomes an animated WebP, APNG or GIF sampled at `frameRate`; a still design, one
- * frame of it, or any design as `png`, a still image (PNG for `apng`). Every limit that can be known in advance (side, duration, frames, total pixels) is
+ * frame of it, or any design as `png`, a still image (PNG for `apng`). WebP is lossless unless `quality` asks for lossy frames. Every limit that can be known in advance (side, duration, frames, total pixels) is
  * checked before the first frame is drawn, the output size while encoding; any failure is a `RasterError` and
  * nothing is returned. Same input, same bytes.
  */
@@ -114,7 +115,13 @@ export async function exportRaster(
   const buffers = fonts.map((font) => font.bytes);
   await initRaster();
   const codecs = format === "webp" || hasWebpImage(first) ? await openWebpCodec() : undefined;
-  const budget = new OutputBudget(limits.maxOutputBytes, labels[format]);
+  const budget = new OutputBudget(
+    limits.maxOutputBytes,
+    labels[format],
+    format === "webp" && settings.quality === undefined
+      ? ", or give a WebP quality (1..100) for lossy frames"
+      : "",
+  );
   const webpCache = new Map<string, string>();
   const draw = (svg: string): Uint8Array => {
     const prepared = matchFontFamilies(inlineWebpAssets(svg, codecs, webpCache), fonts);
@@ -136,11 +143,11 @@ export async function exportRaster(
 
   if (animation === undefined || plan.length === 1) {
     const still = format === "apng" ? "png" : format;
-    const bytes = encodeStill(still, draw(first), width, height, codecs, budget);
+    const bytes = encodeStill(still, draw(first), width, height, codecs, budget, settings.quality);
     return { bytes, format: still, mimeType: mimeTypes[still], ...common, frames: 1, duration: 0 };
   }
 
-  const encoder = frameEncoder(format, width, height, animation, codecs, budget);
+  const encoder = frameEncoder(format, width, height, animation, codecs, budget, settings.quality);
   let pending: { pixels: Uint8Array; delay: number } | undefined;
   for (const [index, frame] of plan.entries()) {
     const pixels = draw(index === 0 ? first : input.frame(frame.time));
@@ -188,7 +195,26 @@ function resolveSettings(options: RasterOptions): Settings {
       `time must be in 0..${String(maxTime)} ms, got ${String(time)}`,
     );
   }
-  return { format, scale, frameRate, time, limits: { ...RasterLimits, ...options.limits } };
+  const { quality } = options;
+  if (quality !== undefined) {
+    if (format !== "webp") {
+      throw new RasterError("raster-options", `quality applies to webp only, got format ${format}`);
+    }
+    if (!(Number.isInteger(quality) && quality >= 1 && quality <= 100)) {
+      throw new RasterError(
+        "raster-options",
+        `quality must be a whole number in 1..100, got ${String(quality)}`,
+      );
+    }
+  }
+  return {
+    format,
+    scale,
+    frameRate,
+    time,
+    quality,
+    limits: { ...RasterLimits, ...options.limits },
+  };
 }
 
 function checkPlan(settings: Settings, width: number, height: number, frames: number): void {
@@ -248,8 +274,11 @@ function encodeStill(
   height: number,
   codecs: WebpCodec | undefined,
   budget: OutputBudget,
+  quality: number | undefined,
 ): Uint8Array {
-  if (format === "webp") return encodeWebpStill(pixels, width, height, required(codecs), budget);
+  if (format === "webp") {
+    return encodeWebpStill(pixels, width, height, required(codecs), budget, quality);
+  }
   if (format === "gif") {
     const encoder = encodeGif(width, height, undefined, budget);
     encoder.add(pixels, 0);
@@ -265,8 +294,11 @@ function frameEncoder(
   animation: Timeline,
   codecs: WebpCodec | undefined,
   budget: OutputBudget,
+  quality: number | undefined,
 ): FrameEncoder {
-  if (format === "webp") return encodeWebp(width, height, animation.loop, required(codecs), budget);
+  if (format === "webp") {
+    return encodeWebp(width, height, animation.loop, required(codecs), budget, quality);
+  }
   if (format === "gif") return encodeGif(width, height, animation, budget);
   return encodeApng(width, height, animation.loop, budget);
 }

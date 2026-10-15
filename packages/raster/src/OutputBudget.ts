@@ -7,6 +7,7 @@ export class OutputBudget {
   constructor(
     private readonly limit: number,
     private readonly label: string,
+    private readonly hint = "",
   ) {}
 
   get bytes(): number {
@@ -23,7 +24,7 @@ export class OutputBudget {
     if (bytes <= this.limit) return;
     throw new RasterError(
       "raster-output-too-large",
-      `the ${this.label} output reached ${String(bytes)} bytes, more than the ${String(this.limit)} allowed; lower the scale or the frame rate, or export SVG`,
+      `the ${this.label} output reached ${String(bytes)} bytes, more than the ${String(this.limit)} allowed; lower the scale or the frame rate, or export SVG${this.hint}`,
     );
   }
 }
