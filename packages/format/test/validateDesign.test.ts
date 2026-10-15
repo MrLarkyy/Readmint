@@ -362,3 +362,82 @@ function collectPatterns(node: unknown, found: string[] = []): string[] {
     }
   return found;
 }
+
+describe("enum and array props (RM-50)", () => {
+  const withProp = (definition: unknown, props: unknown) => ({
+    ...base(),
+    components: { c: { props: { p: definition }, layers: [] } },
+    layers: [{ type: "component", ref: "c", props: { p: props } }],
+  });
+  const mode = { type: "enum", values: ["horizontal", "vertical"] };
+
+  test("an unlisted literal enum value is one enum issue at the prop", () => {
+    const { issues } = issuesOf(withProp(mode, "diagonal"));
+    expect(issues).toEqual([
+      {
+        path: "/layers/0/props/p",
+        code: "enum",
+        message: 'expected one of "horizontal", "vertical", got "diagonal"',
+      },
+    ]);
+  });
+
+  test("a listed value and a binding are valid", () => {
+    expect(validateDesign(withProp(mode, "vertical")).ok).toBe(true);
+    expect(validateDesign(withProp(mode, "{{ orientation }}")).ok).toBe(true);
+  });
+
+  test("an enum default that is not listed is an enum issue at the default", () => {
+    expect(issuesOf(withProp({ ...mode, default: "x" }, "vertical")).issues).toMatchObject([
+      { path: "/components/c/props/p/default", code: "enum" },
+    ]);
+  });
+
+  test("the message lists at most eight values", () => {
+    const values = Array.from({ length: 9 }, (_, i) => `v${String(i)}`);
+    const [issue] = issuesOf(withProp({ type: "enum", values }, "z")).issues;
+    expect(issue?.message).toBe(
+      `expected one of ${values
+        .slice(0, 8)
+        .map((v) => `"${v}"`)
+        .join(", ")}, ..., got "z"`,
+    );
+  });
+
+  test("enum value lists and values are bounded", () => {
+    const tooLong = issuesOf(withProp({ type: "enum", values: ["x".repeat(129)] }, "x"));
+    expect(tooLong.issues).toMatchObject([{ code: "length" }]);
+    const many = Array.from({ length: 65 }, (_, i) => `v${String(i)}`);
+    expect(issuesOf(withProp({ type: "enum", values: many }, "v1")).issues).toMatchObject([
+      { path: "/components/c/props/p/values", code: "count" },
+    ]);
+  });
+
+  test("literal lists: scalars up to 1000", () => {
+    const list = { type: "array" };
+    expect(validateDesign(withProp(list, [1, "a", true])).ok).toBe(true);
+    expect(
+      issuesOf(
+        withProp(
+          list,
+          Array.from({ length: 1001 }, () => 1),
+        ),
+      ).issues,
+    ).toMatchObject([{ path: "/layers/0/props/p", code: "count" }]);
+  });
+
+  test("a list for a string prop and an object for a string prop are type issues", () => {
+    expect(issuesOf(withProp({ type: "string" }, ["a"])).issues).toMatchObject([
+      { path: "/layers/0/props/p", code: "type" },
+    ]);
+    expect(issuesOf(withProp({ type: "string" }, {})).issues).toMatchObject([
+      { path: "/layers/0/props/p", code: "type" },
+    ]);
+  });
+
+  test("an unknown prop type stays an enum issue at the type", () => {
+    expect(issuesOf(withProp({ type: "list" }, "a")).issues).toMatchObject([
+      { path: "/components/c/props/p/type", code: "enum" },
+    ]);
+  });
+});
