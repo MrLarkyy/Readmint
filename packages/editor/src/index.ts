@@ -7,6 +7,7 @@ export type { EditorIssue, EditorIssueSource } from "./EditorIssue.js";
 export { EditorLimits } from "./EditorLimits.js";
 export { createEditorState, type EditorState } from "./EditorState.js";
 export { exportDesign } from "./exportDesign.js";
+export { exportDesignYaml } from "./exportDesignYaml.js";
 export type { FontCheck } from "./FontCheck.js";
 export { importDesign } from "./importDesign.js";
 export { boxAt, layerAt } from "./layerAt.js";
@@ -17,6 +18,7 @@ export {
   mountEditor,
   type MountEditorOptions,
   type SavedDesign,
+  type SavedImage,
 } from "./mountEditor.js";
 export { moveLayer } from "./moveLayer.js";
 export { newDesign } from "./newDesign.js";
@@ -27,6 +29,14 @@ export {
   type PreviewWorker,
 } from "./PreviewClient.js";
 export type { PreviewRequest, PreviewResponse } from "./PreviewMessage.js";
+export type { EditorRasterFormat, RasterExportInput } from "./RasterExportInput.js";
+export {
+  RasterClient,
+  type RasterClientOptions,
+  type RasterOutcome,
+  type RasterWorker,
+} from "./RasterClient.js";
+export type { RasterFile, RasterRequest, RasterResponse } from "./RasterMessage.js";
 export { removeLayer } from "./removeLayer.js";
 export { renderPreview, type PreviewInput } from "./renderPreview.js";
 export { reorderLayer } from "./reorderLayer.js";

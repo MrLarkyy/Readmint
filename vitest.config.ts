@@ -20,6 +20,10 @@ export default defineConfig(({ mode }) => ({
         find: new RegExp("^@readmint/data/node$"),
         replacement: fileURLToPath(new URL("./packages/data/src/node/index.ts", import.meta.url)),
       },
+      {
+        find: new RegExp("^@readmint/raster/browser$"),
+        replacement: fileURLToPath(new URL("./packages/raster/src/browser.ts", import.meta.url)),
+      },
       ...["cli", "data", "data-github", "expr", "format", "fonts", "raster", "renderer"].map(
         (name) => ({
           find: new RegExp(`^@readmint/${name}$`),

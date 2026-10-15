@@ -19,7 +19,10 @@
     "@readmint/data": "workspace:*",
     "@readmint/fonts": "workspace:*",
     "@readmint/format": "workspace:*",
-    "@readmint/renderer": "workspace:*"
+    "@readmint/raster": "workspace:*",
+    "@readmint/renderer": "workspace:*",
+    "@resvg/resvg-wasm": "2.6.2",
+    "wasm-webp": "0.1.0"
   },
   "devDependencies": {
     "@readmint/golden": "workspace:*",

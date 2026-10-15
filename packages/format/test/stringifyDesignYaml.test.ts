@@ -26,7 +26,7 @@ function designWith(name: string): Design {
     version: 0,
     canvas: { width: 20, height: 20 },
     layers: [{ type: "rect", x: 0, y: 0, width: 4, height: 4, name }],
-  } as Design;
+  };
 }
 
 function nameOf(design: Design): unknown {
