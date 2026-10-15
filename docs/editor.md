@@ -69,10 +69,13 @@ weight and style come from the font (the file name when it names no family); the
   paths and the font is never embedded. Its embedding control is disabled with the reason, and the command refuses to
   set it to `allowed`; this holds for fonts of imported designs too (their data URIs are read again). Any font may be
   set to restricted. The licence name (SPDX) is editable. Any asset id the format allows works, `constructor` included.
-- Reading the fonts of an imported design is bounded as in the renderer: each distinct source is decoded once, and
-  together they may decode to `EditorLimits.maxTotalFontBytes` (the renderer's `maxTotalFontBytes`, 16 MiB), charged by
-  declared size before anything inflates. The font that crosses it stops the check with an issue; the fonts from it on
-  are not locked in the panel, and the renderer still never embeds a font whose fsType forbids it.
+- Reading the fonts of an imported design (or of attached font files) is bounded as in the renderer: each distinct
+  source is decoded once, and a font may decode to no more than what is left of `EditorLimits.maxTotalFontBytes` (the
+  renderer's `maxTotalFontBytes`, 16 MiB): a WOFF or WOFF2 declaring more is refused before it inflates anything, and a
+  font that reads is charged its decoded size. The first font that cannot be read (malformed, unsupported, or past the
+  allowance) stops the check with an issue at its pointer, as it stops a render, so a font that fails costs at most its
+  own inflate once. The fonts from it on are not locked in the panel, and the renderer still never embeds a font whose
+  fsType forbids it. An upload reads one file of at most `maxFontBytes`.
 
 ## Assets given by path
 

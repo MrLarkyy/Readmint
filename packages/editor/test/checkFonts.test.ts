@@ -8,7 +8,7 @@ import { readTableDirectory } from "../../fonts/src/readTableDirectory.js";
 import { SfntReader } from "../../fonts/src/SfntReader.js";
 import { TRUETYPE_FLAVOR } from "../../fonts/src/sfntFlavor.js";
 import { writeSfnt } from "../../fonts/src/writeSfnt.js";
-import { encodeBase64 } from "../src/base64.js";
+import { decodeDataUri, encodeBase64 } from "../src/base64.js";
 import {
   checkFonts,
   createEditorState,
@@ -22,24 +22,28 @@ import { testFonts } from "./testFonts.js";
 const licence = { embedding: "allowed" } as const;
 
 /**
- * Review probe (round 1): the test symbols font plus a 3.9 MB table of zeros, a 4.8 kB WOFF. `variant` changes one
- * byte of the zeros, so each variant is a source of its own.
+ * Review probes: the test symbols font plus a 3.9 MB table of zeros, a 4.8 kB WOFF; `drop` leaves out a table the
+ * parser needs (it then fails only after inflating everything). The WOFF header's version fields (bytes 24 to 27)
+ * carry `variant`: they change nothing the parser reads, so each variant is a source of its own at no cost here.
  */
-function woffBomb(variant: number): string {
+function woffBombs(variants: number, drop?: string): string[] {
   const reader = new SfntReader(readmintTestSymbols());
   const tables = new Map<string, Uint8Array>();
   for (const [tag, table] of readTableDirectory(reader)) {
-    tables.set(tag, reader.slice(table.offset, table.length));
+    if (tag !== drop) tables.set(tag, reader.slice(table.offset, table.length));
   }
-  const zeros = new Uint8Array(3_900_000);
-  zeros[0] = variant;
-  tables.set("zzzz", zeros);
-  return `data:font/woff;base64,${encodeBase64(encodeWoff(writeSfnt(TRUETYPE_FLAVOR, tables, false)))}`;
+  tables.set("zzzz", new Uint8Array(3_900_000));
+  const woff = encodeWoff(writeSfnt(TRUETYPE_FLAVOR, tables, false));
+  return Array.from({ length: variants }, (_, variant) => {
+    const copy = woff.slice();
+    new DataView(copy.buffer).setUint32(24, variant);
+    return `data:font/woff;base64,${encodeBase64(copy)}`;
+  });
 }
 
 /** As many fonts as fit in a design file, cycling through `variants` bomb sources. */
-async function bombDesign(variants: number): Promise<Design> {
-  const sources = Array.from({ length: variants }, (_, variant) => woffBomb(variant));
+async function bombDesign(variants: number, drop?: string): Promise<Design> {
+  const sources = woffBombs(variants, drop);
   const each = (sources[0]?.length ?? 0) + 120;
   const count = Math.floor((DesignLimits.maxSourceLength - 100_000) / each);
   const fonts: Record<string, FontAsset> = {};
@@ -89,6 +93,65 @@ describe("checkFonts bounds the work of a design's fonts as the renderer does", 
     ]);
     expect(Object.keys(checked.fontChecks)).toEqual(["f0", "f1", "f2", "f3"]);
     expect(elapsed).toBeLessThan(2_000 * loadScale());
+  });
+
+  test("distinct malformed bombs stop at the first one, after inflating only it", async () => {
+    // Without `head` each bomb inflates its 3.9 MB and only then fails (before: 624 of them, 11.3 s, no issue).
+    const design = await bombDesign(700, "head");
+    const started = performance.now();
+    const checked = checkFonts(createEditorState(design));
+    const elapsed = performance.now() - started;
+    expect(checked.issues).toEqual([
+      {
+        source: "font",
+        path: "/assets/fonts/f0",
+        message: expect.stringMatching(
+          /^font asset "f0" cannot be used: .*not checked$/u,
+        ) as string,
+      },
+    ]);
+    expect(checked.fontChecks).toEqual({});
+    expect(elapsed).toBeLessThan(2_000 * loadScale());
+  });
+
+  test("a font that cannot be read after good ones keeps their checks and stops there", () => {
+    const plain = `data:font/ttf;base64,${encodeBase64(testFonts.ttf.bytes)}`;
+    const broken = `data:font/ttf;base64,${encodeBase64(testFonts.ttf.bytes.subarray(0, 200))}`;
+    const state = createEditorState({
+      ...newDesign(),
+      assets: {
+        fonts: {
+          a: { family: "Montserrat", src: plain, licence },
+          b: { family: "Montserrat", src: broken, licence },
+          c: { family: "Montserrat", src: plain, licence },
+        },
+      },
+    });
+    const checked = checkFonts(state);
+    expect(checked.fontChecks).toEqual({ a: { fsType: 0, embeddable: true } });
+    expect(checked.issues).toMatchObject([{ source: "font", path: "/assets/fonts/b" }]);
+  });
+
+  test("a supplied file and a data URI are each charged once against the allowance", () => {
+    // Five distinct 3.9 MB fonts: the fifth crosses 16 MiB whether it comes as a data URI or as attached bytes.
+    const sources = woffBombs(5);
+    const fonts = Object.fromEntries(
+      sources.map((src, index) => [
+        `f${String(index)}`,
+        { family: "Readmint Test Symbols", src, licence },
+      ]),
+    );
+    const state = createEditorState({ ...newDesign(), assets: { fonts } });
+    const bytes = (index: number) => decodeDataUri(sources[index] ?? "") ?? new Uint8Array();
+    const attached = { ...state, sessionAssets: { fonts: { f4: bytes(4) } } };
+    for (const checked of [checkFonts(state), checkFonts(attached)]) {
+      expect(checked.issues).toMatchObject([
+        {
+          path: "/assets/fonts/f4",
+          message: expect.stringContaining("maxTotalFontBytes") as string,
+        },
+      ]);
+    }
   });
 
   test("ordinary fonts are all checked", () => {
