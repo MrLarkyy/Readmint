@@ -24,7 +24,7 @@ test("is browser-safe and has no dependencies", () => {
   const dir = join(import.meta.dirname, "..", "src");
   const files = readdirSync(dir, { withFileTypes: true }).filter((entry) => entry.isFile());
   for (const file of files) {
-    expect(readFileSync(join(dir, file.name), "utf8"), file.name).not.toMatch(/from\s+["']node:/);
+    expect(readFileSync(join(dir, file.name), "utf8"), file.name).not.toMatch(/(?:from\s+|import\s*\(?\s*)["']node:/);
   }
   const manifest = JSON.parse(
     readFileSync(join(import.meta.dirname, "..", "package.json"), "utf8"),

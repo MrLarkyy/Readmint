@@ -3,7 +3,8 @@
 A data source loads data from one upstream service and returns a plain-JSON data object that designs bind to by its
 namespace (`github.*`). Sources are plugins (`data-*` packages) that implement one small interface from
 `@readmint/data`; hosts (CLI, Action, editor) consume sources only through it. `@readmint/data` has no dependencies and
-imports no `node:` module, so it runs in Node 22 and in the browser. The GitHub source is
+its main entry imports no `node:` module, so it runs in Node 22 and in the browser; the `@readmint/data/node` subpath
+holds `FileCache` for Node only. The GitHub source is
 [`@readmint/data-github`](data-github.md).
 
 ## The interface
