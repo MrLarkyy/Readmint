@@ -17,6 +17,8 @@ export { FS_TYPE_BITMAP_ONLY, FS_TYPE_RESTRICTED, embeddingAllowed } from "./fon
 export { FontRefused } from "./FontRefused.js";
 export { glyphClosure } from "./glyphClosure.js";
 export { MalformedFont } from "./MalformedFont.js";
+export { normalizeForFont } from "./normalizeForFont.js";
+export { normalizeNfc } from "./normalizeNfc.js";
 export { defaultOutlineOperations, OutlineBudget } from "./OutlineBudget.js";
 export { ShapingBudget } from "./layout/ShapingBudget.js";
 export { parseSfnt } from "./parseSfnt.js";

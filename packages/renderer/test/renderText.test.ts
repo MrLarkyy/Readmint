@@ -324,3 +324,20 @@ test("a private-use character of the text itself is renumbered, so it never coll
   expect(own).not.toBe(0);
   expect(raised).not.toBe(own);
 });
+
+test("canonically equivalent contents render to the same bytes with Montserrat, in font and paths mode", () => {
+  // Decomposed, with the marks of Viet out of canonical order; then precomposed.
+  const decomposed = "Cafe\u0301 / Tie\u0302\u0301ng / Vie\u0302\u0323t";
+  const precomposed = "Caf\u00e9 / Ti\u1ebfng / Vi\u1ec7t";
+  const paths: FontAsset = { ...fontAssets.medium, drawAs: "paths" };
+  for (const fonts of [{ m: fontAssets.medium }, { m: paths }]) {
+    const svg = (content: string) => render([{ type: "text", content, font: "m" }], fonts).svg;
+    const first = svg(decomposed);
+    expect(first).toBe(svg(precomposed));
+    expect(svg(decomposed)).toBe(first);
+  }
+  // Font mode writes the precomposed letters as plain characters: no private-use character, no aria-label.
+  const font = render([{ type: "text", content: decomposed, font: "m" }]).svg;
+  expect(spans(font).map((span) => span.text)).toEqual([precomposed]);
+  expect(font).not.toContain("aria-label");
+});

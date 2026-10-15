@@ -14,6 +14,28 @@ function text(content: string, font: string, extra: Partial<Layer> = {}): Layer 
 /** U+0627 U+0644 U+0639 U+0631 U+0628 U+064A U+0629: Arabic, every joining form. */
 const arabicWord = "\u0627\u0644\u0639\u0631\u0628\u064a\u0629";
 
+/**
+ * Texts written decomposed (one Vietnamese mark pair out of canonical order) and the same texts precomposed: each
+ * decomposed pair must render to exactly the SVG of its precomposed twin.
+ */
+export const decomposedTwins: Readonly<Record<string, readonly (readonly [string, string])[]>> = {
+  "latin-decomposed": [
+    ["Cafe\u0301 nai\u0308ve", "Caf\u00e9 na\u00efve"],
+    ["A\u030angstro\u0308m", "\u00c5ngstr\u00f6m"],
+  ],
+  "vietnamese-decomposed": [
+    ["Tie\u0302\u0301ng Vie\u0302\u0323t", "Ti\u1ebfng Vi\u1ec7t"],
+    ["co\u031b\u0300, chu\u031b\u0303", "c\u1edd, ch\u1eef"],
+  ],
+};
+
+/** The layers of a twin pair: one text per line, decomposed or precomposed. */
+export function twinLayers(name: string, form: 0 | 1): Layer[] {
+  return (decomposedTwins[name] ?? []).map((texts, index) =>
+    text(texts[form], "medium", { y: 8 + index * 34 }),
+  );
+}
+
 /** Montserrat with Noto Naskh Arabic as its fallback, for mixed Latin and Arabic text. */
 const mixed = { ...fontAssets.medium, fallback: ["naskh"] };
 
@@ -75,6 +97,12 @@ export const shapingPairs: readonly FontPair[] = [
       }),
     ],
   },
+  ...Object.keys(decomposedTwins).map((name) => ({
+    name,
+    fonts: { medium: fontAssets.medium },
+    height: 80,
+    layers: twinLayers(name, 0),
+  })),
 ];
 
 export const shapingPairNames = pairNames(shapingPairs);
