@@ -106,6 +106,26 @@ describe("raster limits", () => {
     },
   );
 
+  test("a webp output over the byte limit suggests a quality; a quality or another format does not", async () => {
+    const webp = await failure(designInput(shapesDesign), {
+      format: "webp",
+      limits: { maxOutputBytes: 200 },
+    });
+    expect(webp.message).toContain("give a WebP quality (1..100)");
+    const lossy = await failure(designInput(shapesDesign), {
+      format: "webp",
+      quality: 75,
+      limits: { maxOutputBytes: 100 },
+    });
+    expect(lossy.code).toBe("raster-output-too-large");
+    expect(lossy.message).not.toContain("quality");
+    const png = await failure(designInput(shapesDesign), {
+      format: "png",
+      limits: { maxOutputBytes: 200 },
+    });
+    expect(png.message).not.toContain("quality");
+  });
+
   test("an animation over the byte limit stops at the frame that overflows it", async () => {
     const { input, frames } = counted(loopDesign);
     const error = await failure(input, {
@@ -126,6 +146,8 @@ describe("raster limits", () => {
     [{ format: "webp", frameRate: 2.5 }, "whole number"],
     [{ format: "gif", frameRate: 51 }, "1..50"],
     [{ format: "png", time: -1 }, "time must be in 0..86400000"],
+    [{ format: "webp", quality: 0 }, "quality must be a whole number in 1..100"],
+    [{ format: "png", quality: 50 }, "quality applies to webp only"],
     [{ format: "jpeg" }, "format must be one of png, webp, apng, gif"],
   ] as [RasterOptions, string][])("%o is a raster-options error", async (options, message) => {
     const { input, frames } = counted(loopDesign);

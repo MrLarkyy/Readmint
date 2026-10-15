@@ -30,6 +30,8 @@ export interface RenderOutputOptions {
   readonly time?: number;
   readonly scale?: number;
   readonly frameRate?: number;
+  /** Lossy WebP quality, 1..100; used for the `webp` format only, other formats ignore it. */
+  readonly quality?: number;
 }
 
 /**
@@ -80,6 +82,9 @@ export async function renderOutput(
           ...(options.scale === undefined ? {} : { scale: options.scale }),
           ...(options.frameRate === undefined ? {} : { frameRate: options.frameRate }),
           ...(options.time === undefined ? {} : { time: options.time }),
+          ...(options.quality === undefined || format !== "webp"
+            ? {}
+            : { quality: options.quality }),
         },
       );
       outputs.push({

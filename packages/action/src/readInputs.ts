@@ -94,6 +94,16 @@ export function readInputs(env: Env): ActionConfig {
     );
   }
 
+  const qualityText = value("quality");
+  const quality = /^\d{1,3}$/.test(qualityText) ? Number(qualityText) : Number.NaN;
+  if (qualityText !== "") {
+    if (!(quality >= 1 && quality <= 100)) {
+      problems.push(`input quality ${quoteForLog(qualityText)} is not a whole number in 1..100`);
+    } else if (!formats.includes("webp")) {
+      problems.push("input quality applies to webp output only; formats lists no webp");
+    }
+  }
+
   const token = value("token");
   const dataFile = value("data-file");
   if (dataFile === "" && token === "") {
@@ -132,6 +142,7 @@ export function readInputs(env: Env): ActionConfig {
     formats,
     scale,
     ...(frameRateText === "" ? {} : { frameRate }),
+    ...(qualityText === "" ? {} : { quality }),
     token: dataFile === "" ? token : "",
     login: value("login"),
     ...(dataFile === "" ? {} : { dataFile }),

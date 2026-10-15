@@ -11,21 +11,22 @@ const alphaFlag = 0x10;
 // ANMF flags: bit 1 set = do not blend (the frame replaces its rectangle), bit 0 clear = no disposal.
 const replaceFlags = 0x02;
 
-/** A still lossless WebP. */
+/** A still WebP, lossless or lossy at `quality`. */
 export function encodeWebpStill(
   pixels: Uint8Array,
   width: number,
   height: number,
   codecs: WebpCodec,
   budget: OutputBudget,
+  quality?: number,
 ): Uint8Array {
-  const bytes = codecs.encodeWebp({ data: pixels, width, height });
+  const bytes = codecs.encodeWebp({ data: pixels, width, height }, quality);
   budget.add(bytes.length);
   return bytes;
 }
 
 /**
- * An animated WebP of lossless frames, delays in milliseconds: libwebp encodes each frame's changed rectangle (its
+ * An animated WebP of lossless frames (lossy at `quality` when given), delays in milliseconds: libwebp encodes each frame's changed rectangle (its
  * corner moved to even coordinates, as ANMF stores them halved) and this writes the VP8X, ANIM and ANMF container
  * around them. Frames replace their rectangle and are not disposed, so the canvas always equals the full frame.
  */
@@ -35,6 +36,7 @@ export function encodeWebp(
   loop: boolean,
   codecs: WebpCodec,
   budget: OutputBudget,
+  quality?: number,
 ): FrameEncoder {
   const frames: WebpChunk[] = [];
   let previous: Uint8Array | undefined;
@@ -52,11 +54,10 @@ export function encodeWebp(
           ? { x: 0, y: 0, width, height }
           : (changedRect(previous, pixels, width, height) ?? { x: 0, y: 0, width: 1, height: 1 });
       const rect = evenCorner(changed);
-      const encoded = codecs.encodeWebp({
-        data: cropRgba(pixels, width, rect),
-        width: rect.width,
-        height: rect.height,
-      });
+      const encoded = codecs.encodeWebp(
+        { data: cropRgba(pixels, width, rect), width: rect.width, height: rect.height },
+        quality,
+      );
       const image = serializeChunks(
         webpChunks(encoded).filter((chunk) => ["ALPH", "VP8 ", "VP8L"].includes(chunk.type)),
       );

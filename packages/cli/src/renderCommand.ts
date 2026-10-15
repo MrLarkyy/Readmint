@@ -27,6 +27,7 @@ export async function renderCommand(
     ...(args.time === undefined ? {} : { time: args.time }),
     ...(args.scale === undefined ? {} : { scale: args.scale }),
     ...(args.frameRate === undefined ? {} : { frameRate: args.frameRate }),
+    ...(args.quality === undefined ? {} : { quality: args.quality }),
   });
   if (!result.ok) {
     throw new CliError(

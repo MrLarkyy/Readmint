@@ -9,5 +9,7 @@ export interface RasterOptions {
   readonly frameRate?: number;
   /** Milliseconds on the timeline: export that one frame as a still image. */
   readonly time?: number;
+  /** WebP only: whole number 1..100, lossy at that libwebp quality; absent = lossless. */
+  readonly quality?: number;
   readonly limits?: Partial<RasterLimits>;
 }

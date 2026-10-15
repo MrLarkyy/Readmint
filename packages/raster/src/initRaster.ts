@@ -76,8 +76,9 @@ export async function openWebpCodec(): Promise<WebpCodec> {
     },
   });
   return {
-    encodeWebp(image: RgbaImage): Uint8Array {
-      const encoded = module.encode(image.data, image.width, image.height, true, lossless);
+    encodeWebp(image: RgbaImage, quality?: number): Uint8Array {
+      const config = quality === undefined ? lossless : { lossless: 0, quality };
+      const encoded = module.encode(image.data, image.width, image.height, true, config);
       if (encoded === null) throw new Error("libwebp could not encode a frame");
       return encoded;
     },

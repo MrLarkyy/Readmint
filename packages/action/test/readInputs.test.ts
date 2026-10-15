@@ -105,6 +105,29 @@ describe("readInputs", () => {
     expect(readInputs(env({ ...base, formats: "gif", "frame-rate": "50" })).frameRate).toBe(50);
   });
 
+  test("quality is read for webp output and absent by default", () => {
+    expect(readInputs(env(base))).not.toHaveProperty("quality");
+    expect(readInputs(env({ ...base, formats: "svg, webp", quality: "80" }))).toMatchObject({
+      quality: 80,
+    });
+  });
+
+  test.each(["0", "101", "x", "8.5", "-1"])("quality %s is refused, naming the range", (text) => {
+    expect(problems({ ...base, formats: "webp", quality: text })).toEqual([
+      `input quality "${text}" is not a whole number in 1..100`,
+    ]);
+  });
+
+  test("quality without a webp format is refused with the other problems", () => {
+    expect(problems({ ...base, formats: "svg, png", quality: "80" })).toEqual([
+      "input quality applies to webp output only; formats lists no webp",
+    ]);
+    expect(problems({ ...base, formats: "svg", quality: "80", scale: "9" })).toEqual([
+      'input scale "9" is not a number in 1..4',
+      "input quality applies to webp output only; formats lists no webp",
+    ]);
+  });
+
   test("an unknown format is refused, naming the formats there are", () => {
     expect(problems({ ...base, formats: "svg,jpeg" })).toEqual([
       'input formats: "jpeg" is not one of svg, png, webp, apng, gif',

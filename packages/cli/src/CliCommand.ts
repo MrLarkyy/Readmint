@@ -21,6 +21,8 @@ export interface RenderArgs {
   readonly scale?: number;
   /** Frames per second of an animation (`--frame-rate`); raster formats only. */
   readonly frameRate?: number;
+  /** Lossy WebP quality, 1..100 (`--quality`); webp only. */
+  readonly quality?: number;
 }
 
 /** A parsed command line. */

@@ -24,6 +24,9 @@ inputs:
   frame-rate:
     description: Frames per second of an animated raster output, 1..60 (gif 1..50); empty uses 30, gif 25.
     required: false
+  quality:
+    description: Lossy WebP at this quality, a whole number 1..100 (webp output only); empty keeps WebP lossless.
+    required: false
   token:
     description: GitHub token for the GitHub data; not used with `data-file`, never printed and never given to git.
     required: false
