@@ -273,7 +273,7 @@ Output:
   (one per distinct track; tracks of one element with the same positions and easings share one) and classes
   `.r<hash>a0, a1, ...` (`animation: <keyframes> <duration>ms linear infinite`, or `linear both` when the timeline
   plays once), deduplicated by their text, so identical copies of a repeat share their rules. The root `<svg>` carries
-  `class="r<hash>"`. An SVG inlined into a page (the editor) shares the page's style: the prefix keeps two different
+  `class="r<hash>"`. An SVG inlined into a web page shares the page's style: the prefix keeps two different
   Readmint SVGs apart, while the same design still gives the same bytes. Only numbers, `#rrggbb` colours and fixed
   words are written there; nothing from the design or the data. One rule
   `@media (prefers-reduced-motion:reduce){.r<hash> [class]{animation:none!important}}` stops this document's
@@ -382,9 +382,12 @@ bytes an earlier asset already wrote, so the image bytes add up to what the SVG 
 takes.
 
 With the option `layerBoxes: true` a successful render also returns `layerBoxes`, one per drawn node in paint order
-(later boxes are drawn over earlier ones): `{ layer, x, y, width, height, rotation? }`. `layer` is the JSON Pointer of
-the design layer under `/layers` that drew it: every repeat copy gives its layer's pointer, the layers of a component
-give their instance's. The box is the node's unrotated box on the canvas at its layout position (animations do not move
-it), numbers rounded to 3 decimals; `rotation` (degrees clockwise in [0, 360) about the box centre, the node's turn plus
-those of its groups) is absent when nothing turns it. Layers a `visible` or `if` drops have no box. The option never
-changes the SVG or the report; the editor selects layers in its preview with it.
+(later boxes are drawn over earlier ones): `{ layer, x, y, width, height, rotation?, groupTurns? }`. `layer` is the JSON
+Pointer of the design layer under `/layers` that drew it: every repeat copy gives its layer's pointer, the layers of a
+component give their instance's. `x`, `y`, `width`, `height` are the node's box at its layout position before any turn
+(its offsets and those of its groups added; animations do not move it), rounded to 3 decimals. On the canvas the box is
+turned by `rotation` (its own degrees, clockwise about its centre), then by each of `groupTurns` (`{ degrees, cx, cy }`,
+the turned groups around it, innermost first, each about a centre in the same unturned coordinates); either is absent
+when nothing turns. The renderer does no trigonometry here, as in the SVG: the reader applies the turns. Layers a
+`visible` or `if` drops have no box. The option never changes the SVG or the report; the editor selects layers in its
+preview with it.

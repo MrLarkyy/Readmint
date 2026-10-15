@@ -88,7 +88,7 @@ describe("layer boxes", () => {
     ]);
   });
 
-  test("turn about the box centre and compose with a turned group", () => {
+  test("describe turns by their degrees and centres, innermost first", () => {
     const result = boxes(
       design([
         { type: "rect", x: 0, y: 0, width: 20, height: 10, rotation: -30 },
@@ -99,16 +99,43 @@ describe("layer boxes", () => {
           width: 40,
           height: 20,
           rotation: 90,
-          children: [{ type: "rect", x: 0, y: 0, width: 10, height: 10, rotation: 45 }],
+          children: [
+            {
+              type: "group",
+              x: 10,
+              y: 0,
+              width: 10,
+              height: 10,
+              rotation: 45.0004,
+              children: [{ type: "ellipse", x: 1, y: 2, width: 4, height: 4, rotation: 10 }],
+            },
+          ],
         },
       ]),
     );
+    const outer = { degrees: 90, cx: 120, cy: 110 };
+    const inner = { degrees: 45, cx: 115, cy: 105 };
     expect(result).toEqual([
-      { layer: "/layers/0", x: 0, y: 0, width: 20, height: 10, rotation: 330 },
+      { layer: "/layers/0", x: 0, y: 0, width: 20, height: 10, rotation: -30 },
       { layer: "/layers/1", x: 100, y: 100, width: 40, height: 20, rotation: 90 },
-      // The group turns 90 degrees about (120, 110): its corner (100, 100) goes to (130, 90), the child's centre
-      // (105, 105) to (125, 95).
-      { layer: "/layers/1/children/0", x: 120, y: 90, width: 10, height: 10, rotation: 135 },
+      {
+        layer: "/layers/1/children/0",
+        x: 110,
+        y: 100,
+        width: 10,
+        height: 10,
+        rotation: 45,
+        groupTurns: [outer],
+      },
+      {
+        layer: "/layers/1/children/0/children/0",
+        x: 111,
+        y: 102,
+        width: 4,
+        height: 4,
+        rotation: 10,
+        groupTurns: [inner, outer],
+      },
     ]);
   });
 
