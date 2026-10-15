@@ -1,4 +1,9 @@
-import { isDefaultIgnorable, isNonSpacingMark, isSpacingMark } from "./unicode/characterFlags.js";
+import {
+  isDefaultIgnorable,
+  isLetter,
+  isNonSpacingMark,
+  isSpacingMark,
+} from "./unicode/characterFlags.js";
 import { indicSyllabicOf } from "./unicode/indicCategory.js";
 
 const zwj = 0x200d;
@@ -13,7 +18,8 @@ const isDevanagariConsonant = (codePoint: number) => {
 
 /**
  * UTF-16 offsets where a cluster of characters that must stay together starts: a base with its marks, joiners,
- * variation selectors and other default ignorables (which are never drawn on their own), a character after ZWJ, a
+ * variation selectors and other default ignorables (which are never drawn on their own), a symbol after ZWJ (emoji
+ * sequences: UAX #29 GB11 without Extended_Pictographic data, so any non-letter), a
  * Devanagari conjunct (consonant, virama, consonant: UAX #29 GB9c), a pair of regional indicators. Close to UAX #29
  * grapheme clusters, from this package's Unicode tables only, so every engine splits the same way.
  */
@@ -33,7 +39,7 @@ export function clusterStarts(text: string): number[] {
     const joins =
       previous >= 0 &&
       (extend ||
-        previous === zwj ||
+        (previous === zwj && !isLetter(codePoint)) ||
         (linker && isDevanagariConsonant(codePoint)) ||
         (isRegionalIndicator(codePoint) && regionalIndicators % 2 === 1));
     if (!joins) {

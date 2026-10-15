@@ -116,9 +116,20 @@ const layoutTags = ["GDEF", "GSUB", "GPOS"];
 const layoutRounds = 1000;
 /** Fixed strings per font: ligatures, kerning, joining, marks, syllables and reordering get exercised. */
 const layoutTexts: readonly (readonly [Uint8Array, string, readonly string[]])[] = [
-  [montserrat.ttf, "Montserrat", ["office AV To fí", "Wà ffl"]],
-  [noto.arabic, "Naskh", ["العربية", "بِسْمِ لا"]],
-  [noto.devanagari, "Devanagari", ["हिन्दी क्ष", "र्कि ि"]],
+  [montserrat.ttf, "Montserrat", ["office AV To fi\u0301", "Wa\u0300 ffl"]],
+  [
+    noto.arabic,
+    "Naskh",
+    [
+      "\u0627\u0644\u0639\u0631\u0628\u064a\u0629",
+      "\u0628\u0650\u0633\u0652\u0645\u0650 \u0644\u0627",
+    ],
+  ],
+  [
+    noto.devanagari,
+    "Devanagari",
+    ["\u0939\u093f\u0928\u094d\u0926\u0940 \u0915\u094d\u0937", "\u0930\u094d\u0915\u093f \u093f"],
+  ],
 ];
 
 /** Byte ranges of the layout tables in the file. */

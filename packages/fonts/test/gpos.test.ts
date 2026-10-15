@@ -88,14 +88,14 @@ describe("GPOS lookup types", () => {
   });
 
   test("pair kerning skips a mark its lookup ignores (RM-14 review), and stops at one it does not", () => {
-    expect(shaped(fontWith([pairAB(0x0008)]), "áb").advances).toEqual([450, 0, 500]);
-    expect(shaped(fontWith([pairAB()]), "áb").advances).toEqual([500, 0, 500]);
+    expect(shaped(fontWith([pairAB(0x0008)]), "a\u0301b").advances).toEqual([450, 0, 500]);
+    expect(shaped(fontWith([pairAB()]), "a\u0301b").advances).toEqual([500, 0, 500]);
   });
 
   test("a mark filtering set: marks outside it are skipped", () => {
     const options = { markSets: [[grave]] };
-    expect(shaped(fontWith([pairAB(0x0010, 0)], options), "áb").advances[0]).toBe(450);
-    expect(shaped(fontWith([pairAB(0x0010, 0)], options), "àb").advances[0]).toBe(500);
+    expect(shaped(fontWith([pairAB(0x0010, 0)], options), "a\u0301b").advances[0]).toBe(450);
+    expect(shaped(fontWith([pairAB(0x0010, 0)], options), "a\u0300b").advances[0]).toBe(500);
   });
 
   test("a mark attachment type: marks of another class are skipped", () => {
@@ -105,8 +105,8 @@ describe("GPOS lookup types", () => {
         [grave, 2],
       ] as const,
     };
-    expect(shaped(fontWith([pairAB(0x0100)], options), "áb").advances[0]).toBe(500);
-    expect(shaped(fontWith([pairAB(0x0100)], options), "àb").advances[0]).toBe(450);
+    expect(shaped(fontWith([pairAB(0x0100)], options), "a\u0301b").advances[0]).toBe(500);
+    expect(shaped(fontWith([pairAB(0x0100)], options), "a\u0300b").advances[0]).toBe(450);
   });
 
   test("kerning false keeps the marks attached", () => {
@@ -119,13 +119,13 @@ describe("GPOS lookup types", () => {
         lookups: [pairAB(0x0008), markToBase],
       },
     });
-    const run = shaped(font, "áb", { kerning: false });
+    const run = shaped(font, "a\u0301b", { kerning: false });
     expect(run.advances).toEqual([500, 0, 500]);
     expect(run.yOffsets[1]).toBe(600);
   });
 
   test("4 mark-to-base: the mark's anchor on the base's, its advance zeroed", () => {
-    const run = shaped(fontWith([markToBase]), "á");
+    const run = shaped(fontWith([markToBase]), "a\u0301");
     expect(run.advances).toEqual([500, 0]);
     expect(run.xOffsets[1]).toBe(250 - 100 - 500);
     expect(run.yOffsets[1]).toBe(600);
@@ -167,10 +167,10 @@ describe("GPOS lookup types", () => {
       gsub: { features: [{ tag: "liga", lookups: [0] }], lookups: [ligature] },
       gpos: { features: [{ tag: "mark", lookups: [0] }], lookups: [markToLigature] },
     });
-    const between = shaped(font, "áb");
+    const between = shaped(font, "a\u0301b");
     expect(between.glyphs).toEqual([ligatureAb, acute]);
     expect([between.xOffsets[1], between.yOffsets[1]]).toEqual([100 - 900, 500]);
-    const after = shaped(font, "ab́");
+    const after = shaped(font, "ab\u0301");
     expect([after.xOffsets[1], after.yOffsets[1]]).toEqual([400 - 900, 520]);
   });
 
@@ -197,7 +197,7 @@ describe("GPOS lookup types", () => {
         lookups: [markToBase, markToMark],
       },
     });
-    const run = shaped(font, "á̀");
+    const run = shaped(font, "a\u0301\u0300");
     expect(run.yOffsets).toEqual([0, 600, 900]);
     expect(run.xOffsets[2]).toBe(-350 + 20);
   });
@@ -247,7 +247,7 @@ describe("GPOS lookup types", () => {
   });
 
   test("right to left: glyphs come out in visual order, marks still on their base", () => {
-    const run = shaped(fontWith([markToBase]), "áb", { rtl: true });
+    const run = shaped(fontWith([markToBase]), "a\u0301b", { rtl: true });
     expect(run.glyphs).toEqual([b, acute, a]);
     expect(run.clusters).toEqual([2, 0, 0]);
     // The mark's pen position is the base's left edge in visual order: it moves by the anchor only.
@@ -257,7 +257,7 @@ describe("GPOS lookup types", () => {
   test("a font without GPOS kerns with its kern table, across marks; a mark hangs over its base", () => {
     const font = layoutFont({ kern: [[a, b, -40]] });
     expect(shaped(font, "ab").advances).toEqual([460, 500]);
-    const run = shaped(font, "áb");
+    const run = shaped(font, "a\u0301b");
     expect(run.advances).toEqual([460, 0, 500]);
     expect(run.xOffsets).toEqual([0, -100, 0]);
     expect(shaped(font, "ab", { kerning: false }).advances).toEqual([500, 500]);

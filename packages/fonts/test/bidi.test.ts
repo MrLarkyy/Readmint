@@ -78,13 +78,13 @@ describe("BidiCharacterTest (Unicode 16.0.0 sample)", () => {
 
 describe("bidi bounds", () => {
   test("embeddings deeper than 125 overflow: the text inside stays at level 125 (126 after I2)", () => {
-    const text = `${"‫".repeat(200)}a`;
+    const text = `${"\u202b".repeat(200)}a`;
     const paragraph = resolveLevels(text, "ltr");
     expect(paragraph.levels[text.length - 1]).toBe(126);
   });
 
   test("bracket pairs nested deeper than 63 stop pairing; the rest still resolves", () => {
-    const text = `א ${"(".repeat(70)}a${")".repeat(70)}`;
+    const text = `\u05d0 ${"(".repeat(70)}a${")".repeat(70)}`;
     const paragraph = resolveLevels(text);
     expect(paragraph.level).toBe(1);
     expect(paragraph.levels[text.indexOf("a")]).toBe(2);
@@ -96,7 +96,16 @@ describe("bidi bounds", () => {
       resolveLevels(text, "auto", counted);
       return counted.operations;
     };
-    for (const unit of ["(", "()", "(א)", "⁨", "⁨⁩", "⁧a", "‮‪", "א [a"]) {
+    for (const unit of [
+      "(",
+      "()",
+      "(\u05d0)",
+      "\u2068",
+      "\u2068\u2069",
+      "\u2067a",
+      "\u202e\u202a",
+      "\u05d0 [a",
+    ]) {
       const short = work(unit.repeat(2000));
       const long = work(unit.repeat(8000));
       expect(long / short, unit).toBeLessThan(5);
@@ -105,9 +114,9 @@ describe("bidi bounds", () => {
   });
 
   test("visual order reverses right-to-left runs, numbers keep their order", () => {
-    const text = "abc אב 12 ג";
+    const text = "abc \u05d0\u05d1 12 \u05d2";
     const levels = lineLevels(resolveLevels(text, "ltr"), 0, text.length);
     const order = visualOrder(levels);
-    expect(order.map((index) => text[index]).join("")).toBe("abc ג 12 בא");
+    expect(order.map((index) => text[index]).join("")).toBe("abc \u05d2 12 \u05d1\u05d0");
   });
 });

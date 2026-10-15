@@ -90,16 +90,16 @@ describe("GSUB lookup types", () => {
   });
 
   test("4 ligature across a mark only when the lookup ignores marks; the mark stays after the ligature", () => {
-    expect(glyphsOf(fontWith([ligatures()]), "áb")).toEqual([a, acute, b]);
-    const run = shaped(fontWith([ligatures(0x0008)]), "áb");
+    expect(glyphsOf(fontWith([ligatures()]), "a\u0301b")).toEqual([a, acute, b]);
+    const run = shaped(fontWith([ligatures(0x0008)]), "a\u0301b");
     expect(run.glyphs).toEqual([ligatureAb, acute]);
     expect(run.clusters).toEqual([0, 0]);
   });
 
   test("ZWNJ blocks a ligature, ZWJ does not; neither is drawn", () => {
     const font = fontWith([ligatures()], "liga");
-    expect(glyphsOf(font, "a‌b")).toEqual([a, b]);
-    expect(glyphsOf(font, "a‍b")).toEqual([ligatureAb]);
+    expect(glyphsOf(font, "a\u200cb")).toEqual([a, b]);
+    expect(glyphsOf(font, "a\u200db")).toEqual([ligatureAb]);
     expect(glyphsOf(font, "ab", { ligatures: false })).toEqual([a, b]);
   });
 

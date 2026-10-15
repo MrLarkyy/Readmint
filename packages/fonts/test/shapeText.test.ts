@@ -54,7 +54,7 @@ describe("shapeText", () => {
 
   test("Noto Naskh Arabic: an Arabic word takes its joining forms, in visual order", () => {
     // U+0627 U+0644 U+0639 U+0631 U+0628 U+064A U+0629: alef, lam, ain, reh, beh, yeh, teh marbuta.
-    const run = shapeText(naskh, "العربية", { rtl: true });
+    const run = shapeText(naskh, "\u0627\u0644\u0639\u0631\u0628\u064a\u0629", { rtl: true });
     const bases = run.glyphs.filter((_, index) => run.marks[index] !== true);
     expect(bases).toEqual([
       arabic.hehFina,
@@ -72,7 +72,7 @@ describe("shapeText", () => {
 
   test("Noto Naskh Arabic: marks attach above and below their letters", () => {
     // U+0628 U+0650 U+0633 U+0652 U+0645 U+0650: beh kasra, seen sukun, meem kasra.
-    const run = shapeText(naskh, "بِسْمِ", { rtl: true });
+    const run = shapeText(naskh, "\u0628\u0650\u0633\u0652\u0645\u0650", { rtl: true });
     const marks = run.glyphs.flatMap((glyph, index) =>
       run.marks[index] === true ? [{ glyph, y: run.yOffsets[index] ?? 0 }] : [],
     );
@@ -84,7 +84,7 @@ describe("shapeText", () => {
   });
 
   test("Noto Naskh Arabic: lam alef is required (rlig)", () => {
-    expect(shapeText(naskh, "لا", { rtl: true }).glyphs).toEqual([
+    expect(shapeText(naskh, "\u0644\u0627", { rtl: true }).glyphs).toEqual([
       arabic.alefFinaRlig,
       arabic.lamInitRlig,
     ]);
@@ -92,31 +92,33 @@ describe("shapeText", () => {
 
   test("Noto Sans Devanagari: the i matra moves before its consonant cluster, half forms form", () => {
     // U+0939 U+093F U+0928 U+094D U+0926 U+0940: hindi.
-    const run = shapeText(devanagari, "हिन्दी");
+    const run = shapeText(devanagari, "\u0939\u093f\u0928\u094d\u0926\u0940");
     expect(run.glyphs).toEqual([deva.iMatra03, deva.ha, deva.nHalf, deva.da, deva.iiMatra]);
     expect(run.clusters).toEqual([0, 0, 2, 2, 2]);
   });
 
   test("Noto Sans Devanagari: a conjunct, a reph after its consonant, a short i before it", () => {
-    expect(shapeText(devanagari, "क्ष").glyphs).toEqual([deva.kSsa]);
-    const reph = shapeText(devanagari, "र्क");
+    expect(shapeText(devanagari, "\u0915\u094d\u0937").glyphs).toEqual([deva.kSsa]);
+    const reph = shapeText(devanagari, "\u0930\u094d\u0915");
     expect(reph.glyphs).toEqual([deva.ka, deva.reph]);
     expect(reph.clusters).toEqual([0, 0]);
-    expect(shapeText(devanagari, "कि").glyphs).toEqual([deva.iMatra04, deva.ka]);
+    expect(shapeText(devanagari, "\u0915\u093f").glyphs).toEqual([deva.iMatra04, deva.ka]);
   });
 
   test("a matra without a consonant gets the font's dotted circle", () => {
-    const run = shapeText(devanagari, "ि");
+    const run = shapeText(devanagari, "\u093f");
     expect(run.glyphs[1]).toBe(devanagari.glyphFor(0x25cc));
   });
 
   test("default ignorables shape but are not drawn", () => {
-    expect(shapeText(medium, "a‍b⁧c⁩").glyphs).toEqual(shapeText(medium, "abc").glyphs);
-    expect(shapeText(medium, "‍‌‏").glyphs).toEqual([]);
+    expect(shapeText(medium, "a\u200db\u2067c\u2069").glyphs).toEqual(
+      shapeText(medium, "abc").glyphs,
+    );
+    expect(shapeText(medium, "\u200d\u200c\u200f").glyphs).toEqual([]);
   });
 
   test("the same text shapes to the same run every time", () => {
-    const text = "العربية";
+    const text = "\u0627\u0644\u0639\u0631\u0628\u064a\u0629";
     expect(shapeText(naskh, text, { rtl: true })).toEqual(shapeText(naskh, text, { rtl: true }));
   });
 

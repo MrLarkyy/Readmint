@@ -123,7 +123,7 @@ test("the Unicode notice survives the TypeScript emit of ucdTables.ts", () => {
   const markers = [
     "@license Unicode-3.0",
     "UNICODE LICENSE V3",
-    "Copyright © 1991-2024 Unicode, Inc.",
+    "Copyright \u00a9 1991-2024 Unicode, Inc.",
     "provided that either (a) this copyright and permission notice appear with all copies",
     "without prior written authorization of the copyright holder.",
   ];
