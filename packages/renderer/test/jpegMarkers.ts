@@ -16,6 +16,8 @@ export interface RefusedJpeg extends JpegVariant {
    * Chromium refuses them as unsupported headers, which a genuine file of that kind may not share.
    */
   readonly chromiumDrawsNothing: boolean;
+  /** Measured: resvg-wasm 2.6.2 draws nothing where Chromium draws the picture (a Huffman table above 1 in SOF0). */
+  readonly resvgDrawsNothing?: true;
 }
 
 interface Layout {
@@ -23,18 +25,56 @@ interface Layout {
   readonly frame: number;
   /** Offset just past the SOF0 segment. */
   readonly frameEnd: number;
+  /** Offset of the SOS marker. */
+  readonly scan: number;
+  /** AC Huffman table 0 as a DHT stores it, after its class and id byte: 16 code counts, then the values. */
+  readonly acTable: readonly number[];
 }
 
 function layout(jpeg: Uint8Array): Layout {
   let offset = 2;
+  let frame: Pick<Layout, "frame" | "frameEnd"> | undefined;
+  let acTable: number[] | undefined;
   for (;;) {
     const marker = jpeg[offset + 1];
     const length = ((jpeg[offset + 2] ?? 0) << 8) | (jpeg[offset + 3] ?? 0);
-    if (marker === undefined || marker === 0xda) throw new Error("the test JPEG has no SOF0");
-    if (marker === 0xc0) return { frame: offset, frameEnd: offset + 2 + length };
+    if (marker === undefined) throw new Error("the test JPEG has no SOS");
+    if (marker === 0xc0) frame = { frame: offset, frameEnd: offset + 2 + length };
+    if (marker === 0xc4) acTable ??= huffmanTable(jpeg, offset + 4, offset + 2 + length, 0x10);
+    if (marker === 0xda) {
+      if (frame === undefined || acTable === undefined)
+        throw new Error("the test JPEG lacks SOF0 or AC table 0");
+      return { ...frame, scan: offset, acTable };
+    }
     offset += 2 + length;
   }
 }
+
+/** The table `id` (class and destination) among the DHT tables from `start` up to `end`. */
+function huffmanTable(
+  jpeg: Uint8Array,
+  start: number,
+  end: number,
+  id: number,
+): number[] | undefined {
+  for (let at = start; at < end;) {
+    const counts = [...jpeg.subarray(at + 1, at + 17)];
+    const size = 17 + counts.reduce((sum, count) => sum + count, 0);
+    if (jpeg[at] === id) return [...jpeg.subarray(at + 1, at + size)];
+    at += size;
+  }
+  return undefined;
+}
+
+/** A DHT segment holding the test JPEG's AC table 0 as AC table 2. */
+const acTable2 = (acTable: readonly number[]) => [
+  0xff,
+  0xc4,
+  0,
+  acTable.length + 3,
+  0x12,
+  ...acTable,
+];
 
 function inserted(jpeg: Uint8Array, at: number, insert: readonly number[]): Uint8Array {
   const result = new Uint8Array(jpeg.length + insert.length);
@@ -56,8 +96,14 @@ const frameType = (jpeg: Uint8Array, marker: number) =>
 
 /** The JPEGs the sniffer refuses, each with a marker libjpeg rejects or resvg draws empty before its image data. */
 export function refusedJpegs(jpeg: Uint8Array): RefusedJpeg[] {
-  const { frame, frameEnd } = layout(jpeg);
+  const { frame, frameEnd, scan, acTable } = layout(jpeg);
   const before = (insert: readonly number[]) => inserted(jpeg, frame, insert);
+  // The first scan component's selector byte (DC table, AC table) set to AC table 2.
+  const scanOnAc2 = inserted(
+    patched(jpeg, scan + 6, ((jpeg[scan + 6] ?? 0) & 0xf0) | 2),
+    frame,
+    acTable2(acTable),
+  );
   const after = (insert: readonly number[]) => inserted(jpeg, frameEnd, insert);
   const lengthPlusOne = inserted(
     patched(jpeg, frame + 3, (jpeg[frame + 3] ?? 0) + 1),
@@ -117,12 +163,25 @@ export function refusedJpegs(jpeg: Uint8Array): RefusedJpeg[] {
     refused("16-bit samples", patched(jpeg, frame + 4, 16), "precision of 16 bits"),
     refused("a frame header one byte too long", lengthPlusOne, "frame header length is invalid"),
     refused("a frame header without components", noComponents, "frame header length is invalid"),
+    {
+      ...refused("a scan on AC table 2", scanOnAc2, "scan selects Huffman table 2", false),
+      resvgDrawsNothing: true,
+    },
+    {
+      ...refused(
+        "a DHT of table 2 after the frame header",
+        inserted(jpeg, scan, acTable2(acTable)),
+        "defines, after its frame header, Huffman table 2",
+        false,
+      ),
+      resvgDrawsNothing: true,
+    },
   ];
 }
 
 /** The JPEGs the sniffer accepts at 32x16: markers both libjpeg and resvg read on. */
 export function acceptedJpegs(jpeg: Uint8Array): JpegVariant[] {
-  const { frame, frameEnd } = layout(jpeg);
+  const { frame, frameEnd, acTable } = layout(jpeg);
   return [
     { name: "the test JPEG", bytes: jpeg },
     {
@@ -134,5 +193,9 @@ export function acceptedJpegs(jpeg: Uint8Array): JpegVariant[] {
       bytes: inserted(jpeg, frameEnd, [0xff, 0xdd, 0, 4, 0, 0]),
     },
     { name: "SOF1 (extended sequential)", bytes: frameType(jpeg, 0xc1) },
+    {
+      name: "a DHT of table 2 before the frame header",
+      bytes: inserted(jpeg, frame, acTable2(acTable)),
+    },
   ];
 }

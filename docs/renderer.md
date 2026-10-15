@@ -300,7 +300,9 @@ budget?, maxBytes? })`, `encodeWoff`, `decodeWoff`, `glyphClosure`, `OutlineBudg
   (Chromium 156, resvg-wasm 2.6.2, fixtures in `packages/renderer/test/assets/jpeg`): Chromium draws them all except
   16-bit DCT samples (0x0), resvg draws arithmetic coding (SOF9-11), DCT samples above 8 bits and 12- and 16-bit
   lossless grey empty, and traps on a 12-bit lossless RGB file. A DCT frame header whose length is not 8 plus 3 per
-  component, or which has no component, is refused too.
+  component, or which has no component, is refused too, and so is a baseline (SOF0) file whose scan selects Huffman
+  table 2 or 3 or which defines one after its frame header: jpeg-decoder allows only tables 0 and 1 in baseline and
+  draws nothing, Chromium draws it (a table 2 defined before the frame header both read).
 - A lossless JPEG (SOF3) is accepted only where Chromium and resvg draw the same pixels: resvg-wasm 2.6.2 decodes with
   jpeg-decoder 0.3.1, whose lossless path copies the stored samples without any colour transform (it ignores JFIF,
   Adobe and the component ids) and one per component and pixel whatever the sampling factors; Chromium (libjpeg-turbo
@@ -308,15 +310,20 @@ budget?, maxBytes? })`, `encodeWoff`, `decodeWoff`, `glyphClosure`, `OutlineBudg
   on either side of the frame header: (1) 8-bit samples, three components with ids `R` `G` `B` (82 71 66) in that
   order, each sampled 1x1 with quantization table 0; (2) no APP0 whose data starts `JFIF`; (3) every APP14 whose data
   starts `Adobe` is at least 12 bytes long with transform 0 (libjpeg takes the last one, so all must agree); (4) no DRI;
-  (5) the first scan holds `R` `G` `B` in frame order, predictor 1-7, no spectral end, successive approximation or
-  point transform; (6) the file reaches that scan header (a DCT file cut after its frame header is still read, a
-  lossless one is refused). Anything else is `asset-format` with `JPEG frame type 0xC3 (lossless) is refused:` and the
-  reason (`a JFIF segment`, `Adobe transform 1`, `component ids 1 2 3`, `sampling 1x2`, `precision of 12 bits`,
-  ...). The outputs differ on grey (black in Chromium), YCbCr (other colours), JFIF and Adobe transform 1 or 2 (empty
-  in Chromium), sampling factors other than 1x1 (resvg ignores them), a quantization table other than 0 (empty in
-  resvg) and a point transform. Ids 1 2 3, a short Adobe segment and a restart interval of 0 draw alike in the probe
-  but are refused fail-closed: reading other ids as RGB in lossless is libjpeg-turbo 3 alone (IJG libjpeg and
-  jpeg-decoder's colour rule read 1 2 3 as YCbCr), and no restart (an interval above 0) was probed. Measured with genuine
+  (5) the first scan holds `R` `G` `B` in frame order, each on Huffman tables 0 (selector byte 0), predictor 1-7, no
+  spectral end, successive approximation or point transform; (6) its image data, read once past stuffed zeros
+  (`FF 00`) and fill bytes, ends at the end-of-image marker (EOI): a file cut before or inside the scan, one without
+  EOI, a second scan, a restart marker or any other marker before EOI is refused (a DCT file cut after its frame
+  header is still read). Chromium draws the rows it has of a cut file and resvg nothing; of two scans Chromium draws
+  the first and resvg the second. Anything else is `asset-format` with `JPEG frame type 0xC3 (lossless) is
+refused:` and the reason (`a JFIF segment`, `Adobe transform 1`, `component ids 1 2 3`, `sampling 1x2`,
+  `precision of 12 bits`, `a second scan`, ...). The outputs differ on grey (black in Chromium), YCbCr (other
+  colours), JFIF and Adobe transform 1 or 2 (empty in Chromium), sampling factors other than 1x1 (resvg ignores them),
+  a quantization table other than 0 or a table selector above 3 (empty in resvg) and a point transform. Ids 1 2 3, a
+  short Adobe segment, a restart interval of 0, AC table selector 1 and a restart marker or COM before EOI draw alike
+  in the probe but are refused fail-closed: reading other ids as RGB in lossless is libjpeg-turbo 3 alone (IJG libjpeg
+  and jpeg-decoder's colour rule read 1 2 3 as YCbCr), and no restart (an interval above 0) was probed. Measured with
+  genuine
   libjpeg-turbo 3.1.3 files (`sof3-8bit-rgb*.jpg`, predictors 1-7, with and without Adobe APP14) and segment edits of
   them; a Chromium or resvg upgrade that changes a pin fails the tests and asks for a new probe.
 - EXIF orientation (tag `0x0112` in IFD0 of a JPEG APP1 `Exif` segment, a PNG `eXIf` chunk before or after the image

@@ -7,7 +7,10 @@ const plural = (count: number, noun: string) => `${String(count)} ${noun}${count
 
 const refusal = (reason: string) =>
   `JPEG frame type 0xC3 (lossless) is refused: ${reason}; Chromium and resvg draw only 8-bit RGB-coded lossless ` +
-  "JPEGs alike (components R G B, 1x1 sampling, no JFIF or restart interval, Adobe transform 0 if any)";
+  "JPEGs alike (components R G B, 1x1 sampling, no JFIF or restart interval, Adobe transform 0 if any, one scan " +
+  "followed by the end-of-image marker)";
+
+const hex = (value: number) => `0x${value.toString(16).toUpperCase().padStart(2, "0")}`;
 
 const isRgb = (ids: readonly number[]) => ids.every((id, index) => id === rgbIds[index]);
 
@@ -18,8 +21,10 @@ const isRgb = (ids: readonly number[]) => ids.every((id, index) => id === rgbIds
  * Chromium (libjpeg-turbo 3.1) converts no colour in lossless mode, so it draws only files it reads as RGB: none with
  * a JFIF APP0, none whose Adobe APP14 (the last before the first scan wins) has a transform other than 0. Both agree
  * exactly on an 8-bit frame of components R G B at 1x1 with no JFIF, no Adobe transform but 0 and one interleaved scan
- * of R G B; everything else is refused, restart intervals and point transforms too (not probed). Fixtures and the
- * probe: test/assets/jpeg/sof3-*.
+ * of R G B on Huffman table 0, its image data ending at EOI; everything else is refused, restart intervals and point
+ * transforms too (not probed). A file cut inside its image data, one without EOI and one with a second scan the two
+ * draw differently (Chromium the rows or the scan it has, resvg nothing or the last scan). Fixtures and the probe:
+ * test/assets/jpeg/sof3-* and test/losslessJpegs.ts.
  */
 export class LosslessJpeg {
   /** The first JFIF, Adobe or DRI segment that rules the file out, on either side of the frame header. */
@@ -47,9 +52,15 @@ export class LosslessJpeg {
     return undefined;
   }
 
-  /** Why the file is refused at its first scan header (the SOS length field at `offset`), or undefined. */
+  /**
+   * Why the file is refused at its first scan (the SOS length field at `offset`), or undefined: the segments before
+   * it, its header, then its image data up to the marker that ends it.
+   */
   problemAtScan(bytes: Bytes, offset: number): string | undefined {
-    const reason = this.segmentReason ?? scanReason(bytes, offset);
+    const reason =
+      this.segmentReason ??
+      scanReason(bytes, offset) ??
+      imageDataReason(bytes.data, offset + bytes.u16be(offset));
     return reason === undefined ? undefined : refusal(reason);
   }
 
@@ -102,6 +113,11 @@ function scanReason(bytes: Bytes, offset: number): string | undefined {
   if (bytes.u16be(offset) !== 6 + 2 * count) return "an invalid scan header length";
   const selectors = rgbIds.map((_, index) => bytes.u8(offset + 3 + 2 * index));
   if (!isRgb(selectors)) return `scan components ${selectors.join(" ")}`;
+  // Only table 0 was probed; jpeg-decoder draws nothing for a selector above 3, which libjpeg-turbo may still read.
+  for (let index = 0; index < count; index++) {
+    const tables = bytes.u8(offset + 4 + 2 * index);
+    if (tables !== 0) return `Huffman table selector ${hex(tables)}`;
+  }
   const parameters = offset + 3 + 2 * count;
   const predictor = bytes.u8(parameters);
   if (predictor < 1 || predictor > 7) return `predictor ${String(predictor)}`;
@@ -111,4 +127,25 @@ function scanReason(bytes: Bytes, offset: number): string | undefined {
   if (approximation >> 4 !== 0) return `successive approximation ${String(approximation >> 4)}`;
   if ((approximation & 0x0f) !== 0) return `point transform ${String(approximation & 0x0f)}`;
   return undefined;
+}
+
+/**
+ * Why the image data from `start` does not end at EOI, or undefined: one pass to the first marker, skipping stuffed
+ * zeros (`FF 00`) and fill bytes. No restart marker can belong there, a DRI being refused.
+ */
+function imageDataReason(data: Uint8Array, start: number): string | undefined {
+  let offset = start;
+  for (;;) {
+    const fill = data.indexOf(0xff, offset);
+    if (fill < 0) return "image data without an end-of-image marker";
+    offset = fill + 1;
+    while (data[offset] === 0xff) offset++;
+    const marker = data[offset];
+    if (marker === undefined) return "image data without an end-of-image marker";
+    offset++;
+    if (marker === 0xd9) return undefined;
+    if (marker === 0xda) return "a second scan";
+    if (marker >= 0xd0 && marker <= 0xd7) return `a restart marker ${hex(marker)}`;
+    if (marker !== 0) return `marker ${hex(marker)} after the image data`;
+  }
 }

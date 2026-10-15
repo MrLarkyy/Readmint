@@ -35,6 +35,17 @@ describe("Chromium and the sniffer agree on JPEG markers", () => {
     },
   );
 
+  const resvgOnly = refusedJpegs(jpeg).filter((row) => row.resvgDrawsNothing === true);
+
+  test.each(resvgOnly.map((row) => [row.name, row.bytes] as const))(
+    "Chromium draws a JPEG with %s, which resvg draws empty and the sniffer refuses",
+    async (_name, bytes) => {
+      expect(await drawnSize(bytes)).toEqual([32, 16]);
+      expect(await pixelAt(bytes)).toEqual(await pixelAt(jpeg));
+      expect(sniffImage(bytes, 1000).ok).toBe(false);
+    },
+  );
+
   test.each(acceptedJpegs(jpeg).map((row) => [row.name, row.bytes] as const))(
     "Chromium draws %s at 32x16, which the sniffer accepts at that size",
     async (_name, bytes) => {
@@ -71,7 +82,7 @@ async function losslessDrawing(bytes: Uint8Array): Promise<LosslessOutcome> {
   if (context === null) throw new Error("no 2d canvas");
   context.drawImage(image, 0, 0);
   const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
-  return losslessOutcome(pixels, canvas.width, canvas.height);
+  return losslessOutcome(pixels);
 }
 
 describe("Chromium and the sniffer agree on lossless JPEGs", () => {

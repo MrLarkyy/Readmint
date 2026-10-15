@@ -47,7 +47,7 @@ describe("the 8-bit RGB lossless JPEGs the renderer accepts", () => {
         width: 64,
         height: 48,
       });
-      expect(losslessOutcome(resvgPixels(bytes), 32, 16)).toBe("equal");
+      expect(losslessOutcome(resvgPixels(bytes))).toBe("equal");
     },
   );
 });
@@ -70,7 +70,7 @@ describe("the lossless JPEGs the renderer refuses", () => {
   );
 
   test.each(probed)("what resvg-wasm 2.6.2 draws of the one with %s", (_name, bytes, outcome) => {
-    expect(losslessOutcome(resvgPixels(bytes), 32, 16)).toEqual(outcome);
+    expect(losslessOutcome(resvgPixels(bytes))).toEqual(outcome);
   });
 });
 

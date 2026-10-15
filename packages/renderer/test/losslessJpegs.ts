@@ -17,10 +17,10 @@ import al1 from "./assets/jpeg/sof3-8bit-rgb-al1.jpg?inline";
 import tq1 from "./assets/jpeg/sof3-8bit-rgb-tq1.jpg?inline";
 
 /**
- * What an output draws of a lossless JPEG: the source gradient exactly, nothing (no opaque pixel), or other pixels,
- * pinned by the one at (5,0).
+ * What an output draws of a lossless JPEG at 32x16: the source gradient exactly, nothing (no opaque pixel), or the
+ * number of its 512 pixels that differ from the source or are not opaque.
  */
-export type LosslessOutcome = "equal" | "nothing" | readonly [number, number, number];
+export type LosslessOutcome = "equal" | "nothing" | number;
 
 export interface LosslessJpegFixture {
   readonly name: string;
@@ -45,25 +45,22 @@ export function expectedGradient(): Uint8Array {
   return pixels;
 }
 
-/** Classifies an output's RGBA pixels of a lossless file drawn at `width` x `height` against the source gradient. */
-export function losslessOutcome(
-  rgba: Uint8Array | Uint8ClampedArray,
-  width: number,
-  height: number,
-): LosslessOutcome {
-  const pixels = width * height;
-  let opaque = 0;
-  let equal = width === 32 && height === 16;
+/** Classifies an output's RGBA pixels of a lossless file drawn at 32x16 against the source gradient. */
+export function losslessOutcome(rgba: Uint8Array | Uint8ClampedArray): LosslessOutcome {
   const expected = expectedGradient();
-  for (let pixel = 0; pixel < pixels; pixel++) {
-    if (rgba[pixel * 4 + 3] === 255) opaque++;
-    for (let channel = 0; channel < 3; channel++) {
-      if (rgba[pixel * 4 + channel] !== expected[pixel * 3 + channel]) equal = false;
-    }
+  if (rgba.length !== (expected.length / 3) * 4) throw new Error("not drawn at 32x16");
+  let opaque = 0;
+  let differing = 0;
+  for (let pixel = 0; pixel * 3 < expected.length; pixel++) {
+    const isOpaque = rgba[pixel * 4 + 3] === 255;
+    if (isOpaque) opaque++;
+    const same = [0, 1, 2].every(
+      (channel) => rgba[pixel * 4 + channel] === expected[pixel * 3 + channel],
+    );
+    if (!isOpaque || !same) differing++;
   }
   if (opaque === 0) return "nothing";
-  if (equal && opaque === pixels) return "equal";
-  return [rgba[20] ?? -1, rgba[21] ?? -1, rgba[22] ?? -1];
+  return differing === 0 ? "equal" : differing;
 }
 
 /**
@@ -87,10 +84,19 @@ const app14 = 2;
 const frame = 18;
 const afterFrame = 37;
 const scan = 63;
+const end = source.length - 2;
 
 function checkedLayout(): void {
-  const markers = [source[app14 + 1], source[frame + 1], source[afterFrame + 1], source[scan + 1]];
-  if (markers.join() !== [0xee, 0xc3, 0xc4, 0xda].join()) throw new Error("unexpected p1 layout");
+  const markers = [
+    source[app14 + 1],
+    source[frame + 1],
+    source[afterFrame + 1],
+    source[scan + 1],
+    source[end + 1],
+  ];
+  if (markers.join() !== [0xee, 0xc3, 0xc4, 0xda, 0xd9].join()) {
+    throw new Error("unexpected p1 layout");
+  }
 }
 
 const part = (start: number, end?: number) => [...source.subarray(start, end)];
@@ -111,6 +117,13 @@ const ids = (r: number, g: number, b: number) =>
     [frame + 10, r],
     [frame + 13, g],
     [frame + 16, b],
+  ] as const;
+/** The scan's three table selector bytes (DC table, AC table) set to `value`. */
+const tables = (value: number) =>
+  [
+    [scan + 6, value],
+    [scan + 8, value],
+    [scan + 10, value],
   ] as const;
 const selectors = (r: number, g: number, b: number) =>
   [
@@ -136,8 +149,9 @@ const built = (
 
 /**
  * Lossless JPEGs the sniffer refuses, each with the reason it names. The files are p1 with one segment edit (RM-54
- * scripts derive.mjs), each probed: Chromium and resvg draw them differently. The built rows are p1 patched here; the
- * three with a measured outcome were probed as the same bytes, drawn alike, and are refused as untested cases.
+ * scripts derive.mjs), each probed: Chromium and resvg draw them differently. The built rows are p1 patched here; those
+ * with a measured outcome were probed as the same bytes (derive.mjs, derive2.mjs). Where both outputs draw the
+ * source, the case is refused fail-closed as outside the probed rule.
  */
 export function refusedLosslessJpegs(): RefusedLosslessJpeg[] {
   checkedLayout();
@@ -156,8 +170,8 @@ export function refusedLosslessJpegs(): RefusedLosslessJpeg[] {
       "nothing",
       both,
     ),
-    file("sampling 1x2", h1v2, "sampling 1x2", [40, 215, 128], both),
-    file("point transform 1", al1, "point transform 1", [208, 128, 46], [240, 0, 208]),
+    file("sampling 1x2", h1v2, "sampling 1x2", 512, both),
+    file("point transform 1", al1, "point transform 1", 512, 512),
     file("quantization table 1", tq1, "quantization table 1", both, "nothing"),
     built(
       "an Adobe segment of 11 bytes",
@@ -229,6 +243,46 @@ export function refusedLosslessJpegs(): RefusedLosslessJpeg[] {
       "a frame header one byte too long",
       joined(part(0, frame + 3), [18], part(frame + 4, afterFrame), [0], part(afterFrame)),
       "an invalid frame header length",
+    ),
+    built("Huffman table selector 0x01", patched(tables(0x01)), "Huffman table selector 0x01", {
+      chromium: both,
+      resvg: both,
+    }),
+    built("Huffman table selector 0x04", patched(tables(0x04)), "Huffman table selector 0x04", {
+      chromium: both,
+      resvg: "nothing",
+    }),
+    built("Huffman table selector 0x10", patched(tables(0x10)), "Huffman table selector 0x10", {
+      chromium: "nothing",
+      resvg: "nothing",
+    }),
+    built(
+      "a cut inside the image data",
+      source.slice(0, scan + 14 + Math.floor((end - scan - 14) / 2)),
+      "image data without an end-of-image marker",
+      { chromium: 288, resvg: "nothing" },
+    ),
+    built("no EOI", source.slice(0, end), "image data without an end-of-image marker", {
+      chromium: 32,
+      resvg: "nothing",
+    }),
+    built(
+      "a second scan",
+      joined(part(0, end), part(scan, scan + 11), [2], part(scan + 12, end), part(end)),
+      "a second scan",
+      { chromium: both, resvg: 465 },
+    ),
+    built(
+      "RST0 before EOI",
+      joined(part(0, end), [0xff, 0xd0], part(end)),
+      "a restart marker 0xD0",
+      { chromium: both, resvg: both },
+    ),
+    built(
+      "a COM before EOI",
+      joined(part(0, end), [0xff, 0xfe, 0, 4, 0x68, 0x69], part(end)),
+      "marker 0xFE after the image data",
+      { chromium: both, resvg: both },
     ),
     built("cut before the scan", source.slice(0, scan), "the file ends before its image data"),
     built(

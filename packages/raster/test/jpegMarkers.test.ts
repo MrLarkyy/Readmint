@@ -1,9 +1,10 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { Resvg } from "@resvg/resvg-wasm";
 import { beforeAll, describe, expect, test } from "vitest";
 import { exportRaster } from "../src/index.js";
 import { initRaster } from "../src/initRaster.js";
-import { acceptedJpegs } from "../../renderer/test/jpegMarkers.js";
+import { acceptedJpegs, refusedJpegs } from "../../renderer/test/jpegMarkers.js";
 import { decodeApng } from "./decodeRaster.js";
 import { dataUri, designInput, imageDesign } from "./rasterFixtures.js";
 
@@ -28,6 +29,29 @@ async function drawnPixels(bytes: Uint8Array): Promise<number> {
 
 beforeAll(async () => {
   await initRaster();
+});
+
+describe("JPEG variants resvg draws empty", () => {
+  const resvgOnly = refusedJpegs(jpeg).filter((row) => row.resvgDrawsNothing === true);
+
+  test.each(resvgOnly.map((row) => [row.name, row.bytes] as const))(
+    "resvg-wasm 2.6.2 draws nothing of a JPEG with %s, which exportRaster refuses",
+    async (_name, bytes) => {
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="16"><image width="32" height="16" href="${dataUri("image/jpeg", bytes)}"/></svg>`;
+      const resvg = new Resvg(svg);
+      const image = resvg.render();
+      const pixels = image.pixels;
+      image.free();
+      resvg.free();
+      expect(pixels.filter((_value, index) => index % 4 === 3 && pixels[index] !== 0)).toHaveLength(
+        0,
+      );
+      const input = designInput(imageDesign(dataUri("image/jpeg", bytes)));
+      await expect(exportRaster(input, { format: "png", scale: 2 })).rejects.toThrow(
+        /asset-format/,
+      );
+    },
+  );
 });
 
 describe("accepted JPEG variants in the raster output", () => {
