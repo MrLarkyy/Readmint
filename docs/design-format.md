@@ -149,12 +149,20 @@ Every layer has `type` (required) and these optional properties:
 ## Assets
 
 **font**: `family` (required, 1..128 characters), `src` (required), `weight` (integer 1..1000), `style` (`normal` |
-`italic`), `licence` (required): `{ embedding: "allowed" | "restricted", name?: SPDX identifier such as "OFL-1.1" }`.
+`italic`), `licence` (required): `{ embedding: "allowed" | "restricted", name?: SPDX identifier such as "OFL-1.1" }`,
+and the optional
+
+- `drawAs`: `"font"` (default) embeds a subset of the glyphs the design draws; `"paths"` draws every text that uses
+  the font as path data and embeds nothing;
+- `fallback`: 1 to 8 font asset ids, each once, tried in order for a character the font does not have (not
+  transitive: a fallback's own `fallback` is not used); an id that names no font asset is `unknown-reference`, a
+  repeated one `duplicate-id`;
+- `kerning`: `false` turns the font's pair kerning off (default `true`).
 
 The licence is declared by the author. The renderer applies the stricter of this flag and the OS/2 `fsType` of the font
-file: a font that may not be embedded is never embedded. Until text-to-paths arrives (RM-14) such a font fails the render
-with `font-not-embeddable`; the v0 renderer also refuses WOFF and WOFF2 until then (use `.ttf` or `.otf`). How fonts,
-images and layouts render: [renderer.md](renderer.md).
+file: a font that may not be embedded is never embedded, whatever `drawAs` says; its text is drawn as paths and the
+render warns `font-not-embeddable`. TrueType, OpenType (CFF), WOFF and WOFF2 are read. How fonts, images and layouts
+render: [renderer.md](renderer.md).
 
 **image**: `src` (required), `width`, `height` (intrinsic size, `(0, 100000]`).
 
@@ -373,5 +381,7 @@ committed file differs from the emitted schema, and the file is excluded from Pr
 - A document newer than the reader fails with `unsupported-version`; it is never partially rendered.
 - Each released version keeps its schema file (`design-v<N>.schema.json`).
 
-The animation section (`animation`, `animate`) was added to v0 as optional properties. The grammar inside bindings is
+The animation section (`animation`, `animate`) and the font asset options `drawAs`, `fallback` and `kerning` were
+added to v0 as optional properties: a design without them renders as before (kerning, which v0 did not apply before,
+is on by default). The grammar inside bindings is
 the expression language v0 of `@readmint/expr`, described in [docs/expressions.md](expressions.md).

@@ -2137,6 +2137,24 @@
             "embedding"
           ],
           "additionalProperties": false
+        },
+        "drawAs": {
+          "type": "string",
+          "enum": [
+            "font",
+            "paths"
+          ]
+        },
+        "fallback": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Id"
+          },
+          "minItems": 1,
+          "maxItems": 8
+        },
+        "kerning": {
+          "type": "boolean"
         }
       },
       "required": [
