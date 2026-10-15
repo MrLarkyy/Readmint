@@ -139,11 +139,12 @@ are inlined in the SVG. The rules and error codes: [asset-loading.md](asset-load
 The push uses the credentials `actions/checkout` stores in the repository, so:
 
 - keep `persist-credentials` of the checkout on (its default) and give the job `permissions: contents: write`;
-- check the repository out into the workspace root (no `path:`), since git runs there;
+- check the repository out into the workspace root (no `path:`), since git works there;
 - git must be on `PATH` (every GitHub-hosted runner has it). The Action starts it by the absolute path it finds there,
   skipping relative or empty `PATH` entries and any directory inside the workspace, and git, with the programs it
   starts (remote helpers, ssh, filters, gpg), gets a `PATH` without those entries, so a `git`, `git.exe` or other
-  program committed to the repository never runs;
+  program committed to the repository never runs. The process is started from the directory it was found in, with the
+  workspace given by `-C`;
 - check out the branch the Action pushes to (the default of `actions/checkout` on a schedule or `workflow_dispatch`
   run): the commit is pushed with the checkout's history, so the Action refuses to run, before writing anything, when
   the checkout is not the latest commit of that branch on `origin` (a detached HEAD, a pull request merge, another
@@ -152,6 +153,18 @@ The push uses the credentials `actions/checkout` stores in the repository, so:
 - the push goes to `origin`; a branch that moves between that check and the push rejects the push and the run fails:
   nothing is rebased or forced. A `concurrency` group keeps two runs from racing;
 - a push made with `GITHUB_TOKEN` starts no other workflow, so the commit does not trigger your other workflows.
+
+### Windows trust boundary
+
+The Action starts git outside the workspace, but git then works inside it, and so do the programs it starts.
+Windows searches the current directory of a program for a DLL after the program directory and the system directories,
+so a DLL committed to the repository is loaded only under a name neither of those holds. Git for Windows (checked
+with 2.51) loads every DLL it ships from its own directories and its optional system DLLs from System32 only. A git
+helper, filter or credential helper you install on a Windows runner is inside that boundary: install it with its
+DLLs beside it. Linux and macOS have no current-directory library search, but `LD_LIBRARY_PATH`, `DYLD_LIBRARY_PATH` and
+`DYLD_FALLBACK_LIBRARY_PATH` entries that are empty or relative resolve against it, so the Action removes those and
+the entries inside the workspace from them (splitting `LD_LIBRARY_PATH` on `;` as well as `:`, as glibc does); other
+loader inputs (such as the rpath of a helper you install) are your trust boundary.
 
 On Windows runners git may convert line ends; a `.gitattributes` line such as `readmint/*.svg -text` keeps the SVG
 bytes as written. The Action compares with the last commit after staging, so a line-end conversion alone never

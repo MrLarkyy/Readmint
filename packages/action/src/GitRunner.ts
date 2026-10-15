@@ -1,5 +1,6 @@
 /** How one git command runs. */
 export interface GitRunOptions {
+  /** The repository directory git works in; `runGit` passes it with `-C`, the process itself starts elsewhere. */
   readonly cwd: string;
   readonly env: Readonly<Record<string, string>>;
   /** Written to standard input, then closed. */

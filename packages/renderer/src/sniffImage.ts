@@ -25,6 +25,18 @@ export interface ImageInfo {
   readonly orientation: Orientation;
   /** Every EXIF block with an Orientation entry, in file order: what `uprightImage` sets to 1. */
   readonly orientationFields: readonly OrientationField[];
+  /**
+   * Every whole segment or chunk, in file order, that tells a decoder how to colour-manage the pixels where decoders
+   * read it: JPEG APP2 `ICC_PROFILE` before the first scan; PNG iCCP, sRGB, gAMA, cHRM, cICP, mDCV, cLLI before the
+   * image data; WebP ICCP. Chromium applies them and resvg ignores them, so `plainColourImage` removes them.
+   */
+  readonly colourData: readonly ColourRange[];
+}
+
+/** Bytes `start` to `end` (exclusive) of the image: a whole segment or chunk, header and checksum included. */
+export interface ColourRange {
+  readonly start: number;
+  readonly end: number;
 }
 
 export type SniffResult =
@@ -35,10 +47,10 @@ const png = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
 
 /**
  * Format by magic bytes (PNG, JPEG, GIF, WebP), dimensions from the header, the animation frame count and the EXIF
- * orientation, without decoding pixels. Every walk advances on each step and stops at the end of the bytes, so crafted
- * input costs at most one pass; a JPEG one more over each scan's Huffman symbols, bounded by `maxEntropySteps` and,
- * where `budget` is given, by what it has left for every image of the render together (a JPEG that crosses it is
- * refused and sets `budget.exhausted`). SVG and anything else is refused.
+ * orientation and where colour-management data sits, without decoding pixels. Every walk advances on each step and
+ * stops at the end of the bytes, so crafted input costs at most one pass; a JPEG one more over each scan's Huffman
+ * symbols, bounded by `maxEntropySteps` and, where `budget` is given, by what it has left for every image of the
+ * render together (a JPEG that crosses it is refused and sets `budget.exhausted`). SVG and anything else is refused.
  */
 export function sniffImage(
   data: Uint8Array,
@@ -88,11 +100,37 @@ function found(
   frames: number,
   exif: boolean,
   blocks: readonly OrientationField[] = [],
+  colourData: readonly ColourRange[] = [],
 ): SniffResult {
   if (width === 0 || height === 0) return { ok: false, message: "the image declares a zero size" };
   const orientationFields = blocks.filter((block) => block.entries.length > 0);
   const orientation = orientationFields[0]?.orientation ?? 1;
-  return { ok: true, info: { mime, width, height, frames, exif, orientation, orientationFields } };
+  return {
+    ok: true,
+    info: { mime, width, height, frames, exif, orientation, orientationFields, colourData },
+  };
+}
+
+/** The PNG chunks that change how decoders colour the pixels; only their copies before the image data count. */
+const pngColourChunks: ReadonlySet<string> = new Set([
+  "iCCP",
+  "sRGB",
+  "gAMA",
+  "cHRM",
+  "cICP",
+  "mDCV",
+  "cLLI",
+]);
+
+/** Adds `start` to `end` to `ranges` when the whole range lies inside the data, and before `limit` where given. */
+function addColourRange(
+  bytes: Bytes,
+  start: number,
+  end: number,
+  ranges: ColourRange[],
+  limit = bytes.data.length,
+): void {
+  if (end <= Math.min(limit, bytes.data.length)) ranges.push({ start, end });
 }
 
 function sniffPng(bytes: Bytes, maxFrames: number): SniffResult {
@@ -102,11 +140,13 @@ function sniffPng(bytes: Bytes, maxFrames: number): SniffResult {
   let frames = 1;
   let exif = false;
   const blocks: OrientationField[] = [];
+  const colourData: ColourRange[] = [];
   let offset = 8;
   for (;;) {
     const length = bytes.u32be(offset);
     const type = bytes.ascii(offset + 4, 4);
     if (type === "acTL") frames = Math.min(bytes.u32be(offset + 8), maxFrames + 1);
+    if (pngColourChunks.has(type)) addColourRange(bytes, offset, offset + 12 + length, colourData);
     if (type === "eXIf") {
       exif = true;
       pngExifBlock(bytes, offset, length, blocks);
@@ -115,7 +155,7 @@ function sniffPng(bytes: Bytes, maxFrames: number): SniffResult {
     offset += 12 + length;
   }
   if (pngExifAfter(bytes, offset, blocks)) exif = true;
-  return found("image/png", width, height, frames, exif, blocks);
+  return found("image/png", width, height, frames, exif, blocks, colourData);
 }
 
 /**
@@ -232,6 +272,7 @@ function sniffJpeg(bytes: Bytes, budget: EntropyBudget | undefined): SniffResult
   let size: readonly [width: number, height: number] | undefined;
   let exif = false;
   const blocks: OrientationField[] = [];
+  const colourData: ColourRange[] = [];
   const lossless = new LosslessJpeg();
   const structure = new JpegStructure(budget);
   try {
@@ -247,7 +288,7 @@ function sniffJpeg(bytes: Bytes, budget: EntropyBudget | undefined): SniffResult
         }
         const scanProblem = structure.scansProblem(bytes, offset, lossless);
         if (scanProblem !== undefined) return { ok: false, message: scanProblem };
-        return found("image/jpeg", size[0], size[1], 1, exif, blocks);
+        return found("image/jpeg", size[0], size[1], 1, exif, blocks, colourData);
       }
       const problem = jpegMarkerProblem(marker, size !== undefined);
       if (problem !== undefined) return { ok: false, message: problem };
@@ -259,6 +300,10 @@ function sniffJpeg(bytes: Bytes, budget: EntropyBudget | undefined): SniffResult
       if (marker === 0xe1 && length >= 8 && bytes.ascii(offset + 2, 5) === "Exif\0") {
         exif = true;
         blocks.push(exifOrientation(bytes.data, offset + 8, offset + length));
+      }
+      if (isIccSegment(bytes, marker, offset, length)) {
+        // From the marker on: `offset` is the length field, two bytes past the 0xFF and the marker byte.
+        addColourRange(bytes, offset - 2, offset + length, colourData);
       }
       lossless.readSegment(marker, bytes, offset, length);
       const segmentProblem = structure.segmentProblem(marker, bytes, offset, length);
@@ -279,8 +324,18 @@ function sniffJpeg(bytes: Bytes, budget: EntropyBudget | undefined): SniffResult
     if (lossless.lossless) return { ok: false, message: lossless.problemWhenTruncated() };
     const cutProblem = structure.cutProblem();
     if (cutProblem !== undefined) return { ok: false, message: cutProblem };
-    return found("image/jpeg", size[0], size[1], 1, exif, blocks);
+    return found("image/jpeg", size[0], size[1], 1, exif, blocks, colourData);
   }
+}
+
+/** An APP2 segment holding (a part of) an ICC profile, read only when the whole segment lies inside the data. */
+function isIccSegment(bytes: Bytes, marker: number, offset: number, length: number): boolean {
+  return (
+    marker === 0xe2 &&
+    length >= 14 &&
+    offset + length <= bytes.data.length &&
+    bytes.ascii(offset + 2, 12) === "ICC_PROFILE\0"
+  );
 }
 
 function skipSubBlocks(bytes: Bytes, start: number): number {
@@ -345,6 +400,9 @@ function sniffWebp(bytes: Bytes, maxFrames: number): SniffResult {
   // The EXIF flag of VP8X, or an EXIF chunk even where the flag is missing.
   let exif = (flags & 0x08) !== 0;
   const blocks: OrientationField[] = [];
+  const colourData: ColourRange[] = [];
+  // Bytes past the RIFF payload are no chunk of the image: removing one there would cut the RIFF size into its data.
+  const riffEnd = 8 + bytes.u32le(4);
   let frames = 0;
   let offset = 12;
   while (offset + 8 <= bytes.data.length && frames <= maxFrames) {
@@ -355,9 +413,14 @@ function sniffWebp(bytes: Bytes, maxFrames: number): SniffResult {
       exif = true;
       blocks.push(exifOrientation(bytes.data, offset + 8, offset + 8 + size));
     }
+    if (type === "ICCP") {
+      addColourRange(bytes, offset, offset + 8 + size + (size % 2), colourData, riffEnd);
+    }
     offset += 8 + size + (size % 2);
   }
-  if ((flags & 0x02) === 0) return found("image/webp", width, height, 1, exif, blocks);
+  if ((flags & 0x02) === 0) {
+    return found("image/webp", width, height, 1, exif, blocks, colourData);
+  }
   if (frames === 0) return { ok: false, message: "animated WebP holds no frame" };
-  return found("image/webp", width, height, frames, exif, blocks);
+  return found("image/webp", width, height, frames, exif, blocks, colourData);
 }

@@ -3,6 +3,7 @@ import { defaultNodeTolerance } from "@readmint/golden";
 import { comparePng, rasterizeSvg } from "@readmint/golden/node";
 import { describe, expect, test } from "vitest";
 import { renderSvg, type RenderResult } from "../src/index.js";
+import { colourImages } from "./colourImages.js";
 import { fontAssets, imageAssets } from "./testAssets.js";
 import { svgSafetyProblems } from "./svgSafety.js";
 
@@ -152,6 +153,20 @@ describe("images", () => {
     expect(occurrences(svg, "data:image/png")).toBe(1);
     expect(occurrences(svg, "<symbol")).toBe(1);
     expect(svg.split(/<use href="#d[0-9a-z]{7}-s/u).length - 1).toBe(2);
+  });
+
+  test("two assets differing only by their colour profile share one data URI", () => {
+    const uri = (name: string) => colourImages.find((row) => row.name === name)?.uri ?? "";
+    const svg = rendered([image({ asset: "p3" }), image({ asset: "adobe", x: 40 })], {
+      assets: {
+        images: {
+          p3: { src: uri("JPEG with a Display P3 ICC profile") },
+          adobe: { src: uri("JPEG with an Adobe RGB ICC profile") },
+        },
+      },
+    });
+    expect(occurrences(svg, "data:image/jpeg")).toBe(1);
+    expect(occurrences(svg, "<symbol")).toBe(1);
   });
 
   test("one asset in two fits has one image definition and a symbol per fit", () => {

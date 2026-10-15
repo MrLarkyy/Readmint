@@ -257,6 +257,12 @@ describe("withSearchPath", () => {
     },
   );
 
+  test("a POSIX PATH is split on ':' only, as execvp does", () => {
+    expect(
+      withSearchPath({ PATH: "/opt/a;.:/usr/bin:;rel" }, { platform: "linux", cwd: "/work/repo" }),
+    ).toEqual({ PATH: "/opt/a;.:/usr/bin" });
+  });
+
   test("an empty PATH stays empty", () => {
     expect(withSearchPath({ PATH: "" }, { platform: "linux", cwd: "/work/repo" })).toEqual({
       PATH: "",

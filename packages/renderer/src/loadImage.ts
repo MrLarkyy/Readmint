@@ -3,6 +3,7 @@ import { decodeDataUri } from "./decodeDataUri.js";
 import { EntropyBudget } from "./EntropyBudget.js";
 import { fnv1a } from "./fnv1a.js";
 import { ownEntry } from "./ownEntry.js";
+import { plainColourImage } from "./plainColourImage.js";
 import { pointer } from "./pointer.js";
 import type { RenderContext } from "./RenderContext.js";
 import { echo, isBinding } from "./resolveValue.js";
@@ -11,7 +12,8 @@ import { uprightImage } from "./uprightImage.js";
 
 /**
  * An image asset that passed every check, with its bytes re-encoded as a data URI of the sniffed type; EXIF
- * orientation entries in that copy say 1, `orientation` keeps what they said for the renderer to apply.
+ * orientation entries in that copy say 1, `orientation` keeps what they said for the renderer to apply, and its
+ * colour-management data (`colourData`) is removed, so every output draws the stored pixel values alike.
  */
 export interface LoadedImage extends ImageInfo {
   readonly asset: string;
@@ -100,10 +102,15 @@ export function loadImage(context: RenderContext, assetId: string, usePath: stri
   const loaded: LoadedImage = {
     ...info,
     asset: assetId,
-    ...distinctData(context, `data:${info.mime};base64,${encodeBase64(uprightImage(bytes, info))}`),
+    ...distinctData(context, `data:${info.mime};base64,${encodeBase64(plainImage(bytes, info))}`),
   };
   context.images.set(assetId, loaded);
   return loaded;
+}
+
+/** The copy every output draws. Upright first: it patches at the sniffed offsets, which removing ranges moves. */
+function plainImage(bytes: Uint8Array, info: ImageInfo): Uint8Array {
+  return plainColourImage(uprightImage(bytes, info), info);
 }
 
 /**

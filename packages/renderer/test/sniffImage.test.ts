@@ -5,7 +5,15 @@ import { describe, expect, test } from "vitest";
 import { loadScale } from "../../../test-support/loadScale.js";
 import { renderSvg, type RenderOptions } from "../src/index.js";
 import { sniffImage } from "../src/sniffImage.js";
-import { jpegWithExif, orientationTiff, pngWithExif, vp8x, webpWithExif } from "./exifImages.js";
+import { colourImages, iccSegment, app2, inserted, jpegMarkerOffsets } from "./colourImages.js";
+import {
+  dataUriBytes,
+  jpegWithExif,
+  orientationTiff,
+  pngWithExif,
+  vp8x,
+  webpWithExif,
+} from "./exifImages.js";
 import { jpegEntropyCases } from "./jpegEntropyCases.js";
 import { jpegFrameFixtures } from "./jpegFrameTypes.js";
 import { jpegStructureCases } from "./jpegStructureCases.js";
@@ -96,17 +104,27 @@ function animatedWebp(frames: number): Uint8Array {
 }
 
 describe("dimensions per format", () => {
+  // gradient.jpg and tall.webp carry the same 456-byte sRGB ICC profile.
   test.each([
-    ["png", png, "image/png", 24, 16, 1],
-    ["jpeg", jpeg, "image/jpeg", 32, 16, 1],
-    ["webp (VP8X)", webp, "image/webp", 16, 32, 1],
-    ["gif", gif, "image/gif", 16, 16, 2],
-    ["apng", apng(3), "image/png", 4, 4, 3],
-    ["animated webp", animatedWebp(2), "image/webp", 10, 10, 2],
-  ])("%s", (_name, data, mime, width, height, frames) => {
+    ["png", png, "image/png", 24, 16, 1, []],
+    ["jpeg", jpeg, "image/jpeg", 32, 16, 1, [{ start: 20, end: 494 }]],
+    ["webp (VP8X)", webp, "image/webp", 16, 32, 1, [{ start: 30, end: 494 }]],
+    ["gif", gif, "image/gif", 16, 16, 2, []],
+    ["apng", apng(3), "image/png", 4, 4, 3, []],
+    ["animated webp", animatedWebp(2), "image/webp", 10, 10, 2, []],
+  ])("%s", (_name, data, mime, width, height, frames, colourData) => {
     expect(sniffImage(data, 1000)).toEqual({
       ok: true,
-      info: { mime, width, height, frames, exif: false, orientation: 1, orientationFields: [] },
+      info: {
+        mime,
+        width,
+        height,
+        frames,
+        exif: false,
+        orientation: 1,
+        orientationFields: [],
+        colourData,
+      },
     });
   });
 
@@ -481,14 +499,17 @@ describe("rendered images", () => {
   const uri = (mime: string, data: Uint8Array) =>
     `data:${mime};base64,${Buffer.from(data).toString("base64")}`;
 
-  test("WebP is inlined with its sniffed type", () => {
+  test("WebP is inlined with its sniffed type, without its ICC profile", () => {
     const result = render(uri("image/webp", webp));
     expect(result.ok && result.svg).toMatch(
       /<image x="0" y="0" width="10" height="10" preserveAspectRatio="xMidYMid slice" href="data:image\/webp;base64,UklGR/u,
     );
-    expect(result.ok && result.report.images).toEqual([
-      { asset: "i", bytes: uri("image/webp", webp).length },
-    ]);
+    const href = /href="([^"]*)"/u.exec(result.ok ? result.svg : "")?.[1] ?? "";
+    const inlined = dataUriBytes(href);
+    // tall.webp's ICCP chunk is 464 bytes; the report counts the data as written.
+    expect(inlined.length).toBe(webp.length - 464);
+    expect(sniffImage(inlined, 1000)).toMatchObject({ ok: true, info: { colourData: [] } });
+    expect(result.ok && result.report.images).toEqual([{ asset: "i", bytes: href.length }]);
   });
 
   test.each([
@@ -589,7 +610,8 @@ describe("rendered images", () => {
         /<image x="0" y="0" width="10" height="10" preserveAspectRatio="xMidYMid meet" href="data:/gu,
       ),
     ).toHaveLength(3);
-    const length = uri(mime, data).length;
+    // The data as written: gradient.jpg's ICC profile is not inlined.
+    const length = (/href="([^"]*)"/u.exec(result.svg)?.[1] ?? "").length;
     expect(result.report.images).toEqual([
       { asset: "i", bytes: 2 * length },
       { asset: "j", bytes: length },
@@ -601,5 +623,95 @@ describe("rendered images", () => {
     const started = performance.now();
     expect(render(huge)).toMatchObject({ ok: false, issues: [{ code: "asset-too-large" }] });
     expect(performance.now() - started).toBeLessThan(200 * loadScale());
+  });
+});
+
+describe("colour data", () => {
+  const jpegIcc = [{ start: 20, end: 518 }];
+  const expected: Readonly<Record<string, readonly { start: number; end: number }[]>> = {
+    "JPEG with an sRGB ICC profile": jpegIcc,
+    "JPEG with a Display P3 ICC profile": jpegIcc,
+    "JPEG with an Adobe RGB ICC profile": jpegIcc,
+    "PNG with a Display P3 iCCP": [{ start: 33, end: 372 }],
+    "PNG with an sRGB chunk": [{ start: 33, end: 46 }],
+    "PNG with gAMA 45455 alone": [{ start: 33, end: 49 }],
+    "PNG with gAMA 100000 alone": [{ start: 33, end: 49 }],
+    "PNG with gAMA and Display P3 cHRM": [
+      { start: 33, end: 49 },
+      { start: 49, end: 93 },
+    ],
+    "PNG with a Display P3 cICP": [{ start: 33, end: 49 }],
+    "WebP with a Display P3 ICCP": [{ start: 30, end: 518 }],
+    "WebP with an sRGB ICCP": [{ start: 30, end: 518 }],
+    // Chromium 156 draws a GIF's ICCRGBG1 profile unapplied, as resvg does: nothing to remove.
+    "GIF with a Display P3 ICCRGBG1 extension": [],
+  };
+
+  test.each(colourImages.map((row) => [row.name, row] as const))(
+    "%s: every whole colour segment or chunk",
+    (name, row) => {
+      expect(sniffImage(dataUriBytes(row.uri), 1000)).toMatchObject({
+        ok: true,
+        info: { mime: row.mime, width: 32, height: 16, colourData: expected[name] },
+      });
+    },
+  );
+
+  const profile = Array.from({ length: 40 }, (_, index) => index);
+
+  test("an ICC profile split over two APP2 segments: both, in file order", () => {
+    const first = iccSegment(1, 2, profile.slice(0, 20));
+    const second = iccSegment(2, 2, profile.slice(20));
+    const data = inserted(jpeg, 2, [...first, ...second]);
+    const shift = first.length + second.length;
+    expect(sniffImage(data, 1000)).toMatchObject({
+      ok: true,
+      info: {
+        colourData: [
+          { start: 2, end: 2 + first.length },
+          { start: 2 + first.length, end: 2 + shift },
+          { start: 20 + shift, end: 494 + shift },
+        ],
+      },
+    });
+  });
+
+  test("another APP2 segment (MPF) is not colour data", () => {
+    const mpf = app2("MPF\0", [0x4d, 0x4d, 0, 0x2a]);
+    expect(sniffImage(inserted(jpeg, 2, mpf), 1000)).toMatchObject({
+      ok: true,
+      info: { colourData: [{ start: 20 + mpf.length, end: 494 + mpf.length }] },
+    });
+  });
+
+  test("an ICC segment after the first scan is not read by decoders, so not recorded", () => {
+    const progressive = read("jpeg/progressive.jpg");
+    const secondScan = jpegMarkerOffsets(progressive, 0xda)[1] ?? 0;
+    const data = inserted(progressive, secondScan, iccSegment(1, 1, profile));
+    expect(sniffImage(data, 1000)).toMatchObject({ ok: true, info: { colourData: [] } });
+  });
+
+  test("a gAMA chunk after the image data is not read by decoders, so not recorded", () => {
+    const data = inserted(png, png.length - 12, [
+      ...pngChunk("gAMA", new Uint8Array(u32be(100000))),
+    ]);
+    expect(sniffImage(data, 1000)).toMatchObject({ ok: true, info: { colourData: [] } });
+  });
+
+  test("a colour segment or chunk cut off by the end of the data is not recorded", () => {
+    const scan = jpegMarkerOffsets(jpeg, 0xda)[0] ?? 0;
+    const cutJpeg = inserted(jpeg.subarray(0, scan), scan, iccSegment(1, 1, profile).slice(0, 20));
+    expect(sniffImage(cutJpeg, 1000)).toMatchObject({
+      ok: true,
+      info: { colourData: [{ start: 20, end: 494 }] },
+    });
+    const cutWebp = vp8x(0x20, bytes("ICCP", u32le(100), profile.slice(0, 10)));
+    expect(sniffImage(cutWebp, 1000)).toMatchObject({ ok: true, info: { colourData: [] } });
+    // Before the image data a PNG walk cut off anywhere is refused, as it was before colour data was read.
+    const cutPng = pngHeader(4, 4, [...u32be(100), ...bytes("gAMA"), 0, 1]);
+    expect(sniffImage(cutPng, 1000)).toEqual({
+      ok: false,
+      message: "the image data is truncated",
+    });
   });
 });

@@ -1,5 +1,6 @@
 import { defineGoldenSuite } from "@readmint/golden";
 import type { ImageLayer, Layer } from "@readmint/format";
+import { colourImages } from "./colourImages.js";
 import { renderFixture, type RenderFixture } from "./renderFixture.js";
 import { exifJpeg, exifPng, imageAssets } from "./testAssets.js";
 
@@ -68,6 +69,34 @@ function repeated(): RenderFixture {
   };
 }
 
+/**
+ * Every colour fixture Chromium colour-manages, but the WebP ones (no WebP golden, see below), at its own size: the
+ * renderer removes the profile, so Chromium draws the stored colours resvg draws, within the browser tolerance.
+ */
+function colourProfiles(): RenderFixture {
+  const applied = colourImages.filter((row) => row.chromiumApplies && row.mime !== "image/webp");
+  return {
+    design: {
+      version: 0,
+      canvas: { width: 80, height: 64, background: "#eaeef2" },
+      assets: {
+        images: Object.fromEntries(
+          applied.map((row, index) => [`c${String(index)}`, { src: row.uri }]),
+        ),
+      },
+      layers: applied.map((_row, index) => ({
+        type: "image" as const,
+        asset: `c${String(index)}`,
+        x: 6 + (index % 2) * 38,
+        y: 4 + Math.floor(index / 2) * 20,
+        width: 32,
+        height: 16,
+        fit: "fill" as const,
+      })),
+    },
+  };
+}
+
 export default defineGoldenSuite<RenderFixture>({
   name: "renderer-images",
   render: renderFixture,
@@ -117,5 +146,6 @@ export default defineGoldenSuite<RenderFixture>({
       scale: 2,
       input: design({ asset: "jpeg8", width: 40, height: 30, fit: "cover" }, exifAssets),
     },
+    { name: "image-colour-profiles", scale: 2, input: colourProfiles() },
   ],
 });

@@ -1,4 +1,5 @@
-import { chmod, copyFile, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { spawnSync } from "node:child_process";
+import { chmod, copyFile, mkdtemp, readdir, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
@@ -99,6 +100,117 @@ describe("runGit", { timeout: 30_000 }, () => {
     if (!win32)
       expect(seen.split(":").filter((entry) => entry === "" || entry === ".")).toEqual([]);
   });
+  test.skipIf(win32)(
+    "git starts in the directory it was found in, with the workspace as -C",
+    async () => {
+      const file = path.join(empty, "git");
+      await writeFile(file, '#!/bin/sh\npwd -P\nfor a in "$@"; do echo "$a"; done\n');
+      await chmod(file, 0o755);
+      const result = await runGit(["rev-parse", "HEAD"], {
+        cwd: path.relative(process.cwd(), workspace),
+        env: envWithPath(empty),
+        timeoutMs: 30_000,
+      });
+      expect(result.code).toBe(0);
+      expect(result.stdout.trim().split("\n")).toEqual([
+        await realpath(empty),
+        "-C",
+        workspace,
+        "rev-parse",
+        "HEAD",
+      ]);
+    },
+  );
+
+  test.skipIf(win32)(
+    "git and what it starts get LD_LIBRARY_PATH without relative, empty or workspace entries",
+    async () => {
+      const printLibraryPath = ["-c", 'alias.ldp=!echo "${LD_LIBRARY_PATH-unset}"', "ldp"];
+      const run = (libraryPath: string): ReturnType<typeof runGit> =>
+        runGit(printLibraryPath, {
+          cwd: workspace,
+          env: { ...envWithPath(process.env["PATH"] ?? ""), LD_LIBRARY_PATH: libraryPath },
+          timeoutMs: 30_000,
+        });
+      const mixed = await run(`${workspace};.;:${empty}:rel;${workspace}/lib:`);
+      expect(mixed.code).toBe(0);
+      expect(mixed.stdout.trim()).toBe(empty);
+      const dropped = await run(`.;:rel;${workspace}`);
+      expect(dropped.code).toBe(0);
+      expect(dropped.stdout.trim()).toBe("unset");
+    },
+  );
+
+  test("a relative cwd is resolved against the process directory, not the git directory", async () => {
+    const env = envWithPath(process.env["PATH"] ?? "");
+    const init = await runGit(["init", "--quiet"], { cwd: workspace, env, timeoutMs: 30_000 });
+    expect(init.code).toBe(0);
+    const result = await runGit(["rev-parse", "--show-toplevel"], {
+      cwd: path.relative(process.cwd(), workspace),
+      env,
+      timeoutMs: 30_000,
+    });
+    expect(result.code).toBe(0);
+    expect(await realpath(result.stdout.trim())).toBe(await realpath(workspace));
+  });
+
+  test.runIf(win32)(
+    "DLL names Git for Windows ships, planted in the workspace, change no git call",
+    { timeout: 60_000 },
+    async () => {
+      const env = envWithPath(process.env["PATH"] ?? "");
+      const run = (args: string[]): ReturnType<typeof runGit> =>
+        runGit(args, { cwd: workspace, env, timeoutMs: 30_000 });
+      expect((await run(["init", "--quiet"])).code).toBe(0);
+      const execPath = (await run(["--exec-path"])).stdout.trim();
+      const gitBin = path.resolve(execPath, "..", "..", "bin");
+      const dirs = [execPath, gitBin, path.resolve(execPath, "..", "..", "..", "usr", "bin")];
+      const names = new Set<string>();
+      for (const dir of dirs) {
+        for (const name of await readdir(dir).catch(() => [])) {
+          if (name.toLowerCase().endsWith(".dll")) names.add(name);
+        }
+      }
+      expect(names.size).toBeGreaterThan(0);
+      for (const name of names) await writeFile(path.join(workspace, name), "not a dll");
+      const loaderFailures = [3221225775, 3221225595, 3221225781];
+      await writeFile(path.join(workspace, "a.txt"), "a\n");
+      const calls = [
+        await run(["status", "--porcelain"]),
+        await run(["add", "--", "a.txt"]),
+        await run([
+          "-c",
+          "user.name=t",
+          "-c",
+          "user.email=t@example.com",
+          "commit",
+          "--quiet",
+          "-m",
+          "x",
+        ]),
+      ];
+      for (const call of calls) expect(call.code).toBe(0);
+      const remote = await run(["ls-remote", "https://127.0.0.1:9/x.git"]);
+      expect(remote.code).toBe(128);
+      expect(remote.stderr).toMatch(/unable to access/);
+      for (const call of [...calls, remote]) expect(loaderFailures).not.toContain(call.code);
+
+      const lone = await mkdtemp(path.join(tmpdir(), "readmint-rungit-lone-"));
+      try {
+        const exe = path.join(lone, "git.exe");
+        await copyFile(path.join(gitBin, "git.exe"), exe);
+        const systemRoot = process.env["SystemRoot"] ?? "C:\\Windows";
+        const sysPath = [path.join(systemRoot, "System32"), systemRoot].join(path.delimiter);
+        const loneEnv = { ...env, Path: sysPath };
+        const planted = spawnSync(exe, ["--version"], { cwd: workspace, env: loneEnv });
+        expect([3221225775, 3221225595]).toContain(planted.status);
+        const neutral = spawnSync(exe, ["--version"], { cwd: empty, env: loneEnv });
+        expect(neutral.status).toBe(3221225781);
+      } finally {
+        await rm(lone, { recursive: true, force: true });
+      }
+    },
+  );
 });
 
 /** An executable script `readmint-probe` in `dir` that prints `text`. */
