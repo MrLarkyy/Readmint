@@ -177,6 +177,19 @@ describe("selection and embedding", () => {
     expect(result.report.fonts.map((font) => font.asset)).toEqual(["medium", "italic"]);
   });
 
+  test("every text asks for geometric precision so Chromium on Linux keeps fractional advances", () => {
+    const result = renderSvg(
+      design(family, [
+        { type: "text", content: "one", font: "medium" },
+        { type: "text", y: 20, content: "two", font: "medium" },
+      ]),
+    );
+    if (!result.ok) throw new Error(JSON.stringify(result.issues));
+    const texts = result.svg.match(/<text [^>]*>/gu) ?? [];
+    expect(texts).toHaveLength(2);
+    for (const text of texts) expect(text).toContain(' text-rendering="geometricPrecision"');
+  });
+
   test("a family that differs from the name inside the font is a warning", () => {
     const result = renderSvg(design({ m: { ...fontAssets.medium, family: "Monts" } }, text("m")));
     expect(result).toMatchObject({

@@ -86,6 +86,9 @@ set. Look at the changed PNGs before committing them.
 
 Browser tests need Chromium: `pnpm exec playwright install --only-shell chromium` (once; CI adds `--with-deps`).
 
+The browser goldens also run in CI on Linux Chromium. Reproduce that run with
+`docker run --rm -v "$PWD:/w" -w /w mcr.microsoft.com/playwright:v1.64.0-noble sh -c "corepack enable && pnpm install --frozen-lockfile && pnpm exec vitest run --project browser"`.
+
 ## Portability of goldens
 
 Goldens are rendered by resvg with system fonts turned off, so they do not depend on the machine's fonts, and
