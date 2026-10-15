@@ -9,12 +9,11 @@ import { fontAssets } from "./testAssets.js";
 const chars = (...codes: number[]) => String.fromCharCode(...codes);
 
 /**
- * Review probe r1: letters a-z, and a ligature set on `a` of 15000 entries that never match (every offset is 2, so
- * each entry reads the offset array itself as a ligature of a and b). Each word holding an `a` costs some 15000
- * operations, just under the floor one shaping call used to get for itself.
+ * Review probes r1 and r2: letters a-z, and a ligature set on `a` of `count` entries that never match (every offset
+ * is 2, so each entry reads the offset array itself as a ligature of a and b). Each entry costs some two operations:
+ * 15000 make a word cost what a shaping call once got for itself, 7000 keep a short text just under its own budget.
  */
-function hostileFont(): Uint8Array {
-  const count = 15_000;
+function hostileFont(count = 15_000): Uint8Array {
   const set = new Uint8Array(2 + count * 2);
   const view = new DataView(set.buffer);
   view.setUint16(0, count);
@@ -88,5 +87,35 @@ describe("one shaping budget per text", () => {
       if (!result.ok) throw new Error(JSON.stringify(result.issues));
       expect(ms).toBeLessThan(1000 * loadScale());
     }
+  });
+});
+
+describe("one shaping bound for the whole render", () => {
+  test("2000 short texts, each just under its own budget in a costly font, fail as asset-too-large well under a second", () => {
+    const letters = "cdefghijklmnopqrstuvwxyz";
+    const texts: string[] = [];
+    for (let index = 0; texts.length < 2000; index++) {
+      const pick = (shift: number) =>
+        letters[Math.floor(index / letters.length ** shift) % letters.length] ?? "c";
+      texts.push(`a${pick(0)}${pick(1)}${pick(2)}${pick(3)}`);
+    }
+    const design: Design = {
+      version: 0,
+      canvas: { width: 400, height: 100 },
+      assets: {
+        fonts: { f: { family: "Hostile", src: "hostile.ttf", licence: { embedding: "allowed" } } },
+      },
+      layers: texts.map((content) => ({ type: "text" as const, content, font: "f" })),
+    };
+    const started = performance.now();
+    const result = renderSvg(design, { assets: { fonts: { f: hostileFont(7000) } } });
+    const ms = performance.now() - started;
+    expect(result.ok).toBe(false);
+    const issue = result.ok ? undefined : result.issues[0];
+    expect(issue?.code).toBe("asset-too-large");
+    expect(issue?.path).toMatch(/^\/layers\/\d+\/content$/u);
+    expect(issue?.message).toContain("shaping operations (all texts together)");
+    expect(Number(/\/layers\/(\d+)/u.exec(issue?.path ?? "")?.[1])).toBeGreaterThan(100);
+    expect(ms).toBeLessThan(1000 * loadScale());
   });
 });

@@ -408,9 +408,11 @@ Animation CSS counts toward `maxOutputBytes` like any markup, and every animated
 `draw` its dash attributes) before the layer is built. Opacity and colour tracks write nothing of their own and the CSS
 is written only once every track is built, so `maxAnimationKeyframes` bounds that work: each track charges its
 keyframes before any is resolved. Fixed limits: 10000 items per `repeat` (expr, `binding` at
-`repeat/each`) and 64 levels of nested component instances (`too-large`). Shaping a run of text is bounded by counts
-in the font's layout tables and the run's length (see Fonts, untrusted fonts): a font that passes them fails with
-`asset-format`.
+`repeat/each`) and 64 levels of nested component instances (`too-large`). Shaping is bounded twice by counts (see Fonts, untrusted fonts):
+each text by its own budget, max(16384, 128 x its length) operations, which fails as `asset-format` at the font; and
+the whole render by 4000000 shaping operations, every text together (an internal bound like the outline work, not a
+`RenderLimits` field), which fails as `asset-too-large` at the content of the text that crossed it, naming its font.
+A text laid out once is shaped once, however many copies draw it.
 
 ## Issues
 
@@ -421,7 +423,7 @@ in the font's layout tables and the run's length (see Fonts, untrusted fonts): a
 | `range`                | a number outside the format's range, a keyframe offset below the one before it, a `time` outside [0, 86400000], a template `d` that gives empty, over-long (100000) or non-path data (at `d`), an arc a template `d` gives under `draw` (at the track)    |
 | `missing-asset`        | an asset path or an image `src` bound to data (`{{binding}}`) without supplied bytes, or a reference to no asset                                                                                                                                          |
 | `asset-format`         | not an accepted image or a malformed font (also one found broken when its glyphs, layout tables or subset are read, one whose layout tables pass a shaping cap, or a table that decompresses past its declared size); a data URI type that does not match |
-| `asset-too-large`      | over a byte, side or frame limit; a font past its outline budget or whose subset could not fit the output budget                                                                                                                                          |
+| `asset-too-large`      | over a byte, side or frame limit; a font past its outline budget or whose subset could not fit the output budget; a text that brings the render past its shaping bound (at the text)                                                                      |
 | `unsupported-font`     | a font collection (TTC, or WOFF2 with several fonts), CFF2 outlines or a CFF FontMatrix other than 1/unitsPerEm                                                                                                                                           |
 | `font-not-embeddable`  | warning: the licence or the fsType forbids embedding; the font's text is drawn as paths (once per asset)                                                                                                                                                  |
 | `too-large`            | the SVG passes `maxOutputBytes`, a text passes `maxTextLength`, the repeats pass `maxRepeatCopies` (at the `repeat` that crossed it), the tracks pass `maxAnimationKeyframes` (at the track that crossed it), components nest deeper than 64 levels       |

@@ -23,7 +23,14 @@ function shaper(asset = "m", letterSpacing = 0): TextShaper {
   const primary = selectFont(context, asset, undefined, "/layers/0/font");
   return new TextShaper(
     context,
-    { referenced: asset, primary, weight: undefined, fontSize: 20, letterSpacing },
+    {
+      referenced: asset,
+      primary,
+      weight: undefined,
+      fontSize: 20,
+      letterSpacing,
+      path: "/layers/0/content",
+    },
     ShapingBudget.forText(1000),
   );
 }

@@ -16,6 +16,7 @@ import { fontFallbacks, selectFont, type LoadedFont } from "./loadFont.js";
 import { ownEntry } from "./ownEntry.js";
 import { pointer } from "./pointer.js";
 import type { RenderContext } from "./RenderContext.js";
+import { echo } from "./resolveValue.js";
 import { withFont } from "./withFont.js";
 
 /** A glyph of a laid-out line, in visual order; `font` undefined when no font covers its characters. */
@@ -55,6 +56,8 @@ export interface TextShaperOptions {
   readonly weight: number | undefined;
   readonly fontSize: number;
   readonly letterSpacing: number;
+  /** Pointer of the text's content: where the render's shaping bound fails. */
+  readonly path: string;
 }
 
 /** A run of one font, script and bidi level, logical UTF-16 range of the paragraph. */
@@ -276,6 +279,7 @@ export class TextShaper {
     let shaped = this.shapedRuns.get(key);
     if (shaped === undefined) {
       const font = this.font(run.font);
+      const before = this.budget.used;
       shaped = withFont(this.context, font, () =>
         shapeText(font.font, text, {
           script: run.script,
@@ -284,6 +288,12 @@ export class TextShaper {
           ligatures: this.options.letterSpacing === 0,
           budget: this.budget,
         }),
+      );
+      // The text's own budget bounds one text (asset-format); the render's bounds all texts together.
+      this.context.chargeShaping(
+        this.budget.used - before,
+        this.options.path,
+        `font asset ${echo(font.asset)}`,
       );
       this.shapedRuns.set(key, shaped);
     }

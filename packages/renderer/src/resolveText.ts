@@ -96,6 +96,7 @@ export function resolveText(
         weight: fontWeight,
         fontSize,
         letterSpacing,
+        path: contentPath,
       },
       contentPath,
     );
