@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, test } from "vitest";
 import { rasterizeSvg } from "../src/node/rasterizeSvg.js";
 import { pngSize } from "./pngFixtures.js";
@@ -20,4 +22,17 @@ describe("rasterizeSvg", () => {
   test("the bytes are the same on every run", () => {
     expect(rasterizeSvg(svg).equals(rasterizeSvg(svg))).toBe(true);
   });
+});
+
+test("fonts given as bytes draw text without suite font files", () => {
+  const font = new Uint8Array(
+    readFileSync(
+      join(import.meta.dirname, "..", "..", "renderer", "test", "fonts", "ReadmintTestSymbols.ttf"),
+    ),
+  );
+  const text = (char: string) =>
+    `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="20"><text x="2" y="16" font-family="Readmint Test Symbols" font-size="16">${char}</text></svg>`;
+  const star = rasterizeSvg(text("\u2605"), 1, [], [font]);
+  expect(star.equals(rasterizeSvg(text(" "), 1, [], [font]))).toBe(false);
+  expect(star.equals(rasterizeSvg(text("\u2605"), 1, [], [font]))).toBe(true);
 });

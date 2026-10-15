@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 import { loadScale } from "../../../test-support/loadScale.js";
-import { wrapText } from "../src/wrapText.js";
+import { wrapParagraphs, wrapText } from "../src/wrapText.js";
 
 /** Every code point is 1 wide, so widths are character counts. */
 const count = (text: string) => Array.from(text).length;
@@ -27,12 +27,12 @@ describe("wrapText", () => {
 
   test("astral code points are measured once and never split", () => {
     const measured: string[] = [];
-    const lines = wrapText("😀😀😀😀", 2, (text) => {
+    const lines = wrapText("\u{1f600}\u{1f600}\u{1f600}\u{1f600}", 2, (text) => {
       measured.push(text);
       return count(text);
     });
-    expect(lines).toEqual(["😀😀", "😀😀"]);
-    expect(measured).toContain("😀");
+    expect(lines).toEqual(["\u{1f600}\u{1f600}", "\u{1f600}\u{1f600}"]);
+    expect(measured).toContain("\u{1f600}");
     expect(measured.every((text) => !/^[\uD800-\uDFFF]$/u.test(text))).toBe(true);
   });
 
@@ -40,6 +40,24 @@ describe("wrapText", () => {
     expect(wrapText("a  b", 10, count)).toEqual(["a  b"]);
     expect(wrapText("", 10, count)).toEqual([""]);
     expect(wrapText("", undefined, count)).toEqual([""]);
+  });
+
+  test("a word wider than the line breaks only between the pieces it is split into", () => {
+    const pieces = (word: string) => word.match(/../gu) ?? [word];
+    expect(wrapText("abcdefgh", 3, count, pieces)).toEqual(["ab", "cd", "ef", "gh"]);
+  });
+
+  test("lines are ranges of their paragraph, so bidi levels of the whole paragraph apply", () => {
+    expect(wrapParagraphs("aa bb cc\ndd", 5, count)).toEqual([
+      {
+        text: "aa bb cc",
+        lines: [
+          { start: 0, end: 5 },
+          { start: 6, end: 8 },
+        ],
+      },
+      { text: "dd", lines: [{ start: 0, end: 2 }] },
+    ]);
   });
 
   test("a long text wraps in linear time", () => {

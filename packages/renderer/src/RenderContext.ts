@@ -14,6 +14,13 @@ import { RenderLimits } from "./RenderLimits.js";
 import type { RenderAssets, RenderOptions } from "./RenderOptions.js";
 import { SvgWriter } from "./SvgWriter.js";
 
+/**
+ * Shaping work of one render, every text together (the operations their shaping budgets spent): some 250 texts at
+ * the floor one text gets, far more than any real README graphic needs, and well under a second. Like the outline
+ * work, a fixed internal bound, not a `RenderLimits` field.
+ */
+export const maxRenderShapingOperations = 4_000_000;
+
 /** Everything one render owns. Created per call, so nothing survives into the next render. */
 export class RenderContext {
   readonly limits: RenderLimits;
@@ -31,6 +38,8 @@ export class RenderContext {
    * Per font it would grow with the number of font assets.
    */
   readonly outlineBudget = new OutlineBudget();
+  /** Shaping operations spent by the texts of the render so far (`chargeShaping`). */
+  shapingOperations = 0;
   /**
    * Parsed fonts by source: the bytes a caller supplied (by identity) or the `src` data URI (by value), so assets
    * sharing one source decode it once and count it once against `maxTotalFontBytes`.
@@ -111,6 +120,21 @@ export class RenderContext {
     throw new RenderFailure(path, code, `${message}${where}`);
   }
 
+  /**
+   * Charges shaping work of the text at `path` against the render's bound: past `maxRenderShapingOperations`, every
+   * text together, the render fails with `asset-too-large` at the text that crossed it, in the same order every run.
+   */
+  chargeShaping(operations: number, path: string, font: string): void {
+    this.shapingOperations += operations;
+    if (this.shapingOperations > maxRenderShapingOperations) {
+      this.fail(
+        path,
+        "asset-too-large",
+        `shaping this text with ${font} brings the render past ${String(maxRenderShapingOperations)} shaping operations (all texts together)`,
+      );
+    }
+  }
+
   warn(path: string, code: RenderIssueCode, message: string): void {
     this.warnings.push({ path, code, message });
   }
@@ -119,7 +143,14 @@ export class RenderContext {
   useFont(font: LoadedFont): FontUse {
     let use = this.fontUse.get(font.asset);
     if (use === undefined) {
-      use = { font, embedded: new Map(), glyphs: new Set(), embeddedBytes: 0, pathBytes: 0 };
+      use = {
+        font,
+        embedded: new Map(),
+        glyphs: new Set(),
+        privateCodes: new Map(),
+        embeddedBytes: 0,
+        pathBytes: 0,
+      };
       this.fontUse.set(font.asset, use);
     }
     return use;

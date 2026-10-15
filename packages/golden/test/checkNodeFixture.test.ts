@@ -163,3 +163,32 @@ describe("GoldenStore", () => {
     expect(() => store.artefactPath("a/b", "diff.png")).toThrow(/invalid/);
   });
 });
+
+test("a suite with fontsFromSvg gives resvg the fonts it finds in each rendered SVG", async () => {
+  const font = new Uint8Array(
+    readFileSync(
+      join(import.meta.dirname, "..", "..", "renderer", "test", "fonts", "ReadmintTestSymbols.ttf"),
+    ),
+  );
+  const text = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"><text x="2" y="16" font-family="Readmint Test Symbols" font-size="16">\u2605</text></svg>`;
+  const seen: string[] = [];
+  const withFonts = defineGoldenSuite<string>({
+    name: "temp",
+    render: (svg) => svg,
+    fontsFromSvg: (svg) => {
+      seen.push(svg);
+      return [font];
+    },
+    fixtures: [{ name: "star", input: text }],
+  });
+  const [star] = withFonts.fixtures;
+  if (star === undefined) throw new Error("fixture");
+  const dir = mkdtempSync(join(tmpdir(), "readmint-golden-"));
+  try {
+    const own = new GoldenStore(join(dir, "golden"), join(dir, "results"));
+    expect((await checkNodeFixture(withFonts, star, own, "update")).problems).toEqual([]);
+    expect(seen).toEqual([text]);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
