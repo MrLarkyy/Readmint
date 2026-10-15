@@ -176,8 +176,8 @@ The preview is for this computer only:
   (43 characters), new on each run, kept in memory only and never shown on the page, in `/status` or in an error.
   Any path that does not begin with exactly `/<secret>/` is 403, checked before the method and before the limit of
   pages below. The one exception is the one-time launch address of `--open`: `/<launch>`, another 43 random
-  characters, answers its first GET with a 303 redirect to `/<secret>/`, and from then on (and to any other method)
-  like any other path, 403. This keeps out other users of the computer, their processes and other sites; a process of your own
+  characters, answers its first GET with a 303 redirect to `/<secret>/`, and from then on (to any other method, and
+  after the first use of the secret address) like any other path, 403. This keeps out other users of the computer, their processes and other sites; a process of your own
   user that can read your terminal or your environment can read the token itself, which no address can prevent;
 - it serves a fixed set of routes from memory (`/`, `/render.svg`, `/status`, `/events`, with `--github` each under
   `/<secret>`), never a file: any other path is 404, any method but GET and HEAD 405;
@@ -186,9 +186,11 @@ The preview is for this computer only:
 - at most 8 pages can follow the changes at once; a ninth event stream is refused with 503;
 - with `--github --open` the opener and the browser get only the one-time launch address, never the secret one: on
   Linux and macOS other users of the computer can read a running process's command line, and the launch address it
-  shows is spent once the browser has used it. Another user who reads it and uses it first gets in, and your browser
+  shows is spent once the browser has used it or the secret address has been used. Another user who reads it and uses it first gets in, and your browser
   then shows the forbidden hint: stop the preview and start it again, which makes a new secret. On a shared computer,
-  copying the printed address into the browser leaves nothing on any command line.
+  copying the printed address into the browser leaves nothing on any command line. If the first open already shows
+  the forbidden hint (some openers fetch the address themselves before starting the browser), open the printed address
+  instead.
 
 Without `--open` nothing is opened. With it the address (with `--github` the one-time launch address, which leads to
 the printed one) opens in the default browser right after it is printed. If the

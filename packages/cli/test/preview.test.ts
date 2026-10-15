@@ -647,6 +647,22 @@ describe("one-time launch address", () => {
     expect((await get(port, `/${launchToken}`)).status).toBe(303);
   });
 
+  test("a request under the secret address discards the launch address", async () => {
+    const port = await launchServer();
+    expect((await get(port, `/${secret}/status`)).status).toBe(200);
+    const reply = await get(port, `/${launchToken}`);
+    expect(reply.status).toBe(403);
+    await expectUnknownPath(port, reply);
+  });
+
+  test("a refused request under the secret does not discard the launch address", async () => {
+    const port = await launchServer();
+    const refused = await get(port, `/${secret}/`, { headers: { "sec-fetch-site": "cross-site" } });
+    expect(refused.status).toBe(403);
+    expect((await get(port, `/x${secret}/`)).status).toBe(403);
+    expect((await get(port, `/${launchToken}`)).status).toBe(303);
+  });
+
   test("two concurrent GETs give exactly one 303", async () => {
     const port = await launchServer();
     const replies = await Promise.all([get(port, `/${launchToken}`), get(port, `/${launchToken}`)]);

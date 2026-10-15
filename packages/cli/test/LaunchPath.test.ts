@@ -9,6 +9,12 @@ test("the exact path is taken once, then never again", () => {
   expect(launch.take(`/${token}`)).toBe(false);
 });
 
+test("a discarded path is never taken", () => {
+  const launch = new LaunchPath(token);
+  launch.discard();
+  expect(launch.take(`/${token}`)).toBe(false);
+});
+
 test.each([
   ["with a trailing slash", `/${token}/`],
   ["with one more character", `/${token}x`],

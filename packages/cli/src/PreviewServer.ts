@@ -171,6 +171,9 @@ export class PreviewServer {
       send(response, 403, "text/plain", "forbidden: open the address the preview printed\n");
       return;
     }
+    // A request under the secret shows it was learned from the printed address or the redirect: the
+    // launch address, possibly readable in an opener's command line, is no longer needed.
+    this.#launch?.discard();
     if (request.method !== "GET" && request.method !== "HEAD") {
       send(response, 405, "text/plain", "method not allowed\n", { Allow: "GET, HEAD" });
       return;
