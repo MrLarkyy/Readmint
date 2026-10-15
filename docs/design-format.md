@@ -150,7 +150,11 @@ Every layer has `type` (required) and these optional properties:
   `{ "type": "stack", "direction": "row" | "column", gap?: B<length>, align?: "start" | "center" | "end" }` or
   `{ "type": "grid", "columns": B<integer 1..1000>, gap?: B<length> }`.
 - `d` of a path: SVG path data of at most 100000 characters, made only of path commands, digits, `e`/`E`, `.`, `,`,
-  `+`, `-` and whitespace.
+  `+`, `-` and whitespace; or a template of at most 10000 characters with `{{...}}` placeholders between such
+  characters (`"M0 {{ 24 - props.height }} h8 V24 h-8 Z"`), so a shape can follow the data. A placeholder here ends at
+  its first `}}`. The renderer writes the placeholders in as text
+  ([expressions](expressions.md#placeholders-and-text)) and holds the result to the same rules: empty, longer than
+  100000 characters or with any other character is a `range` issue at `d` and nothing is drawn.
 - `content` of a text: at most 10000 characters; `{{...}}` placeholders may appear anywhere in it and are written into
   the text ([expressions](expressions.md#placeholders-and-text)).
 - A text needs a font: its own `font` or one from its `style`.
@@ -273,7 +277,8 @@ the timeline's), `delay` and `stagger` (`B<integer 0..60000>` ms, default 0), `e
   `ease-in`, `ease-out`, `ease-in-out` (the CSS curves) or `{ x1, y1, x2, y2 }`, a CSS `cubic-bezier` with `x1`, `x2` in
   [0, 1] and `y1`, `y2` in [-10, 10]; outside [0, 1] the value overshoots its keyframes (opacity and colours are clamped).
 - `draw` needs path data without `A`/`a` commands (`pattern` at `.../animate/draw`): an arc's exact length needs
-  trigonometry, which the renderer never uses ([renderer.md](renderer.md#animation)).
+  trigonometry, which the renderer never uses ([renderer.md](renderer.md#animation)). In a template `d` the text
+  outside the placeholders is checked here; an arc the placeholders give is a `range` issue at the track when rendering.
 
 How the timeline becomes CSS animation and static frames: [renderer.md](renderer.md#animation).
 

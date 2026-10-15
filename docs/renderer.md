@@ -75,6 +75,9 @@ Drawn in document order, first at the back. Layer `id` and `name` are not emitte
   row is as tall as its tallest child. In a stack or grid a child's own `x`/`y` is an offset inside its slot.
 - **rotation** turns a layer around the centre of its box and does not change the layout. **opacity** applies to the
   layer and everything in it. **clip** on a group clips to the group box.
+- **Path data template**: a `d` with `{{...}}` placeholders is evaluated per copy like a text, then checked as the
+  format checks a literal `d` (not empty, at most 100000 characters, path data characters only; else `range` at `d`).
+  Each copy gets the box and the `draw` length of its own data; a literal `d` is measured once per layer.
 - **style**: a layer's own property wins over the one of its `style`.
 - **Paint**: colours are written as `#rrggbb` plus `fill-opacity` / `stroke-opacity` / `stop-opacity` for alpha (the
   widest supported form). Gradient coordinates are fractions of the painted element's bounding box (defaults: linear
@@ -326,8 +329,8 @@ the canvas background and the layers.
 | `maxAnimationKeyframes` | 100000   | keyframes of every animation track of the render together, every repeat copy counted, in a frame too                                      | `too-large`          |
 
 The output size is counted while the SVG is written (a shared definition once, when its first use writes it), and
-every layer reserves the least markup of its kind before it is built (a path also its data, a text its filled-in
-content, before either is measured), so a huge or nested `repeat` stops early instead of building everything. Font
+every layer reserves the least markup of its kind before it is built (a path also its data, a template `d` once
+evaluated, a text its filled-in content, before either is measured), so a huge or nested `repeat` stops early instead of building everything. Font
 subsets are written once every text is laid out and count like any markup; text drawn as paths checks its path data
 against the budget glyph by glyph while it is built.
 Animation CSS counts toward `maxOutputBytes` like any markup, and every animated transform reserves its group (a
