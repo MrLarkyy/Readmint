@@ -5,7 +5,10 @@
     "composite": false,
     "noEmit": true,
     "types": ["node"],
-    "paths": { "@readmint/data": ["../data/src/index.ts"] }
+    "paths": {
+      "@readmint/data": ["../data/src/index.ts"],
+      "@readmint/data/node": ["../data/src/node/index.ts"]
+    }
   },
   "include": ["src", "test"]
 }
