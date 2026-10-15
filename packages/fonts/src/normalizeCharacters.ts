@@ -17,10 +17,13 @@ export interface NormalizedCharacters {
  * at a time: (1) every character is decomposed canonically and recursively, except a singleton decomposition
  * (U+212B, CJK compatibility ideographs) of a character the font maps; (2) each run of at most 32 non-starters is
  * stable-sorted by combining class; (3) Unicode canonical composition (UAX #15: blocking, composition exclusions,
- * Hangul) composes a pair only when the font maps the composite. Canonically equivalent clusters therefore give the
- * same characters for any font. `order` "font" sorts by HarfBuzz's modified classes (shadda before fatha), "canonical"
- * by Unicode's own (the NormalizationTest data). Linear: at most four code points per decomposition, sorting only
- * short runs, one composition pass.
+ * Hangul). When the font maps every character of the fully composed cluster (its NFC), that is the result, so a
+ * mapped precomposed character survives even when the font lacks a composite on the way to it (U+AC01 without
+ * U+AC00, U+1EC7 without U+1EB9); otherwise a pair composes only when the font maps the composite. Both are functions
+ * of the cluster's canonical equivalence class, so equivalent clusters give the same characters for any font.
+ * `order` "font" puts the marks left over in HarfBuzz's modified class order (shadda before fatha), "canonical" keeps
+ * Unicode's (the NormalizationTest data). Linear: at most four code points per decomposition, sorting only short
+ * runs, two composition passes.
  */
 export function normalizeCharacters(
   codePoints: readonly number[],
@@ -32,14 +35,12 @@ export function normalizeCharacters(
   const normalized: number[] = [];
   const normalizedClusters: number[] = [];
   const segment: number[] = [];
-  const keys: number[] = [];
   let steps = 0;
   const decompose = (codePoint: number): void => {
     steps++;
     const mapping = decompositionOf(codePoint);
     if (mapping === undefined || (mapping.length === 1 && maps(codePoint))) {
       segment.push(codePoint);
-      keys.push(keyOf(codePoint));
       return;
     }
     for (const part of mapping) decompose(part);
@@ -49,19 +50,35 @@ export function normalizeCharacters(
     const cluster = clusters[start] ?? 0;
     let end = start;
     segment.length = 0;
-    keys.length = 0;
     while (end < codePoints.length && clusters[end] === cluster) {
       decompose(codePoints[end] ?? 0);
       end++;
     }
-    steps += reorder(segment, keys);
-    const before = normalized.length;
-    steps += compose(segment, keys, maps, normalized);
-    for (let index = before; index < normalized.length; index++) normalizedClusters.push(cluster);
+    steps += segment.length;
+    let result = [...segment];
+    steps += reorder(result, result.map(combiningClassOf));
+    const composed: number[] = [];
+    steps += compose(result, result.map(combiningClassOf), everything, composed);
+    steps += composed.length;
+    if (composed.every(maps)) {
+      result = composed;
+      if (order === "font") steps += reorder(result, result.map(keyOf));
+    } else {
+      const keys = segment.map(keyOf);
+      steps += reorder(segment, keys);
+      result = [];
+      steps += compose(segment, keys, maps, result);
+    }
+    for (const codePoint of result) {
+      normalized.push(codePoint);
+      normalizedClusters.push(cluster);
+    }
     start = end;
   }
   return { codePoints: normalized, clusters: normalizedClusters, steps };
 }
+
+const everything = () => true;
 
 /** Stable-sorts every run of at most `maxReorderedMarks` non-starters (key above 0) by key; the steps taken. */
 function reorder(codePoints: number[], keys: number[]): number {

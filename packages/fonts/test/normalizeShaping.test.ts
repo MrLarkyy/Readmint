@@ -84,3 +84,12 @@ test("conjoining jamo recompose into the syllable a font maps", () => {
   const open = fontWith(0x1100, 0x1161, 0x11a8, 0xac00);
   expect(shapeText(open, "\uac01").glyphs).toEqual([0xac00, 0x11a8].map((c) => open.glyphFor(c)));
 });
+
+test("a font with only the precomposed syllable draws it for every spelling", () => {
+  const syllable = fontWith(0xac01);
+  for (const text of ["\uac01", "\u1100\u1161\u11a8", "\uac00\u11a8"]) {
+    const run = shapeText(syllable, text);
+    expect(run.glyphs).toEqual([syllable.glyphFor(0xac01)]);
+    expect(run.clusters).toEqual([0]);
+  }
+});

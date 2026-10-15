@@ -9,7 +9,7 @@ import {
 } from "../src/normalizeCharacters.js";
 import { decompositionOf } from "../src/unicode/canonicalDecomposition.js";
 import { combiningClassOf, modifiedCombiningClassOf } from "../src/unicode/combiningClass.js";
-import { normalizeNfc } from "../src/index.js";
+import { normalizeForFont, normalizeNfc } from "../src/index.js";
 import { montserrat, parse } from "./testFonts.js";
 
 const sample = readFileSync(
@@ -159,4 +159,54 @@ test("NFC of a text from the package's own tables", () => {
   expect(normalizeNfc("\u1100\u1161\u11a8")).toBe("\uac01");
   expect(normalizeNfc("\u0915\u093c")).toBe("\u0915\u093c");
   expect(normalizeNfc("plain")).toBe("plain");
+});
+
+test("every sample row normalizes through the real clustering (clusterStarts, normalizeText, normalizeNfc)", () => {
+  const text = (codePoints: readonly number[]) => String.fromCodePoint(...codePoints);
+  const failures: string[] = [];
+  for (const [c1 = [], c2 = [], c3 = [], c4 = [], c5 = []] of tests) {
+    const check = (source: number[], maps: (codePoint: number) => boolean, expected: number[]) => {
+      const actual = normalizeText(text(source), maps, "canonical").codePoints;
+      if (hex(actual) !== hex(expected))
+        failures.push(`${hex(source)}: ${hex(actual)}, expected ${hex(expected)}`);
+    };
+    for (const source of [c1, c2, c3]) {
+      check(source, decomposedFont, c3);
+      check(source, composedFont, c2);
+      if (normalizeNfc(text(source)) !== text(c2)) failures.push(`NFC ${hex(source)}`);
+    }
+    for (const source of [c4, c5]) {
+      check(source, decomposedFont, c5);
+      check(source, composedFont, c4);
+    }
+  }
+  expect(failures.slice(0, 20)).toEqual([]);
+  // Kirat Rai vowels are letters (not marks) that compose: they stay in one cluster.
+  expect(normalizeNfc(text([0x16d63, 0x16d67, 0x16d67]))).toBe(text([0x16d6a]));
+});
+
+test("a precomposed character the font maps survives without the composites on the way to it", () => {
+  for (const order of ["canonical", "font"] as const) {
+    const syllable = font(0xac01);
+    expect(normalize([0xac01], syllable, order)).toEqual([0xac01]);
+    expect(normalize([0x1100, 0x1161, 0x11a8], syllable, order)).toEqual([0xac01]);
+    expect(normalize([0xac00, 0x11a8], syllable, order)).toEqual([0xac01]);
+    const viet = font(0x56, 0x69, 0x74, 0x1ec7);
+    for (const spelling of [
+      [0x1ec7],
+      [0x1eb9, 0x302],
+      [0xea, 0x323],
+      [0x65, 0x323, 0x302],
+      [0x65, 0x302, 0x323],
+    ]) {
+      expect(normalize(spelling, viet, order)).toEqual([0x1ec7]);
+    }
+  }
+  const montserratFont = parse(montserrat.ttf);
+  for (const codePoint of [0x230, 0x231, 0x1e1c, 0x1e1d]) {
+    const char = String.fromCodePoint(codePoint);
+    const decomposed = String.fromCodePoint(...normalize([codePoint], decomposedFont));
+    expect(normalizeForFont(montserratFont, char)).toBe(char);
+    expect(normalizeForFont(montserratFont, decomposed)).toBe(char);
+  }
 });
