@@ -2,13 +2,15 @@
 
 `readmint` renders and checks designs on your own computer, with the same renderer the GitHub Action uses: the same
 design, assets and data give the same SVG bytes, and the same PNG, WebP, APNG or GIF bytes. Data comes from a local JSON file (fixture data), so no token and no
-network are needed.
+network are needed; with `--github` it is the live GitHub data instead, loaded with your token from the environment
+exactly as the Action loads it ([Live GitHub data](#live-github-data)).
 
 ```sh
 readmint render design.json --data fixture.json --out card.svg
 readmint render design.json --data fixture.json --out card.webp --scale 2 --frame-rate 30
 readmint validate design.json
 readmint preview design.json --data fixture.json
+GH_TOKEN=<token> readmint render design.json --github --login octocat --out card.svg
 ```
 
 `render` writes SVG, or a raster image of it: PNG, WebP, APNG or GIF (see [raster.md](raster.md)). An animated design
@@ -43,9 +45,13 @@ loaded, used or not, so a broken reference fails `validate` too. An image `src` 
 | `--quality <n>`    | `render`             | lossy WebP at this quality, a whole number in 1..100; default lossless; `webp` output only (any other format is a usage error)                                                                                                                                            |
 | `--port <n>`       | `preview`            | port in 0..65535; default 4870, `0` picks a free one                                                                                                                                                                                                                      |
 | `--fetch-images`   | all                  | fetches the images whose `src` is bound to data (https, allowed hosts only, no credentials; see [asset-loading.md](asset-loading.md#images-bound-from-data)); without it a design with one fails `image-not-fetched` (with `--data`) and the CLI makes no network request |
+| `--github`         | all                  | loads the live GitHub data as `{ github }` with the token from `GH_TOKEN`, else `GITHUB_TOKEN` ([Live GitHub data](#live-github-data)); excludes `--data`                                                                                                                 |
+| `--login <login>`  | all                  | the GitHub login `--github` loads; default the token's owner; only with `--github`                                                                                                                                                                                        |
 
 An option a command does not take, an unknown option, a missing or extra argument and a bad value are usage errors
-(exit code 2). There is no host option: the preview listens on 127.0.0.1 only.
+(exit code 2), as are `--github` with `--data` and `--login` without `--github`. There is no `--token` option: `--token`
+and any argument shaped like a GitHub token (`ghp_`, `gho_`, `ghu_`, `ghs_`, `ghr_`, `github_pat_`) are usage errors
+whose message never shows the value. There is no host option: the preview listens on 127.0.0.1 only.
 
 ## Exit codes
 
@@ -55,6 +61,7 @@ An option a command does not take, an unknown option, a missing or extra argumen
 | 1    | `invalid`  | the design is invalid (parse, schema, references, not UTF-8, too large), an asset was refused, the render failed, or a raster export failed (a limit in [raster.md](raster.md)) |
 | 2    | `usage`    | unknown command or option, missing or extra argument, bad option value                                                                                                          |
 | 3    | `input`    | a file, folder or port cannot be used: design file missing or outside `--root`, fixture data unreadable or invalid, `--out` or standard output not writable, port in use        |
+| 4    | `data`     | `--github` without a token in `GH_TOKEN` or `GITHUB_TOKEN`, or the GitHub data could not be loaded (`GitHub data (<code>): <message>`)                                          |
 | 70   | `internal` | a bug in Readmint                                                                                                                                                               |
 
 `@readmint/cli` exports the same values as `ExitCode`.
@@ -104,9 +111,38 @@ recognises equal bytes in different arrays). The Action loads assets the same wa
 
 It must be a JSON object, at most 8 MiB, UTF-8; every key must be a data namespace (a lowercase letter, then up to 31
 lowercase letters or digits, not `true`, `false` or `null`). The `github` shape is in
-[data-github.md](data-github.md). The file is the user's own and may lie anywhere. The CLI reads no token and no
-environment variable, and makes no network request except, with `--fetch-images`, the image requests of
+[data-github.md](data-github.md). The file is the user's own and may lie anywhere. Without `--github` the CLI uses
+no token and no environment variable (it only keeps the values of `GH_TOKEN` and `GITHUB_TOKEN` out of its messages,
+see below), and makes no network request except, with `--fetch-images`, the image requests of
 [asset-loading.md](asset-loading.md#images-bound-from-data).
+
+## Live GitHub data
+
+`--github` loads the data the Action renders with instead of a fixture file: `loadGitHubData` of
+[data-github.md](data-github.md), bound as `{ github: <data> }`, the object a fixture file holds under `github`. The CLI
+and the Action share this one load (`loadLiveData`), so the same GitHub answers give the same data and the same bytes
+as `render --data` with that object.
+
+- **The token** comes from the environment only: `GH_TOKEN`, else `GITHUB_TOKEN` (the first that is set and not
+  empty; surrounding whitespace is dropped). It is read only with `--github`. It is never an argument: `--token` and a
+  token-shaped argument are usage errors that do not print the value. Without a token, `--github` exits with 4 and
+  names both variables, before any request.
+- **`--login`** names the user to load; without it the token's owner is loaded. An app token (the Actions
+  `GITHUB_TOKEN`, an installation token) belongs to no user and needs `--login`
+  ([data-github.md](data-github.md#cache), `invalid-option` otherwise). An invalid login fails `invalid-option`.
+- **Requests**: a load sends the requests of [data-github.md](data-github.md#rate-limits) (4 with `--login`, 5 without
+  it, plus retries), only to `https://api.github.com/graphql`, and takes at most 300 s in all, retries and
+  rate-limit waits included. There is no cache and nothing is written to disk.
+- **Errors**: a failed load is one line `GitHub data (<code>): <message>`, its code one of the `GitHubDataError` codes
+  of [data-github.md](data-github.md#errors) (`unauthorized`, `rate-limited`, `network`, ...), exit code 4.
+- **`preview`** loads the data once, before it starts serving; editing the design or an asset never
+  loads it again. Restart the preview for fresh data. Ctrl+C during the load ends it with exit code 0.
+- **Images** bound to the data (`--fetch-images`) are fetched with their own requests, which never carry the token or
+  another credential.
+- **Never printed**: the token is redacted to `***` from every line on standard error and on the preview page (the
+  values of `GH_TOKEN` and `GITHUB_TOKEN` as set and trimmed, their base64 forms and the base64 of the
+  `x-access-token:` credential), whatever the command and options; this is the only use of the variables without
+  `--github`. Standard output (the SVG, `<design>: ok`) is never altered.
 
 ## Preview
 
@@ -134,9 +170,12 @@ A port in use, or one the system refuses, is exit code 3.
 
 ## Programmatic use
 
-`@readmint/cli` exports `runCli(argv, io)` (returns the exit code, never throws), `ExitCode`, `CliError`, `CliIo`,
+`@readmint/cli` exports `runCli(argv, io)` (returns the exit code, never throws; `CliIo.env` is the environment `--github` takes its token
+from, `bin` passes `process.env`), `ExitCode`, `CliError`, `CliIo`,
 `escapeForLog`, `quoteForLog`, `formatIssue`, `localeProblem(locale)` (why a tag cannot be the `--locale`, `undefined` when it can; the Action's `locale` input uses it too), `outputFormats` and `outputExtension(format)` (the `OutputFormat`s and their file extension, `apng` → `png`), and the loaders the commands share: `loadDesignFile`, `loadDesignAssets`,
-`loadFixtureData` (with `maxFixtureBytes`, its size cap), `loadRenderInput` (design file, assets, fixture data and the images bound to data in one call; `RenderInput`,
+`loadFixtureData` (with `maxFixtureBytes`, its size cap), `loadLiveData` (the `--github` load: `LiveDataOptions` with
+`token`, `login`, `fetch` and `signal`, at most `liveDataTimeoutMs`; a failure is a `CliError` with exit code 4),
+`redactSecrets(text, secrets)` (the redaction of standard error, also the Action's log), `loadRenderInput` (design file, assets, fixture data and the images bound to data in one call; `RenderInput`,
 `RenderInputOptions`, whose `images` fetches them and whose `data` stands in for `--data`), `fetchBoundImages` and its
 `RemoteImageError`, `RemoteImageOptions`, `defaultImageHosts` and `RemoteImageLimits` (see
 [asset-loading.md](asset-loading.md#images-bound-from-data)), `renderInput` (`renderSvg` of a loaded input with the renderer's default limits) and `renderOutput(input, formats,

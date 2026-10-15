@@ -21,11 +21,12 @@ test("render, validate and failures never fetch and never print a token from the
   vi.stubEnv("GITHUB_TOKEN", "canary-token-RM19");
   vi.stubEnv("INPUT_TOKEN", "canary-token-RM19");
   const fetch = vi.spyOn(globalThis, "fetch");
+  const io = { env: { GH_TOKEN: "canary-token-RM39", GITHUB_TOKEN: "canary-token-RM39" } };
   const runs = [
-    await tree.run(["render", "bound/design.json", "--data", "data.json"]),
-    await tree.run(["validate", "bound/design.json", "--data", "data.json"]),
-    await tree.run(["render", "bound/design.json"]),
-    await tree.run(["render", "bound/design.json", "--data", "missing.json"]),
+    await tree.run(["render", "bound/design.json", "--data", "data.json"], io),
+    await tree.run(["validate", "bound/design.json", "--data", "data.json"], io),
+    await tree.run(["render", "bound/design.json"], io),
+    await tree.run(["render", "bound/design.json", "--data", "missing.json"], io),
   ];
   expect(runs.map((run) => run.code)).toEqual([
     ExitCode.ok,

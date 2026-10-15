@@ -3,21 +3,28 @@ import { AssetPathError } from "./AssetPathError.js";
 import { CliError } from "./CliError.js";
 import type { CliIo } from "./CliIo.js";
 import { errnoCode } from "./errnoCode.js";
+import { tokenSecrets } from "./githubToken.js";
 import { ExitCode } from "./ExitCode.js";
 import { helpText } from "./helpText.js";
 import { parseCliArgs } from "./parseCliArgs.js";
 import { previewCommand } from "./previewCommand.js";
 import { printLines } from "./printLines.js";
+import { redactSecrets } from "./redactSecrets.js";
 import { renderCommand } from "./renderCommand.js";
 import { validateCommand } from "./validateCommand.js";
 
 /**
  * Runs one `readmint` command line (without node and the script) against `io` and returns the
- * exit code; never throws. Every message line is escaped (`escapeForLog`); the SVG is written as is.
- * A system error writing standard output (EPIPE, a full disk) is exit code 3 for every command.
+ * exit code; never throws. Every message line is escaped (`escapeForLog`) and has the token variables redacted
+ * (`redactSecrets`); the SVG is written as is. A system error writing standard output (EPIPE, a full disk) is exit
+ * code 3 for every command.
  */
 export async function runCli(argv: readonly string[], cliIo: CliIo): Promise<ExitCode> {
-  const io: CliIo = { ...cliIo, stdout: guardStdout(cliIo.stdout) };
+  const io: CliIo = {
+    ...cliIo,
+    stdout: guardStdout(cliIo.stdout),
+    stderr: redactStderr(cliIo.stderr, tokenSecrets(cliIo.env ?? {})),
+  };
   try {
     const command = parseCliArgs(argv);
     switch (command.name) {
@@ -51,6 +58,15 @@ function guardStdout(write: CliIo["stdout"]): CliIo["stdout"] {
       });
     }
   };
+}
+
+/**
+ * Always on, not only with `--github`: a GitHub answer, a network error or a bug may carry the token into any
+ * message. Each write is whole lines (`printLines`), so a secret is never split across two writes.
+ */
+function redactStderr(write: CliIo["stderr"], secrets: readonly string[]): CliIo["stderr"] {
+  if (secrets.length === 0) return write;
+  return (text) => write(redactSecrets(text, secrets));
 }
 
 async function report(error: unknown, io: CliIo): Promise<ExitCode> {

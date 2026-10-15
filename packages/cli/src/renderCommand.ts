@@ -7,6 +7,7 @@ import { errnoCode } from "./errnoCode.js";
 import { ExitCode } from "./ExitCode.js";
 import { formatIssue } from "./formatIssue.js";
 import { imageFetching } from "./imageFetching.js";
+import { liveData } from "./liveData.js";
 import { loadRenderInput } from "./loadRenderInput.js";
 import { printLines } from "./printLines.js";
 import { quoteForLog } from "./quoteForLog.js";
@@ -21,7 +22,11 @@ export async function renderCommand(
   args: Extract<CliCommand, { name: "render" }>,
   io: CliIo,
 ): Promise<ExitCode> {
-  const input = await loadRenderInput(args, { cwd: io.cwd, ...imageFetching(args, io) });
+  const input = await loadRenderInput(args, {
+    cwd: io.cwd,
+    ...(await liveData(args, io)),
+    ...imageFetching(args, io),
+  });
   const name = input.file.name;
   const result = await renderOutput(input, [args.format], {
     ...(args.locale === undefined ? {} : { locale: args.locale }),

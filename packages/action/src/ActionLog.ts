@@ -1,5 +1,4 @@
-import { escapeForLog } from "@readmint/cli";
-import { redactSecrets } from "./redactSecrets.js";
+import { escapeForLog, redactSecrets } from "@readmint/cli";
 
 /**
  * The only way the Action prints. Every line is redacted (`redactSecrets`), escaped
