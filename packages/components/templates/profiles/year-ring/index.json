@@ -1,14 +1,23 @@
 {
   "$schema": "https://raw.githubusercontent.com/MrLarkyy/Readmint/main/packages/format/schema/design-v0.schema.json",
   "version": 0,
-  "title": "Index and languages",
-  "description": "A table of contribution and profile totals and a bar of the most used languages.",
+  "title": "Index",
+  "description": "Key facts in rows, with the languages of the public repositories and a bar of their shares.",
   "canvas": {
     "width": 840,
-    "height": 350
+    "height": 340
   },
   "assets": {
     "fonts": {
+      "semi": {
+        "family": "Archivo SemiExpanded",
+        "src": "fonts/ArchivoSemiExpanded-SemiBold.ttf",
+        "weight": 600,
+        "licence": {
+          "embedding": "allowed",
+          "name": "OFL-1.1"
+        }
+      },
       "reg": {
         "family": "Archivo",
         "src": "fonts/Archivo-Regular.ttf",
@@ -17,517 +26,344 @@
           "embedding": "allowed",
           "name": "OFL-1.1"
         }
-      },
-      "semi": {
-        "family": "Archivo",
-        "src": "fonts/Archivo-SemiBold.ttf",
-        "weight": 600,
-        "licence": {
-          "embedding": "allowed",
-          "name": "OFL-1.1"
-        }
-      },
-      "bold": {
-        "family": "Archivo",
-        "src": "fonts/Archivo-Bold.ttf",
-        "weight": 700,
-        "licence": {
-          "embedding": "allowed",
-          "name": "OFL-1.1"
-        }
       }
     }
   },
   "animation": {
-    "duration": 60000,
+    "duration": 2200,
     "loop": false
   },
   "components": {
     "card": {
-      "description": "The section: a rounded panel in the theme's colours; the theme prop is the only switch between light and dark.",
       "props": {
         "theme": {
           "type": "enum",
           "values": ["light", "dark"],
           "default": "light"
+        },
+        "labels": {
+          "type": "array",
+          "default": []
+        },
+        "values": {
+          "type": "array",
+          "default": []
+        },
+        "languagesAfter": {
+          "type": "number",
+          "default": 2
         }
       },
       "layers": [
         {
-          "type": "rect",
-          "x": 0.5,
-          "y": 0.5,
-          "width": 839,
-          "height": 349,
-          "radius": 14,
-          "fill": "{{ props.theme == \"dark\" ? \"#0b1020\" : \"#f6f8fd\" }}",
-          "stroke": "{{ props.theme == \"dark\" ? \"#1f2a4a\" : \"#d6dcec\" }}",
-          "strokeWidth": 1
-        },
-        {
           "type": "text",
-          "x": 40,
-          "y": 32,
+          "x": 0,
+          "y": 9.726,
           "content": "INDEX",
           "font": "semi",
-          "fontSize": 12,
-          "letterSpacing": 2,
-          "fill": "{{ props.theme == \"dark\" ? \"#6b8cff\" : \"#1f4fe0\" }}"
-        },
-        {
-          "type": "text",
-          "x": 40,
-          "y": 70,
-          "content": "Commits",
-          "font": "reg",
-          "fontSize": 15,
-          "fill": "{{ props.theme == \"dark\" ? \"#8d9aca\" : \"#5d6788\" }}"
-        },
-        {
-          "type": "group",
-          "x": 200,
-          "y": 64,
-          "width": 200,
-          "height": 26,
-          "clip": true,
-          "children": [
-            {
-              "type": "text",
-              "x": 0,
-              "y": 0,
-              "content": "{{ (github.contributions.commits < 1000000 ? (github.contributions.commits | number) : (github.contributions.commits | compact)) }}",
-              "font": "bold",
-              "fontSize": 20,
-              "fill": "{{ props.theme == \"dark\" ? \"#e9eeff\" : \"#0b1230\" }}",
-              "width": 200,
-              "align": "end"
-            }
-          ]
+          "fontSize": 11,
+          "letterSpacing": 1.76,
+          "fill": "{{ props.theme == \"dark\" ? \"#ECEEF2\" : \"#15171C\" }}"
         },
         {
           "type": "rect",
-          "x": 40,
-          "y": 96,
-          "width": 360,
+          "x": 0,
+          "y": 34,
+          "width": 840,
           "height": 1,
-          "fill": "{{ props.theme == \"dark\" ? \"#19213d\" : \"#e3e8f5\" }}"
-        },
-        {
-          "type": "text",
-          "x": 40,
-          "y": 108,
-          "content": "Pull requests",
-          "font": "reg",
-          "fontSize": 15,
-          "fill": "{{ props.theme == \"dark\" ? \"#8d9aca\" : \"#5d6788\" }}"
+          "fill": "{{ props.theme == \"dark\" ? \"#ECEEF2\" : \"#15171C\" }}"
         },
         {
           "type": "group",
-          "x": 200,
-          "y": 102,
-          "width": 200,
-          "height": 26,
-          "clip": true,
-          "children": [
-            {
-              "type": "text",
-              "x": 0,
-              "y": 0,
-              "content": "{{ (github.contributions.pullRequests < 1000000 ? (github.contributions.pullRequests | number) : (github.contributions.pullRequests | compact)) }}",
-              "font": "bold",
-              "fontSize": 20,
-              "fill": "{{ props.theme == \"dark\" ? \"#e9eeff\" : \"#0b1230\" }}",
-              "width": 200,
-              "align": "end"
-            }
-          ]
-        },
-        {
-          "type": "rect",
-          "x": 40,
-          "y": 134,
-          "width": 360,
-          "height": 1,
-          "fill": "{{ props.theme == \"dark\" ? \"#19213d\" : \"#e3e8f5\" }}"
-        },
-        {
-          "type": "text",
-          "x": 40,
-          "y": 146,
-          "content": "Issues",
-          "font": "reg",
-          "fontSize": 15,
-          "fill": "{{ props.theme == \"dark\" ? \"#8d9aca\" : \"#5d6788\" }}"
-        },
-        {
-          "type": "group",
-          "x": 200,
-          "y": 140,
-          "width": 200,
-          "height": 26,
-          "clip": true,
-          "children": [
-            {
-              "type": "text",
-              "x": 0,
-              "y": 0,
-              "content": "{{ (github.contributions.issues < 1000000 ? (github.contributions.issues | number) : (github.contributions.issues | compact)) }}",
-              "font": "bold",
-              "fontSize": 20,
-              "fill": "{{ props.theme == \"dark\" ? \"#e9eeff\" : \"#0b1230\" }}",
-              "width": 200,
-              "align": "end"
-            }
-          ]
-        },
-        {
-          "type": "rect",
-          "x": 40,
-          "y": 172,
-          "width": 360,
-          "height": 1,
-          "fill": "{{ props.theme == \"dark\" ? \"#19213d\" : \"#e3e8f5\" }}"
-        },
-        {
-          "type": "text",
-          "x": 40,
-          "y": 184,
-          "content": "Reviews",
-          "font": "reg",
-          "fontSize": 15,
-          "fill": "{{ props.theme == \"dark\" ? \"#8d9aca\" : \"#5d6788\" }}"
-        },
-        {
-          "type": "group",
-          "x": 200,
-          "y": 178,
-          "width": 200,
-          "height": 26,
-          "clip": true,
-          "children": [
-            {
-              "type": "text",
-              "x": 0,
-              "y": 0,
-              "content": "{{ (github.contributions.reviews < 1000000 ? (github.contributions.reviews | number) : (github.contributions.reviews | compact)) }}",
-              "font": "bold",
-              "fontSize": 20,
-              "fill": "{{ props.theme == \"dark\" ? \"#e9eeff\" : \"#0b1230\" }}",
-              "width": 200,
-              "align": "end"
-            }
-          ]
-        },
-        {
-          "type": "rect",
-          "x": 40,
-          "y": 210,
-          "width": 360,
-          "height": 1,
-          "fill": "{{ props.theme == \"dark\" ? \"#19213d\" : \"#e3e8f5\" }}"
-        },
-        {
-          "type": "text",
-          "x": 440,
-          "y": 70,
-          "content": "Followers",
-          "font": "reg",
-          "fontSize": 15,
-          "fill": "{{ props.theme == \"dark\" ? \"#8d9aca\" : \"#5d6788\" }}"
-        },
-        {
-          "type": "group",
-          "x": 600,
-          "y": 64,
-          "width": 200,
-          "height": 26,
-          "clip": true,
-          "children": [
-            {
-              "type": "text",
-              "x": 0,
-              "y": 0,
-              "content": "{{ (github.followers < 1000000 ? (github.followers | number) : (github.followers | compact)) }}",
-              "font": "bold",
-              "fontSize": 20,
-              "fill": "{{ props.theme == \"dark\" ? \"#e9eeff\" : \"#0b1230\" }}",
-              "width": 200,
-              "align": "end"
-            }
-          ]
-        },
-        {
-          "type": "rect",
-          "x": 440,
-          "y": 96,
-          "width": 360,
-          "height": 1,
-          "fill": "{{ props.theme == \"dark\" ? \"#19213d\" : \"#e3e8f5\" }}"
-        },
-        {
-          "type": "text",
-          "x": 440,
-          "y": 108,
-          "content": "Stars",
-          "font": "reg",
-          "fontSize": 15,
-          "fill": "{{ props.theme == \"dark\" ? \"#8d9aca\" : \"#5d6788\" }}"
-        },
-        {
-          "type": "group",
-          "x": 600,
-          "y": 102,
-          "width": 200,
-          "height": 26,
-          "clip": true,
-          "children": [
-            {
-              "type": "text",
-              "x": 0,
-              "y": 0,
-              "content": "{{ (github.counts.stars < 1000000 ? (github.counts.stars | number) : (github.counts.stars | compact)) }}",
-              "font": "bold",
-              "fontSize": 20,
-              "fill": "{{ props.theme == \"dark\" ? \"#e9eeff\" : \"#0b1230\" }}",
-              "width": 200,
-              "align": "end"
-            }
-          ]
-        },
-        {
-          "type": "rect",
-          "x": 440,
-          "y": 134,
-          "width": 360,
-          "height": 1,
-          "fill": "{{ props.theme == \"dark\" ? \"#19213d\" : \"#e3e8f5\" }}"
-        },
-        {
-          "type": "text",
-          "x": 440,
-          "y": 146,
-          "content": "Forks",
-          "font": "reg",
-          "fontSize": 15,
-          "fill": "{{ props.theme == \"dark\" ? \"#8d9aca\" : \"#5d6788\" }}"
-        },
-        {
-          "type": "group",
-          "x": 600,
-          "y": 140,
-          "width": 200,
-          "height": 26,
-          "clip": true,
-          "children": [
-            {
-              "type": "text",
-              "x": 0,
-              "y": 0,
-              "content": "{{ (github.counts.forks < 1000000 ? (github.counts.forks | number) : (github.counts.forks | compact)) }}",
-              "font": "bold",
-              "fontSize": 20,
-              "fill": "{{ props.theme == \"dark\" ? \"#e9eeff\" : \"#0b1230\" }}",
-              "width": 200,
-              "align": "end"
-            }
-          ]
-        },
-        {
-          "type": "rect",
-          "x": 440,
-          "y": 172,
-          "width": 360,
-          "height": 1,
-          "fill": "{{ props.theme == \"dark\" ? \"#19213d\" : \"#e3e8f5\" }}"
-        },
-        {
-          "type": "text",
-          "x": 440,
-          "y": 184,
-          "content": "Repositories",
-          "font": "reg",
-          "fontSize": 15,
-          "fill": "{{ props.theme == \"dark\" ? \"#8d9aca\" : \"#5d6788\" }}"
-        },
-        {
-          "type": "group",
-          "x": 600,
-          "y": 178,
-          "width": 200,
-          "height": 26,
-          "clip": true,
-          "children": [
-            {
-              "type": "text",
-              "x": 0,
-              "y": 0,
-              "content": "{{ (github.counts.repositories < 1000000 ? (github.counts.repositories | number) : (github.counts.repositories | compact)) }}",
-              "font": "bold",
-              "fontSize": 20,
-              "fill": "{{ props.theme == \"dark\" ? \"#e9eeff\" : \"#0b1230\" }}",
-              "width": 200,
-              "align": "end"
-            }
-          ]
-        },
-        {
-          "type": "rect",
-          "x": 440,
-          "y": 210,
-          "width": 360,
-          "height": 1,
-          "fill": "{{ props.theme == \"dark\" ? \"#19213d\" : \"#e3e8f5\" }}"
-        },
-        {
-          "type": "text",
-          "x": 40,
-          "y": 232,
-          "content": "LANGUAGES",
-          "font": "semi",
-          "fontSize": 12,
-          "letterSpacing": 2,
-          "fill": "{{ props.theme == \"dark\" ? \"#6b8cff\" : \"#1f4fe0\" }}"
-        },
-        {
-          "type": "rect",
-          "x": 40,
-          "y": 256,
-          "width": 760,
-          "height": 16,
-          "fill": "{{ props.theme == \"dark\" ? \"#19213d\" : \"#e3e8f5\" }}"
-        },
-        {
-          "type": "group",
-          "x": 40,
-          "y": 256,
-          "width": 760,
-          "height": 16,
-          "clip": true,
+          "repeat": {
+            "each": "{{ props.labels }}",
+            "as": "label",
+            "index": "i"
+          },
+          "if": "{{ (i < props.languagesAfter ? i : i + (((github.languages | length | default(0)) > 0) ? 1 : 0)) < 8 }}",
           "children": [
             {
               "type": "group",
+              "x": 0,
+              "y": "{{ 48 + (i < props.languagesAfter ? i : i + (((github.languages | length | default(0)) > 0) ? 1 : 0)) * 36 }}",
+              "children": [
+                {
+                  "type": "text",
+                  "x": 0,
+                  "y": 3.858,
+                  "content": "{{ label | truncate(24) }}",
+                  "font": "reg",
+                  "fontSize": 13,
+                  "fill": "{{ props.theme == \"dark\" ? \"#8E949D\" : \"#696E77\" }}"
+                },
+                {
+                  "type": "text",
+                  "x": 170,
+                  "y": 1.99,
+                  "content": "{{ props.values[i] | default(\"\") | truncate(80) }}",
+                  "font": "reg",
+                  "fontSize": 15,
+                  "fill": "{{ props.theme == \"dark\" ? \"#ECEEF2\" : \"#15171C\" }}"
+                },
+                {
+                  "type": "rect",
+                  "x": 0,
+                  "y": 35,
+                  "width": 840,
+                  "height": 1,
+                  "fill": "{{ props.theme == \"dark\" ? \"#2A2F37\" : \"#DDE0E5\" }}"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "group",
+          "x": 0,
+          "y": "{{ 48 + (props.languagesAfter | clamp(0, (props.labels | length))) * 36 }}",
+          "if": "{{ ((github.languages | length | default(0)) > 0) }}",
+          "children": [
+            {
+              "type": "text",
+              "x": 0,
+              "y": 3.858,
+              "content": "Languages",
+              "font": "reg",
+              "fontSize": 13,
+              "fill": "{{ props.theme == \"dark\" ? \"#8E949D\" : \"#696E77\" }}"
+            },
+            {
+              "type": "group",
+              "x": 170,
+              "y": 0,
+              "layout": {
+                "type": "stack",
+                "direction": "row",
+                "gap": 22
+              },
+              "children": [
+                {
+                  "type": "group",
+                  "repeat": {
+                    "each": "{{ [github.languages[0], github.languages[1], github.languages[2]] }}",
+                    "as": "lang"
+                  },
+                  "if": "{{ lang }}",
+                  "children": [
+                    {
+                      "type": "text",
+                      "x": 0,
+                      "y": 1.99,
+                      "content": "{{ lang.name }} {{ lang.share * 100 | round }}%",
+                      "font": "reg",
+                      "fontSize": 15,
+                      "fill": "{{ props.theme == \"dark\" ? \"#ECEEF2\" : \"#15171C\" }}"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "group",
+              "x": "{{ 520 + 320 * (0) }}",
+              "y": 8,
+              "width": "{{ (320 * (github.languages[0].share | default(0)) - 2 | max(0)) | max(0.001) }}",
+              "height": 5,
+              "clip": true,
+              "if": "{{ (320 * (github.languages[0].share | default(0)) - 2 | max(0)) > 0.5 }}",
               "children": [
                 {
                   "type": "rect",
                   "x": 0,
                   "y": 0,
-                  "width": "{{ (lang.share * 760) | max(1) }}",
-                  "height": 16,
-                  "fill": "{{ lang.color || (props.theme == \"dark\" ? \"#56659b\" : \"#8a97c4\") }}",
-                  "repeat": {
-                    "each": "{{ github.languages }}",
-                    "as": "lang",
-                    "index": "li"
-                  },
-                  "if": "{{ li < 8 }}"
+                  "width": "{{ (320 * (github.languages[0].share | default(0)) - 2 | max(0)) | max(0.001) }}",
+                  "height": 5,
+                  "fill": "{{ props.theme == \"dark\" ? \"#ECEEF2\" : \"#15171C\" }}",
+                  "animate": {
+                    "x": {
+                      "keyframes": [
+                        {
+                          "offset": 0,
+                          "value": 0
+                        },
+                        {
+                          "offset": 0,
+                          "value": "{{ 0 - (320 * (github.languages[0].share | default(0)) - 2 | max(0)) }}"
+                        },
+                        {
+                          "offset": 0.2143,
+                          "value": "{{ 0 - (320 * (github.languages[0].share | default(0)) - 2 | max(0)) }}",
+                          "easing": {
+                            "x1": 0.2,
+                            "y1": 0.8,
+                            "x2": 0.3,
+                            "y2": 1
+                          }
+                        },
+                        {
+                          "offset": 1,
+                          "value": 0
+                        }
+                      ],
+                      "duration": 1400
+                    }
+                  }
                 }
-              ],
-              "layout": {
-                "type": "stack",
-                "direction": "row"
-              }
+              ]
+            },
+            {
+              "type": "group",
+              "x": "{{ 520 + 320 * ((github.languages[0].share | default(0))) }}",
+              "y": 8,
+              "width": "{{ (320 * (github.languages[1].share | default(0)) - 2 | max(0)) | max(0.001) }}",
+              "height": 5,
+              "clip": true,
+              "if": "{{ (320 * (github.languages[1].share | default(0)) - 2 | max(0)) > 0.5 }}",
+              "children": [
+                {
+                  "type": "rect",
+                  "x": 0,
+                  "y": 0,
+                  "width": "{{ (320 * (github.languages[1].share | default(0)) - 2 | max(0)) | max(0.001) }}",
+                  "height": 5,
+                  "fill": "{{ props.theme == \"dark\" ? \"#8E949D\" : \"#696E77\" }}",
+                  "animate": {
+                    "x": {
+                      "keyframes": [
+                        {
+                          "offset": 0,
+                          "value": 0
+                        },
+                        {
+                          "offset": 0,
+                          "value": "{{ 0 - (320 * (github.languages[1].share | default(0)) - 2 | max(0)) }}"
+                        },
+                        {
+                          "offset": 0.3333,
+                          "value": "{{ 0 - (320 * (github.languages[1].share | default(0)) - 2 | max(0)) }}",
+                          "easing": {
+                            "x1": 0.2,
+                            "y1": 0.8,
+                            "x2": 0.3,
+                            "y2": 1
+                          }
+                        },
+                        {
+                          "offset": 1,
+                          "value": 0
+                        }
+                      ],
+                      "duration": 1650
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "type": "group",
+              "x": "{{ 520 + 320 * ((github.languages[0].share | default(0)) + (github.languages[1].share | default(0))) }}",
+              "y": 8,
+              "width": "{{ (320 * (github.languages[2].share | default(0)) - 2 | max(0)) | max(0.001) }}",
+              "height": 5,
+              "clip": true,
+              "if": "{{ (320 * (github.languages[2].share | default(0)) - 2 | max(0)) > 0.5 }}",
+              "children": [
+                {
+                  "type": "rect",
+                  "x": 0,
+                  "y": 0,
+                  "width": "{{ (320 * (github.languages[2].share | default(0)) - 2 | max(0)) | max(0.001) }}",
+                  "height": 5,
+                  "fill": "{{ props.theme == \"dark\" ? \"#5A616B\" : \"#A1A6AE\" }}",
+                  "animate": {
+                    "x": {
+                      "keyframes": [
+                        {
+                          "offset": 0,
+                          "value": 0
+                        },
+                        {
+                          "offset": 0,
+                          "value": "{{ 0 - (320 * (github.languages[2].share | default(0)) - 2 | max(0)) }}"
+                        },
+                        {
+                          "offset": 0.4211,
+                          "value": "{{ 0 - (320 * (github.languages[2].share | default(0)) - 2 | max(0)) }}",
+                          "easing": {
+                            "x1": 0.2,
+                            "y1": 0.8,
+                            "x2": 0.3,
+                            "y2": 1
+                          }
+                        },
+                        {
+                          "offset": 1,
+                          "value": 0
+                        }
+                      ],
+                      "duration": 1900
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "type": "group",
+              "x": "{{ 520 + 320 * ((github.languages[0].share | default(0)) + (github.languages[1].share | default(0)) + (github.languages[2].share | default(0))) }}",
+              "y": 8,
+              "width": "{{ (320 * (1 - (github.languages[0].share | default(0)) - (github.languages[1].share | default(0)) - (github.languages[2].share | default(0)) | max(0)) - 0 | max(0)) | max(0.001) }}",
+              "height": 5,
+              "clip": true,
+              "if": "{{ (320 * (1 - (github.languages[0].share | default(0)) - (github.languages[1].share | default(0)) - (github.languages[2].share | default(0)) | max(0)) - 0 | max(0)) > 0.5 }}",
+              "children": [
+                {
+                  "type": "rect",
+                  "x": 0,
+                  "y": 0,
+                  "width": "{{ (320 * (1 - (github.languages[0].share | default(0)) - (github.languages[1].share | default(0)) - (github.languages[2].share | default(0)) | max(0)) - 0 | max(0)) | max(0.001) }}",
+                  "height": 5,
+                  "fill": "{{ props.theme == \"dark\" ? \"#2A2F37\" : \"#DDE0E5\" }}",
+                  "animate": {
+                    "x": {
+                      "keyframes": [
+                        {
+                          "offset": 0,
+                          "value": 0
+                        },
+                        {
+                          "offset": 0,
+                          "value": "{{ 0 - (320 * (1 - (github.languages[0].share | default(0)) - (github.languages[1].share | default(0)) - (github.languages[2].share | default(0)) | max(0)) - 0 | max(0)) }}"
+                        },
+                        {
+                          "offset": 0.4884,
+                          "value": "{{ 0 - (320 * (1 - (github.languages[0].share | default(0)) - (github.languages[1].share | default(0)) - (github.languages[2].share | default(0)) | max(0)) - 0 | max(0)) }}",
+                          "easing": {
+                            "x1": 0.2,
+                            "y1": 0.8,
+                            "x2": 0.3,
+                            "y2": 1
+                          }
+                        },
+                        {
+                          "offset": 1,
+                          "value": 0
+                        }
+                      ],
+                      "duration": 2150
+                    }
+                  }
+                }
+              ]
             },
             {
               "type": "rect",
-              "x": 760,
-              "y": 0,
-              "width": 760,
-              "height": 16,
-              "fill": "{{ props.theme == \"dark\" ? \"#0b1020\" : \"#f6f8fd\" }}",
-              "animate": {
-                "x": {
-                  "keyframes": [
-                    {
-                      "offset": 0,
-                      "value": 0
-                    },
-                    {
-                      "offset": 0,
-                      "value": -760
-                    },
-                    {
-                      "offset": 0.158,
-                      "value": -760
-                    },
-                    {
-                      "offset": 1,
-                      "value": 0
-                    }
-                  ],
-                  "duration": 1900,
-                  "easing": "linear"
-                }
-              }
+              "x": 0,
+              "y": 35,
+              "width": 840,
+              "height": 1,
+              "fill": "{{ props.theme == \"dark\" ? \"#2A2F37\" : \"#DDE0E5\" }}"
             }
           ]
-        },
-        {
-          "type": "group",
-          "children": [
-            {
-              "type": "ellipse",
-              "x": 0,
-              "y": 3,
-              "width": 10,
-              "height": 10,
-              "fill": "{{ github.languages[k].color || (props.theme == \"dark\" ? \"#56659b\" : \"#8a97c4\") }}"
-            },
-            {
-              "type": "group",
-              "x": 18,
-              "y": 0,
-              "width": 130,
-              "height": 18,
-              "clip": true,
-              "children": [
-                {
-                  "type": "text",
-                  "x": 0,
-                  "y": 0,
-                  "content": "{{ github.languages[k].name | truncate(16) }}",
-                  "font": "semi",
-                  "fontSize": 14,
-                  "fill": "{{ props.theme == \"dark\" ? \"#e9eeff\" : \"#0b1230\" }}"
-                }
-              ]
-            },
-            {
-              "type": "group",
-              "x": 150,
-              "y": 0,
-              "width": 70,
-              "height": 18,
-              "clip": true,
-              "children": [
-                {
-                  "type": "text",
-                  "x": 0,
-                  "y": 0,
-                  "content": "{{ github.languages[k].share | percent(0) }}",
-                  "font": "reg",
-                  "fontSize": 14,
-                  "fill": "{{ props.theme == \"dark\" ? \"#8d9aca\" : \"#5d6788\" }}"
-                }
-              ]
-            }
-          ],
-          "x": "{{ 40 + (k % 3) * 255 }}",
-          "y": "{{ 290 + (k / 3 | floor) * 26 }}",
-          "repeat": {
-            "each": "{{ [0, 1, 2, 3, 4, 5] }}",
-            "as": "k"
-          },
-          "if": "{{ github.languages[k] }}"
-        },
-        {
-          "type": "text",
-          "x": 40,
-          "y": 290,
-          "content": "No language data yet.",
-          "font": "reg",
-          "fontSize": 15,
-          "fill": "{{ props.theme == \"dark\" ? \"#8d9aca\" : \"#5d6788\" }}",
-          "if": "{{ !(github.languages | length) }}"
         }
       ]
     }

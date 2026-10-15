@@ -1,32 +1,14 @@
 {
   "$schema": "https://raw.githubusercontent.com/MrLarkyy/Readmint/main/packages/format/schema/design-v0.schema.json",
   "version": 0,
-  "title": "Repository",
-  "description": "A repository written as a Kotlin object: its name, stars, forks, language and description.",
+  "title": "A pinned repository as code",
+  "description": "A pinned repository written as a Kotlin object: its name, a short description, its stars and forks.",
   "canvas": {
-    "width": 840,
-    "height": 236
+    "width": 412,
+    "height": 176
   },
   "assets": {
     "fonts": {
-      "sans": {
-        "family": "Geist",
-        "src": "fonts/Geist-Regular.ttf",
-        "weight": 400,
-        "licence": {
-          "embedding": "allowed",
-          "name": "OFL-1.1"
-        }
-      },
-      "sansB": {
-        "family": "Geist",
-        "src": "fonts/Geist-SemiBold.ttf",
-        "weight": 600,
-        "licence": {
-          "embedding": "allowed",
-          "name": "OFL-1.1"
-        }
-      },
       "mono": {
         "family": "Geist Mono",
         "src": "fonts/GeistMono-Regular.ttf",
@@ -36,10 +18,10 @@
           "name": "OFL-1.1"
         }
       },
-      "monoM": {
-        "family": "Geist Mono",
-        "src": "fonts/GeistMono-Medium.ttf",
-        "weight": 500,
+      "g": {
+        "family": "Geist",
+        "src": "fonts/Geist-Regular.ttf",
+        "weight": 400,
         "licence": {
           "embedding": "allowed",
           "name": "OFL-1.1"
@@ -47,9 +29,12 @@
       }
     }
   },
+  "animation": {
+    "duration": 2200,
+    "loop": false
+  },
   "components": {
     "card": {
-      "description": "The section: a rounded panel in the theme's colours; the theme prop is the only switch between light and dark.",
       "props": {
         "theme": {
           "type": "enum",
@@ -63,343 +48,708 @@
       },
       "layers": [
         {
-          "type": "rect",
-          "x": 0.5,
-          "y": 0.5,
-          "width": 839,
-          "height": 235,
-          "radius": 8,
-          "fill": "{{ props.theme == \"dark\" ? \"#2b2b2b\" : \"#ffffff\" }}",
-          "stroke": "{{ props.theme == \"dark\" ? \"#323232\" : \"#ebecf0\" }}",
-          "strokeWidth": 1
-        },
-        {
-          "type": "rect",
-          "x": 1,
-          "y": 1,
-          "width": 838,
-          "height": 33,
-          "radius": 7,
-          "fill": "{{ props.theme == \"dark\" ? \"#3c3f41\" : \"#f7f8fa\" }}"
-        },
-        {
-          "type": "rect",
-          "x": 1,
-          "y": 18,
-          "width": 838,
-          "height": 16,
-          "fill": "{{ props.theme == \"dark\" ? \"#3c3f41\" : \"#f7f8fa\" }}"
-        },
-        {
-          "type": "rect",
-          "x": 1,
-          "y": 34,
-          "width": 838,
-          "height": 1,
-          "fill": "{{ props.theme == \"dark\" ? \"#323232\" : \"#ebecf0\" }}"
-        },
-        {
-          "type": "rect",
-          "x": 1,
-          "y": 35,
-          "width": 48,
-          "height": 200,
-          "fill": "{{ props.theme == \"dark\" ? \"#313335\" : \"#f7f8fa\" }}"
-        },
-        {
-          "type": "text",
-          "x": 16,
-          "y": 11,
-          "content": "{{ (github.login | truncate(24)) + \"  /  \" + (((github.pinned || github.repositories)[props.slot]).name | default(\"repository\") | truncate(26)) + \".kt\" }}",
-          "font": "sans",
-          "fontSize": 12,
-          "fill": "{{ props.theme == \"dark\" ? \"#808080\" : \"#6c707e\" }}"
-        },
-        {
-          "type": "text",
-          "x": 6,
-          "y": 48,
-          "content": "1",
-          "font": "mono",
-          "fontSize": 12,
-          "fill": "{{ props.theme == \"dark\" ? \"#606366\" : \"#aeb3c2\" }}",
-          "width": 34,
-          "align": "end"
-        },
-        {
-          "type": "text",
-          "x": 6,
-          "y": 72,
-          "content": "2",
-          "font": "mono",
-          "fontSize": 12,
-          "fill": "{{ props.theme == \"dark\" ? \"#606366\" : \"#aeb3c2\" }}",
-          "width": 34,
-          "align": "end"
-        },
-        {
-          "type": "text",
-          "x": 6,
-          "y": 96,
-          "content": "3",
-          "font": "mono",
-          "fontSize": 12,
-          "fill": "{{ props.theme == \"dark\" ? \"#606366\" : \"#aeb3c2\" }}",
-          "width": 34,
-          "align": "end"
-        },
-        {
-          "type": "text",
-          "x": 6,
-          "y": 120,
-          "content": "4",
-          "font": "mono",
-          "fontSize": 12,
-          "fill": "{{ props.theme == \"dark\" ? \"#606366\" : \"#aeb3c2\" }}",
-          "width": 34,
-          "align": "end"
-        },
-        {
-          "type": "text",
-          "x": 6,
-          "y": 144,
-          "content": "5",
-          "font": "mono",
-          "fontSize": 12,
-          "fill": "{{ props.theme == \"dark\" ? \"#606366\" : \"#aeb3c2\" }}",
-          "width": 34,
-          "align": "end"
-        },
-        {
-          "type": "text",
-          "x": 6,
-          "y": 168,
-          "content": "6",
-          "font": "mono",
-          "fontSize": 12,
-          "fill": "{{ props.theme == \"dark\" ? \"#606366\" : \"#aeb3c2\" }}",
-          "width": 34,
-          "align": "end"
-        },
-        {
-          "type": "text",
-          "x": 6,
-          "y": 192,
-          "content": "7",
-          "font": "mono",
-          "fontSize": 12,
-          "fill": "{{ props.theme == \"dark\" ? \"#606366\" : \"#aeb3c2\" }}",
-          "width": 34,
-          "align": "end"
-        },
-        {
           "type": "group",
+          "repeat": {
+            "each": "{{ [github.pinned || github.repositories] }}",
+            "as": "rs"
+          },
           "children": [
             {
-              "type": "text",
-              "x": 64,
-              "y": 44,
-              "content": "{{ \"// repository \" + [\"1\", \"2\", \"3\", \"4\"][props.slot] }}",
-              "font": "mono",
-              "fontSize": 14,
-              "fill": "{{ props.theme == \"dark\" ? \"#808080\" : \"#8c8c8c\" }}"
+              "type": "rect",
+              "x": 0.5,
+              "y": 0.5,
+              "width": 411,
+              "height": 175,
+              "fill": "{{ props.theme == \"dark\" ? \"#12161d\" : \"#FAFAFA\" }}",
+              "radius": 10,
+              "stroke": "{{ props.theme == \"dark\" ? \"#26272B\" : \"#E4E4E7\" }}",
+              "strokeWidth": 1
             },
             {
-              "type": "text",
-              "x": 64,
-              "y": 68,
-              "content": "object",
-              "font": "mono",
-              "fontSize": 14,
-              "fill": "{{ props.theme == \"dark\" ? \"#cc7832\" : \"#0033b3\" }}"
+              "type": "group",
+              "if": "{{ rs[props.slot] }}",
+              "children": [
+                {
+                  "type": "group",
+                  "repeat": {
+                    "each": "{{ [rs[props.slot].name | truncate(30)] }}",
+                    "as": "rn"
+                  },
+                  "children": [
+                    {
+                      "type": "group",
+                      "repeat": {
+                        "each": "{{ [rs[props.slot].isArchived ? 1 : 0] }}",
+                        "as": "sh"
+                      },
+                      "children": [
+                        {
+                          "type": "group",
+                          "x": 0,
+                          "y": 0,
+                          "width": 352,
+                          "height": 36,
+                          "clip": true,
+                          "children": [
+                            {
+                              "type": "group",
+                              "x": 0,
+                              "y": 0,
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "x": 16,
+                                  "y": 13.018,
+                                  "content": "{{ rn }}.kt",
+                                  "font": "mono",
+                                  "fontSize": 11.5,
+                                  "fill": "{{ props.theme == \"dark\" ? \"#C9C9CF\" : \"#3F3F46\" }}"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "rect",
+                          "x": 0,
+                          "y": 36,
+                          "width": 412,
+                          "height": 1,
+                          "fill": "{{ props.theme == \"dark\" ? \"#26272B\" : \"#E4E4E7\" }}"
+                        },
+                        {
+                          "type": "path",
+                          "d": "M368 14.8 L369.4 18.1 L372.9 18.4 L370.3 20.7 L371.1 24.2 L368 22.4 L364.9 24.2 L365.7 20.7 L363.1 18.4 L366.6 18.1 Z",
+                          "fill": "{{ props.theme == \"dark\" ? \"#FF6369\" : \"#E5484D\" }}"
+                        },
+                        {
+                          "type": "text",
+                          "x": 378,
+                          "y": 13.018,
+                          "content": "{{ rs[props.slot].stars | compact }}",
+                          "font": "mono",
+                          "fontSize": 11.5,
+                          "fill": "{{ props.theme == \"dark\" ? \"#C9C9CF\" : \"#3F3F46\" }}"
+                        },
+                        {
+                          "type": "group",
+                          "animate": {
+                            "opacity": {
+                              "keyframes": [
+                                {
+                                  "offset": 0,
+                                  "value": 1
+                                },
+                                {
+                                  "offset": 0,
+                                  "value": 0
+                                },
+                                {
+                                  "offset": 1,
+                                  "value": 0
+                                },
+                                {
+                                  "offset": 1,
+                                  "value": 1
+                                }
+                              ],
+                              "duration": "{{ 400 + props.slot * 100 + 1 }}"
+                            }
+                          },
+                          "children": [
+                            {
+                              "type": "group",
+                              "if": "{{ sh == 1 }}",
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "x": 16,
+                                  "y": 51.495,
+                                  "content": "1",
+                                  "font": "mono",
+                                  "fontSize": 11,
+                                  "fill": "{{ props.theme == \"dark\" ? \"#5B5B63\" : \"#A1A1AA\" }}"
+                                },
+                                {
+                                  "type": "text",
+                                  "x": "{{ 40 + (0) * 6.9 }}",
+                                  "y": 51.017,
+                                  "content": "@Deprecated",
+                                  "font": "mono",
+                                  "fontSize": 11.5,
+                                  "fill": "{{ props.theme == \"dark\" ? \"#BBB529\" : \"#9E880D\" }}"
+                                },
+                                {
+                                  "type": "text",
+                                  "x": "{{ 40 + (11) * 6.9 }}",
+                                  "y": 51.017,
+                                  "content": "(",
+                                  "font": "mono",
+                                  "fontSize": 11.5,
+                                  "fill": "{{ props.theme == \"dark\" ? \"#C9C9CF\" : \"#0A0A0A\" }}"
+                                },
+                                {
+                                  "type": "text",
+                                  "x": "{{ 40 + (12) * 6.9 }}",
+                                  "y": 51.017,
+                                  "content": "\"archived\"",
+                                  "font": "mono",
+                                  "fontSize": 11.5,
+                                  "fill": "{{ props.theme == \"dark\" ? \"#8CB070\" : \"#067D17\" }}"
+                                },
+                                {
+                                  "type": "text",
+                                  "x": "{{ 40 + (22) * 6.9 }}",
+                                  "y": 51.017,
+                                  "content": ")",
+                                  "font": "mono",
+                                  "fontSize": 11.5,
+                                  "fill": "{{ props.theme == \"dark\" ? \"#C9C9CF\" : \"#0A0A0A\" }}"
+                                }
+                              ],
+                              "animate": {
+                                "opacity": {
+                                  "keyframes": [
+                                    {
+                                      "offset": 0,
+                                      "value": 1
+                                    },
+                                    {
+                                      "offset": 0,
+                                      "value": 0
+                                    },
+                                    {
+                                      "offset": 1,
+                                      "value": 1
+                                    }
+                                  ],
+                                  "duration": 350,
+                                  "delay": "{{ 400 + props.slot * 100 }}"
+                                }
+                              }
+                            }
+                          ]
+                        },
+                        {
+                          "type": "group",
+                          "animate": {
+                            "opacity": {
+                              "keyframes": [
+                                {
+                                  "offset": 0,
+                                  "value": 1
+                                },
+                                {
+                                  "offset": 0,
+                                  "value": 0
+                                },
+                                {
+                                  "offset": 1,
+                                  "value": 0
+                                },
+                                {
+                                  "offset": 1,
+                                  "value": 1
+                                }
+                              ],
+                              "duration": "{{ 400 + props.slot * 100 + (0 + sh) * 90 + 1 }}"
+                            }
+                          },
+                          "children": [
+                            {
+                              "type": "group",
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "x": 16,
+                                  "y": "{{ 62 + (0 + sh) * 20 - 10.505 }}",
+                                  "content": "{{ 0 + sh + 1 }}",
+                                  "font": "mono",
+                                  "fontSize": 11,
+                                  "fill": "{{ props.theme == \"dark\" ? \"#5B5B63\" : \"#A1A1AA\" }}"
+                                },
+                                {
+                                  "type": "text",
+                                  "x": "{{ 40 + (0) * 6.9 }}",
+                                  "y": "{{ 62 + (0 + sh) * 20 - 10.982 }}",
+                                  "content": "object",
+                                  "font": "mono",
+                                  "fontSize": 11.5,
+                                  "fill": "{{ props.theme == \"dark\" ? \"#CC7832\" : \"#0033B3\" }}"
+                                },
+                                {
+                                  "type": "text",
+                                  "x": "{{ 40 + (7) * 6.9 }}",
+                                  "y": "{{ 62 + (0 + sh) * 20 - 10.982 }}",
+                                  "content": "{{ rn }}",
+                                  "font": "mono",
+                                  "fontSize": 11.5,
+                                  "fill": "{{ props.theme == \"dark\" ? \"#EDEDED\" : \"#0A0A0A\" }}"
+                                },
+                                {
+                                  "type": "text",
+                                  "x": "{{ 40 + (8 + (rn | length)) * 6.9 }}",
+                                  "y": "{{ 62 + (0 + sh) * 20 - 10.982 }}",
+                                  "content": ":",
+                                  "font": "mono",
+                                  "fontSize": 11.5,
+                                  "fill": "{{ props.theme == \"dark\" ? \"#C9C9CF\" : \"#0A0A0A\" }}"
+                                },
+                                {
+                                  "type": "text",
+                                  "x": "{{ 40 + (10 + (rn | length)) * 6.9 }}",
+                                  "y": "{{ 62 + (0 + sh) * 20 - 10.982 }}",
+                                  "content": "Project",
+                                  "font": "mono",
+                                  "fontSize": 11.5,
+                                  "fill": "{{ props.theme == \"dark\" ? \"#EDEDED\" : \"#0A0A0A\" }}"
+                                },
+                                {
+                                  "type": "text",
+                                  "x": "{{ 40 + (18 + (rn | length)) * 6.9 }}",
+                                  "y": "{{ 62 + (0 + sh) * 20 - 10.982 }}",
+                                  "content": "{",
+                                  "font": "mono",
+                                  "fontSize": 11.5,
+                                  "fill": "{{ props.theme == \"dark\" ? \"#C9C9CF\" : \"#0A0A0A\" }}"
+                                }
+                              ],
+                              "animate": {
+                                "opacity": {
+                                  "keyframes": [
+                                    {
+                                      "offset": 0,
+                                      "value": 1
+                                    },
+                                    {
+                                      "offset": 0,
+                                      "value": 0
+                                    },
+                                    {
+                                      "offset": 1,
+                                      "value": 1
+                                    }
+                                  ],
+                                  "duration": 350,
+                                  "delay": "{{ 400 + props.slot * 100 + (0 + sh) * 90 }}"
+                                }
+                              }
+                            }
+                          ]
+                        },
+                        {
+                          "type": "group",
+                          "animate": {
+                            "opacity": {
+                              "keyframes": [
+                                {
+                                  "offset": 0,
+                                  "value": 1
+                                },
+                                {
+                                  "offset": 0,
+                                  "value": 0
+                                },
+                                {
+                                  "offset": 1,
+                                  "value": 0
+                                },
+                                {
+                                  "offset": 1,
+                                  "value": 1
+                                }
+                              ],
+                              "duration": "{{ 400 + props.slot * 100 + (1 + sh) * 90 + 1 }}"
+                            }
+                          },
+                          "children": [
+                            {
+                              "type": "group",
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "x": 16,
+                                  "y": "{{ 62 + (1 + sh) * 20 - 10.505 }}",
+                                  "content": "{{ 1 + sh + 1 }}",
+                                  "font": "mono",
+                                  "fontSize": 11,
+                                  "fill": "{{ props.theme == \"dark\" ? \"#5B5B63\" : \"#A1A1AA\" }}"
+                                },
+                                {
+                                  "type": "text",
+                                  "x": "{{ 40 + (4) * 6.9 }}",
+                                  "y": "{{ 62 + (1 + sh) * 20 - 10.982 }}",
+                                  "content": "val",
+                                  "font": "mono",
+                                  "fontSize": 11.5,
+                                  "fill": "{{ props.theme == \"dark\" ? \"#CC7832\" : \"#0033B3\" }}"
+                                },
+                                {
+                                  "type": "text",
+                                  "x": "{{ 40 + (8) * 6.9 }}",
+                                  "y": "{{ 62 + (1 + sh) * 20 - 10.982 }}",
+                                  "content": "about",
+                                  "font": "mono",
+                                  "fontSize": 11.5,
+                                  "fill": "{{ props.theme == \"dark\" ? \"#C9C9CF\" : \"#0A0A0A\" }}"
+                                },
+                                {
+                                  "type": "text",
+                                  "x": "{{ 40 + (14) * 6.9 }}",
+                                  "y": "{{ 62 + (1 + sh) * 20 - 10.982 }}",
+                                  "content": "=",
+                                  "font": "mono",
+                                  "fontSize": 11.5,
+                                  "fill": "{{ props.theme == \"dark\" ? \"#C9C9CF\" : \"#0A0A0A\" }}"
+                                },
+                                {
+                                  "type": "text",
+                                  "x": "{{ 40 + (16) * 6.9 }}",
+                                  "y": "{{ 62 + (1 + sh) * 20 - 10.982 }}",
+                                  "content": "{{ \"\\\"\" + (rs[props.slot].description | default(\"\") | truncate(32)) + \"\\\"\" }}",
+                                  "font": "mono",
+                                  "fontSize": 11.5,
+                                  "fill": "{{ props.theme == \"dark\" ? \"#8CB070\" : \"#067D17\" }}"
+                                }
+                              ],
+                              "animate": {
+                                "opacity": {
+                                  "keyframes": [
+                                    {
+                                      "offset": 0,
+                                      "value": 1
+                                    },
+                                    {
+                                      "offset": 0,
+                                      "value": 0
+                                    },
+                                    {
+                                      "offset": 1,
+                                      "value": 1
+                                    }
+                                  ],
+                                  "duration": 350,
+                                  "delay": "{{ 400 + props.slot * 100 + (1 + sh) * 90 }}"
+                                }
+                              }
+                            }
+                          ]
+                        },
+                        {
+                          "type": "group",
+                          "animate": {
+                            "opacity": {
+                              "keyframes": [
+                                {
+                                  "offset": 0,
+                                  "value": 1
+                                },
+                                {
+                                  "offset": 0,
+                                  "value": 0
+                                },
+                                {
+                                  "offset": 1,
+                                  "value": 0
+                                },
+                                {
+                                  "offset": 1,
+                                  "value": 1
+                                }
+                              ],
+                              "duration": "{{ 400 + props.slot * 100 + (2 + sh) * 90 + 1 }}"
+                            }
+                          },
+                          "children": [
+                            {
+                              "type": "group",
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "x": 16,
+                                  "y": "{{ 62 + (2 + sh) * 20 - 10.505 }}",
+                                  "content": "{{ 2 + sh + 1 }}",
+                                  "font": "mono",
+                                  "fontSize": 11,
+                                  "fill": "{{ props.theme == \"dark\" ? \"#5B5B63\" : \"#A1A1AA\" }}"
+                                },
+                                {
+                                  "type": "text",
+                                  "x": "{{ 40 + (4) * 6.9 }}",
+                                  "y": "{{ 62 + (2 + sh) * 20 - 10.982 }}",
+                                  "content": "val",
+                                  "font": "mono",
+                                  "fontSize": 11.5,
+                                  "fill": "{{ props.theme == \"dark\" ? \"#CC7832\" : \"#0033B3\" }}"
+                                },
+                                {
+                                  "type": "text",
+                                  "x": "{{ 40 + (8) * 6.9 }}",
+                                  "y": "{{ 62 + (2 + sh) * 20 - 10.982 }}",
+                                  "content": "stars",
+                                  "font": "mono",
+                                  "fontSize": 11.5,
+                                  "fill": "{{ props.theme == \"dark\" ? \"#C9C9CF\" : \"#0A0A0A\" }}"
+                                },
+                                {
+                                  "type": "text",
+                                  "x": "{{ 40 + (14) * 6.9 }}",
+                                  "y": "{{ 62 + (2 + sh) * 20 - 10.982 }}",
+                                  "content": "=",
+                                  "font": "mono",
+                                  "fontSize": 11.5,
+                                  "fill": "{{ props.theme == \"dark\" ? \"#C9C9CF\" : \"#0A0A0A\" }}"
+                                },
+                                {
+                                  "type": "text",
+                                  "x": "{{ 40 + (16) * 6.9 }}",
+                                  "y": "{{ 62 + (2 + sh) * 20 - 10.982 }}",
+                                  "content": "{{ rs[props.slot].stars }}",
+                                  "font": "mono",
+                                  "fontSize": 11.5,
+                                  "fill": "{{ props.theme == \"dark\" ? \"#6897BB\" : \"#1750EB\" }}"
+                                }
+                              ],
+                              "animate": {
+                                "opacity": {
+                                  "keyframes": [
+                                    {
+                                      "offset": 0,
+                                      "value": 1
+                                    },
+                                    {
+                                      "offset": 0,
+                                      "value": 0
+                                    },
+                                    {
+                                      "offset": 1,
+                                      "value": 1
+                                    }
+                                  ],
+                                  "duration": 350,
+                                  "delay": "{{ 400 + props.slot * 100 + (2 + sh) * 90 }}"
+                                }
+                              }
+                            }
+                          ]
+                        },
+                        {
+                          "type": "group",
+                          "animate": {
+                            "opacity": {
+                              "keyframes": [
+                                {
+                                  "offset": 0,
+                                  "value": 1
+                                },
+                                {
+                                  "offset": 0,
+                                  "value": 0
+                                },
+                                {
+                                  "offset": 1,
+                                  "value": 0
+                                },
+                                {
+                                  "offset": 1,
+                                  "value": 1
+                                }
+                              ],
+                              "duration": "{{ 400 + props.slot * 100 + (3 + sh) * 90 + 1 }}"
+                            }
+                          },
+                          "children": [
+                            {
+                              "type": "group",
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "x": 16,
+                                  "y": "{{ 62 + (3 + sh) * 20 - 10.505 }}",
+                                  "content": "{{ 3 + sh + 1 }}",
+                                  "font": "mono",
+                                  "fontSize": 11,
+                                  "fill": "{{ props.theme == \"dark\" ? \"#5B5B63\" : \"#A1A1AA\" }}"
+                                },
+                                {
+                                  "type": "text",
+                                  "x": "{{ 40 + (4) * 6.9 }}",
+                                  "y": "{{ 62 + (3 + sh) * 20 - 10.982 }}",
+                                  "content": "val",
+                                  "font": "mono",
+                                  "fontSize": 11.5,
+                                  "fill": "{{ props.theme == \"dark\" ? \"#CC7832\" : \"#0033B3\" }}"
+                                },
+                                {
+                                  "type": "text",
+                                  "x": "{{ 40 + (8) * 6.9 }}",
+                                  "y": "{{ 62 + (3 + sh) * 20 - 10.982 }}",
+                                  "content": "forks",
+                                  "font": "mono",
+                                  "fontSize": 11.5,
+                                  "fill": "{{ props.theme == \"dark\" ? \"#C9C9CF\" : \"#0A0A0A\" }}"
+                                },
+                                {
+                                  "type": "text",
+                                  "x": "{{ 40 + (14) * 6.9 }}",
+                                  "y": "{{ 62 + (3 + sh) * 20 - 10.982 }}",
+                                  "content": "=",
+                                  "font": "mono",
+                                  "fontSize": 11.5,
+                                  "fill": "{{ props.theme == \"dark\" ? \"#C9C9CF\" : \"#0A0A0A\" }}"
+                                },
+                                {
+                                  "type": "text",
+                                  "x": "{{ 40 + (16) * 6.9 }}",
+                                  "y": "{{ 62 + (3 + sh) * 20 - 10.982 }}",
+                                  "content": "{{ rs[props.slot].forks }}",
+                                  "font": "mono",
+                                  "fontSize": 11.5,
+                                  "fill": "{{ props.theme == \"dark\" ? \"#6897BB\" : \"#1750EB\" }}"
+                                }
+                              ],
+                              "animate": {
+                                "opacity": {
+                                  "keyframes": [
+                                    {
+                                      "offset": 0,
+                                      "value": 1
+                                    },
+                                    {
+                                      "offset": 0,
+                                      "value": 0
+                                    },
+                                    {
+                                      "offset": 1,
+                                      "value": 1
+                                    }
+                                  ],
+                                  "duration": 350,
+                                  "delay": "{{ 400 + props.slot * 100 + (3 + sh) * 90 }}"
+                                }
+                              }
+                            }
+                          ]
+                        },
+                        {
+                          "type": "group",
+                          "animate": {
+                            "opacity": {
+                              "keyframes": [
+                                {
+                                  "offset": 0,
+                                  "value": 1
+                                },
+                                {
+                                  "offset": 0,
+                                  "value": 0
+                                },
+                                {
+                                  "offset": 1,
+                                  "value": 0
+                                },
+                                {
+                                  "offset": 1,
+                                  "value": 1
+                                }
+                              ],
+                              "duration": "{{ 400 + props.slot * 100 + (4 + sh) * 90 + 1 }}"
+                            }
+                          },
+                          "children": [
+                            {
+                              "type": "group",
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "x": 16,
+                                  "y": "{{ 62 + (4 + sh) * 20 - 10.505 }}",
+                                  "content": "{{ 4 + sh + 1 }}",
+                                  "font": "mono",
+                                  "fontSize": 11,
+                                  "fill": "{{ props.theme == \"dark\" ? \"#5B5B63\" : \"#A1A1AA\" }}"
+                                },
+                                {
+                                  "type": "text",
+                                  "x": "{{ 40 + (0) * 6.9 }}",
+                                  "y": "{{ 62 + (4 + sh) * 20 - 10.982 }}",
+                                  "content": "}",
+                                  "font": "mono",
+                                  "fontSize": 11.5,
+                                  "fill": "{{ props.theme == \"dark\" ? \"#C9C9CF\" : \"#0A0A0A\" }}"
+                                }
+                              ],
+                              "animate": {
+                                "opacity": {
+                                  "keyframes": [
+                                    {
+                                      "offset": 0,
+                                      "value": 1
+                                    },
+                                    {
+                                      "offset": 0,
+                                      "value": 0
+                                    },
+                                    {
+                                      "offset": 1,
+                                      "value": 1
+                                    }
+                                  ],
+                                  "duration": 350,
+                                  "delay": "{{ 400 + props.slot * 100 + (4 + sh) * 90 }}"
+                                }
+                              }
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
             },
             {
-              "type": "text",
-              "x": 122.8,
-              "y": 68,
-              "content": "{{ (r.name | truncate(26)) }}",
-              "font": "mono",
-              "fontSize": 14,
-              "fill": "{{ props.theme == \"dark\" ? \"#ffc66d\" : \"#00627a\" }}"
-            },
-            {
-              "type": "text",
-              "x": "{{ 64 + (8 + ((r.name | truncate(26)) | length)) * 8.4 }}",
-              "y": 68,
-              "content": "{",
-              "font": "mono",
-              "fontSize": 14,
-              "fill": "{{ props.theme == \"dark\" ? \"#a9b7c6\" : \"#080808\" }}"
-            },
-            {
-              "type": "text",
-              "x": 97.6,
-              "y": 92,
-              "content": "val",
-              "font": "mono",
-              "fontSize": 14,
-              "fill": "{{ props.theme == \"dark\" ? \"#cc7832\" : \"#0033b3\" }}"
-            },
-            {
-              "type": "text",
-              "x": 131.2,
-              "y": 92,
-              "content": "stars",
-              "font": "mono",
-              "fontSize": 14,
-              "fill": "{{ props.theme == \"dark\" ? \"#9876aa\" : \"#871094\" }}"
-            },
-            {
-              "type": "text",
-              "x": 181.6,
-              "y": 92,
-              "content": "=",
-              "font": "mono",
-              "fontSize": 14,
-              "fill": "{{ props.theme == \"dark\" ? \"#a9b7c6\" : \"#080808\" }}"
-            },
-            {
-              "type": "text",
-              "x": 198.4,
-              "y": 92,
-              "content": "{{ r.stars }}",
-              "font": "mono",
-              "fontSize": 14,
-              "fill": "{{ props.theme == \"dark\" ? \"#6897bb\" : \"#1750eb\" }}"
-            },
-            {
-              "type": "text",
-              "x": 97.6,
-              "y": 116,
-              "content": "val",
-              "font": "mono",
-              "fontSize": 14,
-              "fill": "{{ props.theme == \"dark\" ? \"#cc7832\" : \"#0033b3\" }}"
-            },
-            {
-              "type": "text",
-              "x": 131.2,
-              "y": 116,
-              "content": "forks",
-              "font": "mono",
-              "fontSize": 14,
-              "fill": "{{ props.theme == \"dark\" ? \"#9876aa\" : \"#871094\" }}"
-            },
-            {
-              "type": "text",
-              "x": 181.6,
-              "y": 116,
-              "content": "=",
-              "font": "mono",
-              "fontSize": 14,
-              "fill": "{{ props.theme == \"dark\" ? \"#a9b7c6\" : \"#080808\" }}"
-            },
-            {
-              "type": "text",
-              "x": 198.4,
-              "y": 116,
-              "content": "{{ r.forks }}",
-              "font": "mono",
-              "fontSize": 14,
-              "fill": "{{ props.theme == \"dark\" ? \"#6897bb\" : \"#1750eb\" }}"
-            },
-            {
-              "type": "text",
-              "x": 97.6,
-              "y": 140,
-              "content": "val",
-              "font": "mono",
-              "fontSize": 14,
-              "fill": "{{ props.theme == \"dark\" ? \"#cc7832\" : \"#0033b3\" }}"
-            },
-            {
-              "type": "text",
-              "x": 131.2,
-              "y": 140,
-              "content": "language",
-              "font": "mono",
-              "fontSize": 14,
-              "fill": "{{ props.theme == \"dark\" ? \"#9876aa\" : \"#871094\" }}"
-            },
-            {
-              "type": "text",
-              "x": 206.8,
-              "y": 140,
-              "content": "=",
-              "font": "mono",
-              "fontSize": 14,
-              "fill": "{{ props.theme == \"dark\" ? \"#a9b7c6\" : \"#080808\" }}"
-            },
-            {
-              "type": "text",
-              "x": 223.6,
-              "y": 140,
-              "content": "{{ \"\\\"\" + (r.primaryLanguage.name | default(\"Text\") | truncate(24)) + \"\\\"\" }}",
-              "font": "mono",
-              "fontSize": 14,
-              "fill": "{{ props.theme == \"dark\" ? \"#6a8759\" : \"#067d17\" }}"
-            },
-            {
-              "type": "text",
-              "x": 97.6,
-              "y": 164,
-              "content": "val",
-              "font": "mono",
-              "fontSize": 14,
-              "fill": "{{ props.theme == \"dark\" ? \"#cc7832\" : \"#0033b3\" }}"
-            },
-            {
-              "type": "text",
-              "x": 131.2,
-              "y": 164,
-              "content": "description",
-              "font": "mono",
-              "fontSize": 14,
-              "fill": "{{ props.theme == \"dark\" ? \"#9876aa\" : \"#871094\" }}"
-            },
-            {
-              "type": "text",
-              "x": 232,
-              "y": 164,
-              "content": "=",
-              "font": "mono",
-              "fontSize": 14,
-              "fill": "{{ props.theme == \"dark\" ? \"#a9b7c6\" : \"#080808\" }}"
-            },
-            {
-              "type": "text",
-              "x": 248.8,
-              "y": 164,
-              "content": "{{ \"\\\"\" + (r.description | default(\"\") | truncate(52)) + \"\\\"\" }}",
-              "font": "mono",
-              "fontSize": 14,
-              "fill": "{{ props.theme == \"dark\" ? \"#6a8759\" : \"#067d17\" }}"
-            },
-            {
-              "type": "text",
-              "x": 64,
-              "y": 188,
-              "content": "}",
-              "font": "mono",
-              "fontSize": 14,
-              "fill": "{{ props.theme == \"dark\" ? \"#a9b7c6\" : \"#080808\" }}"
+              "type": "group",
+              "if": "{{ !rs[props.slot] }}",
+              "children": [
+                {
+                  "type": "text",
+                  "x": 16,
+                  "y": 13.018,
+                  "content": "empty.kt",
+                  "font": "mono",
+                  "fontSize": 11.5,
+                  "fill": "{{ props.theme == \"dark\" ? \"#C9C9CF\" : \"#3F3F46\" }}"
+                },
+                {
+                  "type": "rect",
+                  "x": 0,
+                  "y": 36,
+                  "width": 412,
+                  "height": 1,
+                  "fill": "{{ props.theme == \"dark\" ? \"#26272B\" : \"#E4E4E7\" }}"
+                },
+                {
+                  "type": "text",
+                  "x": 16,
+                  "y": 51.495,
+                  "content": "1",
+                  "font": "mono",
+                  "fontSize": 11,
+                  "fill": "{{ props.theme == \"dark\" ? \"#5B5B63\" : \"#A1A1AA\" }}"
+                },
+                {
+                  "type": "text",
+                  "x": "{{ 40 + (0) * 6.9 }}",
+                  "y": 51.017,
+                  "content": "// no repository in this slot yet",
+                  "font": "mono",
+                  "fontSize": 11.5,
+                  "fill": "{{ props.theme == \"dark\" ? \"#808080\" : \"#8C8C8C\" }}"
+                }
+              ]
             }
-          ],
-          "repeat": {
-            "each": "{{ [((github.pinned || github.repositories)[props.slot])] }}",
-            "as": "r"
-          },
-          "if": "{{ r }}"
-        },
-        {
-          "type": "text",
-          "x": 64,
-          "y": 44,
-          "content": "// no repository in this slot yet",
-          "font": "mono",
-          "fontSize": 14,
-          "fill": "{{ props.theme == \"dark\" ? \"#808080\" : \"#8c8c8c\" }}",
-          "if": "{{ !((github.pinned || github.repositories)[props.slot]) }}"
+          ]
         }
       ]
     }

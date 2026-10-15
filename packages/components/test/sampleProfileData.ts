@@ -102,7 +102,7 @@ const pushMessages = [
 
 /**
  * Synthetic, deterministic data of the invented account of `sampleGitHubData`, with the fields the profile templates
- * add: a status, eight pushes, four pinned repositories with weekly commits, and a longer streak in the calendar.
+ * add: a status, eight pushes, six pinned repositories with weekly commits, and a longer streak in the calendar.
  */
 export function sampleProfileData(): ProfileData {
   const base = sampleGitHubData().github;
@@ -145,15 +145,16 @@ export function sampleProfileData(): ProfileData {
       4,
     ),
   ];
+  const repositories = [
+    ...pinned,
+    repository(owner, "dotfiles", null, 120, 9, ["Shell", "#89e051"], 5),
+    repository(owner, "scratchpad", "Experiments.", 12, 1, ["HTML", "#e34c26"], 6),
+  ];
   return {
     github: {
       ...base,
-      repositories: [
-        ...pinned,
-        repository(owner, "dotfiles", null, 120, 9, ["Shell", "#89e051"], 5),
-        repository(owner, "scratchpad", "Experiments.", 12, 1, ["HTML", "#e34c26"], 6),
-      ],
-      pinned,
+      repositories,
+      pinned: repositories,
       status: { emoji: "\u{1F680}", message: "Shipping the 2.0 release" },
       pushes: pushMessages.map((message, index) => ({
         repository: pinned[index % pinned.length]?.name ?? "",
@@ -161,11 +162,66 @@ export function sampleProfileData(): ProfileData {
         message,
         additions: [128, 9, 342, 61, 7, 24, 1800, 95][index] ?? 0,
         deletions: [12, 9, 288, 4, 7, 0, 640, 3][index] ?? 0,
-        date: `2026-10-${String(14 - index).padStart(2, "0")}T1${String(index)}:20:00Z`,
+        // the calendar ends on 2025-10-15: today, yesterday, then one push a day back
+        date: `2025-10-${String(15 - index).padStart(2, "0")}T1${String(index)}:20:00Z`,
       })),
       contributions: withCounts(base, (day, index) =>
         day.count === 0 && index >= 90 && index < 124 ? 1 + (index % 4) : day.count,
       ),
+    },
+  };
+}
+
+/**
+ * The sample with a sparse, spiky calendar of 369 days ending on the sample's last day: about 60 % zero days in runs,
+ * busy days of 1 to 12 commits and peaks of 30 to 120, one of them far above the rest. Real accounts look like this
+ * more often than the sample does.
+ */
+export function sparseProfileData(): ProfileData {
+  const sample = sampleProfileData();
+  const dayMs = 86_400_000;
+  const first = Date.UTC(2025, 9, 15) - 368 * dayMs;
+  const startWeekday = new Date(first).getUTCDay();
+  let seed = 20251015;
+  const next = () => {
+    seed = (seed * 1103515245 + 12345) % 2147483648;
+    return seed / 2147483648;
+  };
+  const counts: number[] = [];
+  while (counts.length < 369) {
+    const idle = 1 + Math.floor(next() * 9);
+    for (let i = 0; i < idle; i++) counts.push(0);
+    const busy = 1 + Math.floor(next() * 6);
+    for (let i = 0; i < busy; i++) {
+      const roll = next();
+      counts.push(roll < 0.08 ? 30 + Math.floor(next() * 31) : 1 + Math.floor(next() * 12));
+    }
+  }
+  counts.length = 369;
+  counts[300] = 120;
+  const days = counts.map((count, index) => {
+    const date = new Date(first + index * dayMs);
+    return {
+      date: date.toISOString().slice(0, 10),
+      count,
+      level: level(count),
+      weekday: date.getUTCDay(),
+      week: Math.floor((startWeekday + index) / 7),
+    };
+  });
+  const last = days.at(-1);
+  return {
+    github: {
+      ...sample.github,
+      contributions: {
+        ...sample.github.contributions,
+        total: counts.reduce((sum, count) => sum + count, 0),
+        from: new Date(first).toISOString().slice(0, 10),
+        to: "2025-10-15",
+        weeks: last === undefined ? 0 : last.week + 1,
+        days,
+        streaks: streaksOf(days),
+      },
     },
   };
 }
@@ -193,7 +249,7 @@ export function worstCaseProfileData(): ProfileData {
     github: {
       ...base,
       repositories,
-      pinned: repositories.slice(0, 4),
+      pinned: repositories,
       status: { emoji: long(64), message: long(1024) },
       pushes: Array.from({ length: 600 }, (_, index) => ({
         repository: long(1024),
