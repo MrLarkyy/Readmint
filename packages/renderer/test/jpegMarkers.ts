@@ -5,6 +5,8 @@
 export interface JpegVariant {
   readonly name: string;
   readonly bytes: Uint8Array;
+  /** Measured: Chromium and resvg-wasm 2.6.2 both draw it flat grey 128 (the built multi-scan file). */
+  readonly drawsGrey?: true;
 }
 
 export interface RefusedJpeg extends JpegVariant {
@@ -32,6 +34,9 @@ interface Layout {
 }
 
 function layout(jpeg: Uint8Array): Layout {
+  if (jpeg[jpeg.length - 2] !== 0xff || jpeg[jpeg.length - 1] !== 0xd9) {
+    throw new Error("the test JPEG does not end with EOI");
+  }
   let offset = 2;
   let frame: Pick<Layout, "frame" | "frameEnd"> | undefined;
   let acTable: number[] | undefined;
@@ -75,6 +80,46 @@ const acTable2 = (acTable: readonly number[]) => [
   0x12,
   ...acTable,
 ];
+
+const segment = (marker: number, body: readonly number[]) => [
+  0xff,
+  marker,
+  (body.length + 2) >> 8,
+  (body.length + 2) & 0xff,
+  ...body,
+];
+
+/**
+ * A baseline 32x16 JPEG of three non-interleaved scans (components 1 2 3 at 1x1), a restart interval of 2 blocks (so
+ * RST0-RST2 inside each scan) and a COM before EOI, built here as no encoder at hand writes one: one-code Huffman
+ * tables (DC category 0 is `0`, AC EOB is `0`), every block DC 0 and EOB, so it is flat grey 128 (RM-54 probe
+ * derive3.mjs: Chromium and resvg-wasm draw it so). `dht` is added before the frame header; `secondScan` is the
+ * second scan's table selector byte.
+ */
+function threeScans(options: { dht?: readonly number[]; secondScan?: number } = {}): Uint8Array {
+  const oneCode = (id: number) => [id, 1, ...new Array<number>(15).fill(0), 0];
+  // Four intervals of two blocks of 2 bits, each padded with 1 bits to a byte.
+  const data = [0x0f, 0xff, 0xd0, 0x0f, 0xff, 0xd1, 0x0f, 0xff, 0xd2, 0x0f];
+  const scan = (id: number, tables = 0) => [...segment(0xda, [1, id, tables, 0, 63, 0]), ...data];
+  return new Uint8Array([
+    0xff,
+    0xd8,
+    ...segment(0xdb, [0, ...new Array<number>(64).fill(1)]),
+    ...(options.dht ?? []),
+    ...segment(0xc0, [8, 0, 16, 0, 32, 3, 1, 0x11, 0, 2, 0x11, 0, 3, 0x11, 0]),
+    ...segment(0xc4, [...oneCode(0x00), ...oneCode(0x10)]),
+    ...segment(0xdd, [0, 2]),
+    ...scan(1),
+    ...scan(2, options.secondScan),
+    ...scan(3),
+    ...segment(0xfe, [0x68, 0x69]),
+    0xff,
+    0xd9,
+  ]);
+}
+
+/** The one-code AC table of `threeScans` as AC table 2. */
+const oneCodeAcTable2 = segment(0xc4, [0x12, 1, ...new Array<number>(15).fill(0), 0]);
 
 function inserted(jpeg: Uint8Array, at: number, insert: readonly number[]): Uint8Array {
   const result = new Uint8Array(jpeg.length + insert.length);
@@ -176,6 +221,24 @@ export function refusedJpegs(jpeg: Uint8Array): RefusedJpeg[] {
       ),
       resvgDrawsNothing: true,
     },
+    {
+      ...refused(
+        "a DHT of table 2 before EOI",
+        inserted(jpeg, jpeg.length - 2, acTable2(acTable)),
+        "defines, after its frame header, Huffman table 2",
+        false,
+      ),
+      resvgDrawsNothing: true,
+    },
+    {
+      ...refused(
+        "a later scan on AC table 2",
+        threeScans({ dht: oneCodeAcTable2, secondScan: 0x02 }),
+        "scan selects Huffman table 2",
+        false,
+      ),
+      resvgDrawsNothing: true,
+    },
   ];
 }
 
@@ -196,6 +259,20 @@ export function acceptedJpegs(jpeg: Uint8Array): JpegVariant[] {
     {
       name: "a DHT of table 2 before the frame header",
       bytes: inserted(jpeg, frame, acTable2(acTable)),
+    },
+    {
+      name: "a COM before EOI",
+      bytes: inserted(jpeg, jpeg.length - 2, [0xff, 0xfe, 0, 4, 0x68, 0x69]),
+    },
+    {
+      name: "three scans with restart markers and a COM before EOI",
+      bytes: threeScans(),
+      drawsGrey: true,
+    },
+    {
+      name: "three scans, AC table 2 defined before the frame header but unused",
+      bytes: threeScans({ dht: oneCodeAcTable2 }),
+      drawsGrey: true,
     },
   ];
 }

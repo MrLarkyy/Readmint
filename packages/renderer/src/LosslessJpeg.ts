@@ -1,4 +1,5 @@
 import type { Bytes } from "./Bytes.js";
+import { skipEntropyData } from "./skipEntropyData.js";
 
 /** Component ids `R` `G` `B`: RGB under every colour rule of libjpeg, libjpeg-turbo and jpeg-decoder. */
 const rgbIds = [0x52, 0x47, 0x42] as const;
@@ -134,18 +135,10 @@ function scanReason(bytes: Bytes, offset: number): string | undefined {
  * zeros (`FF 00`) and fill bytes. No restart marker can belong there, a DRI being refused.
  */
 function imageDataReason(data: Uint8Array, start: number): string | undefined {
-  let offset = start;
-  for (;;) {
-    const fill = data.indexOf(0xff, offset);
-    if (fill < 0) return "image data without an end-of-image marker";
-    offset = fill + 1;
-    while (data[offset] === 0xff) offset++;
-    const marker = data[offset];
-    if (marker === undefined) return "image data without an end-of-image marker";
-    offset++;
-    if (marker === 0xd9) return undefined;
-    if (marker === 0xda) return "a second scan";
-    if (marker >= 0xd0 && marker <= 0xd7) return `a restart marker ${hex(marker)}`;
-    if (marker !== 0) return `marker ${hex(marker)} after the image data`;
-  }
+  const marker = skipEntropyData(data, start, false)?.marker;
+  if (marker === undefined) return "image data without an end-of-image marker";
+  if (marker === 0xd9) return undefined;
+  if (marker === 0xda) return "a second scan";
+  if (marker >= 0xd0 && marker <= 0xd7) return `a restart marker ${hex(marker)}`;
+  return `marker ${hex(marker)} after the image data`;
 }

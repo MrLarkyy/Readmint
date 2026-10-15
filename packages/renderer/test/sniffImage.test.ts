@@ -368,6 +368,9 @@ describe("JPEG marker rules", () => {
 
   test("a baseline JPEG cut after its frame header is still read, a lossless one is not", () => {
     expect(sniffImage(jpeg.subarray(0, jpegScan), 1000).ok).toBe(true);
+    // Read on past the first scan, a baseline file cut inside its data or without EOI is still read as far as it goes.
+    expect(sniffImage(jpeg.subarray(0, jpegScan + 40), 1000).ok).toBe(true);
+    expect(sniffImage(jpeg.subarray(0, jpeg.length - 2), 1000).ok).toBe(true);
     const cut = refusedLosslessJpegs().find((row) => row.name === "cut before the scan");
     expect(cut === undefined ? undefined : sniffImage(cut.bytes, 1000).ok).toBe(false);
   });

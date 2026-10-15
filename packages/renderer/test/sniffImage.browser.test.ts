@@ -41,8 +41,18 @@ describe("Chromium and the sniffer agree on JPEG markers", () => {
     "Chromium draws a JPEG with %s, which resvg draws empty and the sniffer refuses",
     async (_name, bytes) => {
       expect(await drawnSize(bytes)).toEqual([32, 16]);
-      expect(await pixelAt(bytes)).toEqual(await pixelAt(jpeg));
+      expect(await opaquePixels(bytes)).toBe(32 * 16);
       expect(sniffImage(bytes, 1000).ok).toBe(false);
+    },
+  );
+
+  const grey = acceptedJpegs(jpeg).filter((row) => row.drawsGrey === true);
+
+  test.each(grey.map((row) => [row.name, row.bytes] as const))(
+    "Chromium draws the JPEG with %s flat grey, as resvg does",
+    async (_name, bytes) => {
+      expect(await opaquePixels(bytes)).toBe(32 * 16);
+      expect(await pixelAt(bytes)).toEqual([128, 128, 128]);
     },
   );
 
@@ -54,6 +64,23 @@ describe("Chromium and the sniffer agree on JPEG markers", () => {
     },
   );
 });
+
+/** How many pixels Chromium draws opaque of `bytes`, through a canvas. */
+async function opaquePixels(bytes: Uint8Array): Promise<number> {
+  const image = new Image();
+  image.src = toDataUri("image/jpeg", bytes);
+  await image.decode();
+  const canvas = document.createElement("canvas");
+  canvas.width = image.naturalWidth;
+  canvas.height = image.naturalHeight;
+  const context = canvas.getContext("2d");
+  if (context === null) throw new Error("no 2d canvas");
+  context.drawImage(image, 0, 0);
+  const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
+  let opaque = 0;
+  for (let index = 3; index < pixels.length; index += 4) if (pixels[index] === 255) opaque++;
+  return opaque;
+}
 
 /** The colour Chromium draws at (5,0) of `bytes`, through a canvas. */
 async function pixelAt(bytes: Uint8Array): Promise<readonly number[]> {

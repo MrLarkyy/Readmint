@@ -1,3 +1,4 @@
+import { baselineScansProblem, baselineTablesProblem } from "./baselineJpeg.js";
 import { Bytes, Truncated } from "./Bytes.js";
 import { exifOrientation, type Orientation, type OrientationField } from "./exifOrientation.js";
 import { LosslessJpeg } from "./LosslessJpeg.js";
@@ -206,49 +207,15 @@ function frameHeaderProblem(bytes: Bytes, offset: number, length: number): strin
   return undefined;
 }
 
-const baselineTable = (table: number, where: string) =>
-  `JPEG baseline (SOF0) ${where} Huffman table ${String(table)}, which is refused, because resvg draws it empty; ` +
-  "baseline allows tables 0 and 1";
-
-/**
- * Why the scan header of a baseline (SOF0) file at `offset` (its length field) is refused: jpeg-decoder holds a
- * baseline scan to Huffman tables 0 and 1 and draws nothing otherwise (parser.rs:374-378); libjpeg reads 0-3.
- */
-function baselineScanProblem(bytes: Bytes, offset: number): string | undefined {
-  const count = bytes.u8(offset + 2);
-  for (let index = 0; index < count; index++) {
-    const tables = bytes.u8(offset + 4 + 2 * index);
-    const table = Math.max(tables >> 4, tables & 0x0f);
-    if (table > 1) return baselineTable(table, "scan selects");
-  }
-  return undefined;
-}
-
-/**
- * Why the DHT segment at `offset` (its length field) after a baseline (SOF0) frame header is refused: past that
- * header jpeg-decoder takes only tables 0 and 1 (parser.rs:544), before it any table.
- */
-function baselineTablesProblem(bytes: Bytes, offset: number, length: number): string | undefined {
-  let at = offset + 2;
-  while (at < offset + length) {
-    const table = bytes.u8(at) & 0x0f;
-    if (table > 1) return baselineTable(table, "defines, after its frame header,");
-    let codes = 0;
-    for (let bits = 1; bits <= 16; bits++) codes += bytes.u8(at + bits);
-    at += 17 + codes;
-  }
-  return undefined;
-}
-
 /**
  * Walks the segments up to the image data: the size from the frame header, EXIF from any APP1 `Exif` segment before
  * the scan (decoders read every marker up to it). Before the frame header the segments must follow each other
  * exactly; past it the walk reads markers as libjpeg (and so Chromium) does, so it finds the same EXIF segments, and a
  * cut-off walk just ends. A marker libjpeg rejects or resvg draws empty, before or after the frame header, refuses the
- * image, as does a Huffman table above 1 in a baseline (SOF0) file. A lossless (SOF3) file is judged at its first
- * scan by `LosslessJpeg`, fed every segment before it on both sides of the frame header (libjpeg fixes the colour
- * space there), then its image data up to EOI; one cut off before that is refused.
- * Every step advances, so the walk is one pass at most.
+ * image, as does a Huffman table above 1 anywhere past the frame header of a baseline (SOF0) file, read on to its EOI.
+ * A lossless (SOF3) file is judged at its first scan by `LosslessJpeg`, fed every segment before it on both sides of
+ * the frame header (libjpeg fixes the colour space there), then its image data up to EOI; one cut off before that is
+ * refused. Every step advances, so the walk is one pass at most.
  */
 function sniffJpeg(bytes: Bytes): SniffResult {
   let offset = 2;
@@ -271,7 +238,7 @@ function sniffJpeg(bytes: Bytes): SniffResult {
         const scanProblem = lossless.lossless
           ? lossless.problemAtScan(bytes, offset)
           : frame === 0xc0
-            ? baselineScanProblem(bytes, offset)
+            ? baselineScansProblem(bytes, offset)
             : undefined;
         if (scanProblem !== undefined) return { ok: false, message: scanProblem };
         return found("image/jpeg", size[0], size[1], 1, exif, blocks);

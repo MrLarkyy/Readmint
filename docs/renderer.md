@@ -300,9 +300,12 @@ budget?, maxBytes? })`, `encodeWoff`, `decodeWoff`, `glyphClosure`, `OutlineBudg
   (Chromium 156, resvg-wasm 2.6.2, fixtures in `packages/renderer/test/assets/jpeg`): Chromium draws them all except
   16-bit DCT samples (0x0), resvg draws arithmetic coding (SOF9-11), DCT samples above 8 bits and 12- and 16-bit
   lossless grey empty, and traps on a 12-bit lossless RGB file. A DCT frame header whose length is not 8 plus 3 per
-  component, or which has no component, is refused too, and so is a baseline (SOF0) file whose scan selects Huffman
-  table 2 or 3 or which defines one after its frame header: jpeg-decoder allows only tables 0 and 1 in baseline and
-  draws nothing, Chromium draws it (a table 2 defined before the frame header both read).
+  component, or which has no component, is refused too. So is a baseline (SOF0) file in which, anywhere between its
+  frame header and EOI, a scan selects Huffman table 2 or 3 or a DHT defines one: jpeg-decoder allows only tables 0
+  and 1 past a baseline frame header and draws nothing, Chromium draws it. For that the sniffer reads a baseline file
+  on past its first scan to EOI in one pass, skipping the image data (stuffed zeros, fill bytes and RST0-7) and other
+  segments by their length; several scans, restart markers and a COM before EOI stay accepted, as does a table 2
+  defined before the frame header (both read it), and a file that ends early is read as far as it goes.
 - A lossless JPEG (SOF3) is accepted only where Chromium and resvg draw the same pixels: resvg-wasm 2.6.2 decodes with
   jpeg-decoder 0.3.1, whose lossless path copies the stored samples without any colour transform (it ignores JFIF,
   Adobe and the component ids) and one per component and pixel whatever the sampling factors; Chromium (libjpeg-turbo
