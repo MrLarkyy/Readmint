@@ -14,10 +14,17 @@ const result = renderSvg(design, {
   assets: { fonts: { inter: bytes }, images: { logo: bytes } }, // bytes for assets whose src is a path
   limits: { maxOutputBytes: 1_000_000 }, // optional overrides of RenderLimits
   time: 400, // optional: the static frame at 400 ms of the design's timeline (see Animation)
+  layerBoxes: true, // optional: also return where each drawn layer sits (see Report); the SVG stays the same
 });
 
 type RenderResult =
-  | { ok: true; svg: string; report: RenderReport; warnings: RenderIssue[] }
+  | {
+      ok: true;
+      svg: string;
+      report: RenderReport;
+      warnings: RenderIssue[];
+      layerBoxes?: LayerBox[];
+    }
   | { ok: false; issues: RenderIssue[] };
 ```
 
@@ -373,3 +380,11 @@ subset's size grows with distinct glyphs, not with repeats. An image is `{ asset
 once however often it is drawn (an image with EXIF data, inline at every use, once per use), and 0 for an asset whose
 bytes an earlier asset already wrote, so the image bytes add up to what the SVG holds. A design with a timeline also reports `animation: { duration, loop }`, what `frameTimes`
 takes.
+
+With the option `layerBoxes: true` a successful render also returns `layerBoxes`, one per drawn node in paint order
+(later boxes are drawn over earlier ones): `{ layer, x, y, width, height, rotation? }`. `layer` is the JSON Pointer of
+the design layer under `/layers` that drew it: every repeat copy gives its layer's pointer, the layers of a component
+give their instance's. The box is the node's unrotated box on the canvas at its layout position (animations do not move
+it), numbers rounded to 3 decimals; `rotation` (degrees clockwise in [0, 360) about the box centre, the node's turn plus
+those of its groups) is absent when nothing turns it. Layers a `visible` or `if` drops have no box. The option never
+changes the SVG or the report; the editor selects layers in its preview with it.

@@ -1,5 +1,6 @@
 import { createBudget, createScope } from "@readmint/expr";
 import { ValueRanges, type Design } from "@readmint/format";
+import { collectLayerBoxes } from "./collectLayerBoxes.js";
 import { countImageUses } from "./countImageUses.js";
 import { embedFonts } from "./embedFonts.js";
 import { escapeText } from "./escapeXml.js";
@@ -106,7 +107,9 @@ function render(context: RenderContext, options: RenderOptions): RenderResult {
           animation: { duration: design.animation.duration, loop: design.animation.loop !== false },
         }),
   };
-  return { ok: true, svg, report, warnings: [...context.warnings] };
+  const warnings = [...context.warnings];
+  if (options.layerBoxes !== true) return { ok: true, svg, report, warnings };
+  return { ok: true, svg, report, warnings, layerBoxes: collectLayerBoxes(nodes) };
 }
 
 /** Registers every animation in drawing order and writes their CSS; returns the document prefix, if any animates. */
