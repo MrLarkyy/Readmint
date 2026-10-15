@@ -124,7 +124,16 @@ Drawn in document order, first at the back. Layer `id` and `name` are not emitte
     U+1EB9, U+AC01 without U+AC00); otherwise a pair composes only into a character the font has. So `e` U+0301, U+00E9 and any other canonically equivalent
     spelling (marks in either order) draw the same glyphs and give the same SVG bytes in a font with either form; the
     tables are the package's own, never `String.prototype.normalize` or `Intl`. Compatibility forms (NFKC) are not
-    folded.
+    folded, except the space and hyphen fallbacks below.
+  - **Space and hyphen fallbacks**: a character the font's `cmap` lacks is still drawn by that font, as HarfBuzz
+    does, when it has U+0020 (spaces) or a hyphen: U+00A0, U+2000-U+200A, U+202F, U+205F and U+3000 take the U+0020
+    glyph with the advance HarfBuzz gives them (in font units, integers: U+2000 and U+2002 1/2 em, U+2001, U+2003 and
+    U+3000 1 em, U+2004 1/3, U+2005 1/4, U+2006 1/6, U+2009 1/5, U+200A 1/16, each rounded to the nearest unit, U+205F
+    4/18 em; U+2007 the advance of the first digit the font has, U+2008 that of `.` else `,`, both else the space
+    advance; U+202F half the space advance; U+00A0 the advance of the glyph drawn, normally the space advance; those "space advance" rules use the glyph GSUB left in place of the space, and a glyph formed by a ligature keeps the ligature's advance), and U+2011 takes the U+2010 glyph, else the
+    U+002D glyph, with that glyph's advance. The font's kerning applies on top. The text's own font draws them before
+    any `fallback` font and no `missing-glyph` is reported; a font without U+0020 does not get the space variants (as
+    before). Font-mode SVG writes such a glyph as a private-use character and keeps the real text in `aria-label`.
   - **Bidi**: each hard line is a paragraph of the Unicode Bidirectional Algorithm (UAX #9, Unicode 16.0.0): its
     direction comes from its first strong character, explicit embeddings, overrides and isolates and paired brackets
     are honoured, mirrored characters (brackets) take their mirror glyph in right-to-left runs. After wrapping, each
@@ -164,7 +173,7 @@ Drawn in document order, first at the back. Layer `id` and `name` are not emitte
   it.
 - **Missing glyphs**: a code point neither the font nor its fallbacks have is not written, so no engine draws it (no
   browser fallback font, no `.notdef` box); it keeps the advance of the font's `.notdef` glyph, so the layout does not
-  depend on it. The render warns `missing-glyph` once per font asset a text names (also when a `fontWeight` picked
+  depend on it (a space variant or U+2011 the font can draw by the fallbacks above is not missing). The render warns `missing-glyph` once per font asset a text names (also when a `fontWeight` picked
   another face of its family), naming up to ten such characters. Default ignorables (ZWJ, ZWNJ, bidi controls,
   variation selectors, ...) take part in shaping and bidi, are never drawn and never count as missing.
 - **Remaining limits of shaping**: only Arabic and Devanagari have shapers of their own; every other script (Hebrew,
@@ -172,8 +181,8 @@ Drawn in document order, first at the back. Layer `id` and `name` are not emitte
   features through the default shaper, without syllable reordering. Only the default language system is used (no
   design field names a language, so Urdu or Marathi forms are not chosen). Normalization is canonical only (no NFKC),
   leaves a run of more than 32 marks unsorted and does not reorder Arabic modifier marks (U+0654, U+0655, ...) as
-  HarfBuzz does; a character missing from the font is not replaced by a similar one (HarfBuzz draws a missing thin
-  space as a scaled space). No vertical text, no variable-font axes,
+  HarfBuzz does; a character missing from the font is not replaced by a similar one, except the space variants and
+  U+2011 (Text, Space and hyphen fallbacks). No vertical text, no variable-font axes,
   no fallback shaping for fonts without layout tables (Arabic presentation forms). Characters of one word in different
   fonts do not join or attach across the font change.
 - A line break in the content is a hard break. With a `width`, words (split at spaces) fill each line greedily; a word
@@ -229,7 +238,14 @@ Drawn in document order, first at the back. Layer `id` and `name` are not emitte
   `OFL-1.0-no-RFN` and `OFL-1.1-no-RFN` none; compared without ASCII case), then the font's name table: the copyright
   (name 0) or licence description (name 13) says "with Reserved Font Name" (any ASCII case, also "Names") followed by
   a name, not by the OFL template's `<Reserved Font Name>` (so the OFL text itself, which only defines the term, is no
-  statement), whatever licence the font or its asset names. The warning points at what decided: `licence/reservedFontName`, `licence/name` or the asset.
+  statement; a colon after the phrase is skipped), whatever licence the font or its asset names, and only when the
+  font's own family name (name 1 or 16) uses it (any ASCII case): it contains a stated name, or, for an unquoted
+  statement, the text up to the sentence end shares a whole word with it (a word is a run of ASCII letters and digits
+  or characters from U+0080 up; so trailing words, a following copyright line or a family name wider than the stated
+  name hide nothing); after a quote every quoted name counts whatever separates them, and the words outside the quotes
+  count as for an unquoted statement. A renamed fork that keeps the upstream
+  copyright line but not the name is embedded as before. A statement whose names cannot be told apart, or a font
+  without a family name, counts as used. The warning points at what decided: `licence/reservedFontName`, `licence/name` or the asset.
   A restricted font warns only `font-not-embeddable`, and `drawAs: "paths"` draws an RFN font as paths without a
   warning. Detection reads only the name table (other licence texts, name 7 and the trademark are not read) and
   decodes at most 131072 characters of names per font, so a crafted table costs nothing; a statement it misses is
@@ -280,7 +296,7 @@ Drawn in document order, first at the back. Layer `id` and `name` are not emitte
   `shapeText(font, text, { script?, rtl?, kerning?, ligatures?, budget? })` shapes one run into a `ShapedRun` (glyphs, UTF-16
   cluster starts, advances and x/y offsets in font units, mark flags, in visual order), spending a `ShapingBudget`
   (its own, or one shared by many calls: `ShapingBudget.forText(length)`); `normalizeForFont(font, text)`: the
-  characters `shapeText` maps through the font's `cmap` (see Text, Normalization); `normalizeNfc(text)`; `resolveLevels(text,
+  characters `shapeText` maps through the font's `cmap` (see Text, Normalization); `normalizeNfc(text)`; `glyphForCharacter(font, codePoint)`: the glyph that draws a character, the space or hyphen fallback included (0 for none); `resolveLevels(text,
 direction?)`, `lineLevels(paragraph, start, end)` and `visualOrder(levels)` (UAX #9); `clusterStarts`, `scriptOf`,
   `isDefaultIgnorable`, `isNonSpacingMark` (from the package's own Unicode 16.0.0 tables, never from RegExp property
   escapes or `Intl`, whose Unicode version differs between Node and browsers); `subsetFont(font, codePoints, {
@@ -303,7 +319,9 @@ budget?, maxBytes? })`, `encodeWoff`, `decodeWoff`, `glyphClosure`, `OutlineBudg
   whole, base included, to the first fallback that has all of it (before, only the mark took the fallback and drew
   unattached; a fallback in another family can now draw the base letter too), and letters excluded from composition (Devanagari U+0958-U+095F, Hebrew presentation forms such as
   U+FB2A) are drawn from their base and nukta or point by the font's own features, not from the font's precomposed
-  glyph.
+  glyph. Since RM-60, a space variant (U+00A0, U+2000-U+200A, U+202F, U+205F, U+3000) or U+2011 a font lacks is drawn
+  from the font's own space or hyphen glyph, no longer reported as `missing-glyph` or taken from a `fallback` font:
+  a primary without U+2009 but with a fallback that has it now draws its own space at 1/5 em.
 - **Dependencies**: `fflate` 0.8.3 (MIT; zlib inflate for WOFF input, deflate for the subsets) and `brotli` 1.3.3
   (MIT, its decoder a port of Google's Apache-2.0 decoder; only `brotli/decompress.js`, for WOFF2 input) with `base64-js`
   1.5.1 (MIT). Both are pure ECMAScript and run the same in Node and browsers. In the Action bundle they add about

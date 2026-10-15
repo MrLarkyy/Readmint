@@ -69,6 +69,61 @@ describe("the Reserved Font Name hint of a name table", () => {
     ).toBe(true);
   });
 
+  test("a renamed fork keeping the upstream copyright states no Reserved Font Name it uses", () => {
+    const upstream = 'Copyright 2026 The Rfn Authors, with Reserved Font Name "Rfn".';
+    const fork = (names: Readonly<Record<number, string | null>>, family: string) =>
+      parse(buildTestFont({ family, glyphs, names }));
+    expect(fork({ 0: upstream }, "Forked Sans").reservedFontName).toBe(false);
+    expect(fork({ 0: upstream, 16: "Forked Display" }, "Rfn").reservedFontName).toBe(true);
+    expect(fork({ 0: upstream }, "Rfn Mono").reservedFontName).toBe(true);
+    expect(fork({ 0: upstream }, "RFN").reservedFontName).toBe(true);
+    const several = 'with Reserved Font Names "Rfn" and "Rfn Sans".';
+    expect(fork({ 0: several }, "Forked").reservedFontName).toBe(false);
+    expect(fork({ 0: several }, "Rfn Sans").reservedFontName).toBe(true);
+  });
+
+  test.each([
+    "Copyright 2026 The Authors, with Reserved Font Name: Rfn",
+    'Copyright 2026, with Reserved Font Name: "Rfn" for the original version.',
+    "Copyright 2026, with Reserved Font Name Rfn\r\nCopyright 2027 Other Authors.",
+    "Copyright 2026, with Reserved Font Name Rfn and trailing words",
+  ])("trailing words, a colon or a following line do not hide a used name: %s", (copyright) => {
+    expect(fontWith({ 0: copyright }).reservedFontName).toBe(true);
+    const fork = parse(buildTestFont({ family: "Forked Sans", glyphs, names: { 0: copyright } }));
+    expect(fork.reservedFontName).toBe(false);
+  });
+
+  test("an unquoted name used by a wider family name counts as used, a disjoint fork does not", () => {
+    const font = (family: string, copyright: string) =>
+      parse(buildTestFont({ family, glyphs, names: { 0: copyright } })).reservedFontName;
+    expect(font("Rfn Mono", "with Reserved Font Name Rfn and trailing words")).toBe(true);
+    expect(font("Source Sans Pro", "with Reserved Font Name Source All Rights Reserved")).toBe(
+      true,
+    );
+    expect(font("Forked Sans", "with Reserved Font Name Rfn")).toBe(false);
+    expect(font("Forked Sans", "with Reserved Font Name Rfn and trailing words")).toBe(false);
+  });
+
+  test.each([
+    'with Reserved Font Names "Alpha", "Beta", and "Gamma".',
+    'with Reserved Font Names "Alpha" & "Gamma".',
+    'with Reserved Font Names "Alpha" / "Gamma".',
+    'with Reserved Font Names "Alpha" and Gamma.',
+  ])("any separator after a quoted name keeps the later names: %s", (copyright) => {
+    const font = (family: string) =>
+      parse(buildTestFont({ family, glyphs, names: { 0: copyright } })).reservedFontName;
+    expect(font("Gamma")).toBe(true);
+    expect(font("Alpha")).toBe(true);
+    expect(font("Forked Sans")).toBe(false);
+  });
+
+  test("a statement whose names cannot be read counts as used", () => {
+    const vague = (copyright: string) =>
+      parse(buildTestFont({ family: "Forked", glyphs, names: { 0: copyright } }));
+    expect(vague('with Reserved Font Name "".').reservedFontName).toBe(true);
+    expect(vague("with Reserved Font Name Rfn, , Other.").reservedFontName).toBe(true);
+  });
+
   test("the default test font and every committed font state no Reserved Font Name", () => {
     expect(fontWith({}).reservedFontName).toBe(false);
     for (const bytes of [

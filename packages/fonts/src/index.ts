@@ -16,6 +16,7 @@ export { encodeWoff } from "./encodeWoff.js";
 export { FS_TYPE_BITMAP_ONLY, FS_TYPE_RESTRICTED, embeddingAllowed } from "./fontEmbedding.js";
 export { FontRefused } from "./FontRefused.js";
 export { glyphClosure } from "./glyphClosure.js";
+export { glyphForCharacter } from "./glyphForCharacter.js";
 export { MalformedFont } from "./MalformedFont.js";
 export { normalizeForFont } from "./normalizeForFont.js";
 export { normalizeNfc } from "./normalizeNfc.js";
