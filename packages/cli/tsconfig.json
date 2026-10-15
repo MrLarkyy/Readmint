@@ -6,9 +6,12 @@
     "types": ["node"],
     "paths": {
       "@readmint/data": ["../data/src/index.ts"],
+      "@readmint/data-github": ["../data-github/src/index.ts"],
       "@readmint/expr": ["../expr/src/index.ts"],
       "@readmint/fonts": ["../fonts/src/index.ts"],
       "@readmint/format": ["../format/src/index.ts"],
+      "@readmint/golden": ["../golden/src/index.ts"],
+      "@readmint/golden/node": ["../golden/src/node/index.ts"],
       "@readmint/raster": ["../raster/src/index.ts"],
       "@readmint/renderer": ["../renderer/src/index.ts"]
     }
