@@ -43,7 +43,7 @@ name table are kept, outlines are unchanged.
 | `NotoNaskhArabic-Regular.ttf`    | 2.021   | https://github.com/notofonts/arabic/releases/download/NotoNaskhArabic-v2.021/NotoNaskhArabic-v2.021.zip (`6c050ab9bd087d69b733c505a7576e60c528c2f33cd7b91005a5bd7da4514032`), `NotoNaskhArabic/unhinted/ttf/NotoNaskhArabic-Regular.ttf`                 | `c34fdbd98af4dbc45ca192a23d2eeb77032add83086f5fe32957d23b3f36b221` | `3bf5e21cbf32ddb0fca050e5259c37fa90ad70d2e7b0f4e050f442509a830329` |
 | `NotoSansDevanagari-Regular.ttf` | 2.007   | https://github.com/notofonts/devanagari/releases/download/NotoSansDevanagari-v2.007/NotoSansDevanagari-v2.007.zip (`820c7da45b1e63562cb41c0a8cac5d9a4202312043a3a040ed1325857ef469b1`), `NotoSansDevanagari/unhinted/ttf/NotoSansDevanagari-Regular.ttf` | `9c7d935139ea6a1e6ad9dbac4f6d27ece1e04bca8123c8888d00a0f9df4724cd` | `f4b173cf83db171ba5855f2e622eaa3480980852302bfa67bff78d7d1c0e9a09` |
 
-`OFL-NotoNaskhArabic.txt` and `OFL-NotoSansDevanagari.txt` are the `OFL.txt` of each release zip, unchanged. The
+`OFL-NotoNaskhArabic.txt` and `OFL-NotoSansDevanagari.txt` are the `OFL.txt` of each release zip (trailing spaces trimmed, as in `OFL.txt`). The
 subsets were made with these commands (the same input gives the same bytes):
 
 ```sh
