@@ -20,6 +20,7 @@ Options:
                       default 30, gif 25)
   --quality <n>       Lossy WebP at this quality, 1..100 (webp; default lossless)
   --port <n>          Preview port, 0 for any free one (preview; default 4870)
+  --open              Open the preview address in the default browser (preview)
   --fetch-images      Fetch the images whose src is bound to data (https, allowed hosts only)
   --github            Load live GitHub data as { github } instead of --data, with the token
                       from GH_TOKEN, else GITHUB_TOKEN

@@ -16,6 +16,7 @@ import { loadRenderInput } from "./loadRenderInput.js";
 import { retryWhileChanging } from "./retryWhileChanging.js";
 import { PreviewServer, type PreviewUpdate } from "./PreviewServer.js";
 import { previewSecret } from "./previewSecret.js";
+import { openInBrowser } from "./openInBrowser.js";
 import { printLines } from "./printLines.js";
 import { redactSecrets } from "./redactSecrets.js";
 import { renderInput } from "./renderInput.js";
@@ -29,7 +30,8 @@ type PreviewArgs = Extract<CliCommand, { name: "preview" }>;
  * an asset changes; a failing render keeps the last SVG and shows its issues. Ends with exit code 0
  * when `io.signal` aborts. `--github` data is loaded once, before the server starts: a design edit never costs
  * GitHub requests. With that token-scoped data the routes live under a per-session secret path
- * (http://127.0.0.1:<port>/<secret>/), printed once and kept in memory only.
+ * (http://127.0.0.1:<port>/<secret>/), printed once and kept in memory only. With `open` the printed address is
+ * handed to the browser after it is printed, without waiting; a failure to do so costs one fixed line.
  */
 export async function previewCommand(args: PreviewArgs, io: CliIo): Promise<ExitCode> {
   const { loadData } = liveData(args, io, io.signal);
@@ -80,9 +82,9 @@ export async function previewCommand(args: PreviewArgs, io: CliIo): Promise<Exit
     });
     try {
       const base = `http://127.0.0.1:${String(port)}/`;
-      await printLines(io.stderr, [
-        `preview: ${secret === undefined ? base : `${base}${secret}/`}`,
-      ]);
+      const address = secret === undefined ? base : `${base}${secret}/`;
+      await printLines(io.stderr, [`preview: ${address}`]);
+      if (args.open === true) void openAddress(address, io);
       await aborted(io.signal);
     } finally {
       await watcher.close();
@@ -123,6 +125,24 @@ async function renderUpdate(
     else lines = [`internal error: ${error instanceof Error ? error.message : String(error)}`];
   }
   return { issues: lines.map(escapeForLog) };
+}
+
+/** Never rethrows and never prints the opener's message: it can echo the address, which holds the secret. */
+async function openAddress(address: string, io: CliIo): Promise<void> {
+  if (io.signal?.aborted === true) return;
+  try {
+    await (io.openUrl ?? openInBrowser)(address);
+  } catch (error) {
+    const code = errnoCode(error);
+    const suffix = code !== undefined && /^[A-Z][A-Z0-9_]{1,31}$/.test(code) ? ` (${code})` : "";
+    try {
+      await printLines(io.stderr, [
+        `preview: cannot open a browser${suffix}; open the address above`,
+      ]);
+    } catch {
+      // standard error closed: nothing left to tell
+    }
+  }
 }
 
 function aborted(signal: AbortSignal | undefined): Promise<void> {

@@ -45,6 +45,10 @@ test("--help and docs/cli.md list the same options", () => {
   expect(new Set(helpOptions)).toEqual(new Set([...docOptions, "--help", "--version"]));
 });
 
+test("the Preview section names --open", () => {
+  expect(section("Preview")).toContain("--open");
+});
+
 test("docs/cli.md or docs/asset-loading.md names every export of @readmint/cli", () => {
   const assetDocs = readFileSync(
     join(import.meta.dirname, "..", "..", "..", "docs", "asset-loading.md"),
