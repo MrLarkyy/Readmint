@@ -31,6 +31,8 @@ export interface TestFontOptions {
   readonly gpos?: readonly (readonly [left: number, right: number, value: number])[];
   /** A CFF table (`buildTestCff`): the font gets CFF outlines instead of glyf (glyph contours are ignored). */
   readonly cff?: Uint8Array;
+  /** Further tables by tag (GDEF, GSUB, GPOS from `buildLayoutTables`), replacing any built here. */
+  readonly tables?: Readonly<Record<string, Uint8Array>>;
 }
 
 /**
@@ -58,6 +60,7 @@ export function buildTestFont(options: TestFontOptions): Uint8Array {
   ]);
   if (options.kern !== undefined) tables.set("kern", kern(options.kern));
   if (options.gpos !== undefined) tables.set("GPOS", gpos(options.gpos));
+  for (const [tag, table] of Object.entries(options.tables ?? {})) tables.set(tag, table);
   if (options.cff !== undefined) {
     tables.set("CFF ", options.cff);
     tables.set("maxp", new ByteWriter(6).u32(0x00005000).u16(options.glyphs.length).result());

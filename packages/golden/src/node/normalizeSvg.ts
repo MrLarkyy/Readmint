@@ -6,7 +6,8 @@ const attributePattern = /([^\s=/>]+)(\s*=\s*)(?:"([^"]*)"|'([^']*)')/g;
 const valuePattern = /(data:[^)'"\s]*)|(#[\w-]+)|(-?(?:\d+(?:\.\d+)?|\.\d+)(?:[eE][+-]?\d+)?)/g;
 const urlPattern = /url\(\s*(['"]?)#([^)'"\s]+)\1\s*\)/g;
 const digestedPattern = /^data:[^;,]*;sha256=[0-9a-f]{64}$/;
-const untouched = new Set(["class", "font-family"]);
+// Attributes holding names or text, not numbers: an accessible name like "Readmint 2.0" stays exact.
+const untouched = new Set(["class", "font-family", "aria-label"]);
 
 /**
  * Makes an SVG string comparable across runs: ids renamed in order of definition, numbers rounded,

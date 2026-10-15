@@ -9,7 +9,10 @@ import {
   subsetFont,
   type SfntFont,
 } from "../src/index.js";
-import { montserrat, parse } from "./testFonts.js";
+import { readTableDirectory } from "../src/readTableDirectory.js";
+import { SfntReader } from "../src/SfntReader.js";
+import { shapeTextCounted } from "../src/shapeText.js";
+import { montserrat, noto, parse } from "./testFonts.js";
 
 const rounds = 2000;
 /**
@@ -107,4 +110,82 @@ test("the glyph ranges of the TTF and the OTF lie inside the files", () => {
     for (const [, end] of ranges) expect(end).toBeLessThanOrEqual(bytes.length);
     expect(ranges[0]?.[0]).toBeGreaterThan(2048);
   }
+});
+
+const layoutTags = ["GDEF", "GSUB", "GPOS"];
+const layoutRounds = 1000;
+/** Fixed strings per font: ligatures, kerning, joining, marks, syllables and reordering get exercised. */
+const layoutTexts: readonly (readonly [Uint8Array, string, readonly string[]])[] = [
+  [montserrat.ttf, "Montserrat", ["office AV To fi\u0301", "Wa\u0300 ffl"]],
+  [
+    noto.arabic,
+    "Naskh",
+    [
+      "\u0627\u0644\u0639\u0631\u0628\u064a\u0629",
+      "\u0628\u0650\u0633\u0652\u0645\u0650 \u0644\u0627",
+    ],
+  ],
+  [
+    noto.devanagari,
+    "Devanagari",
+    ["\u0939\u093f\u0928\u094d\u0926\u0940 \u0915\u094d\u0937", "\u0930\u094d\u0915\u093f \u093f"],
+  ],
+];
+
+/** Byte ranges of the layout tables in the file. */
+function layoutRanges(bytes: Uint8Array): (readonly [start: number, end: number])[] {
+  const reader = new SfntReader(bytes);
+  return [...readTableDirectory(reader)]
+    .filter(([tag]) => layoutTags.includes(tag))
+    .map(([, table]) => [table.offset, table.offset + table.length] as const);
+}
+
+/** A copy with a few bytes of its layout tables changed. */
+function mutateLayout(
+  bytes: Uint8Array,
+  ranges: readonly (readonly [number, number])[],
+  next: () => number,
+): Uint8Array {
+  const copy = bytes.slice();
+  const flips = 1 + (next() % 6);
+  for (let flip = 0; flip < flips; flip++) {
+    const range = ranges[next() % ranges.length];
+    if (range === undefined) continue;
+    // Headers and lists sit at the start of a table: bias a third of the flips there.
+    const span = next() % 3 === 0 ? Math.min(64, range[1] - range[0]) : range[1] - range[0];
+    copy[range[0] + (next() % span)] = next() & 0xff;
+  }
+  return copy;
+}
+
+describe.each(layoutTexts)("mutated layout tables of %s", (bytes, name, texts) => {
+  test(`${String(layoutRounds)} mutations shape or fail as a font error, within the operation budget`, () => {
+    const next = random(name.length * 104_729);
+    const ranges = layoutRanges(bytes);
+    expect(ranges.length).toBe(3);
+    let slowest = 0;
+    let failures = 0;
+    for (let round = 0; round < layoutRounds; round++) {
+      const result = parseSfnt(mutateLayout(bytes, ranges, next), { maxBytes: 1_000_000 });
+      if (!result.ok) continue;
+      const started = performance.now();
+      for (const text of texts) {
+        for (const rtl of [false, true]) {
+          try {
+            const { run, operations, maxOperations } = shapeTextCounted(result.font, text, { rtl });
+            expect(operations).toBeLessThanOrEqual(maxOperations);
+            expect(run.glyphs.length).toBe(run.advances.length);
+          } catch (error) {
+            if (!(error instanceof MalformedFont)) {
+              throw new Error(`round ${String(round)} threw ${String(error)}`, { cause: error });
+            }
+            failures++;
+          }
+        }
+      }
+      slowest = Math.max(slowest, performance.now() - started);
+    }
+    expect(failures).toBeLessThan(layoutRounds * texts.length * 2);
+    expect(slowest).toBeLessThan(perRoundCeilingMs * loadScale());
+  }, 300_000);
 });

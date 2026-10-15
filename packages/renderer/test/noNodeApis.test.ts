@@ -1,5 +1,5 @@
 import { readdirSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { join, posix } from "node:path";
 import ts from "typescript";
 import { describe, expect, test } from "vitest";
 
@@ -50,8 +50,12 @@ describe("shared renderer code uses only ECMAScript", () => {
           expect(plain, `${file} uses ${what}`).not.toMatch(pattern);
         for (const match of plain.matchAll(/\bfrom\s+"([^"]+)"/gu)) {
           const specifier = match[1] ?? "";
+          // A relative import may reach any file of its own package's src, from a subdirectory too.
+          const inside = posix
+            .normalize(posix.join(posix.dirname(file.replaceAll("\\", "/")), specifier))
+            .startsWith(`${name}/src/`);
           expect(
-            specifier.startsWith("./") ||
+            (specifier.startsWith(".") && inside) ||
               allowedPackages.includes(specifier) ||
               specifier === "@readmint/format" ||
               specifier === "@readmint/fonts" ||

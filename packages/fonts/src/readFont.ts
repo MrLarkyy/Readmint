@@ -7,14 +7,17 @@ import type { OutlineBudget } from "./OutlineBudget.js";
 import { MalformedFont } from "./MalformedFont.js";
 import { readCmap } from "./readCmap.js";
 import { readFamilyName } from "./readFamilyName.js";
-import { readKerning, type KerningLookup } from "./readKerning.js";
+import { kernPair } from "./layout/kernPair.js";
 import { readTableDirectory, requireTable, type SfntTable } from "./readTableDirectory.js";
 import type { SfntFont } from "./SfntFont.js";
 import type { SfntReader } from "./SfntReader.js";
 
 const useTypoMetrics = 0x0080;
 
-/** The font of an sfnt: measuring tables and the CFF structure read now, glyph outlines and kerning on first use. */
+/**
+ * The font of an sfnt: measuring tables and the CFF structure read now; glyph outlines, kerning and the layout tables
+ * on first use.
+ */
 export function readFont(
   reader: SfntReader,
   format: "ttf" | "otf",
@@ -43,8 +46,8 @@ export function readFont(
   const typo = (reader.u16(os2.offset + 62) & useTypoMetrics) !== 0;
   const vertical = typo ? os2.offset + 68 : hhea.offset + 4;
   const lookup = readCmap(reader, requireTable(tables, "cmap", 4));
-  let kerning: KerningLookup | undefined;
-  return Object.freeze({
+  const pairs = new Map<number, number>();
+  const font: SfntFont = Object.freeze({
     format,
     container,
     outlines,
@@ -72,8 +75,13 @@ export function readFont(
       return offset + 2 <= hmtx.length ? reader.i16(hmtx.offset + offset) : 0;
     },
     kerning(left: number, right: number): number {
-      kerning ??= readKerning(reader, tables);
-      return kerning(left, right);
+      const key = left * 0x10000 + right;
+      let value = pairs.get(key);
+      if (value === undefined) {
+        value = kernPair(font, left, right);
+        pairs.set(key, value);
+      }
+      return value;
     },
     outline,
     table(tag: string): Uint8Array | undefined {
@@ -81,6 +89,7 @@ export function readFont(
       return table === undefined ? undefined : reader.slice(table.offset, table.length);
     },
   });
+  return font;
 }
 
 function outlineKind(tables: ReadonlyMap<string, SfntTable>): "glyf" | "cff" {

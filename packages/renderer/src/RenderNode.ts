@@ -56,6 +56,10 @@ export interface TextNode extends NodeBase {
   readonly fontSize: number;
   /** `paths` when any font the text draws with is drawn as paths: the whole text then is. */
   readonly drawnAs: "font" | "paths";
+  /** Font mode writes some glyph as a private-use character (see TextLayout). */
+  readonly privateUse: boolean;
+  /** Some glyph is right-to-left (see TextLayout). */
+  readonly rtl: boolean;
   readonly fill: Paint | undefined;
   /** Offset of the first baseline from the top of the box. */
   readonly baseline: number;

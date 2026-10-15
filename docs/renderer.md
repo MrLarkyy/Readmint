@@ -89,26 +89,63 @@ Drawn in document order, first at the back. Layer `id` and `name` are not emitte
 
 - Metrics come from the font file (TrueType/OpenType tables `head`, `hhea`, `hmtx`, `OS/2`, `cmap`), never from the
   system, so Node and every browser measure alike.
-- **Every glyph is placed by the renderer.** Code point by code point, in order: the font is the first of the text's
-  font and its `fallback` fonts whose `cmap` has the code point; the advance is that glyph's advance scaled to
-  `fontSize` (default 16) plus `letterSpacing` (default 0); between two code points drawn with the same font, its
-  pair kerning is added (GPOS `kern` feature of script `DFLT`, else `latn`, pair adjustment formats 1 and 2, the first
-  glyph's x advance; without it the `kern` table, format 0), unless the asset sets `kerning: false`. The sums run in
-  code point order, so every engine adds the same numbers.
-- The drawer only draws: each character gets its own `x` (one `<tspan>` per line and font run, with an `x` per
-  character; a character above the BMP gets a `<tspan>` of its own, since drawers count `x` values in UTF-16 units or
-  in code points), so neither Chromium nor resvg shapes, kerns, aligns or substitutes anything. The embedded subsets
-  hold no GSUB, GPOS or `kern`, and the explicit positions keep resvg (which reads the original files) from shaping
-  across characters.
+- **Every glyph is placed by the renderer**, which shapes text itself (`shapeText` of `@readmint/fonts`, the same
+  TypeScript in Node and browsers, no WebAssembly):
+  - **Clusters and fallback**: the text is split into character clusters (a base with its marks, joiners, variation
+    selectors and other default ignorables; a Devanagari conjunct; an emoji ZWJ sequence). A cluster's base takes the
+    first of the text's font and its `fallback` fonts whose `cmap` has it; a mark, joiner or variation selector stays
+    in its base's font when that font has it, else takes its own fallback (and then cannot attach to the base).
+  - **Bidi**: each hard line is a paragraph of the Unicode Bidirectional Algorithm (UAX #9, Unicode 16.0.0): its
+    direction comes from its first strong character, explicit embeddings, overrides and isolates and paired brackets
+    are honoured, mirrored characters (brackets) take their mirror glyph in right-to-left runs. After wrapping, each
+    line gets rule L1 (trailing whitespace back to the paragraph level) and its runs are put in visual order (L2).
+  - **Runs**: a line is split into runs of one font, one script (Common and Inherited characters such as spaces,
+    digits and punctuation join the script before them) and one bidi level; each run is shaped once per text.
+  - **Shaping** (OpenType layout as HarfBuzz does it): GSUB lookup types 1-8 and GPOS types 1-9 with their lookup
+    flags (ignore bases, ligatures or marks, mark attachment classes, mark filtering sets, right-to-left cursive), under
+    the font's script tag (`latn`, `arab`, `dev2` then `deva`, `grek`, `cyrl`, `hebr`, ...; else `DFLT`, `dflt` or
+    `latn`) and its default language system. Features on: `ccmp`, `locl`, `rlig`, `liga`, `clig`, `calt`, `rclt`,
+    `kern`, `mark`, `mkmk`, `curs`, `dist`, `abvm`, `blwm` and the direction's `ltra`/`ltrm` or `rtla`/`rtlm`, plus
+    the script's own; `dlig`, stylistic sets and other optional features stay off (no design option names them).
+    Arabic gets its joining forms (`isol`, `fina`, `medi`, `init`, ... from the Unicode joining types, ZWJ and ZWNJ
+    included) before `rlig`, `calt` and `mset`; Devanagari gets syllables (a dotted circle U+25CC before a broken
+    one, when the font has it), reph, pre-base matra and half-form reordering and the Indic features (`nukt` to
+    `cjct` per syllable, then `init`, `pres`, `abvs`, `blws`, `psts`, `haln`). A font without GPOS kerns with its
+    `kern` table (format 0). Marks attach by their anchors (x and y offsets); their advances are zeroed.
+  - **Options**: `kerning: false` on the font asset turns off `kern` only (marks still attach); a `letterSpacing`
+    other than 0 turns off `liga`, `clig` and `calt`, as browsers do.
+  - **Positions**: advances and offsets come in integer font units and are scaled to `fontSize` (default 16); the pen
+    moves left to right over the line in visual order, `letterSpacing` (default 0) is added once after each cluster
+    (a ligature or a letter with its marks counts once). The sums run in one order, so every engine adds the same
+    numbers.
+- The drawer only draws: each written character gets its own `x` (and a `y` list when some glyph of the `<tspan>`
+  sits off the baseline, a mark on its base), one `<tspan>` per line and font run; a character above the BMP gets a
+  `<tspan>` of its own, since drawers count `x` values in UTF-16 units or in code points. A glyph is written as its
+  own character only when that character alone draws exactly it: one character, the glyph its `cmap` gives, no offset,
+  not a mark, left to right, not itself a private-use character. Every other glyph (a ligature, a joining form, a
+  mark, a reordered matra, anything in a right-to-left run) is written as a private-use character (U+E000 upwards,
+  then planes 15 and 16 after 6400 glyphs of one font, numbered per font in the order glyphs are first placed) that
+  the font's subset maps to that glyph. Such a `<text>` carries its own text as `aria-label`, so screen readers and
+  copy read the words, not the private-use characters; a text with right-to-left glyphs carries
+  `direction="ltr" unicode-bidi="bidi-override"`, so the drawer keeps the visual order written. The embedded subsets
+  hold no GSUB, GPOS or `kern`, so neither Chromium nor resvg shapes, kerns, reorders, aligns or substitutes anything;
+  a glyph no lookup changed and that sits on the baseline, left to right, is written as its own character, with the
+  pen positions the renderer computed before shaping existed whenever the font applies nothing but pair kerning to
+  it.
 - **Missing glyphs**: a code point neither the font nor its fallbacks have is not written, so no engine draws it (no
   browser fallback font, no `.notdef` box); it keeps the advance of the font's `.notdef` glyph, so the layout does not
   depend on it. The render warns `missing-glyph` once per font asset a text names (also when a `fontWeight` picked
-  another face of its family), naming up to ten such characters.
-- **No shaping**: no ligatures, no contextual forms, no mark positioning, no bidi reordering. Scripts that need them
-  (Arabic, Devanagari, Thai, ...) and decomposed accents render as separate glyphs side by side; use precomposed
-  characters.
+  another face of its family), naming up to ten such characters. Default ignorables (ZWJ, ZWNJ, bidi controls,
+  variation selectors, ...) take part in shaping and bidi, are never drawn and never count as missing.
+- **Remaining limits of shaping**: only Arabic and Devanagari have shapers of their own; every other script (Hebrew,
+  Thai, Bengali, Tamil, Khmer, Myanmar, the scripts HarfBuzz's USE shaper handles, ...) gets the font's GSUB and GPOS
+  features through the default shaper, without syllable reordering. Only the default language system is used (no
+  design field names a language, so Urdu or Marathi forms are not chosen). No Unicode normalization: a decomposed
+  accent is drawn by the font's `ccmp` and mark positioning, or side by side. No vertical text, no variable-font axes,
+  no fallback shaping for fonts without layout tables (Arabic presentation forms). Characters of one word in different
+  fonts do not join or attach across the font change.
 - A line break in the content is a hard break. With a `width`, words (split at spaces) fill each line greedily; a word
-  wider than the line breaks between code points. Word widths include kerning inside the word; kerning across a space
+  wider than the line breaks between clusters, never inside one (a ligature, a letter with its marks, a conjunct). Word widths include kerning inside the word; kerning across a space
   is left out of the wrapping decision (it is in the final positions). The space at a soft break is dropped, every
   other space is kept (`xml:space="preserve"`).
 - The box is the `width` (or the widest line) by `lines x lineHeight x fontSize` (`lineHeight` default 1.2). The
@@ -116,8 +153,10 @@ Drawn in document order, first at the back. Layer `id` and `name` are not emitte
   `OS/2` when the font sets USE_TYPO_METRICS), of the font the text names.
 - Characters XML does not allow (see Output) are removed from the filled-in content before it is measured and
   wrapped, so such a text lays out and renders byte-identical to the same text without them.
-- `align` (`start`, `middle`, `end`) moves each line by the free space of the box (none, half, all) before the
-  positions are written; there is no `text-anchor` and no `letter-spacing` attribute.
+- `align` (`start`, `middle`, `end`) moves each line by the free space of the box before the positions are written:
+  `start` puts a line at the start of its paragraph's direction (the left edge, or the right edge for a right-to-left
+  paragraph), `end` at the other edge, `middle` in the centre; there is no `text-anchor` and no `letter-spacing`
+  attribute.
 - A gradient fill of a text spans the text's layout box (`gradientUnits="userSpaceOnUse"` with a transform onto the
   box), not the ink of the glyphs, which each drawer measures differently; text drawn as paths uses the same box.
 - Every `<text>` carries `text-rendering="geometricPrecision"`: without it Chromium on Linux rounds hinted glyph
@@ -133,7 +172,8 @@ Drawn in document order, first at the back. Layer `id` and `name` are not emitte
 - **Embedded as a subset**: once every text is laid out, each font that draws text gets one `@font-face` rule whose
   source is a WOFF data URI (`data:font/woff;base64,...`) of a subset holding exactly the characters drawn with it
   (plus `.notdef` and the components of composite glyphs), so its size follows the glyphs used, not the file. The
-  subset keeps `head`, `hhea`, `maxp`, `OS/2` (with `fsType`), `hmtx`, a new `cmap` (format 4, plus 12 above the BMP),
+  subset keeps `head`, `hhea`, `maxp`, `OS/2` (with `fsType`), `hmtx`, a new `cmap` (format 4, plus 12 above the BMP;
+  it also maps the private-use characters shaped glyphs are written as, see Text),
   `post` 3, the Windows `name` records 0-6, 13, 14, 16 and 17 (copyright and licence travel with the font) and the
   outlines (TrueType without hinting instructions, or CFF flattened: no subroutines, no hints). Everything else is
   dropped. Subsets are WOFF (zlib, level 9), not WOFF2: there is no pure-JavaScript Brotli encoder that gives the same
@@ -164,9 +204,19 @@ Drawn in document order, first at the back. Layer `id` and `name` are not emitte
   weight and style both embedded in one SVG compete for the same `@font-face` descriptors; give them distinct families.
 - **Untrusted fonts**: every table offset and count is checked against the bytes; composite glyphs nest at most 8
   deep with at most 256 components and 65535 points; CFF charstrings call subroutines at most 10 deep, keep at most 48
-  operands and run at most 20000 operations per glyph; kerning visits each `kern` feature once, reads at most 4096
-  lookup entries and uses at most 64 lookups of 64 subtables. Outlines, kerning and subsets are read on first use: a
-  fault found then is `asset-format` at the asset's `src`. The outline work of one render, all fonts together
+  operands and run at most 20000 operations per glyph. The layout tables (GDEF, GSUB, GPOS) are bounded by counts,
+  never by time, so a hostile font fails the same way everywhere: at most 1024 lookups per table and 64 subtables per
+  lookup; feature selection visits each feature once and reads at most 4096 lookup indices; an extension lookup may
+  not point to another extension; a context rule or ligature names at most 64 glyphs; lookups nest at most 8 deep;
+  shaping one text (every word measured and every line laid out, together) spends at most max(16384, 128 x the text's
+  length) operations (a subtable tried, a glyph stepped over, a rule, ligature or lookup entry compared, glyphs
+  moved; the Devanagari probes for reph and below-base forms included, each answered once per font); one shaping call
+  grows its buffer to at most max(4096, 8 x its characters) glyphs; a mark finds its base by searching back only to
+  where the last search stopped (HarfBuzz's last base), and a cluster holds at most 32 code points, so long runs of
+  marks or conjuncts cost linear work; Coverage tables are read once each and together no further than the table's
+  size. The bidi algorithm is
+  linear in the text (embedding depth 125, bracket pairs 63 deep). Outlines, layout tables and subsets are read on
+  first use: a fault found then, or a cap passed, is `asset-format` at the asset's `src`. The outline work of one render, all fonts together
   (charstring operations, TrueType points; text drawn as paths reads each glyph once, CFF subsets are flattened through
   the same budget), is at most 4000000; the font whose outlines cross it fails the render with `asset-too-large` at
   that asset, in the same order on every run. A subset whose outlines pass four times the output budget still left
@@ -176,21 +226,35 @@ Drawn in document order, first at the back. Layer `id` and `name` are not emitte
   supplied bytes, or the same data URI) decode it once; the CLI and the Action read a path used by several assets
   once. A CFF font whose FontMatrix is not 1/unitsPerEm is `unsupported-font`.
 - **`@readmint/fonts`**: `parseSfnt(bytes, { maxBytes? })` reads TTF, OTF, WOFF and WOFF2 into an `SfntFont` (metrics,
-  `glyphFor`, `advanceOf`, `bearingOf`, `kerning`, `outline(glyph, budget?)`, `table(tag)`, `container`,
-  `outlines`, and `sfntBytes`: the size of the sfnt it was read from, decoded, which the renderer charges against
-  `maxTotalFontBytes`); `subsetFont(font, codePoints, { budget?, maxBytes? })`, `encodeWoff`, `decodeWoff`,
-  `glyphClosure`, `OutlineBudget`, and the errors `MalformedFont` and `FontRefused` (`unsupported`, `too-large`).
+  `glyphFor`, `advanceOf`, `bearingOf`, `kerning` (the GPOS kern lookups applied to the pair by the shaping engine,
+  else the `kern` table), `outline(glyph, budget?)`, `table(tag)`, `container`, `outlines`, and `sfntBytes`: the size
+  of the sfnt it was read from, decoded, which the renderer charges against `maxTotalFontBytes`);
+  `shapeText(font, text, { script?, rtl?, kerning?, ligatures?, budget? })` shapes one run into a `ShapedRun` (glyphs, UTF-16
+  cluster starts, advances and x/y offsets in font units, mark flags, in visual order), spending a `ShapingBudget`
+  (its own, or one shared by many calls: `ShapingBudget.forText(length)`); `resolveLevels(text,
+direction?)`, `lineLevels(paragraph, start, end)` and `visualOrder(levels)` (UAX #9); `clusterStarts`, `scriptOf`,
+  `isDefaultIgnorable`, `isNonSpacingMark` (from the package's own Unicode 16.0.0 tables, never from RegExp property
+  escapes or `Intl`, whose Unicode version differs between Node and browsers); `subsetFont(font, codePoints, {
+budget?, maxBytes? })`, `encodeWoff`, `decodeWoff`, `glyphClosure`, `OutlineBudget`, and the errors `MalformedFont`
+  and `FontRefused` (`unsupported`, `too-large`).
 - **Behaviour changes for existing designs** (no format version step, see
   [design-format.md](design-format.md#versioning)): pair kerning is on by default, so text is placed slightly
   differently than before (`kerning: false` per font asset turns it off); `font-not-embeddable` is a warning (the text
   is drawn as paths) where the render used to fail; a text gradient spans the layout box, not the glyph ink. A caller
-  that treated `font-not-embeddable` as a failure must now look at the warnings.
+  that treated `font-not-embeddable` as a failure must now look at the warnings. Since shaping (RM-44), fonts with
+  `liga`, `ccmp` or `mark` draw standard ligatures (fi, fl, ...) and attach combining marks, right-to-left text is
+  reordered, `align` start and end follow the paragraph direction, pair kerning skips marks its lookup ignores, and
+  font-mode text may hold private-use characters with an `aria-label`. Plain text keeps its exact positions only where the font does nothing but pair kerning to it: contextual alternates (`calt`, e.g. a font that changes the colon in 12:30), `ccmp` or `locl` substitutions of plain Latin, contextual kerning (GPOS 7/8), non-Latin text now kerned under its own script tag, and the lost pair kerning across a script change (two runs) all move or change plain text too.
 - **Dependencies**: `fflate` 0.8.3 (MIT; zlib inflate for WOFF input, deflate for the subsets) and `brotli` 1.3.3
   (MIT, its decoder a port of Google's Apache-2.0 decoder; only `brotli/decompress.js`, for WOFF2 input) with `base64-js`
   1.5.1 (MIT). Both are pure ECMAScript and run the same in Node and browsers. In the Action bundle they add about
   140 kB (brotli 122 kB of which 69 kB is its dictionary, fflate 18 kB, base64-js 3 kB); the bundle takes brotli's
   compressed browser dictionary instead of its 756 kB Node one. brotli ships no licence file; the Action's licence
-  banner takes its MIT and Apache-2.0 texts from `packages/action/scripts/licences/brotli.txt`.
+  banner takes its MIT and Apache-2.0 texts from `packages/action/scripts/licences/brotli.txt`. The shaping engine
+  and its Unicode tables (generated from the Unicode Character Database 16.0.0 by
+  `packages/fonts/scripts/generateUnicodeTables.ts`, under the Unicode License V3 kept in the generated file and in
+  `packages/fonts/LICENSE-UNICODE`) need no dependency; they add about 60 kB minified (23 kB gzip, 9 kB of it the
+  tables) to `@readmint/fonts`.
 
 ## Images
 
@@ -345,24 +409,28 @@ Animation CSS counts toward `maxOutputBytes` like any markup, and every animated
 `draw` its dash attributes) before the layer is built. Opacity and colour tracks write nothing of their own and the CSS
 is written only once every track is built, so `maxAnimationKeyframes` bounds that work: each track charges its
 keyframes before any is resolved. Fixed limits: 10000 items per `repeat` (expr, `binding` at
-`repeat/each`) and 64 levels of nested component instances (`too-large`).
+`repeat/each`) and 64 levels of nested component instances (`too-large`). Shaping is bounded twice by counts (see Fonts, untrusted fonts):
+each text by its own budget, max(16384, 128 x its length) operations, which fails as `asset-format` at the font; and
+the whole render by 4000000 shaping operations, every text together (an internal bound like the outline work, not a
+`RenderLimits` field), which fails as `asset-too-large` at the content of the text that crossed it, naming its font.
+A text laid out once is shaped once, however many copies draw it.
 
 ## Issues
 
-| code                   | meaning                                                                                                                                                                                                                                                |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `binding`              | an expression failed to compile or evaluate, the step budget ran out, a repeat `each` is not a list or has more than 10000 items, or its `as`/`index` names are unreadable or equal (the message names expr's error code)                              |
-| `type`                 | a value of the wrong kind (also a prop of the wrong type, a list or object written into text)                                                                                                                                                          |
-| `range`                | a number outside the format's range, a keyframe offset below the one before it, a `time` outside [0, 86400000], a template `d` that gives empty, over-long (100000) or non-path data (at `d`), an arc a template `d` gives under `draw` (at the track) |
-| `missing-asset`        | an asset path or an image `src` bound to data (`{{binding}}`) without supplied bytes, or a reference to no asset                                                                                                                                       |
-| `asset-format`         | not an accepted image or a malformed font (also one found broken when its glyphs, kerning or subset are read, or a table that decompresses past its declared size); a data URI type that does not match                                                |
-| `asset-too-large`      | over a byte, side or frame limit; a font past its outline budget or whose subset could not fit the output budget                                                                                                                                       |
-| `unsupported-font`     | a font collection (TTC, or WOFF2 with several fonts), CFF2 outlines or a CFF FontMatrix other than 1/unitsPerEm                                                                                                                                        |
-| `font-not-embeddable`  | warning: the licence or the fsType forbids embedding; the font's text is drawn as paths (once per asset)                                                                                                                                               |
-| `too-large`            | the SVG passes `maxOutputBytes`, a text passes `maxTextLength`, the repeats pass `maxRepeatCopies` (at the `repeat` that crossed it), the tracks pass `maxAnimationKeyframes` (at the track that crossed it), components nest deeper than 64 levels    |
-| `font-family-mismatch` | warning: the asset family differs from the family inside the font                                                                                                                                                                                      |
-| `missing-glyph`        | warning: characters neither the font nor its fallbacks have; they are not drawn and keep the `.notdef` advance (once per font asset, up to ten named)                                                                                                  |
-| `animation-cut`        | warning: a track runs past the end of the timeline and is cut there (once per track, however many copies)                                                                                                                                              |
+| code                   | meaning                                                                                                                                                                                                                                                   |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `binding`              | an expression failed to compile or evaluate, the step budget ran out, a repeat `each` is not a list or has more than 10000 items, or its `as`/`index` names are unreadable or equal (the message names expr's error code)                                 |
+| `type`                 | a value of the wrong kind (also a prop of the wrong type, a list or object written into text)                                                                                                                                                             |
+| `range`                | a number outside the format's range, a keyframe offset below the one before it, a `time` outside [0, 86400000], a template `d` that gives empty, over-long (100000) or non-path data (at `d`), an arc a template `d` gives under `draw` (at the track)    |
+| `missing-asset`        | an asset path or an image `src` bound to data (`{{binding}}`) without supplied bytes, or a reference to no asset                                                                                                                                          |
+| `asset-format`         | not an accepted image or a malformed font (also one found broken when its glyphs, layout tables or subset are read, one whose layout tables pass a shaping cap, or a table that decompresses past its declared size); a data URI type that does not match |
+| `asset-too-large`      | over a byte, side or frame limit; a font past its outline budget or whose subset could not fit the output budget; a text that brings the render past its shaping bound (at the text)                                                                      |
+| `unsupported-font`     | a font collection (TTC, or WOFF2 with several fonts), CFF2 outlines or a CFF FontMatrix other than 1/unitsPerEm                                                                                                                                           |
+| `font-not-embeddable`  | warning: the licence or the fsType forbids embedding; the font's text is drawn as paths (once per asset)                                                                                                                                                  |
+| `too-large`            | the SVG passes `maxOutputBytes`, a text passes `maxTextLength`, the repeats pass `maxRepeatCopies` (at the `repeat` that crossed it), the tracks pass `maxAnimationKeyframes` (at the track that crossed it), components nest deeper than 64 levels       |
+| `font-family-mismatch` | warning: the asset family differs from the family inside the font                                                                                                                                                                                         |
+| `missing-glyph`        | warning: characters neither the font nor its fallbacks have; they are not drawn and keep the `.notdef` advance (once per font asset, up to ten named)                                                                                                     |
+| `animation-cut`        | warning: a track runs past the end of the timeline and is cut there (once per track, however many copies)                                                                                                                                                 |
 
 ## Report
 
