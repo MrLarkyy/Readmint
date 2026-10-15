@@ -101,8 +101,8 @@ embed (restricted by its licence, or with a Reserved Font Name) is never drawn: 
 which resvg draws like any path. The renderer embeds WOFF subsets of the glyphs it draws. TTF and OTF are drawn as they are; WOFF 1.0 is decoded
 first by `@readmint/fonts` (its header and table directory checked against the file, no table stored larger than it
 is, all tables together at most the renderer's `maxFontBytes` before anything inflates, each table inflating to
-exactly its declared size). WOFF2,
-a broken font, or text with no font at all is `raster-font`: raster export never writes blank text.
+exactly its declared size). WOFF2 (which only reaches raster export in an SVG the renderer did not write, or in a font
+a caller passes), a broken font, or text with no font at all is `raster-font`: raster export never writes blank text.
 
 resvg matches a text's `font-family` against the family name inside the font file (name 16, else 1), while the
 renderer writes the asset's `family` (the `font-family-mismatch` warning of [renderer.md](renderer.md) when they

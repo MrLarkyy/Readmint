@@ -41,6 +41,6 @@ repository are only ones that may be redistributed, and their licence is recorde
 
 ## Raster output
 
-PNG, WebP, APNG and GIF are drawn from the same fonts. A font the renderer drew as paths needs nothing more; WOFF2 and
-broken font files fail the raster export with `raster-font` rather than writing blank text. See
-[raster.md](raster.md#fonts).
+PNG, WebP, APNG and GIF are drawn from the fonts the SVG embeds, so a font of any supported type works. A font the
+renderer drew as paths needs nothing more; text with no usable font fails the export with `raster-font` rather than
+writing blank text. See [raster.md](raster.md#fonts).

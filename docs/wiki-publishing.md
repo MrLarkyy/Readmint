@@ -18,7 +18,7 @@ code alone. The output depends on the inputs only. The test checks that every li
 
 ## Publishing
 
-- **CI**: the `Publish wiki` workflow runs on a push to `main` that touches `docs/` or `packages/wiki/`, and on demand. It
+- **CI**: the `Publish wiki` workflow runs on a push to `main` that touches `docs/` or `packages/wiki/`, and on demand (a run on any other branch does nothing: the wiki always comes from `main`). It
   runs the generator test, builds the pages and commits them to the wiki repository with the workflow's `GITHUB_TOKEN`
   (`contents: write`; the job checks out `<repository>.wiki`). Nothing is committed when the pages are unchanged.
 - **Manually**: `pnpm wiki` writes the pages to `.wiki-out/` (not committed). Clone `Readmint.wiki.git`, replace its `*.md`

@@ -23,7 +23,7 @@ what it is about (the format is in [action.md](action.md#errors) and [cli.md](cl
 
 ## The design is rejected
 
-- `readmint validate design.json` prints every issue with its position and a JSON Pointer path; the codes are listed in
+- `readmint validate design.json` prints every issue with a JSON Pointer path (and a position for issues found while parsing); the codes are listed in
   the Issues section of [design-format.md](design-format.md#issues).
 - An asset refused when it is loaded (`AssetPathError`) is a path outside the design's folder, a symlink leaving it, or a
   name Windows cannot take; see [asset-loading.md](asset-loading.md).
@@ -32,11 +32,11 @@ what it is about (the format is in [action.md](action.md#errors) and [cli.md](cl
 
 ## The text is missing or drawn as shapes
 
-- Text without a font asset, or characters the font does not have, are not drawn: the render warns `missing-glyph`. Add
-  a font with those glyphs to the `fallback` list ([fonts.md](fonts.md)).
+- Characters the font does not have are not drawn and the render warns `missing-glyph`: add a font with those glyphs
+  to the `fallback` list ([fonts.md](fonts.md)). Text that has no font at all is the error `missing-font`.
 - A font that may not be embedded is drawn as paths on purpose (`font-not-embeddable`, `font-reserved-name`); the text
   still looks right but is not selectable.
-- A raster export fails with `raster-font` for a WOFF2 font or a broken font file; use TrueType, OpenType or WOFF.
+- A raster export fails with `raster-font` when text has no usable font (see [raster.md](raster.md#fonts)).
 
 ## The output is too large or the export is refused
 
