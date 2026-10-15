@@ -21,6 +21,7 @@
   },
   "devDependencies": {
     "@readmint/data-github": "workspace:*",
+    "@readmint/examples": "workspace:*",
     "@readmint/format": "workspace:*",
     "@readmint/golden": "workspace:*",
     "@readmint/renderer": "workspace:*"

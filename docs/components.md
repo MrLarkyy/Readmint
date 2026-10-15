@@ -205,6 +205,24 @@ A folder holds, per section, `<section>.json` and its dark twin `<section>.dark.
   ([design format](design-format.md#assets)), and mind the size budget below. Archivo has no arrow or star glyph
   either: the contact arrow and the worked-with stars are paths.
 
+### The examples repository
+
+[MrLarkyy/readmint-template-test](https://github.com/MrLarkyy/readmint-template-test) runs the three templates with the Action: per template its `designs/` (the
+folder above with the personal texts of `profileExampleProps` filled in, plus the fonts), the SVGs the Action wrote to
+`readmint/`, a README with the snippet and one workflow with a step per template. To use one, copy its `designs/`
+folder and its step. The designs and READMEs there are generated, never edited by hand, from the template folders by
+`@readmint/examples` (a package of this repository, not published):
+
+```
+pnpm examples <path to a clone of the examples repository>
+pnpm examples <path to a clone of the examples repository> --check
+```
+
+The first writes the files (and removes the generated ones that are no longer produced, never `<template>/readmint/`);
+`--check` writes nothing, lists each missing, differing or stale file and exits 1 when the clone is not in sync. Run it
+after changing a template or `profileExampleProps`, then commit and push the clone. `--login` and `--action` set the
+account and the Action reference (`MrLarkyy` and `MrLarkyy/Readmint@v0.1.0` by default).
+
 ### Data the templates read
 
 Everything but the fields below is the [GitHub data object](data-github.md). The loader does not produce those fields
