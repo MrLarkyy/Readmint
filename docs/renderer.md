@@ -114,7 +114,7 @@ Drawn in document order, first at the back. Layer `id` and `name` are not emitte
 - **Style**: the text is drawn in the style of the asset its `font` names; an `italic` asset gets
   `font-style="italic"` on the text and `font-style:italic` in its `@font-face` rule, so a regular and an italic asset
   of one family each draw with their own face.
-- **Family**: the SVG asks for the asset's `family`. Rasterizers (resvg in the Action and the goldens) match fonts by
+- **Family**: the SVG asks for the asset's `family`. Rasterizers (resvg in raster export, [raster.md](raster.md), and in the goldens) match fonts by
   the family name inside the file, so an asset whose `family` differs from it renders, but with the warning
   `font-family-mismatch`. Family names are written as CSS strings with `\ " ' < > ( ) @` and line breaks escaped;
   rasterizers compare names literally, so keep such characters out of family names.
@@ -124,7 +124,8 @@ Drawn in document order, first at the back. Layer `id` and `name` are not emitte
 - Accepted by magic bytes: PNG (APNG), JPEG, GIF, WebP. SVG and anything else is `asset-format`; a `data:` URI whose
   type differs from the sniffed one is `asset-format`. The bytes are re-encoded as a data URI of the sniffed type.
 - Checked before anything is decoded: size, then dimensions from the header, then animation frames (GIF image
-  descriptors, APNG `acTL`, WebP `ANMF`).
+  descriptors, APNG `acTL`, WebP `ANMF`). `sniffImage(bytes, maxFrames)`, exported, is that check (format, size, frames, EXIF
+  from the header alone); raster export sizes its image decoding budget with it.
 - `fit`: `contain` (default) = `preserveAspectRatio="xMidYMid meet"`, `cover` = `xMidYMid slice`, `fill` = `none`.
   `alt` becomes `aria-label`.
 - An image drawn once is an `<image>` holding its data URI. Image data drawn more than once (a `repeat`, several
@@ -136,7 +137,9 @@ Drawn in document order, first at the back. Layer `id` and `name` are not emitte
   with EXIF data (JPEG APP1 `Exif`, PNG `eXIf`, WebP `EXIF`) is never shared and stays an inline `<image>` at every
   use, because browsers apply its orientation, which a symbol sized from the stored pixels would not follow.
 - An animated GIF, APNG or WebP is inlined as is; browsers play it, rasterizers draw the first frame. The Node golden
-  rasterizer (resvg-js 2.6.2) cannot decode WebP, so WebP has unit tests but no golden image.
+  rasterizer (resvg-js 2.6.2) cannot decode WebP, so WebP has unit tests but no golden image. Raster export draws WebP
+  all the same: it swaps each WebP for a PNG of the same pixels (the first frame of an animation) in its own copy of the
+  SVG ([raster.md](raster.md#webp-images)); the SVG output never changes.
 
 ## Animation
 
@@ -147,7 +150,7 @@ keyframes per track, so the browser and the frames cannot drift:
   plays and scripts never run). Every static attribute is the frame at time 0, so a viewer that ignores the CSS
   (resvg, an editor thumbnail, a reader asking for reduced motion) shows the first frame.
 - **A frame** (`time: t`): the same elements with the attributes sampled at `t`, no class and no animation CSS: a
-  static SVG for raster export (RM-15) and the golden frames. A looping timeline draws `t mod duration`, one that does
+  static SVG for raster export ([raster.md](raster.md)) and the golden frames. A looping timeline draws `t mod duration`, one that does
   not loop draws `min(t, duration)` (it holds its end).
 
 Each track is mapped onto the timeline: it holds its first value until it starts (`delay + stagger x index`), runs its

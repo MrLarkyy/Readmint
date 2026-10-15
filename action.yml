@@ -1,5 +1,5 @@
 name: Readmint
-description: Render your Readmint designs to SVG and commit the files that changed.
+description: Render your Readmint designs to SVG, PNG, WebP, APNG or GIF and commit the files that changed.
 author: MrLarkyy
 branding:
   icon: image
@@ -10,13 +10,20 @@ inputs:
     description: Design files to render, one per line, relative to the workspace (at most 64). A `<name>.dark.<ext>` next to a design is rendered as its dark variant.
     required: true
   output-dir:
-    description: Folder inside the workspace the SVG files are written to; created when missing.
+    description: Folder inside the workspace the output files are written to; created when missing.
     required: false
     default: readmint
   formats:
-    description: Output formats, comma or newline separated. Only `svg` until raster export exists.
+    description: Output formats, comma or newline separated - svg, png, webp, apng, gif. Each design is written once per format; the README snippet shows the first. png and apng together are refused (both write .png).
     required: false
     default: svg
+  scale:
+    description: Raster pixels per design pixel, 1..4 (raster formats only).
+    required: false
+    default: "2"
+  frame-rate:
+    description: Frames per second of an animated raster output, 1..60 (gif 1..50); empty uses 30, gif 25.
+    required: false
   token:
     description: GitHub token for the GitHub data; not used with `data-file`, never printed and never given to git.
     required: false

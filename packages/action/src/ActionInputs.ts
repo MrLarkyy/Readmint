@@ -12,6 +12,8 @@ export const ActionInputs = Object.freeze({
   designs: { required: true, default: "", runnerDefault: false },
   "output-dir": { required: false, default: "readmint", runnerDefault: false },
   formats: { required: false, default: "svg", runnerDefault: false },
+  scale: { required: false, default: "2", runnerDefault: false },
+  "frame-rate": { required: false, default: "", runnerDefault: false },
   token: { required: false, default: "${{ github.token }}", runnerDefault: true },
   login: { required: false, default: "${{ github.repository_owner }}", runnerDefault: true },
   "data-file": { required: false, default: "", runnerDefault: false },

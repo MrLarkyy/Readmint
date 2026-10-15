@@ -44,6 +44,9 @@ importers:
       '@readmint/data-github':
         specifier: workspace:*
         version: link:../data-github
+      '@readmint/raster':
+        specifier: workspace:*
+        version: link:../raster
     devDependencies:
       rolldown:
         specifier: 1.2.13
@@ -63,6 +66,9 @@ importers:
       '@readmint/format':
         specifier: workspace:*
         version: link:../format
+      '@readmint/raster':
+        specifier: workspace:*
+        version: link:../raster
       '@readmint/renderer':
         specifier: workspace:*
         version: link:../renderer
@@ -109,7 +115,45 @@ importers:
         specifier: 6.0.5
         version: 6.0.5
 
-  packages/raster: {}
+  packages/raster:
+    dependencies:
+      '@readmint/fonts':
+        specifier: workspace:*
+        version: link:../fonts
+      '@readmint/format':
+        specifier: workspace:*
+        version: link:../format
+      '@readmint/renderer':
+        specifier: workspace:*
+        version: link:../renderer
+      '@resvg/resvg-wasm':
+        specifier: 2.6.2
+        version: 2.6.2
+      fflate:
+        specifier: 0.8.3
+        version: 0.8.3
+      gifenc:
+        specifier: 1.0.3
+        version: 1.0.3
+      wasm-webp:
+        specifier: 0.1.0
+        version: 0.1.0
+    devDependencies:
+      '@readmint/golden':
+        specifier: workspace:*
+        version: link:../golden
+      '@types/omggif':
+        specifier: 1.0.5
+        version: 1.0.5
+      '@types/pngjs':
+        specifier: 6.0.5
+        version: 6.0.5
+      omggif:
+        specifier: 1.0.10
+        version: 1.0.10
+      pngjs:
+        specifier: 7.0.0
+        version: 7.0.0
 
   packages/renderer:
     dependencies:
@@ -286,6 +330,10 @@ packages:
     resolution: {integrity: sha512-xBaJish5OeGmniDj9cW5PRa/PtmuVU3ziqrbr5xJj901ZDN4TosrVaNZpEiLZAxdfnhAe7uQ7QFWfjPe9d9K2Q==}
     engines: {node: '>= 10'}
 
+  '@resvg/resvg-wasm@2.6.2':
+    resolution: {integrity: sha512-FqALmHI8D4o6lk/LRWDnhw95z5eO+eAa6ORjVg09YRR7BkcM6oPHU9uyC0gtQG5vpFLvgpeU4+zEAz2H8APHNw==}
+    engines: {node: '>= 10'}
+
   '@rolldown/binding-android-arm-eabi@1.2.13':
     resolution: {integrity: sha512-Vu/NICrgdRvUOeaJZIyB2FP63s6fO/4ud5l8dXmxDx9yDyn+mN0y+gsvsVviSli+T361Aqo0h46EuMoobrwawA==}
     engines: {node: ^20.19.0 || >=22.12.0}
@@ -399,6 +447,9 @@ packages:
 
   '@types/node@22.20.5':
     resolution: {integrity: sha512-U2+DNr+wSjpsTS/wZGYHq7GcwfuSmKiKvoPvK22zwTlRhU91yOniN4qRR5KhIjvif7ysw/dz/hKmfDH0Ris4aA==}
+
+  '@types/omggif@1.0.5':
+    resolution: {integrity: sha512-gDQJflz1rOgEcUXkMAl80bDGN46f5mp8GbcM5dyvq+zsFV6YRBRtmNxlJJ5mjY77T7BRkRFzdIBVmK90QYhCxA==}
 
   '@types/pngjs@6.0.5':
     resolution: {integrity: sha512-0k5eKfrA83JOZPppLtS2C7OUtyNAl2wKNxfyYl9Q5g9lPkgBl/9hNyAu6HuEH2J4XmIv2znEpkDd0SaZVxW6iQ==}
@@ -689,6 +740,9 @@ packages:
     engines: {node: ^8.16.0 || ^10.6.0 || >=11.0.0}
     os: [darwin]
 
+  gifenc@1.0.3:
+    resolution: {integrity: sha512-xdr6AdrfGBcfzncONUOlXMBuc5wJDtOueE3c5rdG0oNgtINLD+f2iFZltrBRZYzACRbKr+mSVU/x98zv2u3jmw==}
+
   glob-parent@6.0.2:
     resolution: {integrity: sha512-XxwI8EOhVQgWp6iDL+3b0r86f4d6AX6zSU55HfB4ydCEuXLXc5FcYeOu+nnGftS4TEju/11rt4KJPTMgbfmv4A==}
     engines: {node: '>=10.13.0'}
@@ -860,6 +914,9 @@ packages:
   obug@3.0.0:
     resolution: {integrity: sha512-5vvB5+W7ePv+p3uqxi+RcW1XAzLW0/hxt3/4X4Lc4qHudzOhmBiBwOY6DRob4WnanAEGvNcLjF+KNOufrUoEQw==}
     engines: {node: '>=12.20.0'}
+
+  omggif@1.0.10:
+    resolution: {integrity: sha512-LMJTtvgc/nugXj0Vcrrs68Mn2D1r0zf630VNtqtpI1FEO7e+O9FP4gqs9AcnBaSEeoHIPm28u6qgPR0oyEpGSw==}
 
   optionator@0.9.4:
     resolution: {integrity: sha512-6IpQ7mKUxRcZNLIObR0hz7lxsapSSIYNZJwXPGeF0mTVqGKFIXj1DQcMoT22S3ROcLyY/rz0PWaWZ9ayWmad9g==}
@@ -1107,6 +1164,9 @@ packages:
       jsdom:
         optional: true
 
+  wasm-webp@0.1.0:
+    resolution: {integrity: sha512-Z1Sop+mLKogzDK3vJzSPfSxRF1yj/zbmn+XJuU9+7fvarxcuGhGkeLBqJr5H8LdgWuAwEKuZelCzx7ujztfhVQ==}
+
   which@2.0.2:
     resolution: {integrity: sha512-BLI3Tl1TW3Pvl70l3yq3Y64i+awpwXqsGBYWkkqMtnbXgrMD+yj7rhW0kuEDxzJaYXGjEW5ogapKNMEKNMjibA==}
     engines: {node: '>= 8'}
@@ -1272,6 +1332,8 @@ snapshots:
       '@resvg/resvg-js-win32-ia32-msvc': 2.6.2
       '@resvg/resvg-js-win32-x64-msvc': 2.6.2
 
+  '@resvg/resvg-wasm@2.6.2': {}
+
   '@rolldown/binding-android-arm-eabi@1.2.13':
     optional: true
 
@@ -1333,6 +1395,8 @@ snapshots:
   '@types/node@22.20.5':
     dependencies:
       undici-types: 6.21.0
+
+  '@types/omggif@1.0.5': {}
 
   '@types/pngjs@6.0.5':
     dependencies:
@@ -1676,6 +1740,8 @@ snapshots:
   fsevents@2.3.3:
     optional: true
 
+  gifenc@1.0.3: {}
+
   glob-parent@6.0.2:
     dependencies:
       is-glob: 4.0.3
@@ -1800,6 +1866,8 @@ snapshots:
   natural-compare@1.4.0: {}
 
   obug@3.0.0: {}
+
+  omggif@1.0.10: {}
 
   optionator@0.9.4:
     dependencies:
@@ -1979,6 +2047,8 @@ snapshots:
       '@vitest/ui': 5.0.4(vitest@5.0.4)
     transitivePeerDependencies:
       - msw
+
+  wasm-webp@0.1.0: {}
 
   which@2.0.2:
     dependencies:

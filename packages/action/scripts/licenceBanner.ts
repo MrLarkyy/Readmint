@@ -3,6 +3,16 @@ import path from "node:path";
 
 const licenceFile = /^(?:licen[cs]e|copying|notice)(?:[.-].*)?$/i;
 
+/**
+ * Licence texts in this repository (scripts/licences/README.md) added after a package's own: for code its
+ * WebAssembly carries without the package shipping the notice (libwebp in wasm-webp, the Rust crates in resvg-wasm),
+ * or for a package that publishes no licence file at all (resvg-wasm).
+ */
+const suppliedLicences: Readonly<Record<string, readonly string[]>> = {
+  "@resvg/resvg-wasm": ["resvg-wasm.LICENSE", "resvg-wasm-crates.txt"],
+  "wasm-webp": ["libwebp-COPYING", "libwebp-PATENTS"],
+};
+
 interface BundledPackage {
   readonly name: string;
   readonly version: string;
@@ -14,7 +24,7 @@ interface BundledPackage {
  * The legal comment put at the top of the Action bundle: for every npm package any of the
  * bundled modules comes from (workspace packages excluded: they are this repository's own
  * code), its name, version, licence and the full text of its licence and notice files, sorted
- * by name. Throws when a package ships no licence file: the bundle is never built without one.
+ * by name. A package listed in `suppliedLicences` gets those texts too. Throws when a package still has no licence text: the bundle is never built without one.
  */
 export function licenceBanner(moduleIds: Iterable<string>): string {
   const packages = new Map<string, BundledPackage>();
@@ -57,12 +67,16 @@ function readPackage(root: string): BundledPackage | undefined {
   if (name.startsWith("@readmint/")) return undefined;
   const files = readdirSync(root)
     .filter((file) => licenceFile.test(file))
-    .sort();
+    .sort()
+    .map((file) => path.join(root, file));
+  for (const supplied of suppliedLicences[name] ?? []) {
+    files.push(path.join(import.meta.dirname, "licences", supplied));
+  }
   if (files.length === 0) throw new Error(`${name} ships no licence file to bundle`);
   return {
     name,
     version: typeof manifest.version === "string" ? manifest.version : "unknown",
     licence: typeof manifest.license === "string" ? manifest.license : "see below",
-    texts: files.map((file) => readFileSync(path.join(root, file), "utf8")),
+    texts: files.map((file) => readFileSync(file, "utf8")),
   };
 }

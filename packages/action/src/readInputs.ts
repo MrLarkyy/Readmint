@@ -1,5 +1,5 @@
 import path from "node:path";
-import { localeProblem, quoteForLog } from "@readmint/cli";
+import { localeProblem, type OutputFormat, outputFormats, quoteForLog } from "@readmint/cli";
 import type { ActionConfig } from "./ActionConfig.js";
 import { ActionError } from "./ActionError.js";
 import {
@@ -12,6 +12,9 @@ import { checkRelativePath } from "./checkRelativePath.js";
 import { isBranchName } from "./isBranchName.js";
 
 type Env = Readonly<Record<string, string | undefined>>;
+
+/** GIF delays are whole centiseconds; players stretch anything under 2. */
+const maxGifFrameRate = 50;
 
 const yamlBooleans: Readonly<Record<string, boolean>> = {
   true: true,
@@ -56,18 +59,40 @@ export function readInputs(env: Env): ActionConfig {
     problems.push(`input output-dir ${quoteForLog(outputText)} is inside the .git folder`);
   }
 
-  const formats = value("formats")
+  const formats: OutputFormat[] = [];
+  const listedFormats = value("formats")
     .split(/[,\r\n]/)
     .map((format) => format.trim())
     .filter((format) => format !== "");
-  for (const format of formats) {
-    if (format !== "svg") {
+  for (const text of listedFormats) {
+    const format = outputFormats.find((name) => name === text);
+    if (format === undefined) {
       problems.push(
-        `input formats: ${quoteForLog(format)} is not supported; only svg until raster export`,
+        `input formats: ${quoteForLog(text)} is not one of ${outputFormats.join(", ")}`,
       );
+    } else if (!formats.includes(format)) {
+      formats.push(format);
     }
   }
-  if (formats.length === 0) problems.push("input formats lists no format");
+  if (listedFormats.length === 0) problems.push("input formats lists no format");
+  if (formats.includes("png") && formats.includes("apng")) {
+    problems.push("input formats lists png and apng, which both write .png files; list one");
+  }
+
+  const scaleText = value("scale");
+  const scale = /^\d(?:\.\d{1,3})?$/.test(scaleText) ? Number(scaleText) : Number.NaN;
+  if (!(scale >= 1 && scale <= 4)) {
+    problems.push(`input scale ${quoteForLog(scaleText)} is not a number in 1..4`);
+  }
+
+  const frameRateText = value("frame-rate");
+  const maxFrameRate = formats.includes("gif") ? maxGifFrameRate : 60;
+  const frameRate = /^\d{1,2}$/.test(frameRateText) ? Number(frameRateText) : Number.NaN;
+  if (frameRateText !== "" && !(frameRate >= 1 && frameRate <= maxFrameRate)) {
+    problems.push(
+      `input frame-rate ${quoteForLog(frameRateText)} is not a whole number in 1..${String(maxFrameRate)}${formats.includes("gif") ? " (gif)" : ""}`,
+    );
+  }
 
   const token = value("token");
   const dataFile = value("data-file");
@@ -104,7 +129,9 @@ export function readInputs(env: Env): ActionConfig {
   return {
     designs,
     outputDir,
-    formats: ["svg"],
+    formats,
+    scale,
+    ...(frameRateText === "" ? {} : { frameRate }),
     token: dataFile === "" ? token : "",
     login: value("login"),
     ...(dataFile === "" ? {} : { dataFile }),

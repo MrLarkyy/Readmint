@@ -2,6 +2,7 @@ import { mkdir, readdir, stat, symlink, utimes, writeFile } from "node:fs/promis
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import { ActionError } from "../src/index.js";
+import type { RenderedFile } from "../src/renderAll.js";
 import { writeOutputs } from "../src/writeOutputs.js";
 import { type ActionTree, makeActionTree } from "./actionTree.js";
 
@@ -15,10 +16,11 @@ afterEach(async () => {
   await tree.remove();
 });
 
-const files = [
-  { output: "out/a.svg", svg: "<svg>a</svg>" },
-  { output: "out/b.svg", svg: "<svg>b</svg>" },
-];
+function svgFile(output: string, svg: string): RenderedFile {
+  return { output, format: "svg", bytes: new TextEncoder().encode(svg) };
+}
+
+const files = [svgFile("out/a.svg", "<svg>a</svg>"), svgFile("out/b.svg", "<svg>b</svg>")];
 
 async function outputError(promise: Promise<unknown>): Promise<readonly string[]> {
   const error: unknown = await promise.then(
@@ -51,8 +53,8 @@ describe("writeOutputs", () => {
     const old = new Date("2020-01-01T00:00:00Z");
     await utimes(join(tree.root, "out", "a.svg"), old, old);
     const changed = await writeOutputs(tree.root, "out", [
-      { output: "out/a.svg", svg: "<svg>a</svg>" },
-      { output: "out/b.svg", svg: "<svg>B</svg>" },
+      svgFile("out/a.svg", "<svg>a</svg>"),
+      svgFile("out/b.svg", "<svg>B</svg>"),
     ]);
     expect(changed).toEqual(["out/b.svg"]);
     expect((await stat(join(tree.root, "out", "a.svg"))).mtime.getTime()).toBe(old.getTime());
@@ -108,7 +110,7 @@ describe("writeOutputs", () => {
 
   test("leaves no temporary file behind", async () => {
     await writeOutputs(tree.root, "out", files);
-    await writeOutputs(tree.root, "out", [{ output: "out/a.svg", svg: "<svg>x</svg>" }]);
+    await writeOutputs(tree.root, "out", [svgFile("out/a.svg", "<svg>x</svg>")]);
     expect((await readdir(join(tree.root, "out"))).sort()).toEqual(["a.svg", "b.svg"]);
   });
 });

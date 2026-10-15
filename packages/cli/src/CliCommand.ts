@@ -1,3 +1,5 @@
+import type { OutputFormat } from "./OutputFormat.js";
+
 /** Arguments every design command takes. */
 export interface DesignArgs {
   /** The design file as given; resolved against the working folder, must lie inside `root`. */
@@ -9,10 +11,22 @@ export interface DesignArgs {
   readonly locale?: string;
 }
 
+/** `readmint render` beyond the design arguments. */
+export interface RenderArgs {
+  readonly time?: number;
+  readonly out?: string;
+  /** `--format`, else from the `--out` extension (`.png`, `.apng`, `.webp`, `.gif`), else `svg`. */
+  readonly format: OutputFormat;
+  /** Raster pixels per SVG pixel (`--scale`); raster formats only. */
+  readonly scale?: number;
+  /** Frames per second of an animation (`--frame-rate`); raster formats only. */
+  readonly frameRate?: number;
+}
+
 /** A parsed command line. */
 export type CliCommand =
   | { readonly name: "help" }
   | { readonly name: "version" }
-  | (DesignArgs & { readonly name: "render"; readonly time?: number; readonly out?: string })
+  | (DesignArgs & RenderArgs & { readonly name: "render" })
   | (DesignArgs & { readonly name: "validate"; readonly time?: number })
   | (DesignArgs & { readonly name: "preview"; readonly port: number });
