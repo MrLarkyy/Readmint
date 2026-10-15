@@ -10,7 +10,9 @@ const packagesDir = join(import.meta.dirname, "..", "..");
 // browser bundle); this pins the copies equal so a fix to one cannot miss the other.
 const predicateOf = (pkg: string): string => {
   const source = readFileSync(join(packagesDir, pkg, "src", "isInvisible.ts"), "utf8");
-  return source.slice(source.indexOf("export function isInvisible"));
+  const at = source.indexOf("export function isInvisible");
+  expect(at, `${pkg} isInvisible marker`).toBeGreaterThanOrEqual(0);
+  return source.slice(at);
 };
 
 test("format and expr share the same isInvisible predicate", () => {
