@@ -86,8 +86,14 @@ set. Look at the changed PNGs before committing them.
 
 Browser tests need Chromium: `pnpm exec playwright install --only-shell chromium` (once; CI adds `--with-deps`).
 
-The browser goldens also run in CI on Linux Chromium. Reproduce that run with
-`docker run --rm -v "$PWD:/w" -w /w mcr.microsoft.com/playwright:v1.64.0-noble sh -c "corepack enable && pnpm install --frozen-lockfile && pnpm exec vitest run --project browser"`.
+The browser goldens also run in CI on Linux Chromium. Reproduce that run with the command below. It mounts the
+checkout read-only and works on a copy without `node_modules`, so the host checkout and its dependencies stay
+untouched (installing into the mounted checkout would make pnpm purge the host `node_modules`). Add
+`-v "$PWD/test-results:/w/test-results"` to keep the diff images.
+
+```sh
+docker run --rm -e CI=true -v "$PWD:/src:ro" mcr.microsoft.com/playwright:v1.64.0-noble sh -c "mkdir -p /w && tar -C /src --exclude=node_modules --exclude=test-results -cf - . | tar -C /w -xf - && cd /w && corepack enable && pnpm install --frozen-lockfile && pnpm exec vitest run --project browser"
+```
 
 ## Portability of goldens
 
