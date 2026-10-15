@@ -57,7 +57,7 @@ export function writeSfnt(
 /** The head table with checkSumAdjustment zeroed, as its checksum is defined. */
 function prepared(tag: string, data: Uint8Array, adjustChecksum: boolean): Uint8Array {
   if (!adjustChecksum || tag !== "head" || data.length < 12) return data;
-  const copy = data.slice();
+  const copy = new Uint8Array(data);
   new DataView(copy.buffer).setUint32(8, 0);
   return copy;
 }

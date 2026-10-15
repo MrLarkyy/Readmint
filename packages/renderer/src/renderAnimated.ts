@@ -7,9 +7,10 @@ import {
   type TrackTimeline,
 } from "./NodeAnimation.js";
 import type { Paint } from "./paint.js";
+import { transformSteps, type PlacementStep } from "./PlacementStep.js";
 import type { RenderContext } from "./RenderContext.js";
 import type { RenderNode } from "./RenderNode.js";
-import { sampleTrack, timelinePosition } from "./sampleAnimation.js";
+import { sampleTrack, sampleTransforms, timelinePosition } from "./sampleAnimation.js";
 
 /** Writes a node without its animation; `extra` goes at the end of its start tag. */
 export type NodeDrawer = (context: RenderContext, node: RenderNode, extra: string) => void;
@@ -34,50 +35,44 @@ export function renderAnimated(
   const writer = context.writer;
   const css = context.time === undefined ? context.animationCss : undefined;
   const position = timelinePosition(animation, context.time ?? 0);
-  const sampled = (track: TrackTimeline) => sampleTrack(track, position);
   const classOf = (tracks: readonly TrackTimeline[]) =>
     css === undefined || tracks.length === 0 ? "" : ` class="${css.className(animation, tracks)}"`;
 
-  const transforms = animation.tracks.filter((track) => isTransform(track.property));
-  const centred = transforms.some(
-    ({ property }) => property === "rotation" || property === "scale",
-  );
+  const sampled = sampleTransforms(node, animation, position);
+  const { centre, transforms } = sampled;
   let drawn = node;
-  if (centred) {
-    // Rounded as printed, so the group and the moved element cancel exactly.
-    const cx = Math.round((node.x + node.width / 2) * 1000) / 1000;
-    const cy = Math.round((node.y + node.height / 2) * 1000) / 1000;
-    writer.write(`<g transform="translate(${formatNumber(cx)} ${formatNumber(cy)})">`);
-    drawn = { ...node, x: node.x - cx, y: node.y - cy };
+  if (centre !== undefined) {
+    writer.write(`<g transform="translate(${formatNumber(centre.x)} ${formatNumber(centre.y)})">`);
+    drawn = { ...node, x: node.x - centre.x, y: node.y - centre.y };
   }
-  for (const track of transforms) {
-    writer.write(
-      `<g${classOf([track])} transform="${transformText(track.property, sampled(track))}">`,
-    );
+  for (const { track, value } of transforms) {
+    writer.write(`<g${classOf([track])} transform="${transformText(track.property, value)}">`);
   }
+  // The animated SVG's CSS moves everything inside, so nothing in it is known to stay off the canvas.
+  const steps: PlacementStep[] =
+    context.time === undefined ? [{ kind: "unknown" }] : transformSteps(sampled);
 
-  const own = animation.tracks.filter((track) => !isTransform(track.property));
+  const own = animation.tracks.filter((track) => !transformProperties.includes(track.property));
   let dash = "";
   for (const track of own) {
-    const value = sampled(track);
+    const value = sampleTrack(track, position);
     if (track.property === "opacity") drawn = { ...drawn, opacity: value[0] ?? 1 };
     else if (track.property === "draw") {
       const length = formatNumber(animation.dash ?? 0);
       dash = ` stroke-dasharray="${length} ${length}" stroke-dashoffset="${formatNumber(value[0] ?? 0)}"`;
     } else drawn = withPaint(drawn, track.property, colourPaint(value));
   }
-  draw(context, drawn, `${dash}${classOf(own)}`);
+  const extra = `${dash}${classOf(own)}`;
+  context.placement.within(steps, () => {
+    draw(context, drawn, extra);
+  });
 
-  const groups = transforms.length + (centred ? 1 : 0);
+  const groups = transforms.length + (centre === undefined ? 0 : 1);
   if (groups > 0) writer.write("</g>".repeat(groups));
 }
 
-function isTransform(property: AnimatedProperty): boolean {
-  return transformProperties.includes(property);
-}
-
-function transformText(property: AnimatedProperty, value: readonly number[]): string {
-  const number = formatNumber(value[0] ?? 0);
+function transformText(property: AnimatedProperty, value: number): string {
+  const number = formatNumber(value);
   switch (property) {
     case "x":
       return `translate(${number} 0)`;
