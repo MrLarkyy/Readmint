@@ -9,16 +9,25 @@ import { formatIssue } from "./formatIssue.js";
 import { loadRenderInput } from "./loadRenderInput.js";
 import { printLines } from "./printLines.js";
 import { quoteForLog } from "./quoteForLog.js";
-import { renderInput } from "./renderInput.js";
+import { renderOutput } from "./renderOutput.js";
 
-/** Renders the design and writes the SVG exactly as `renderSvg` returned it, to `--out` or standard output. */
+/**
+ * Renders the design and writes the SVG exactly as `renderSvg` returned it, to `--out` or standard output, or a
+ * raster image of it to `--out`. The file is written only once the whole output is made: a failed export leaves
+ * `--out` as it was.
+ */
 export async function renderCommand(
   args: Extract<CliCommand, { name: "render" }>,
   io: CliIo,
 ): Promise<ExitCode> {
   const input = await loadRenderInput(args, { cwd: io.cwd });
   const name = input.file.name;
-  const result = renderInput(input, args);
+  const result = await renderOutput(input, [args.format], {
+    ...(args.locale === undefined ? {} : { locale: args.locale }),
+    ...(args.time === undefined ? {} : { time: args.time }),
+    ...(args.scale === undefined ? {} : { scale: args.scale }),
+    ...(args.frameRate === undefined ? {} : { frameRate: args.frameRate }),
+  });
   if (!result.ok) {
     throw new CliError(
       ExitCode.invalid,
@@ -29,12 +38,14 @@ export async function renderCommand(
     io.stderr,
     result.warnings.map((issue) => formatIssue(name, issue, "warning")),
   );
+  const [output] = result.outputs;
+  if (output === undefined) throw new Error("render produced no output");
   if (args.out === undefined) {
-    await io.stdout(result.svg);
+    await io.stdout(new TextDecoder().decode(output.bytes));
     return ExitCode.ok;
   }
   try {
-    await writeFile(path.resolve(io.cwd, args.out), result.svg);
+    await writeFile(path.resolve(io.cwd, args.out), output.bytes);
   } catch (error) {
     const code = errnoCode(error);
     if (code === undefined) throw error;

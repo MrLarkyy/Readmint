@@ -20,6 +20,7 @@
     "@readmint/data": "workspace:*",
     "@readmint/expr": "workspace:*",
     "@readmint/format": "workspace:*",
+    "@readmint/raster": "workspace:*",
     "@readmint/renderer": "workspace:*"
   }
 }
