@@ -106,7 +106,8 @@ An imported design may name font or image files by path. The asset panel lists t
 there is used by the preview for this session only (same size limits, checked before the file is read) and never
 written into the design, which keeps
 the path, so the CLI reads the same file next to the design. Image URLs bound to data are not fetched: the editor makes
-no network request at all, and it never handles a token. The renderer's `missing-asset` issue is shown instead.
+no network request but the raster worker's fetch of its two WebAssembly files from the app's own origin, and it never
+handles a token. The renderer's `missing-asset` issue is shown instead.
 
 ## Limits
 

@@ -18,8 +18,27 @@ test("the editor sources exist", () => {
   expect(sources.length).toBeGreaterThan(20);
 });
 
-test.each(forbidden)("no editor source uses %s", (_what, pattern) => {
-  expect(sources.filter(([, text]) => pattern.test(text)).map(([name]) => name)).toEqual([]);
+// The raster worker fetches the two WebAssembly files of its own origin (see the test below); nothing else fetches.
+const mayFetch = "rasterWorker.ts";
+
+test.each(forbidden)("no editor source uses %s", (what, pattern) => {
+  const found = sources.filter(
+    ([name, text]) => !(what === "network" && name === mayFetch) && pattern.test(text),
+  );
+  expect(found.map(([name]) => name)).toEqual([]);
+});
+
+test("the raster worker fetches only the two WebAssembly files the bundler gives it, and uses no other network API", () => {
+  const worker = sources.find(([name]) => name === mayFetch)?.[1] ?? "";
+  expect(worker).not.toMatch(/XMLHttpRequest|WebSocket|EventSource|sendBeacon|importScripts/u);
+  expect([...worker.matchAll(/fetch\s*\(([^)]*)\)/gu)].map((match) => match[1])).toEqual(["url"]);
+  expect([...worker.matchAll(/wasmBytes\(([^)]*)\)/gu)].map((match) => match[1])).toEqual([
+    "url: string",
+    "resvgUrl",
+    "webpUrl",
+  ]);
+  expect(worker).toMatch(/import resvgUrl from "@resvg\/resvg-wasm\/index_bg\.wasm\?url"/u);
+  expect(worker).toMatch(/import webpUrl from "wasm-webp\/dist\/esm\/webp-wasm\.wasm\?url"/u);
 });
 
 test("the editor never depends on a data source that fetches with a token", () => {
@@ -30,7 +49,10 @@ test("the editor never depends on a data source that fetches with a token", () =
     "@readmint/data",
     "@readmint/fonts",
     "@readmint/format",
+    "@readmint/raster",
     "@readmint/renderer",
+    "@resvg/resvg-wasm",
+    "wasm-webp",
   ]);
   expect(sources.filter(([, text]) => text.includes("data-github"))).toEqual([]);
 });
