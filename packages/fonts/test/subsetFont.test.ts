@@ -3,6 +3,7 @@ import { glyfTableOf } from "../src/glyphClosure.js";
 import { encodeWoff, MalformedFont, subsetFont, type SfntFont } from "../src/index.js";
 import { CffTable } from "../src/CffTable.js";
 import { encodeCharstring, writeCff } from "../src/writeCff.js";
+import { writeSfnt } from "../src/writeSfnt.js";
 import { buildTestFont } from "./buildTestFont.js";
 import { montserrat, parse, sameBytes } from "./testFonts.js";
 
@@ -193,4 +194,31 @@ test("a glyph whose header promises more contours than it holds is MalformedFont
   new DataView(data.buffer, data.byteOffset).setInt16(0, Math.floor(data.length / 2) + 10);
   expect(() => subsetFont(font, new Map([[0x42, glyph]]))).toThrow(MalformedFont);
   expect(() => font.outline(glyph)).toThrow(MalformedFont);
+});
+
+describe("Buffer input at a pool offset", () => {
+  /** A Node Buffer whose bytes sit at a non-zero offset of a larger ArrayBuffer, as a pooled Buffer does. */
+  function offsetBuffer(bytes: Uint8Array): Buffer {
+    return Buffer.concat([Buffer.alloc(13, 0xee), Buffer.from(bytes)]).subarray(13);
+  }
+
+  test.each([
+    ["TTF", montserrat.ttf],
+    ["OTF", montserrat.otf],
+  ])("subsetting a %s Buffer equals the Uint8Array result and leaves the input unchanged", (_name, bytes) => {
+    const text = "Readmint AV fonts éÁ";
+    const expected = subsetFont(parse(bytes), codePoints(parse(bytes), text));
+    const input = offsetBuffer(bytes);
+    const result = subsetFont(parse(input), codePoints(parse(input), text));
+    expect(sameBytes(result, expected)).toBe(true);
+    expect(sameBytes(input, bytes)).toBe(true);
+  });
+
+  test("writeSfnt zeroes a head table given as an offset Buffer without touching it", () => {
+    const head = new Uint8Array(54).fill(7);
+    const buffer = offsetBuffer(head);
+    const tables = (table: Uint8Array) => new Map([["head", table]]);
+    expect(sameBytes(writeSfnt(0x10000, tables(buffer), true), writeSfnt(0x10000, tables(head), true))).toBe(true);
+    expect(sameBytes(buffer, head)).toBe(true);
+  });
 });
