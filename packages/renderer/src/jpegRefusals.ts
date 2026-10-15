@@ -1,5 +1,5 @@
 import type { EntropyFault } from "./JpegEntropy.js";
-import { maxDequantized } from "./entropyBlocks.js";
+import { maxColumnPairSum, maxDequantized } from "./entropyBlocks.js";
 import { EntropyBudget } from "./EntropyBudget.js";
 import { maxEntropySteps, maxProgressiveBlocks } from "./JpegEntropy.js";
 
@@ -25,6 +25,10 @@ export function entropyRefusal(fault: EntropyFault): string {
     case "value":
       return failClosed(
         `image data with a coefficient whose dequantized value may pass ${String(maxDequantized)}`,
+      );
+    case "columns":
+      return failClosed(
+        `image data with a block whose coefficients in columns u and u + 4 may sum to more than ${String(maxColumnPairSum)} dequantized`,
       );
     case "ac-run":
       return resvgDiffers("image data with a run of coefficients past the end of the block");

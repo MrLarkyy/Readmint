@@ -2,6 +2,8 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, test } from "vitest";
 import { loadScale } from "../../../test-support/loadScale.js";
+import { EntropyBits } from "../src/EntropyBits.js";
+import { dcRefineBlock, maxColumnPairSum, runCorrections } from "../src/entropyBlocks.js";
 import { HuffmanTable } from "../src/HuffmanTable.js";
 import {
   type EntropyScan,
@@ -200,5 +202,30 @@ describe("the limits in the sniffer's message", () => {
     expect(entropyRefusal("steps")).toBe(
       "JPEG image data that takes more than 134217728 decoding steps is refused",
     );
+  });
+});
+
+describe("the column-pair sums of a progressive block", () => {
+  const quant = (entry: number) => new Uint16Array(64).fill(entry);
+
+  test("a DC refinement bit adds its weight to column pair 0 only where it is set", () => {
+    const sums = Int32Array.of(maxColumnPairSum - 7, 0, 0, 0);
+    expect(
+      dcRefineBlock(new EntropyBits(Uint8Array.of(0x7f, 0xff, 0xd9), 0), 0, quant(8), sums),
+    ).toBeUndefined();
+    expect(sums[0]).toBe(maxColumnPairSum - 7);
+    expect(
+      dcRefineBlock(new EntropyBits(Uint8Array.of(0x80, 0xff, 0xd9), 0), 0, quant(8), sums),
+    ).toBe("columns");
+  });
+
+  test("the correction bits of an end-of-band run go to their own block and column pair", () => {
+    // Block 1 holds zigzag 2 (column 0) and 4 (column 1); the bits 1 and 0 refine only the first, by 2 x 4.
+    const history = new Uint32Array(4);
+    history[2] = (1 << 2) | (1 << 4);
+    const sums = new Uint16Array(8);
+    const bits = new EntropyBits(Uint8Array.of(0b10111111, 0xff, 0xd9), 0);
+    expect(runCorrections(bits, history, 0, 2, [1, 63], 1, quant(4), sums)).toBeUndefined();
+    expect([...sums]).toEqual([0, 0, 0, 0, 8, 0, 0, 0]);
   });
 });

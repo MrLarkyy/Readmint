@@ -419,6 +419,49 @@ export function jpegEntropyCases(gradient: Uint8Array): JpegEntropyCase[] {
       ...(jump ? [[1, 5, 6, 5, refineOne("1")] as const] : []),
       [1, 5, 1, 0, refineOne("0")],
     ]);
+  /** The zigzag positions of row 1 (vertical frequency 1): one coefficient in each column, two in each column pair. */
+  const rowOne = [2, 4, 7, 13, 16, 26, 29, 42];
+  /** AC symbols with `value` at each of the ascending zigzag `positions` (gaps up to 15), then EOB. */
+  const acValues = (bits: Bits, positions: readonly number[], value: number) => {
+    let next = 1;
+    for (const k of positions) {
+      bits.ac(k - next, value);
+      next = k + 1;
+    }
+    bits.eob();
+  };
+  /** The grey file at DC 0, every entry 4, with `value` at the zigzag `positions` of block 0. */
+  const blockAt = (positions: readonly number[], value: number) =>
+    greyJpeg({
+      quantization: 4,
+      values: new Array<number>(8).fill(0),
+      block: (bits, index, difference) => {
+        bits.dc(difference);
+        if (index === 0) acValues(bits, positions, value);
+        else bits.eob();
+      },
+    });
+  /**
+   * A progressive grey file, every entry 4: AC 1-63 at point transform 1 with row 1 of block 1 at 288, then the
+   * refinement, one end-of-band run whose correction bits for block 1 are `bit`: final values of 576 (column pairs of
+   * 4608) or 577 (4616).
+   */
+  const rowOneProgression = (bit: string) =>
+    progression(4, [
+      [0, 0, 0, 0],
+      [
+        1,
+        63,
+        0,
+        1,
+        (bits: Bits) => {
+          bits.eob();
+          acValues(bits, rowOne, 288);
+          bits.eob(2, 2);
+        },
+      ],
+      [1, 63, 1, 0, (bits: Bits) => bits.eob(3, 0).put(bit.repeat(8))],
+    ]);
   const rows: JpegEntropyCase[] = [
     // (k) Controls: the built files decode cleanly.
     { name: "the grey file", bytes: greyJpeg(), chromium: [78, 78, 78], resvg: [78, 78, 78] },
@@ -888,6 +931,56 @@ export function jpegEntropyCases(gradient: Uint8Array): JpegEntropyCase[] {
       message: "progressive scan 0/1 of coefficient 1 of component 1 out of progression order",
       chromium: [255, 255, 255],
       resvg: [255, 255, 255],
+    },
+    // (o) Coefficients that pass libjpeg-turbo's 16-bit IDCT together: the dequantized sums of columns u and u + 4.
+    {
+      name: "the grey file with seven AC values of 1000 in separate columns",
+      bytes: blockAt([1, 5, 6, 14, 15, 27, 28], 250),
+      chromium: [255, 255, 255],
+      resvg: [255, 255, 255],
+    },
+    {
+      name: "the grey file with row 1 of block 0 at 2304 (column pairs of 4608)",
+      bytes: blockAt(rowOne, 576),
+      chromium: [255, 255, 255],
+      resvg: [255, 255, 255],
+    },
+    {
+      name: "the grey file with row 1 of block 0 at 2944 (column pairs of 5888)",
+      bytes: blockAt(rowOne, 736),
+      message: "columns u and u + 4 may sum to more than 4608",
+      chromium: [255, 255, 255],
+      resvg: [255, 255, 255],
+    },
+    {
+      name: "the grey file with row 1 of block 0 at 3004 (column pairs of 6008)",
+      bytes: blockAt(rowOne, 751),
+      message: "columns u and u + 4 may sum to more than 4608",
+      chromium: [0, 0, 0],
+      resvg: [255, 255, 255],
+    },
+    {
+      name: "the grey file with all 63 AC values of block 0 at 1000",
+      bytes: blockAt(range(63, 1), 250),
+      message: "columns u and u + 4 may sum to more than 4608",
+      chromium: [0, 0, 0],
+      resvg: [255, 255, 255],
+      at: [2, 0],
+    },
+    {
+      name: "a progressive file whose refinement keeps block 1 at column pairs of 4608",
+      bytes: rowOneProgression("0"),
+      chromium: [255, 255, 255],
+      resvg: [255, 255, 255],
+      at: [8, 0],
+    },
+    {
+      name: "a progressive file whose refinement bits lift block 1 to column pairs of 4616",
+      bytes: rowOneProgression("1"),
+      message: "columns u and u + 4 may sum to more than 4608",
+      chromium: [255, 255, 255],
+      resvg: [255, 255, 255],
+      at: [8, 0],
     },
     // (j) Bytes and bits after the last block.
     {

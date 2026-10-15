@@ -5,7 +5,9 @@ import {
   acFirstBlock,
   acRefineBlock,
   type BlockFault,
+  type ColumnSums,
   dcFirstBlock,
+  dcRefineBlock,
   runCorrections,
   sequentialBlock,
 } from "./entropyBlocks.js";
@@ -18,7 +20,8 @@ import {
 export const maxEntropySteps = 134_217_728;
 /**
  * Most blocks (2^23) a progressive frame may hold over all its components: the check keeps two words per block of
- * which coefficients are nonzero (64 MiB at most), which covers 4:2:0 at the raster output's largest image.
+ * which coefficients are nonzero and four 16-bit column-pair sums (128 MiB at most), which covers 4:2:0 at the raster
+ * output's largest image.
  */
 export const maxProgressiveBlocks = 8_388_608;
 
@@ -88,6 +91,7 @@ export class JpegEntropy {
   private readonly hMax: number;
   private readonly vMax: number;
   private readonly histories: (Uint32Array | undefined)[] = [];
+  private readonly columnSums: (Uint16Array | undefined)[] = [];
 
   constructor(
     private readonly width: number,
@@ -139,14 +143,28 @@ export class JpegEntropy {
     const across = Math.ceil(this.width / (8 * this.hMax));
     const down = Math.ceil(this.height / (8 * this.vMax));
     const sampled = walk.scan.components.map(({ index }) => this.components[index]);
+    const sums = walk.scan.progressive
+      ? walk.scan.components.map(({ index }) => this.sums(index))
+      : undefined;
+    if (sums?.includes(undefined) === true) return "history";
+    const grids = walk.scan.components.map(({ index }) =>
+      this.blocksOf(this.components[index] ?? { h: 1, v: 1 }),
+    );
     for (let mcu = 0; mcu < across * down; mcu++) {
       const restart = restartFault(walk, mcu);
       if (restart !== undefined) return restart;
       if (++this.steps > this.cap) return this.overCap();
       for (const [position, component] of walk.scan.components.entries()) {
-        const blocks = (sampled[position]?.h ?? 1) * (sampled[position]?.v ?? 1);
-        for (let block = 0; block < blocks; block++) {
-          const fault = dcBlock(walk, component, position);
+        const h = sampled[position]?.h ?? 1;
+        const v = sampled[position]?.v ?? 1;
+        const [width, height] = grids[position] ?? [0, 0];
+        for (let block = 0; block < h * v; block++) {
+          // The block's place in its component; one past the edge (MCU padding) no output draws.
+          const x = (mcu % across) * h + (block % h);
+          const y = Math.floor(mcu / across) * v + Math.floor(block / h);
+          const inside = x < width && y < height;
+          const target = inside ? sums?.[position] : undefined;
+          const fault = dcBlock(walk, component, position, target, 4 * (y * width + x));
           if (fault !== undefined) return stopFault(walk.bits, fault);
         }
       }
@@ -173,7 +191,10 @@ export class JpegEntropy {
     const blocks = across * down;
     const ac = walk.scan.start > 0;
     const history = ac ? this.history(component.index) : undefined;
-    if (ac && history === undefined) return "history";
+    const sums = walk.scan.progressive ? this.sums(component.index) : undefined;
+    if ((ac && history === undefined) || (walk.scan.progressive && sums === undefined)) {
+      return "history";
+    }
     for (let block = 0; block < blocks; block++) {
       const restart = restartFault(walk, block);
       if (restart !== undefined) return restart;
@@ -182,7 +203,17 @@ export class JpegEntropy {
         const run = Math.min(walk.eobRun, blocks - block, untilRestart(walk.scan, block));
         if (walk.scan.high > 0) {
           // Each block of a refinement run takes a correction bit per coefficient of the band already nonzero.
-          walk.bits.skip(runCorrections(history, block, run, [walk.scan.start, walk.scan.end]));
+          const fault = runCorrections(
+            walk.bits,
+            history,
+            block,
+            run,
+            [walk.scan.start, walk.scan.end],
+            walk.scan.low,
+            component.quant,
+            sums,
+          );
+          if (fault !== undefined) return stopFault(walk.bits, fault);
           this.steps += run - 1;
           if (this.steps > this.cap) return this.overCap();
           if (walk.bits.overrun) return stopFault(walk.bits, undefined);
@@ -194,8 +225,8 @@ export class JpegEntropy {
       }
       const fault =
         history === undefined
-          ? dcBlock(walk, component, 0)
-          : acBlock(walk, component, history, block);
+          ? dcBlock(walk, component, 0, sums, 4 * block)
+          : acBlock(walk, component, history, block, sums);
       if (fault !== undefined) return stopFault(walk.bits, fault);
       if (walk.bits.overrun) return stopFault(walk.bits, undefined);
     }
@@ -235,28 +266,64 @@ export class JpegEntropy {
   private history(index: number): Uint32Array | undefined {
     const known = this.histories[index];
     if (known !== undefined) return known;
+    if (!this.withinBlockCap()) return undefined;
+    const history = new Uint32Array(2 * this.blockCount(index));
+    this.histories[index] = history;
+    return history;
+  }
+
+  /**
+   * The column-pair sums of component `index` (four per block), made at its first progressive scan; undefined past
+   * `maxProgressiveBlocks`.
+   */
+  private sums(index: number): Uint16Array | undefined {
+    const known = this.columnSums[index];
+    if (known !== undefined) return known;
+    if (!this.withinBlockCap()) return undefined;
+    const sums = new Uint16Array(4 * this.blockCount(index));
+    this.columnSums[index] = sums;
+    return sums;
+  }
+
+  private withinBlockCap(): boolean {
     const total = this.components.reduce((sum, component) => {
       const [across, down] = this.blocksOf(component);
       return sum + across * down;
     }, 0);
-    if (total > maxProgressiveBlocks) return undefined;
+    return total <= maxProgressiveBlocks;
+  }
+
+  private blockCount(index: number): number {
     const [across, down] = this.blocksOf(this.components[index] ?? { h: 1, v: 1 });
-    const history = new Uint32Array(2 * across * down);
-    this.histories[index] = history;
-    return history;
+    return across * down;
   }
 }
 
-/** One block of a scan that holds the DC coefficient: sequential, first DC or DC refinement. */
-function dcBlock(walk: Walk, component: ScanComponent, position: number): BlockFault | undefined {
+/**
+ * One block of a scan that holds the DC coefficient: sequential, first DC or DC refinement, a progressive one's
+ * magnitude into the block's column pairs in `sums` from `at`.
+ */
+function dcBlock(
+  walk: Walk,
+  component: ScanComponent,
+  position: number,
+  sums?: ColumnSums,
+  at = 0,
+): BlockFault | undefined {
   const { bits, scan, predictors } = walk;
-  if (scan.high > 0) {
-    bits.skip(1);
-    return undefined;
-  }
+  if (scan.high > 0) return dcRefineBlock(bits, scan.low, component.quant, sums, at);
   if (component.dc === undefined) return undefined;
   if (scan.progressive) {
-    return dcFirstBlock(bits, component.dc, predictors, position, scan.low, component.quant);
+    return dcFirstBlock(
+      bits,
+      component.dc,
+      predictors,
+      position,
+      scan.low,
+      component.quant,
+      sums,
+      at,
+    );
   }
   if (component.ac === undefined) return undefined;
   return sequentialBlock(bits, component.dc, component.ac, predictors, position, component.quant);
@@ -268,14 +335,15 @@ function acBlock(
   component: ScanComponent,
   history: Uint32Array,
   block: number,
+  sums: ColumnSums | undefined,
 ): BlockFault | undefined {
   const { bits, scan } = walk;
   const band = [scan.start, scan.end] as const;
   if (component.ac === undefined) return undefined;
   const result =
     scan.high > 0
-      ? acRefineBlock(bits, component.ac, band, scan.low, history, block, component.quant)
-      : acFirstBlock(bits, component.ac, band, scan.low, history, block, component.quant);
+      ? acRefineBlock(bits, component.ac, band, scan.low, history, block, component.quant, sums)
+      : acFirstBlock(bits, component.ac, band, scan.low, history, block, component.quant, sums);
   if (typeof result !== "number") return result;
   walk.eobRun = result;
   return undefined;

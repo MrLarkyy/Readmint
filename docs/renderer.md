@@ -366,7 +366,8 @@ budget?, maxBytes? })`, `encodeWoff`, `decodeWoff`, `glyphClosure`, `OutlineBudg
   lossless grey empty, and traps on a 12-bit lossless RGB file. A DCT frame header whose length is not 8 plus 3 per
   component, or which has no component, is refused too.
 - The whole JPEG, every frame type, is read once from SOI to EOI and held to what Chromium (libjpeg-turbo 3.1) and
-  resvg (jpeg-decoder 0.3.1) both draw alike; the rest is `asset-format` with the reason named. jpeg-decoder fails, so
+  resvg (jpeg-decoder 0.3.1) were measured to draw alike, as far as the probes named below reach (lossy pixel
+  rounding apart); the rest is `asset-format` with the reason named. jpeg-decoder fails, so
   resvg draws nothing, on much that libjpeg reads or ignores, and reads the colour space differently. Past the first
   scan the sniffer skips the image data (stuffed zeros, fill bytes, RST0-7) up to the next marker; only SOS, DHT, DQT,
   DRI, APP0-15, COM and EOI may follow (a restart marker only right after the data). Refused, wherever they are:
@@ -416,9 +417,18 @@ budget?, maxBytes? })`, `encodeWoff`, `decodeWoff`, `glyphClosure`, `OutlineBudg
   coefficient whose magnitude times its quantization entry (the component's DQT table at the coefficient's zigzag
   position) passes 4096, a coefficient of a progressive scan taken at the most the refinement bits still to come can
   make it (`((|v| + 1) << Al) - 1`, a new refinement coefficient `(2 << Al) - 1`): an 8-bit encoder writes at most
-  about 1024 plus half the entry, and the two drew such files alike up to 4096 and apart from 8192 on (DC 1024 at
-  entry 8, AC 1000 at 16, AC 200 at 64, AC 600 at 255: libjpeg-turbo's 16-bit arithmetic overflows where
-  jpeg-decoder's 32-bit one does not); lossless data has no quantization and no such rule; a progressive scan out of
+  about 1024 plus half the entry, and the two drew a block of one such coefficient alike up to 4096 and apart from
+  8192 on (DC 1024 at entry 8, AC 1000 at 16, AC 200 at 64, AC 600 at 255: libjpeg-turbo's 16-bit arithmetic
+  overflows where jpeg-decoder's 32-bit one does not); a block whose coefficients in columns u and u + 4 (horizontal
+  frequencies, DC in column 0) sum to more than 4608 in dequantized magnitude, refinement bits included (a
+  progressive block's sums are kept across its scans, 8 bytes per block): libjpeg-turbo's SIMD IDCT keeps its first
+  pass in 16 bits and adds and subtracts the outputs of those two columns in 16 bits, so coefficients each well
+  within 4096 overflow together (all 63 AC of a block at 1000 Chromium draws black where resvg draws white), from a
+  pair of 5906 on by that arithmetic; blocks scaled to a given pair were drawn alike up to 5888 and apart from 6008
+  on, and genuine encodings reach 3430 (Pillow/libjpeg-turbo, high-contrast and worst-case patterns at quality 1 to
+  100, grey, 4:4:4 and 4:2:0, baseline and progressive; an 8-bit block at quality 100 reaches 3504 at most), all
+  measured on x86-64 Chromium (other SIMD paths, ARM NEON among them, are not probed); lossless data has no
+  quantization and no such rule; a progressive scan out of
   progression order, as that bound holds only in order: per component and coefficient (DC and AC alike), a first scan
   (`Ah` 0) of a coefficient an earlier scan already holds, or a refinement (`Ah` > 0) whose `Ah` is not the `Al` of
   the coefficient's latest scan, a refinement before any first scan included (libjpeg only warns and applies it,
@@ -608,7 +618,7 @@ A text laid out once is shaped once, however many copies draw it.
 The JPEG symbol check (see Images) is bounded by fixed limits, not `RenderLimits` fields. Per file, each an
 `asset-format` naming it: 134217728 (2^27) decoding steps (a block or MCU visited, a run of empty bands in a first AC
 scan counting once), and a progressive frame of at most 8388608 (2^23) blocks over all its components, whose nonzero
-history (64 MiB at most) is checked before any is allocated; both stay far above a 4 MiB file of the largest image the
+history and column-pair sums (128 MiB at most) are checked before any is allocated; both stay far above a 4 MiB file of the largest image the
 raster output takes. Per render, every image asset together (each asset is checked, even one whose bytes another
 asset shares): the same 134217728 steps (`maxRenderEntropySteps`, like the shaping bound), so copies of a crafted file
 cost no more than the costliest single one (a 10 KB progressive file can take some 7 million steps); crossing it fails
