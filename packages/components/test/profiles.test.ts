@@ -369,6 +369,33 @@ describe("the animation of the profile sections", () => {
     expect(digits).toBe(String(sampleProfileData().github.contributions.total));
   });
 
+  test.each([365, 366, 371])(
+    "the horizon terrain draws the latest day of a calendar of %s days",
+    (length) => {
+      const sample = sampleProfileData();
+      const base = sample.github.contributions.days;
+      const days = Array.from({ length }, (_, index) => ({
+        ...(base[index % base.length] as (typeof base)[number]),
+        count: 0,
+        level: 0 as const,
+      }));
+      const terrain = (last: number) =>
+        renderProfile({
+          template: "horizon",
+          design: loadProfile("horizon", "year"),
+          data: withPatch(sample, {
+            contributions: {
+              ...sample.github.contributions,
+              days: days.map((day, index) =>
+                index === length - 1 ? { ...day, count: last } : day,
+              ),
+            },
+          }),
+        });
+      expect(terrain(64)).not.toBe(terrain(0));
+    },
+  );
+
   test("a streak of one day reads '1 day'", () => {
     const sample = sampleProfileData();
     const one = { length: 1, start: "2026-01-02", end: "2026-01-02" };

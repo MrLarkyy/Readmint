@@ -263,7 +263,7 @@
                 }
               ],
               "repeat": {
-                "each": "{{ [(j % 51) * 7 + (j / 51 | floor)] }}",
+                "each": "{{ [(((github.contributions.days | length) - 364) | max(0)) + (j % 51) * 7 + (j / 51 | floor)] }}",
                 "as": "i"
               }
             }
@@ -273,7 +273,7 @@
             "as": "day",
             "index": "j"
           },
-          "if": "{{ j < 306 && (j % 51) * 7 + (j / 51 | floor) + 8 < (github.contributions.days | length) }}"
+          "if": "{{ j < 306 && (((github.contributions.days | length) - 364) | max(0)) + (j % 51) * 7 + (j / 51 | floor) + 8 < (github.contributions.days | length) }}"
         },
         {
           "type": "text",
