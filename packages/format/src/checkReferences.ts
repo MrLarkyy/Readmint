@@ -118,7 +118,11 @@ class ReferenceWalker {
   private checkDefaults(props: Records<ComponentPropDefinition>, path: string): void {
     for (const name of Object.keys(props)) {
       const definition = props[name] as ComponentPropDefinition;
-      if (definition.default !== undefined && !fitsProp(definition, definition.default))
+      if (definition.default === undefined) continue;
+      const failure = propFailure(definition, definition.default, true);
+      if (failure === "enum")
+        this.add(`${path}/${name}/default`, "enum", enumMessage(definition, definition.default));
+      else if (failure)
         this.add(`${path}/${name}/default`, "type", `expected a ${definition.type} default`);
     }
   }
@@ -189,8 +193,10 @@ class ReferenceWalker {
         continue;
       }
       const definition = declared[name] as ComponentPropDefinition;
-      if (!fitsProp(definition, props[name]))
-        this.add(at, "type", `expected a ${definition.type} or a {{binding}}`);
+      const failure = propFailure(definition, props[name], false);
+      if (failure === "enum") this.add(at, "enum", enumMessage(definition, props[name]));
+      else if (failure)
+        this.add(at, "type", `expected ${expectation(definition)} or a {{binding}}`);
     }
   }
 
@@ -298,17 +304,53 @@ function collectTree(layers: readonly Layer[], path: string): Tree {
 const binding = ref(bindingDef);
 const colour = ref("Colour");
 
-function fitsProp(definition: ComponentPropDefinition, value: unknown): boolean {
-  if (typeof value === "string" && matches(binding, value)) return true;
+const listedValues = 8;
+
+function expectation(definition: ComponentPropDefinition): string {
+  switch (definition.type) {
+    case "array":
+      return "an array";
+    case "enum":
+      return `one of ${listValues(definition.values)}`;
+    default:
+      return `a ${definition.type}`;
+  }
+}
+
+function listValues(values: readonly string[]): string {
+  const shown = values
+    .slice(0, listedValues)
+    .map((item) => quoteInput(item))
+    .join(", ");
+  return `${shown}${values.length > listedValues ? ", ..." : ""}`;
+}
+
+function enumMessage(definition: ComponentPropDefinition, value: unknown): string {
+  const values = definition.type === "enum" ? definition.values : [];
+  return `expected one of ${listValues(values)}, got ${quoteInput(String(value))}`;
+}
+
+function propFailure(
+  definition: ComponentPropDefinition,
+  value: unknown,
+  literal: boolean,
+): "type" | "enum" | undefined {
+  const bound = typeof value === "string" && matches(binding, value);
+  if (bound && !literal) return undefined;
   switch (definition.type) {
     case "string":
-      return typeof value === "string";
+      return typeof value === "string" ? undefined : "type";
     case "number":
-      return typeof value === "number";
+      return typeof value === "number" ? undefined : "type";
     case "boolean":
-      return typeof value === "boolean";
+      return typeof value === "boolean" ? undefined : "type";
     case "color":
-      return typeof value === "string" && matches(colour, value);
+      return typeof value === "string" && (bound || matches(colour, value)) ? undefined : "type";
+    case "enum":
+      if (typeof value !== "string") return "type";
+      return definition.values.includes(value) ? undefined : "enum";
+    case "array":
+      return Array.isArray(value) ? undefined : "type";
   }
 }
 

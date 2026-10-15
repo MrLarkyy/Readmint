@@ -33,15 +33,15 @@ Props of the `calendar` instance:
 | `cellSize`    | number | `11`            | side of a cell (half the width of an isometric top face)                         |
 | `gap`         | number | `3`             | space between cells; the pitch is `cellSize + gap`                               |
 | `radius`      | number | `2`             | corner radius, passed to the cell (the heatmap cell uses it)                     |
-| `orientation` | string | `"horizontal"`  | `"horizontal"`: weeks are columns, weekdays rows; `"vertical"`: swapped          |
-| `projection`  | string | `"flat"`        | `"flat"` or `"isometric"`                                                        |
+| `orientation` | enum   | `"horizontal"`  | `"horizontal"`: weeks are columns, weekdays rows; `"vertical"`: swapped          |
+| `projection`  | enum   | `"flat"`        | `"flat"` or `"isometric"`                                                        |
 | `weeks`       | number | `53`            | draw only the last this many weeks; older days are dropped by an `if`            |
 | `maxCount`    | number | `20`            | count at which an isometric pillar reaches `maxHeight`; larger counts are capped |
 | `maxHeight`   | number | `24`            | tallest isometric pillar; also the room left above the calendar                  |
 | `level0`..`4` | color  | GitHub's greens | colour of each level (`#ebedf0`, `#9be9a8`, `#40c463`, `#30a14e`, `#216e39`)     |
 
-`orientation` and `projection` take any string: anything but `"vertical"` is horizontal, anything but `"isometric"` is
-flat.
+`orientation` and `projection` are enum props: any other value is a validation issue (`enum`), or a `type` render issue
+when it comes from data.
 
 **Canvas.** The canvas cannot read the instance props, so each template states its size from the same numbers:
 `min(weeks, 53) * 14 - 3 + 16` by `111` for the flat ones, `(min(weeks, 53) + 5) * 14 + 38` by

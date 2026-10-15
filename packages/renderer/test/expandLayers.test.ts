@@ -160,6 +160,108 @@ describe("components", () => {
     ]);
   });
 
+  const days: ComponentDefinition = {
+    props: { days: { type: "array", default: [3, 4] } },
+    layers: [
+      {
+        type: "rect",
+        x: "{{index}}",
+        width: "{{item}}",
+        height: 1,
+        repeat: { each: "{{props.days}}" },
+      },
+    ],
+  };
+  const mode: ComponentDefinition = {
+    props: { mode: { type: "enum", values: ["horizontal", "vertical"], default: "horizontal" } },
+    layers: [{ type: "rect", width: 1, height: 1 }],
+  };
+
+  test("an array prop bound to data is iterated by a repeat, byte-equal across renders", () => {
+    const layers: Layer[] = [{ type: "component", ref: "days", props: { days: "{{list}}" } }];
+    const first = render(layers, { list: [5, 6] }, { days });
+    expect(rects(first)).toEqual([
+      '<rect x="0" y="0" width="5" height="1"/>',
+      '<rect x="1" y="0" width="6" height="1"/>',
+    ]);
+    expect(render(layers, { list: [5, 6] }, { days })).toEqual(first);
+  });
+
+  test("a default list is iterated", () => {
+    expect(rects(render([{ type: "component", ref: "days" }], {}, { days }))).toHaveLength(2);
+  });
+
+  test("an array prop bound to a number is a type issue", () => {
+    const result = render(
+      [{ type: "component", ref: "days", props: { days: "{{n}}" } }],
+      { n: 3 },
+      { days },
+    );
+    expect(result).toMatchObject({
+      ok: false,
+      issues: [{ path: "/layers/0/props/days", code: "type" }],
+    });
+  });
+
+  test("an enum prop bound to an unlisted value names the values", () => {
+    const result = render(
+      [{ type: "component", ref: "mode", props: { mode: "{{o}}" } }],
+      { o: "diagonal" },
+      { mode },
+    );
+    expect(result).toMatchObject({
+      ok: false,
+      issues: [
+        {
+          path: "/layers/0/props/mode",
+          code: "type",
+          message: expect.stringContaining('"vertical"') as string,
+        },
+      ],
+    });
+  });
+
+  test("an enum prop bound to a listed value renders", () => {
+    const result = render(
+      [{ type: "component", ref: "mode", props: { mode: "{{o}}" } }],
+      { o: "vertical" },
+      { mode },
+    );
+    expect(rects(result)).toHaveLength(1);
+  });
+
+  test("an unvalidated enum definition without values is a type issue, never a throw", () => {
+    const broken = {
+      props: { mode: { type: "enum" } },
+      layers: [],
+    } as unknown as ComponentDefinition;
+    const result = render(
+      [{ type: "component", ref: "mode", props: { mode: "{{o}}" } }],
+      { o: "x" },
+      { mode: broken },
+    );
+    expect(result).toMatchObject({
+      ok: false,
+      issues: [{ path: "/layers/0/props/mode", code: "type" }],
+    });
+  });
+
+  test("a repeat over an array prop counts against maxRepeatCopies", () => {
+    const result = renderSvg(
+      {
+        version: 0,
+        canvas: { width: 10, height: 10 },
+        layers: [{ type: "component", ref: "days", props: { days: "{{list}}" } }],
+        components: { days },
+      },
+      { data: { list: [1, 2, 3, 4] }, limits: { maxRepeatCopies: 3 } },
+    );
+    expect(result).toMatchObject({
+      ok: false,
+      issues: [{ path: "/components/days/layers/0/repeat", code: "too-large" }],
+    });
+  });
+
   test("a bound prop of the wrong type is an issue at the instance prop", () => {
     const result = render(
       [{ type: "component", ref: "outer", props: { colour: "{{c}}" } }],

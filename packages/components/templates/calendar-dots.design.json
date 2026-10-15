@@ -25,11 +25,13 @@
           "default": 2
         },
         "orientation": {
-          "type": "string",
+          "type": "enum",
+          "values": ["horizontal", "vertical"],
           "default": "horizontal"
         },
         "projection": {
-          "type": "string",
+          "type": "enum",
+          "values": ["flat", "isometric"],
           "default": "flat"
         },
         "weeks": {
