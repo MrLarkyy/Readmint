@@ -1,8 +1,12 @@
 brotli@1.3.3 ships no licence file. Its package.json and readme.md name the MIT License; the
 repository (https://github.com/foliojs/brotli.js) has no licence file either, so the MIT terms are
-given here with the author its package.json names. The decoder in dec/, the only part bundled, is
-Google's Brotli decoder ported to JavaScript; every file of it carries this notice under the Apache
-License, Version 2.0, whose full text follows the MIT terms:
+given here with the author its package.json names. The bundle takes these files of the package:
+
+    decompress.js, dec/streams.js, dec/huffman.js, dec/dictionary-browser.js and
+    dec/dictionary.bin.js carry no notice of their own (MIT, as above);
+    dec/decode.js, dec/bit_reader.js, dec/context.js, dec/dictionary.js, dec/prefix.js and
+    dec/transform.js, a port of Google's Brotli decoder, carry this notice under the Apache
+    License, Version 2.0, whose full text follows the MIT terms:
 
     Copyright 2013 Google Inc. All Rights Reserved.
 

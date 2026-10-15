@@ -98,7 +98,8 @@ Drawn in document order, first at the back. Layer `id` and `name` are not emitte
   across characters.
 - **Missing glyphs**: a code point neither the font nor its fallbacks have is not written, so no engine draws it (no
   browser fallback font, no `.notdef` box); it keeps the advance of the font's `.notdef` glyph, so the layout does not
-  depend on it. The render warns `missing-glyph` once per font asset, naming up to ten such characters.
+  depend on it. The render warns `missing-glyph` once per font asset a text names (also when a `fontWeight` picked
+  another face of its family), naming up to ten such characters.
 - **No shaping**: no ligatures, no contextual forms, no mark positioning, no bidi reordering. Scripts that need them
   (Arabic, Devanagari, Thai, ...) and decomposed accents render as separate glyphs side by side; use precomposed
   characters.
@@ -159,8 +160,18 @@ Drawn in document order, first at the back. Layer `id` and `name` are not emitte
   weight and style both embedded in one SVG compete for the same `@font-face` descriptors; give them distinct families.
 - **Untrusted fonts**: every table offset and count is checked against the bytes; composite glyphs nest at most 8
   deep with at most 256 components and 65535 points; CFF charstrings call subroutines at most 10 deep, keep at most 48
-  operands and run at most 20000 operations per glyph; kerning reads at most 64 lookups of 64 subtables. Outlines,
-  kerning and subsets are read on first use: a fault found then is `asset-format` at the asset's `src`.
+  operands and run at most 20000 operations per glyph; kerning visits each `kern` feature once, reads at most 4096
+  lookup entries and uses at most 64 lookups of 64 subtables. Outlines, kerning and subsets are read on first use: a
+  fault found then is `asset-format` at the asset's `src`. One font's outline work in one render (charstring
+  operations, TrueType points), shared by text drawn as paths and by flattening its CFF subset, is at most 4000000;
+  past it, and when a subset's outlines pass four times the output budget still left while the subset is built, the
+  render fails with `asset-too-large` at the asset. A CFF font whose FontMatrix is not 1/unitsPerEm is
+  `unsupported-font`.
+- **Behaviour changes for existing designs** (no format version step, see
+  [design-format.md](design-format.md#versioning)): pair kerning is on by default, so text is placed slightly
+  differently than before (`kerning: false` per font asset turns it off); `font-not-embeddable` is a warning (the text
+  is drawn as paths) where the render used to fail; a text gradient spans the layout box, not the glyph ink. A caller
+  that treated `font-not-embeddable` as a failure must now look at the warnings.
 - **Dependencies**: `fflate` 0.8.3 (MIT; zlib inflate for WOFF input, deflate for the subsets) and `brotli` 1.3.3
   (MIT, its decoder a port of Google's Apache-2.0 decoder; only `brotli/decompress.js`, for WOFF2 input) with `base64-js`
   1.5.1 (MIT). Both are pure ECMAScript and run the same in Node and browsers. In the Action bundle they add about
@@ -304,8 +315,8 @@ keyframes before any is resolved. Fixed limits: 10000 items per `repeat` (expr, 
 | `range`                | a number outside the format's range, a keyframe offset below the one before it, a `time` outside [0, 86400000]                                                                                                                                      |
 | `missing-asset`        | an asset path without supplied bytes, or a reference to no asset                                                                                                                                                                                    |
 | `asset-format`         | not an accepted image or a malformed font (also one found broken when its glyphs, kerning or subset are read, or a table that decompresses past its declared size); a data URI type that does not match                                             |
-| `asset-too-large`      | over a byte, side or frame limit                                                                                                                                                                                                                    |
-| `unsupported-font`     | a font collection (TTC, or WOFF2 with several fonts) or CFF2 outlines                                                                                                                                                                               |
+| `asset-too-large`      | over a byte, side or frame limit; a font past its outline budget or whose subset could not fit the output budget                                                                                                                                    |
+| `unsupported-font`     | a font collection (TTC, or WOFF2 with several fonts), CFF2 outlines or a CFF FontMatrix other than 1/unitsPerEm                                                                                                                                     |
 | `font-not-embeddable`  | warning: the licence or the fsType forbids embedding; the font's text is drawn as paths (once per asset)                                                                                                                                            |
 | `too-large`            | the SVG passes `maxOutputBytes`, a text passes `maxTextLength`, the repeats pass `maxRepeatCopies` (at the `repeat` that crossed it), the tracks pass `maxAnimationKeyframes` (at the track that crossed it), components nest deeper than 64 levels |
 | `font-family-mismatch` | warning: the asset family differs from the family inside the font                                                                                                                                                                                   |

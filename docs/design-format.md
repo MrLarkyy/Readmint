@@ -382,6 +382,10 @@ committed file differs from the emitted schema, and the file is excluded from Pr
 - Each released version keeps its schema file (`design-v<N>.schema.json`).
 
 The animation section (`animation`, `animate`) and the font asset options `drawAs`, `fallback` and `kerning` were
-added to v0 as optional properties: a design without them renders as before (kerning, which v0 did not apply before,
-is on by default). The grammar inside bindings is
+added to v0 as optional properties, so no design needs migrating. Rendering an existing design changed with them,
+though, without a version step (the meaning of the document is the same; the renderer draws it more faithfully):
+glyphs are kerned by default (`kerning: false` restores the unkerned positions), so text without the new options is
+placed slightly differently; a font whose licence or fsType forbids embedding is drawn as paths with the warning
+`font-not-embeddable` instead of failing the render; a text gradient spans the text's layout box instead of the ink
+of its glyphs. See [renderer.md](renderer.md#text). The grammar inside bindings is
 the expression language v0 of `@readmint/expr`, described in [docs/expressions.md](expressions.md).
