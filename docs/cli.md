@@ -132,8 +132,10 @@ as `render --data` with that object.
 - **`--login`** names the user to load; without it the token's owner is loaded. An app token (the Actions
   `GITHUB_TOKEN`, an installation token) belongs to no user and needs `--login`
   ([data-github.md](data-github.md#cache), `invalid-option` otherwise). An invalid login fails `invalid-option`.
-- **Order**: the data loads after the design file and its assets: a design that fails to load (exit code 1 or 3) costs
-  no request and is reported before a missing or refused token (exit code 4).
+- **Order**: `render` and `validate` load the data after the design file and its assets: a design that fails to load
+  (exit code 1 or 3) costs no request and is reported before a missing or refused token (exit code 4). `preview` loads
+  the data first, before it reads the design or starts serving: a missing token or a failed load exits with 4 at once,
+  and a design error is then shown on the page like any later one.
 - **Requests**: a load sends the requests of [data-github.md](data-github.md#rate-limits) (at most 4 with `--login`
   and 5 without it, plus retries; fewer for a user with fewer repositories), only to `https://api.github.com/graphql`, and takes at most 300 s in all, retries and
   rate-limit waits included. There is no cache and nothing is written to disk.
