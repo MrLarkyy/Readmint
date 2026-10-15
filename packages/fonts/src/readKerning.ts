@@ -8,6 +8,8 @@ export type KerningLookup = (left: number, right: number) => number;
 /** A real font uses a handful of kerning lookups and subtables; a crafted one cannot make this loop for long. */
 export const maxLookups = 64;
 export const maxSubtables = 64;
+/** Lookup indices read over all kern features together, repeats included. */
+export const maxLookupReads = 4096;
 
 type PairSubtable = (left: number, right: number) => number | undefined;
 
@@ -70,27 +72,51 @@ function gposPairLookups(gpos: SfntReader): PairSubtable[][] {
     .map((index) => lookupSubtables(gpos, lookupList + gpos.u16(lookupList + 2 + index * 2)));
 }
 
+/**
+ * Lookup indices of feature `kern` under the default LangSys of `DFLT`, else `latn`. Each feature is visited once
+ * however often the LangSys lists it, every list must fit the table before it is read, and the lookup lists of all
+ * kern features together hold at most `maxLookupReads` entries, so the work is linear in the table's size.
+ */
 function kernLookupIndices(gpos: SfntReader, scriptList: number, featureList: number): number[] {
   for (const script of ["DFLT", "latn"]) {
     const langSys = defaultLangSys(gpos, scriptList, script);
     if (langSys === undefined) continue;
-    const lookups = new Set<number>();
     const featureCount = gpos.u16(featureList);
-    for (let index = 0; index < gpos.u16(langSys + 4); index++) {
-      const feature = gpos.u16(langSys + 6 + index * 2);
-      if (feature >= featureCount) continue;
-      const record = featureList + 2 + feature * 6;
-      if (gpos.tag(record) !== "kern") continue;
-      const table = featureList + gpos.u16(record + 4);
-      for (let lookup = 0; lookup < gpos.u16(table + 2); lookup++) {
-        lookups.add(gpos.u16(table + 4 + lookup * 2));
-        if (lookups.size > maxLookups)
+    const features = new Set<number>();
+    for (const feature of u16List(gpos, langSys + 4)) {
+      if (feature < featureCount && gpos.tag(featureList + 2 + feature * 6) === "kern") {
+        features.add(feature);
+      }
+    }
+    const lookups = new Set<number>();
+    let reads = 0;
+    for (const feature of [...features].sort((left, right) => left - right)) {
+      const table = featureList + gpos.u16(featureList + 2 + feature * 6 + 4);
+      const count = gpos.u16(table + 2);
+      reads += count;
+      if (reads > maxLookupReads)
+        throw new MalformedFont("font kern features list too many lookups");
+      for (const lookup of u16List(gpos, table + 2)) {
+        lookups.add(lookup);
+        if (lookups.size > maxLookups) {
           throw new MalformedFont("font kern feature has too many lookups");
+        }
       }
     }
     if (lookups.size > 0) return [...lookups].sort((left, right) => left - right);
   }
   return [];
+}
+
+/** A u16 count at `offset` followed by that many u16 values; the whole list must lie inside the table. */
+function u16List(gpos: SfntReader, offset: number): number[] {
+  const count = gpos.u16(offset);
+  const values = gpos.slice(offset + 2, count * 2);
+  const list: number[] = [];
+  for (let index = 0; index < count; index++) {
+    list.push(((values[index * 2] ?? 0) << 8) | (values[index * 2 + 1] ?? 0));
+  }
+  return list;
 }
 
 function defaultLangSys(gpos: SfntReader, scriptList: number, tag: string): number | undefined {
