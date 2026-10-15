@@ -291,7 +291,9 @@ budget?, maxBytes? })`, `encodeWoff`, `decodeWoff`, `glyphClosure`, `OutlineBudg
   normalized before shaping: decomposed text recomposes into the font's precomposed letters (now plain characters, as
   precomposed text always was), a precomposed letter the font lacks is drawn from its base and mark in the same font
   instead of a fallback or a missing glyph, marks typed out of canonical order are sorted, a text's `aria-label` is
-  written in NFC, and letters excluded from composition (Devanagari U+0958-U+095F, Hebrew presentation forms such as
+  written in NFC, a cluster whose font has its base but not its mark (or not the whole cluster as normalized) moves
+  whole, base included, to the first fallback that has all of it (before, only the mark took the fallback and drew
+  unattached; a fallback in another family can now draw the base letter too), and letters excluded from composition (Devanagari U+0958-U+095F, Hebrew presentation forms such as
   U+FB2A) are drawn from their base and nukta or point by the font's own features, not from the font's precomposed
   glyph.
 - **Dependencies**: `fflate` 0.8.3 (MIT; zlib inflate for WOFF input, deflate for the subsets) and `brotli` 1.3.3

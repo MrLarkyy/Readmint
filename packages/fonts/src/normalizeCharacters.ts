@@ -1,5 +1,6 @@
 import { clusterStarts } from "./clusterStarts.js";
 import { compositionOf, decompositionOf } from "./unicode/canonicalDecomposition.js";
+import { isDefaultIgnorable } from "./unicode/characterFlags.js";
 import { combiningClassOf, modifiedCombiningClassOf } from "./unicode/combiningClass.js";
 
 /** The longest run of non-starters put in canonical order; a longer one stays as written (HarfBuzz's limit). */
@@ -17,7 +18,8 @@ export interface NormalizedCharacters {
  * at a time: (1) every character is decomposed canonically and recursively, except a singleton decomposition
  * (U+212B, CJK compatibility ideographs) of a character the font maps; (2) each run of at most 32 non-starters is
  * stable-sorted by combining class; (3) Unicode canonical composition (UAX #15: blocking, composition exclusions,
- * Hangul). When the font maps every character of the fully composed cluster (its NFC), that is the result, so a
+ * Hangul). When the font maps every character of the fully composed cluster (its NFC) but default ignorables (never
+ * drawn: ZWJ, U+200B, U+00AD), that is the result, so a
  * mapped precomposed character survives even when the font lacks a composite on the way to it (U+AC01 without
  * U+AC00, U+1EC7 without U+1EB9); otherwise a pair composes only when the font maps the composite. Both are functions
  * of the cluster's canonical equivalence class, so equivalent clusters give the same characters for any font.
@@ -60,7 +62,7 @@ export function normalizeCharacters(
     const composed: number[] = [];
     steps += compose(result, result.map(combiningClassOf), everything, composed);
     steps += composed.length;
-    if (composed.every(maps)) {
+    if (composed.every((codePoint) => maps(codePoint) || isDefaultIgnorable(codePoint))) {
       result = composed;
       if (order === "font") steps += reorder(result, result.map(keyOf));
     } else {

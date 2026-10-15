@@ -252,6 +252,9 @@ describe("TextShaper with canonically equivalent text", () => {
       ["e", ["c\u00e9", "ce\u0301"]],
       // Only the syllable U+AC01: neither U+AC00 nor conjoining jamo.
       ["k", ["\uac01", "\u1100\u1161\u11a8", "\uac00\u11a8"]],
+      // A default ignorable the font lacks stays in the cluster without hiding the syllable.
+      ["k", ["\uac01\u200b", "\u1100\u1161\u11a8\u200b", "\uac00\u11a8\u200b"]],
+      ["k", ["\uac01\u200d", "\u1100\u1161\u11a8\u200d"]],
       // Syllables, no conjoining jamo.
       ["j", ["\uac01", "\u1100\u1161\u11a8"]],
       // A subset with U+1EC7 but neither U+00EA, U+1EB9 nor the marks.
@@ -263,6 +266,13 @@ describe("TextShaper with canonically equivalent text", () => {
         expect(result.warnings).toEqual([]);
         expect(result.svg).toBe(results[0]?.svg);
       }
+    }
+    for (const content of ["\uac01\u200b", "\u1100\u1161\u11a8\u200b"]) {
+      const { line: zeroWidth } = builtLine("k", content);
+      expect(zeroWidth.glyphs.map((glyph) => [glyph.font?.asset, glyph.codePoint])).toEqual([
+        ["k", 0xac01],
+      ]);
+      expect(renderBuilt("k", content).svg).toContain("\uac01");
     }
     const { line: korean } = builtLine("j", "\u1100\u1161\u11a8");
     expect(korean.glyphs.map((glyph) => [glyph.font?.asset, glyph.codePoint, glyph.plain])).toEqual(

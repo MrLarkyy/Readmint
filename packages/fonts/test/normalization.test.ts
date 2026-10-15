@@ -191,6 +191,14 @@ test("a precomposed character the font maps survives without the composites on t
     expect(normalize([0xac01], syllable, order)).toEqual([0xac01]);
     expect(normalize([0x1100, 0x1161, 0x11a8], syllable, order)).toEqual([0xac01]);
     expect(normalize([0xac00, 0x11a8], syllable, order)).toEqual([0xac01]);
+    // A default ignorable the font lacks (never drawn) does not stop the composed form.
+    for (const ignorable of [0x200b, 0xad, 0x200d]) {
+      expect(normalize([0x1100, 0x1161, 0x11a8, ignorable], syllable, order)).toEqual([
+        0xac01,
+        ignorable,
+      ]);
+      expect(normalize([0xac01, ignorable], syllable, order)).toEqual([0xac01, ignorable]);
+    }
     const viet = font(0x56, 0x69, 0x74, 0x1ec7);
     for (const spelling of [
       [0x1ec7],
