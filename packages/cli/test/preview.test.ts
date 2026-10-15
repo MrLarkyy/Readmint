@@ -402,3 +402,40 @@ test("--fetch-images serves the bound image inlined (RM-28)", async () => {
   expect(svg.body).not.toContain("https:");
   expect(urls).toEqual([avatar]);
 });
+
+test("Ctrl+C stops a preview whose image fetch never answers (RM-28)", async () => {
+  await tree.file("avatar.json", {
+    version: 0,
+    canvas: { width: 20, height: 20 },
+    assets: { images: { avatar: { src: "{{ github.avatarUrl }}" } } },
+    layers: [{ type: "image", asset: "avatar", width: 16, height: 16 }],
+  });
+  await tree.file("data.json", {
+    github: { avatarUrl: "https://avatars.githubusercontent.com/u/1" },
+  });
+  const controller = new AbortController();
+  const signals: AbortSignal[] = [];
+  const started = Date.now();
+  const exit = runCli(
+    ["preview", "avatar.json", "--data", "data.json", "--port", "0", "--fetch-images"],
+    {
+      stdout: () => undefined,
+      stderr: () => undefined,
+      cwd: tree.root,
+      signal: controller.signal,
+      pollIntervalMs: 20,
+      fetch: (_url, init) =>
+        new Promise<Response>((_resolve, reject) => {
+          if (init.signal) signals.push(init.signal);
+          init.signal?.addEventListener("abort", () => {
+            reject(init.signal?.reason as Error);
+          });
+        }),
+    },
+  );
+  await until(() => signals.length === 1);
+  controller.abort();
+  expect(await exit).toBe(ExitCode.ok);
+  expect(signals[0]?.aborted).toBe(true);
+  expect(Date.now() - started).toBeLessThan(10_000);
+});

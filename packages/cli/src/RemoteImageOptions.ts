@@ -26,4 +26,6 @@ export interface RemoteImageOptions {
   readonly allowedHosts?: readonly string[];
   /** Per request; default `RemoteImageLimits.timeoutMs`. */
   readonly timeoutMs?: number;
+  /** Stops every request of the call when it aborts (the preview's Ctrl+C), as `image-fetch`. */
+  readonly signal?: AbortSignal;
 }

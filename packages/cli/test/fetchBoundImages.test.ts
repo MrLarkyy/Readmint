@@ -315,6 +315,25 @@ describe("fetchBoundImages", () => {
     expect(error.message).toContain("no answer within 20 ms");
   });
 
+  test("the signal stops a request that never answers", async () => {
+    const stop = new AbortController();
+    const recorded = host(
+      (_url, init) =>
+        new Promise<Response>((_resolve, reject) => {
+          init.signal?.addEventListener("abort", () => {
+            reject(init.signal?.reason as Error);
+          });
+          stop.abort();
+        }),
+    );
+    const error = await refusal(
+      fetchBoundImages(design(), github(avatar), options(recorded.fetch, { signal: stop.signal })),
+    );
+    expect(error.code).toBe("image-fetch");
+    expect(error.message).toContain("the request was stopped");
+    expect(recorded.calls[0]?.init.signal?.aborted).toBe(true);
+  });
+
   test("a failed URL fails every design that binds it the same way, fetched once", async () => {
     const recorded = host(() => answer("gone", 404));
     const shared = options(recorded.fetch);

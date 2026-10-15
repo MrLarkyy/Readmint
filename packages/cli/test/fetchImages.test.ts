@@ -105,3 +105,20 @@ test("a bound src is no file: not read as an asset, not watched by the preview",
   const withFile = await loadDesignFile("file.json", { cwd: tree.root });
   expect(watchedAssetPaths(withFile)).toHaveLength(1);
 });
+
+test("validate without --data checks a bound image design and fetches nothing", async () => {
+  const global = vi.spyOn(globalThis, "fetch");
+  const run = await tree.run(["validate", "bound.json"], { fetch });
+  expect(run).toMatchObject({ code: ExitCode.ok, stdout: "bound.json: ok\n", stderr: "" });
+  expect(calls).toEqual([]);
+  expect(global).not.toHaveBeenCalled();
+});
+
+test("render without --data fails missing-asset naming --fetch-images, fetching nothing", async () => {
+  const run = await tree.run(["render", "bound.json"], { fetch });
+  expect(run.code).toBe(ExitCode.invalid);
+  expect(run.stderr).toMatch(
+    /^bound\.json: error missing-asset at \/assets\/images\/avatar\/src: .*--fetch-images/,
+  );
+  expect(calls).toEqual([]);
+});

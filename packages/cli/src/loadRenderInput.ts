@@ -25,8 +25,8 @@ export interface RenderInputOptions {
   /** Data the caller already loaded (the Action's); used instead of `args.data`. */
   readonly data?: Record<string, unknown>;
   /**
-   * How images bound from data are fetched; absent, a design with one fails `image-not-fetched` and nothing is
-   * fetched.
+   * How images bound from data are fetched; absent, nothing is fetched and a design with one fails
+   * `image-not-fetched` when there is data (without data its bytes stay missing and only a render fails).
    */
   readonly images?: RemoteImageOptions;
 }
@@ -64,6 +64,8 @@ async function withBoundImages(
   if (first === undefined) return assets;
   try {
     if (images === undefined) {
+      // Without data there is nothing to bind (validate only checks): the renderer names --fetch-images if it renders.
+      if (data === undefined) return assets;
       throw new RemoteImageError(
         "image-not-fetched",
         `image asset ${quoteForLog(first)} takes its src from data; pass --fetch-images to fetch it`,

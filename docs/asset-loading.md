@@ -94,15 +94,15 @@ The first refusal throws `RemoteImageError` with the asset id and a stable `code
 `<design>: error <code> at /assets/images/<id>/src: <message>`. The message quotes the URL with the CLI's escape set
 and never a request header or the text of a network error.
 
-| code                | meaning                                                                                |
-| ------------------- | -------------------------------------------------------------------------------------- |
-| `image-binding`     | the binding does not evaluate, gives no string, or there is no data                    |
-| `image-url`         | not a URL, not https, a user name, password or port in it, or over 2048 characters     |
-| `image-host`        | the host is not on the allow-list                                                      |
-| `image-fetch`       | network error, timeout, redirect, a status outside 200..299, or a 33rd URL in one run  |
-| `image-too-large`   | over `maxImageBytes`, `maxImageSide` pixels per side or `maxAnimationFrames` frames    |
-| `image-format`      | not a PNG, JPEG, GIF or WebP image                                                     |
-| `image-not-fetched` | the design binds an image `src` and fetching is off (the CLI without `--fetch-images`) |
+| code                | meaning                                                                                                                                                                          |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `image-binding`     | the binding does not evaluate, gives no string, or there is no data                                                                                                              |
+| `image-url`         | not a URL, not https, a user name, password or port in it, or over 2048 characters                                                                                               |
+| `image-host`        | the host is not on the allow-list                                                                                                                                                |
+| `image-fetch`       | network error, timeout, redirect, a status outside 200..299, or a 33rd URL in one run                                                                                            |
+| `image-too-large`   | over `maxImageBytes`, `maxImageSide` pixels per side or `maxAnimationFrames` frames                                                                                              |
+| `image-format`      | not a PNG, JPEG, GIF or WebP image                                                                                                                                               |
+| `image-not-fetched` | the design binds an image `src`, there is data, and fetching is off (the CLI without `--fetch-images`); without data nothing is fetched and only a render fails, `missing-asset` |
 
 ## Residual risks
 

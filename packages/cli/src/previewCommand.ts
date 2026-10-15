@@ -78,7 +78,7 @@ async function renderUpdate(
   try {
     // A save racing the read is read again, not shown as an issue.
     const input = await retryWhileChanging(() =>
-      loadRenderInput(args, { cwd: io.cwd, onDesignFile, ...imageFetching(args, io) }),
+      loadRenderInput(args, { cwd: io.cwd, onDesignFile, ...imageFetching(args, io, io.signal) }),
     );
     const name = input.file.name;
     const result = renderInput(input, args);

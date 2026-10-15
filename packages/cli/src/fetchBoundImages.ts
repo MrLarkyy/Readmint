@@ -85,19 +85,15 @@ function cachedImage(url: string, options: RemoteImageOptions): Promise<Uint8Arr
         `${quoteForLog(url)} is one image URL too many: one run fetches at most ${String(max)}`,
       );
     }
-    bytes = fetchImage(url, options.fetch, options.timeoutMs ?? RemoteImageLimits.timeoutMs);
+    bytes = fetchImage(url, options);
     options.cache.set(url, bytes);
   }
   return bytes;
 }
 
-async function fetchImage(
-  url: string,
-  fetch: RemoteImageOptions["fetch"],
-  timeoutMs: number,
-): Promise<Uint8Array> {
+async function fetchImage(url: string, options: RemoteImageOptions): Promise<Uint8Array> {
   try {
-    return checkImage(await download(url, fetch, timeoutMs));
+    return checkImage(await download(url, options));
   } catch (error) {
     if (!(error instanceof RemoteImageError)) throw error;
     throw new RemoteImageError(error.code, `${quoteForLog(url)}: ${error.message}`);
@@ -105,23 +101,23 @@ async function fetchImage(
 }
 
 /** Exactly this request: nothing that could carry a credential, no redirect to re-check. */
-function imageRequest(timeoutMs: number): RequestInit {
+function imageRequest(signal: AbortSignal): RequestInit {
   return {
     method: "GET",
     headers: { accept: "image/png,image/jpeg,image/gif,image/webp" },
     redirect: "error",
     credentials: "omit",
-    signal: AbortSignal.timeout(timeoutMs),
+    signal,
   };
 }
 
-async function download(
-  url: string,
-  fetch: RemoteImageOptions["fetch"],
-  timeoutMs: number,
-): Promise<Uint8Array> {
+async function download(url: string, options: RemoteImageOptions): Promise<Uint8Array> {
+  const timeoutMs = options.timeoutMs ?? RemoteImageLimits.timeoutMs;
+  const timeout = AbortSignal.timeout(timeoutMs);
+  const signal =
+    options.signal === undefined ? timeout : AbortSignal.any([timeout, options.signal]);
   try {
-    const response = await fetch(url, imageRequest(timeoutMs));
+    const response = await options.fetch(url, imageRequest(signal));
     if (!response.ok) {
       await response.body?.cancel().catch(() => undefined);
       throw new RemoteImageError("image-fetch", `the host answered ${String(response.status)}`);
@@ -130,12 +126,13 @@ async function download(
   } catch (error) {
     if (error instanceof RemoteImageError) throw error;
     // The error text of fetch is not echoed: it can hold anything the platform put there.
-    const timedOut = error instanceof Error && error.name === "TimeoutError";
     throw new RemoteImageError(
       "image-fetch",
-      timedOut
-        ? `no answer within ${String(timeoutMs)} ms`
-        : "the request failed (network error or redirect)",
+      options.signal?.aborted === true
+        ? "the request was stopped"
+        : timeout.aborted
+          ? `no answer within ${String(timeoutMs)} ms`
+          : "the request failed (network error or redirect)",
     );
   }
 }

@@ -12,7 +12,7 @@ export type RemoteImageErrorCode =
   | "image-too-large"
   /** The bytes are no PNG, JPEG, GIF or WebP image the renderer accepts. */
   | "image-format"
-  /** The design binds an image `src` and fetching is off (the CLI without `--fetch-images`). */
+  /** The design binds an image `src`, there is data, and fetching is off (the CLI without `--fetch-images`). */
   | "image-not-fetched";
 
 /**
