@@ -1,0 +1,35 @@
+{
+  "version": 0,
+  "canvas": { "width": 120, "height": 40 },
+  "animation": { "duration": 1000 },
+  "components": {
+    "bar": {
+      "props": { "height": { "type": "number", "default": 10 } },
+      "layers": [
+        {
+          "type": "path",
+          "d": "M0 {{ 30 - props.height }} h8 V30 h-8 Z",
+          "fill": "#2ea043",
+          "stroke": "#116329",
+          "animate": {
+            "draw": {
+              "keyframes": [
+                { "offset": 0, "value": 0 },
+                { "offset": 1, "value": 1 }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  },
+  "layers": [
+    {
+      "type": "component",
+      "ref": "bar",
+      "repeat": { "each": "{{ [4, 12, 20] }}", "as": "value", "index": "i" },
+      "x": "{{ i * 12 }}",
+      "props": { "height": "{{ value }}" }
+    }
+  ]
+}

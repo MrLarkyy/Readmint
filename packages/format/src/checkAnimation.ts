@@ -7,6 +7,11 @@ type Tracks = Readonly<Record<string, AnimationTrack<unknown> | undefined>>;
 /** Arc commands: their exact length needs trigonometry, so a path that draws itself on cannot use them. */
 const arcCommand = /[Aa]/u;
 
+/** The literal text of a template `d`; the renderer checks what its placeholders give. */
+function withoutPlaceholders(d: string): string {
+  return d.replace(/\{\{(?:(?!\}\})[\s\S])*\}\}/gu, " ");
+}
+
 /**
  * Checks of `animate` JSON Schema cannot express, on a structurally valid design, in document order: a layer animates
  * only on the design's timeline, keyframe offsets never decrease, and a `draw` track runs over path data without
@@ -62,7 +67,11 @@ function checkLayer(walker: Walker, layer: Layer, path: string): void {
     if (track === undefined) continue;
     const trackPath = jsonPointer(animatePath, property);
     checkOffsets(walker.issues, track, trackPath);
-    if (property === "draw" && layer.type === "path" && arcCommand.test(layer.d)) {
+    if (
+      property === "draw" &&
+      layer.type === "path" &&
+      arcCommand.test(withoutPlaceholders(layer.d))
+    ) {
       walker.issues.add({
         path: trackPath,
         code: "pattern",

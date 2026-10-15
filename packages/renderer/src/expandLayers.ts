@@ -99,8 +99,6 @@ function addLayer(
     return;
   }
   context.writer.reserve(minimumNodeBytes[layer.type]);
-  // The data is written whole (escaping only lengthens it), so it is reserved before its bounds are computed.
-  if (layer.type === "path") context.writer.reserve(layer.d.length);
   const node = resolveLayer(context, layer, path, scope);
   const animation = resolveAnimation(context, layer, node, path, scope, copy);
   out.push(animation === undefined ? node : { ...node, animation });
