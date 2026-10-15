@@ -45,7 +45,7 @@ export function openInBrowser(url: string, options: OpenInBrowserOptions = {}): 
 }
 
 /** By full path: Windows searches the current directory first, where a downloaded repository could plant a program. */
-export function rundll32Path(env: Readonly<Record<string, string | undefined>>): string {
+function rundll32Path(env: Readonly<Record<string, string | undefined>>): string {
   const root = env["SystemRoot"];
   const base = root !== undefined && /^[A-Za-z]:[\\/]/.test(root) ? root : "C:\\Windows";
   return path.win32.join(base, "System32", "rundll32.exe");
