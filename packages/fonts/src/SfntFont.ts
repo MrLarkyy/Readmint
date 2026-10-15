@@ -18,6 +18,16 @@ export interface SfntFont {
   /** Font units below the baseline (zero or negative). */
   readonly descender: number;
   readonly lineGap: number;
+  /**
+   * The box of every glyph in font units, as the head table states it (xMin, yMin, xMax, yMax): not checked against
+   * the outlines, and degenerate (min not below max) in some fonts.
+   */
+  readonly boundingBox: {
+    readonly xMin: number;
+    readonly yMin: number;
+    readonly xMax: number;
+    readonly yMax: number;
+  };
   /** OS/2 fsType: the licence embedding flags. */
   readonly fsType: number;
   /** OS/2 usWeightClass. */

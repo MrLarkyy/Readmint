@@ -4,6 +4,7 @@
     "lib": ["ES2023", "DOM", "DOM.Iterable"],
     "composite": false,
     "noEmit": true,
+    "allowImportingTsExtensions": true,
     "types": ["node"],
     "paths": {
       "@readmint/cli": ["../cli/src/index.ts"],
@@ -16,6 +17,7 @@
       "@readmint/golden/node": ["../golden/src/node/index.ts"],
       "@readmint/golden/browser": ["../golden/src/browser/index.ts"],
       "@readmint/raster": ["../raster/src/index.ts"],
+      "@readmint/raster/browser": ["../raster/src/browser.ts"],
       "@readmint/renderer": ["../renderer/src/index.ts"]
     }
   },

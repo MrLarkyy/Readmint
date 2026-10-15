@@ -31,6 +31,7 @@ import {
   parseDesign,
   parseDesignAsync,
   parseDesignSourceAsync,
+  stringifyDesignYamlAsync,
   validateDesign,
   migrateDesign,
   designJsonSchema,
@@ -40,6 +41,7 @@ import {
 parseDesign(source, { format?: "json" | "yaml" }); // text -> parse -> migrate -> validate
 await parseDesignAsync(source, { format? }); // the same, the YAML parser loaded on first use
 await parseDesignSourceAsync(source, format?); // text -> plain value only
+await stringifyDesignYamlAsync(design); // a design -> YAML text, the YAML library loaded on first use
 validateDesign(value); // already parsed (editor state): migrate -> validate
 migrateDesign(value, { migrations?, target? }); // only the migration chain
 quoteInput(value, { maxEcho?, escape? }); // an input value as issue messages quote it
@@ -54,6 +56,11 @@ embeddings, overrides and isolates, line and paragraph separators); a host may p
 plain value, no migration or validation; its synchronous form is internal). They load the YAML
 parser with a dynamic import only when the source is YAML, so a browser bundle (the editor) keeps it out of its initial
 chunk; the package is marked `sideEffects: false` for that. `parseDesign` stays for callers that want no async step.
+
+`stringifyDesignYamlAsync` writes a design as YAML 1.2 (core schema) in the design's own key order, without anchors or
+line folding, so `parseDesignAsync` reads it back to a deep-equal design and the same design gives the same text. A
+text longer than `DesignLimits.maxYamlSourceLength` is refused with a `too-large` issue naming both lengths (the reader
+would refuse it); JSON has no such limit below `maxSourceLength`.
 
 Every function returns a `DesignResult`:
 

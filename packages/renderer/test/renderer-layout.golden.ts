@@ -1,6 +1,7 @@
 import { defineGoldenSuite } from "@readmint/golden";
 import type { Layer } from "@readmint/format";
 import { renderFixture, type RenderFixture } from "./renderFixture.js";
+import { fontAssets } from "./testAssets.js";
 
 function design(layers: Layer[], data?: Readonly<Record<string, unknown>>): RenderFixture {
   return {
@@ -88,6 +89,48 @@ export default defineGoldenSuite<RenderFixture>({
           children: [box(20, 20, "#1a7f37", { x: 70, y: 105, opacity: 0.6 })],
         },
       ]),
+    },
+    {
+      // Far layers the turn, glyph and stroke bounds bring tight enough to leave out: none is written, only blue draws.
+      name: "off-canvas-tight",
+      input: {
+        design: {
+          version: 0,
+          canvas: { width: 100, height: 100, background: "#ffffff" },
+          assets: { fonts: { medium: fontAssets.medium } },
+          layers: [
+            box(20, 20, "#0969da", { x: 10, y: 10 }),
+            {
+              type: "group",
+              width: 100,
+              height: 100,
+              rotation: 45,
+              opacity: 0.5,
+              children: [box(50, 50, "#cf222e", { x: 500, y: 500 })],
+            },
+            {
+              type: "text",
+              x: 350,
+              y: 0,
+              content: "Hi",
+              font: "medium",
+              fontSize: 300,
+              fill: "#cf222e",
+              opacity: 0.5,
+            },
+            {
+              type: "path",
+              x: 300,
+              y: 0,
+              d: "M0 0 H40 V40 H0 Z",
+              fill: "none",
+              stroke: "#cf222e",
+              strokeWidth: 100,
+              opacity: 0.5,
+            },
+          ],
+        },
+      },
     },
     {
       name: "gradient-clip-repeat",

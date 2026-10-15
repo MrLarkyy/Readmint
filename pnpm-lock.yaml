@@ -114,9 +114,18 @@ importers:
       '@readmint/format':
         specifier: workspace:*
         version: link:../format
+      '@readmint/raster':
+        specifier: workspace:*
+        version: link:../raster
       '@readmint/renderer':
         specifier: workspace:*
         version: link:../renderer
+      '@resvg/resvg-wasm':
+        specifier: 2.6.2
+        version: 2.6.2
+      wasm-webp:
+        specifier: 0.1.0
+        version: 0.1.0
     devDependencies:
       '@readmint/golden':
         specifier: workspace:*

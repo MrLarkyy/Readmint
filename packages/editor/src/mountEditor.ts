@@ -5,11 +5,13 @@ import { attachAsset } from "./attachAsset.js";
 import { CanvasView } from "./CanvasView.js";
 import { refuse } from "./commitDesign.js";
 import { createPreviewWorker } from "./createPreviewWorker.js";
+import { createRasterWorker } from "./createRasterWorker.js";
 import { element, readCapped } from "./dom.js";
 import type { EditorIssue } from "./EditorIssue.js";
 import { EditorLimits } from "./EditorLimits.js";
 import { createEditorState, type EditorState } from "./EditorState.js";
 import { exportDesign } from "./exportDesign.js";
+import { exportDesignYaml } from "./exportDesignYaml.js";
 import { importDesign } from "./importDesign.js";
 import { IssueList } from "./IssueList.js";
 import { findLayer } from "./layerAccess.js";
@@ -19,6 +21,8 @@ import { moveLayer } from "./moveLayer.js";
 import { newDesign } from "./newDesign.js";
 import { PreviewClient, type PreviewOutcome, type PreviewWorker } from "./PreviewClient.js";
 import { PropertyPanel } from "./PropertyPanel.js";
+import type { EditorRasterFormat } from "./RasterExportInput.js";
+import { RasterClient, type RasterWorker } from "./RasterClient.js";
 import { removeLayer } from "./removeLayer.js";
 import { reorderLayer } from "./reorderLayer.js";
 import { resizeLayer } from "./resizeLayer.js";
@@ -33,11 +37,24 @@ export interface SavedDesign {
   readonly text: string;
 }
 
+/** A raster image the editor hands over to be saved. */
+export interface SavedImage {
+  readonly name: string;
+  readonly mimeType: string;
+  readonly bytes: Uint8Array;
+}
+
 export interface MountEditorOptions {
   /** The design to start with; default an empty canvas. */
   readonly initial?: Design;
   /** Receives the exported design file; default a download in the browser. */
   readonly save?: (file: SavedDesign) => void;
+  /** Receives the exported image (`design.png`, `design.webp`); default a download in the browser. */
+  readonly saveImage?: (file: SavedImage) => void;
+  /** The raster worker; default the bundled `rasterWorker`, started for each export. */
+  readonly createRasterWorker?: () => RasterWorker;
+  /** Default `EditorLimits.rasterTimeoutMs`. */
+  readonly rasterTimeoutMs?: number;
   /** The preview worker; default the bundled `previewWorker`. */
   readonly createWorker?: () => PreviewWorker;
   /** Default `EditorLimits.renderTimeoutMs`. */
@@ -85,6 +102,49 @@ export function mountEditor(root: HTMLElement, options: MountEditorOptions = {})
   const report = (source: EditorIssue["source"], message: string) => {
     dispatch((current) => refuse(current, source, message));
   };
+  const saveDesign = (file: SavedDesign, mimeType: string) => {
+    if (options.save === undefined) download(root, file.name, file.text, mimeType);
+    else options.save(file);
+  };
+  const raster = new RasterClient({
+    createWorker: options.createRasterWorker ?? createRasterWorker,
+    timeoutMs: options.rasterTimeoutMs ?? EditorLimits.rasterTimeoutMs,
+  });
+  const exportImage = (format: EditorRasterFormat) => {
+    if (raster.busy) {
+      report("export", "a raster export is already running; wait for it to finish");
+      return;
+    }
+    const { design, data, sessionAssets } = state;
+    track(
+      raster.export({ design, data, sessionAssets, format }).then((outcome) => {
+        switch (outcome.kind) {
+          case "exported": {
+            const image = {
+              name: `design.${format}`,
+              mimeType: outcome.file.mimeType,
+              bytes: outcome.file.bytes,
+            };
+            if (options.saveImage === undefined) {
+              download(root, image.name, image.bytes, image.mimeType);
+            } else options.saveImage(image);
+            return;
+          }
+          case "failed":
+            report("export", `the ${format} export failed: ${outcome.message}`);
+            return;
+          case "timeout":
+            report(
+              "export",
+              `the ${format} export took longer than ${String(outcome.timeoutMs)} ms and was stopped; simplify the design`,
+            );
+            return;
+          case "busy":
+            report("export", "a raster export is already running; wait for it to finish");
+        }
+      }),
+    );
+  };
   const withFonts = () => {
     track(
       import("./checkFonts.js").then(({ checkFonts }) => {
@@ -130,9 +190,21 @@ export function mountEditor(root: HTMLElement, options: MountEditorOptions = {})
       );
     },
     exportDesign: () => {
-      const file = { name: "design.json", text: exportDesign(state.design) };
-      if (options.save === undefined) download(root, file);
-      else options.save(file);
+      saveDesign({ name: "design.json", text: exportDesign(state.design) }, "application/json");
+    },
+    exportYaml: () => {
+      track(
+        exportDesignYaml(state.design).then((result) => {
+          if (result.ok) saveDesign({ name: "design.yaml", text: result.text }, "application/yaml");
+          else report("export", result.message);
+        }),
+      );
+    },
+    exportPng: () => {
+      exportImage("png");
+    },
+    exportWebp: () => {
+      exportImage("webp");
     },
     addLayer: (type: NewLayerType) => {
       dispatch((current) => {
@@ -275,6 +347,7 @@ export function mountEditor(root: HTMLElement, options: MountEditorOptions = {})
       while (pending.size > 0) await Promise.allSettled([...pending]);
     },
     destroy: () => {
+      raster.dispose();
       client.dispose();
       canvas.dispose();
       shell.remove();
@@ -302,9 +375,14 @@ function outcomeIssues(outcome: PreviewOutcome): EditorIssue[] {
 }
 
 /** Offers the file as a download through a temporary link. */
-function download(root: HTMLElement, file: SavedDesign): void {
-  const url = URL.createObjectURL(new Blob([file.text], { type: "application/json" }));
-  const link = element(root, "a", { attributes: { href: url, download: file.name } });
+function download(
+  root: HTMLElement,
+  name: string,
+  content: string | Uint8Array,
+  mimeType: string,
+): void {
+  const url = URL.createObjectURL(new Blob([content as BlobPart], { type: mimeType }));
+  const link = element(root, "a", { attributes: { href: url, download: name } });
   link.click();
   link.remove();
   URL.revokeObjectURL(url);

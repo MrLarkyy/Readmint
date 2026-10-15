@@ -5,6 +5,7 @@ import * as gifencModule from "gifenc";
 import type { GifPalette } from "gifenc";
 import type { FrameEncoder } from "./FrameEncoder.js";
 import type { OutputBudget } from "./OutputBudget.js";
+import { sameBytes } from "./sameBytes.js";
 
 // Node gets the CommonJS build (every function on the default export), Vite and the Action bundle the ES build
 // (named exports; its default is GIFEncoder alone).
@@ -108,5 +109,5 @@ function sameFrame(a: Omit<IndexedFrame, "delay">, b: Omit<IndexedFrame, "delay"
     const other = b.palette[index];
     return other !== undefined && colour.every((channel, at) => channel === other[at]);
   });
-  return samePalette && Buffer.from(a.index).equals(b.index);
+  return samePalette && sameBytes(a.index, b.index);
 }

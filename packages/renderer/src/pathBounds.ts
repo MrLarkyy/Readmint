@@ -1,3 +1,4 @@
+import { includeArc } from "./includeArc.js";
 import { walkPathData } from "./walkPathData.js";
 
 export interface Bounds {
@@ -40,30 +41,6 @@ export function pathBounds(d: string): Bounds | undefined {
     close: () => undefined,
   });
   return finish(box);
-}
-
-/**
- * The arc's ellipse, radii scaled up as SVG does when they cannot reach the end point, has a centre within the
- * largest radius R of both end points, so the arc lies within 2R of each; the bound uses only the chord length.
- */
-function includeArc(
-  include: (x: number, y: number) => void,
-  x: number,
-  y: number,
-  endX: number,
-  endY: number,
-  rx: number,
-  ry: number,
-): void {
-  include(endX, endY);
-  const small = Math.min(rx, ry);
-  if (small === 0) return;
-  const dx = endX - x;
-  const dy = endY - y;
-  const halfChord = Math.sqrt(dx * dx + dy * dy) / 2;
-  const radius = Math.max(rx, ry) * Math.max(1, halfChord / small);
-  include(Math.max(x, endX) - 2 * radius, Math.max(y, endY) - 2 * radius);
-  include(Math.min(x, endX) + 2 * radius, Math.min(y, endY) + 2 * radius);
 }
 
 function finish(box: Bounds): Bounds | undefined {

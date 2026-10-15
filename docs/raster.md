@@ -94,13 +94,14 @@ frame (every `<use>` that reaches it) times the frames, plus one decode of each 
 
 resvg 2.6.2 stops drawing (a WebAssembly trap in resvg-wasm) on a layer of its own (an opacity, a clip, a `<symbol>`)
 that lies beyond twice the canvas. The renderer leaves out such layers when they lie wholly off the canvas
-([renderer.md](renderer.md#layers)), in every frame, but its test is generous: very large text or a very wide stroke
-just past the canvas, and a turned group with a child far from its centre, are still written. Such a design, or an SVG
-from elsewhere given as `RasterInput.frame`, fails the export with `raster-image` (move the layer onto the canvas or
-remove it), and the next export in the same process draws as before. Each failure leaks the object resvg-wasm was
-drawing with, and after some 1,500 failures in one process resvg-wasm stops drawing altogether. The CLI and the Action
-stop at the first failure; a long-running host calling `exportRaster` should restart the process (or load the module
-in a new worker) after many.
+([renderer.md](renderer.md#layers)), in every frame, but a few such layers are still written: a stroke whose joins are
+padded by twice its width (at an arc, a nearly straight curve or a short segment), a path whose control points or arc
+box reach the canvas while its curve lies far, and text in a font whose `head` box overstates its glyphs. Such a design,
+or an SVG from elsewhere given as `RasterInput.frame`, fails the export with `raster-image` (move the layer onto the
+canvas or remove it), and the next export in the same process draws as before. Each failure leaks the object resvg-wasm
+was drawing with, and after some 1,500 failures in one process resvg-wasm stops drawing altogether. The CLI and the
+Action stop at the first failure; a long-running host calling `exportRaster` should restart the process (or load the
+module in a new worker) after many.
 
 ## Fonts
 
@@ -150,8 +151,32 @@ limit. `format` in the output is `png` for an `apng` request of a still design. 
 
 `initRaster(wasmDir?)` loads the rasterizer and compiles libwebp once (`exportRaster` calls it itself); a bundle that
 ships the modules elsewhere passes their folder: the Action bundle keeps them in `dist/wasm/` (`RasterWasm` names the
-files, `resolveRasterWasm()` finds them in `node_modules`). Raster export runs in Node (it reads the modules from disk);
-the editor does not use it.
+files, `resolveRasterWasm()` finds them in `node_modules`). This entry (`@readmint/raster`) reads the modules from disk
+and runs in Node.
+
+### In the browser
+
+```ts
+import { exportRaster, initRaster } from "@readmint/raster/browser";
+
+await initRaster({ resvg: resvgWasmBytes, webp: webpWasmBytes }); // the two RasterWasm files, as bytes
+const output = await exportRaster(input, { format: "png" }); // the same input and options as above
+```
+
+The `@readmint/raster/browser` entry has no Node API: `initRaster(modules)` takes the bytes of the two WebAssembly
+files (it never fetches them; the caller decides where they come from), and `exportRaster` does not load anything
+itself: called before `initRaster` it throws `raster modules are not loaded; call initRaster first`. Both entries share
+one core, so the same input gives the same bytes. libwebp compiles synchronously, so call both in a worker, not on the
+page's main thread. A worker that serves one export and is then terminated also frees the WebAssembly memory and the
+objects resvg-wasm leaks on a failed drawing (above). The editor does exactly that
+([editor.md](editor.md#raster-export)).
+
+Base64 in the SVG (image and font data URIs) is read strictly with the renderer's loop-based codec (any size the renderer accepts): standard alphabet, padded, nothing else. Malformed
+base64 is a `raster-image` or `raster-font` error naming the part, never a silently shortened file.
+
+The same bytes in Node and in Chromium are pinned: `packages/raster/test/browserParity.ts` holds the SHA-256 of a
+PNG, a WebP and an animated WebP of three designs; a Node test (the browser entry fed with the modules from
+`node_modules`) and a Chromium test (modules fetched from the dev server) must both match it.
 
 ## Dependencies and licences
 
@@ -169,3 +194,7 @@ PNG and APNG are written by own code (chunks, filters, CRC) on fflate. The Actio
 text in its banner, plus the libwebp notice and patent grant for wasm-webp, and for resvg-wasm (which publishes no
 licence file) the MPL-2.0 text and the list of Rust crates in its WebAssembly with their licences
 (`packages/action/scripts/licences/`).
+
+The editor app ships both WebAssembly files as separate assets and, in `licences/THIRD-PARTY.txt`, the licence texts of
+every npm package it bundles (fflate, gifenc and yaml among them) with the notices above, made by the script that
+makes the Action bundle's banner.

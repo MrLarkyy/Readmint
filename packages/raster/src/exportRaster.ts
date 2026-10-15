@@ -7,7 +7,7 @@ import { encodePng } from "./encodePng.js";
 import { encodeWebp, encodeWebpStill } from "./encodeWebp.js";
 import type { FrameEncoder } from "./FrameEncoder.js";
 import { type DelayUnit, frameDelays, type TimedFrame } from "./frameDelays.js";
-import { initRaster, openWebpCodec } from "./initRaster.js";
+import { loadRaster, openWebpCodec } from "./rasterRuntime.js";
 import { hasWebpImage, inlineWebpAssets } from "./inlineWebpAssets.js";
 import { matchFontFamilies } from "./matchFontFamilies.js";
 import { OutputBudget } from "./OutputBudget.js";
@@ -69,7 +69,8 @@ interface Timeline {
  * with a timeline (and no `time`) becomes an animated WebP, APNG or GIF sampled at `frameRate`; a still design, one
  * frame of it, or any design as `png`, a still image (PNG for `apng`). WebP is lossless unless `quality` asks for lossy frames. Every limit that can be known in advance (side, duration, frames, total pixels) is
  * checked before the first frame is drawn, the output size while encoding; any failure is a `RasterError` and
- * nothing is returned. Same input, same bytes.
+ * nothing is returned, except a call before the rasterizer was loaded (`initRaster`), which, once the input has
+ * passed those checks, throws a plain `Error`. Same input, same bytes.
  */
 export async function exportRaster(
   input: RasterInput,
@@ -113,7 +114,7 @@ export async function exportRaster(
   checkImageWork(limits, countImagePixels(first, plan.length), plan.length);
   const fonts = rasterFonts(first, input.fonts);
   const buffers = fonts.map((font) => font.bytes);
-  await initRaster();
+  await loadRaster();
   const codecs = format === "webp" || hasWebpImage(first) ? await openWebpCodec() : undefined;
   const budget = new OutputBudget(
     limits.maxOutputBytes,

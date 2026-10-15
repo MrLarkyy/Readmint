@@ -1,6 +1,6 @@
 export const packageName = "@readmint/raster";
 
-export { exportRaster } from "./exportRaster.js";
+export { exportRaster } from "./exportRasterNode.js";
 export { initRaster } from "./initRaster.js";
 export { RasterError, type RasterErrorCode } from "./RasterError.js";
 export { type RasterFormat, rasterFormats } from "./RasterFormat.js";
