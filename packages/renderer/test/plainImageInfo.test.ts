@@ -7,7 +7,13 @@ import { plainImageInfo } from "../src/plainImageInfo.js";
 import { sniffCache } from "../src/SniffCache.js";
 import { type ImageInfo, sniffImage } from "../src/sniffImage.js";
 import { uprightImage } from "../src/uprightImage.js";
-import { colourImages, iccSegment, inserted, jpegMarkerOffsets } from "./colourImages.js";
+import {
+  colourImages,
+  iccBetweenFillAndStray,
+  iccSegment,
+  inserted,
+  jpegMarkerOffsets,
+} from "./colourImages.js";
 import { dataUriBytes, jpegWithExif, orientationTiff } from "./exifImages.js";
 
 const assets = join(import.meta.dirname, "assets");
@@ -59,6 +65,7 @@ const jpegs: readonly (readonly [string, Uint8Array])[] = [
     "a P3 JPEG with EXIF orientation 6",
     exif6(dataUriBytes(colourImages.find((row) => row.mime === "image/jpeg")?.uri ?? "")),
   ],
+  ["an ICC profile between a fill byte and stray bytes", iccBetweenFillAndStray(exif6(gradient))],
 ];
 
 beforeEach(() => {
@@ -71,7 +78,7 @@ describe("plainImageInfo", () => {
     const plain = plainCopy(data, original.info);
     expect(plain).not.toBe(data);
     const copy = coldSniff(plain);
-    expect(plainImageInfo(data, original.info)).toEqual(copy.info);
+    expect(plainImageInfo(original.info)).toEqual(copy.info);
     expect(copy.steps).toBe(original.steps);
   });
 
@@ -82,22 +89,28 @@ describe("plainImageInfo", () => {
     }
   });
 
-  test("none where the copy joins stray bytes to fill bytes before a removed segment", () => {
+  test("a removed ICC range starts at the fill bytes before its marker", () => {
     const frameEnd = (jpegMarkerOffsets(gradient, 0xc0)[0] ?? 0) + 2 + 17;
-    // Past the frame header: a fill byte, the ICC segment, then stray bytes the walk skips. Without the segment, the
-    // fill byte meets the stray 0x01 and reads it as a marker.
-    const data = inserted(gradient, frameEnd, [0xff, ...icc, 0x01, 0x02]);
+    const data = iccBetweenFillAndStray(gradient);
     const original = coldSniff(data);
     expect(original.info.colourData.at(-1)).toEqual({
-      start: frameEnd + 1,
+      start: frameEnd,
       end: frameEnd + 1 + icc.length,
     });
-    expect(sniffImage(plainCopy(data, original.info), 1000).ok).toBe(false);
-    expect(plainImageInfo(data, original.info)).toBeUndefined();
+    const copy = plainCopy(data, original.info);
+    // The gradient's own ICC segment, before the frame header, is removed too.
+    const [own] = original.info.colourData;
+    const at = frameEnd - ((own?.end ?? 0) - (own?.start ?? 0));
+    expect([...copy.subarray(at - 2, at + 2)]).toEqual([
+      ...data.subarray(frameEnd - 2, frameEnd),
+      0x01,
+      0x02,
+    ]);
+    expect(sniffImage(copy, 1000).ok).toBe(true);
   });
 
   test("none for other formats", () => {
     const { info } = coldSniff(gradient);
-    expect(plainImageInfo(gradient, { ...info, mime: "image/png" })).toBeUndefined();
+    expect(plainImageInfo({ ...info, mime: "image/png" })).toBeUndefined();
   });
 });

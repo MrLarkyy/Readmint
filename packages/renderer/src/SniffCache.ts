@@ -77,8 +77,7 @@ export class SniffCache {
       budget.remaining = probe.remaining;
       budget.exhausted ||= probe.exhausted;
     }
-    if (result.ok) this.store(key, data, result, before - probe.remaining);
-    return result;
+    return result.ok ? this.store(key, data, result, before - probe.remaining) : result;
   }
 
   /**
@@ -96,20 +95,23 @@ export class SniffCache {
     this.misses = 0;
   }
 
-  private store(key: string, data: Uint8Array, result: Accepted, steps: number): void {
-    if (data.length > this.maxBytes) return;
+  /** Keeps `result`, frozen, unless `data` alone is above `maxBytes`; returns the frozen result either way. */
+  private store(key: string, data: Uint8Array, result: Accepted, steps: number): Accepted {
+    const kept = frozen(result.info);
+    if (data.length > this.maxBytes) return kept;
     const old = this.entries.get(key);
     if (old !== undefined) {
       this.entries.delete(key);
       this.heldBytes -= old.data.length;
     }
-    this.entries.set(key, { data: data.slice(), result: frozen(result.info), steps });
+    this.entries.set(key, { data: data.slice(), result: kept, steps });
     this.heldBytes += data.length;
     for (const [oldest, entry] of this.entries) {
       if (this.heldBytes <= this.maxBytes && this.entries.size <= this.maxEntries) break;
       this.entries.delete(oldest);
       this.heldBytes -= entry.data.length;
     }
+    return kept;
   }
 }
 
@@ -128,7 +130,7 @@ function charged(entry: SniffEntry, budget: EntropyBudget | undefined): SniffRes
   return entry.result;
 }
 
-/** A deep-frozen copy of `info` as a result: every hit hands out the same object, so no caller can change it for the next. */
+/** A deep-frozen copy of `info` as a result: every sniff of the bytes hands out the same object, so no caller can change it for the next. */
 function frozen(info: ImageInfo): Accepted {
   const orientationFields = info.orientationFields.map((field) =>
     Object.freeze({

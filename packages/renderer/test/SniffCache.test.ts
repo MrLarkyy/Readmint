@@ -4,7 +4,11 @@ import { beforeEach, describe, expect, test } from "vitest";
 import { EntropyBudget, maxRenderEntropySteps } from "../src/EntropyBudget.js";
 import { SniffCache, sniffCache } from "../src/SniffCache.js";
 import { sniffImage, type SniffResult } from "../src/sniffImage.js";
-import { costlyProgressiveJpeg, costlyProgressiveSteps } from "./jpegEntropyCases.js";
+import {
+  costlyProgressiveJpeg,
+  costlyProgressiveSteps,
+  costlyProgressiveVariant,
+} from "./jpegEntropyCases.js";
 
 const assets = join(import.meta.dirname, "assets");
 const read = (name: string) => new Uint8Array(readFileSync(join(assets, name)));
@@ -107,6 +111,13 @@ describe("the sniff cache of sniffImage", () => {
     expect(budget).toEqual(coldBudget);
   });
 
+  test("variants of the costly JPEG are different files of the same cost", () => {
+    expect(stepsOf(costlyProgressiveVariant(1))).toBe(costlyProgressiveSteps);
+    sniffImage(costlyProgressiveVariant(1), 1000);
+    sniffImage(costlyProgressiveVariant(2), 1000);
+    expect(sniffCache.stats).toMatchObject({ hits: 0, misses: 2, entries: 2 });
+  });
+
   test("without a budget the result is the same cold and warm", () => {
     const cold = sniffWith(costly);
     const warm = sniffWith(costly);
@@ -139,12 +150,26 @@ describe("the sniff cache of sniffImage", () => {
     expect(sniffCache.stats).toMatchObject({ hits: 1, misses: 2 });
   });
 
-  test("a hit hands out a frozen result", () => {
-    sniffImage(read("gradient.jpg"), 1000);
+  test("an accepted JPEG's result is frozen from the first sniff on, and shared by every hit", () => {
+    const cold = sniffImage(read("gradient.jpg"), 1000);
     const warm = sniffImage(read("gradient.jpg"), 1000);
-    expect(warm.ok && Object.isFrozen(warm.info)).toBe(true);
-    expect(warm.ok && Object.isFrozen(warm.info.colourData)).toBe(true);
-    expect(warm.ok && Object.isFrozen(warm.info.orientationFields)).toBe(true);
+    expect(warm).toBe(cold);
+    for (const result of [cold, warm]) {
+      expect(Object.isFrozen(result)).toBe(true);
+      expect(result.ok && Object.isFrozen(result.info)).toBe(true);
+      expect(result.ok && Object.isFrozen(result.info.colourData)).toBe(true);
+      expect(result.ok && Object.isFrozen(result.info.colourData[0])).toBe(true);
+      expect(result.ok && Object.isFrozen(result.info.orientationFields)).toBe(true);
+    }
+  });
+
+  test("an accepted result too large to keep is frozen too", () => {
+    const cache = new SniffCache(4);
+    const { check } = fakeCheck();
+    const result = cache.sniff(filled(8, 0), undefined, check);
+    expect(Object.isFrozen(result)).toBe(true);
+    expect(result.ok && Object.isFrozen(result.info)).toBe(true);
+    expect(cache.stats.entries).toBe(0);
   });
 });
 

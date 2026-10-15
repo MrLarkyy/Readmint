@@ -461,7 +461,7 @@ budget?, maxBytes? })`, `encodeWoff`, `decodeWoff`, `glyphClosure`, `OutlineBudg
   miss; refused files are checked every time), so a repeated render, every frame of an animation and the raster pass
   skip the check for bytes already checked: a hit costs a hash and a comparison of the bytes, some 17 ms for a 3.5 MB
   file. The copy the SVG holds (orientation upright, colour data removed) is kept too, with what its check finds,
-  unless a removed segment is not followed by a marker. Results and output never depend on the cache (see Limits).
+  derived from the original's check. Results and output never depend on the cache (see Limits).
 
 - Lossy pixel values the two decoders round apart are bounded by a pinned tolerance: at most 2 levels per channel
   (`jpegChannelTolerance`, `packages/raster/test/jpegDecoderTolerance.ts`), as libjpeg-turbo (Chromium) and
@@ -515,7 +515,8 @@ refused:` and the reason (`a JFIF segment`, `Adobe transform 1`, `component ids 
   embedded ICC profile and PNG colour chunks, resvg ignores them, so the preview would draw other colours than the
   raster output (a Display P3 or Adobe RGB profile, a P3 cICP or cHRM, gAMA 1.0 alone: 40 to 73 levels per channel
   apart). Removed, as whole segments or chunks, where decoders read them: JPEG APP2 `ICC_PROFILE\0` segments before
-  the first SOS (every part of a split profile; another APP2, such as `MPF`, stays); PNG `iCCP`, `sRGB`, `gAMA`,
+  the first SOS, with the 0xFF fill bytes before the marker, so the copy's walk meets the same markers where stray
+  bytes follow the segment (every part of a split profile; another APP2, such as `MPF`, stays); PNG `iCCP`, `sRGB`, `gAMA`,
   `cHRM`, `cICP`, `mDCV` and `cLLI` before the first `IDAT` (no decoder reads later copies); WebP `ICCP` chunks inside
   the RIFF payload (bytes after it are left alone), with the VP8X ICC flag (0x20) cleared, with or without a chunk,
   and the RIFF size lowered by the bytes removed. Every

@@ -3,13 +3,20 @@ import { maxRenderEntropySteps } from "@readmint/renderer";
 import { countImagePixels } from "../src/countImagePixels.js";
 import { RasterError } from "../src/RasterError.js";
 import { loadScale } from "../../../test-support/loadScale.js";
-import { costlyProgressiveJpeg } from "../../renderer/test/jpegEntropyCases.js";
+import { costlyProgressiveVariant } from "../../renderer/test/jpegEntropyCases.js";
 import { dataUri } from "./rasterFixtures.js";
 
-/** An SVG of `count` images of the same costly JPEG, as an SVG from elsewhere may hold them. */
+/**
+ * An SVG of `count` images of the costly JPEG, as an SVG from elsewhere may hold them, each with bytes of its own:
+ * different files, so the sniff cache answers none of them and the budget bounds the work of checking them all.
+ */
 function svgOf(count: number): string {
-  const image = `<image width="64" height="32" href="${dataUri("image/jpeg", costlyProgressiveJpeg())}"/>`;
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="32">${image.repeat(count)}</svg>`;
+  const images = Array.from(
+    { length: count },
+    (_, index) =>
+      `<image width="64" height="32" href="${dataUri("image/jpeg", costlyProgressiveVariant(index))}"/>`,
+  );
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="32">${images.join("")}</svg>`;
 }
 
 describe("the JPEG symbol-check budget of a raster export", () => {

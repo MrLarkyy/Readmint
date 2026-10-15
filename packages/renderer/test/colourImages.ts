@@ -185,3 +185,14 @@ export function jpegMarkerOffsets(jpeg: Uint8Array, marker: number): number[] {
   }
   return offsets;
 }
+
+/**
+ * `jpeg` (baseline, SOF0) with a fill byte, an ICC segment and two stray bytes right after its frame header: past it
+ * the walk skips stray bytes, so a copy without the segment must not join them to the fill byte (it would read 0x01 as
+ * a marker).
+ */
+export function iccBetweenFillAndStray(jpeg: Uint8Array): Uint8Array {
+  const sof = jpegMarkerOffsets(jpeg, 0xc0)[0] ?? 0;
+  const frameEnd = sof + 2 + (((jpeg[sof + 2] ?? 0) << 8) | (jpeg[sof + 3] ?? 0));
+  return inserted(jpeg, frameEnd, [0xff, ...iccSegment(1, 1, [1, 2, 3, 4]), 0x01, 0x02]);
+}

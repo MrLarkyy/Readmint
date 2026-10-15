@@ -4,6 +4,7 @@ import type { Design } from "@readmint/format";
 import { renderSvg } from "@readmint/renderer";
 import { beforeEach, describe, expect, test } from "vitest";
 import { sniffCache } from "../../renderer/src/SniffCache.js";
+import { iccBetweenFillAndStray } from "../../renderer/test/colourImages.js";
 import { jpegWithExif, orientationTiff } from "../../renderer/test/exifImages.js";
 import { countImagePixels } from "../src/countImagePixels.js";
 import { exportRaster } from "../src/index.js";
@@ -56,6 +57,28 @@ describe("the raster pass with the renderer's sniff cache", () => {
     sniffCache.clear();
     expect(countImagePixels(svg, 3)).toEqual(warm);
     expect(sniffCache.stats.misses).toBe(2);
+  });
+
+  test("a JPEG with fill bytes before its ICC segment and stray bytes after it exports, its copy as checked", async () => {
+    const design: Design = {
+      version: 0,
+      canvas: { width: 32, height: 16 },
+      assets: {
+        images: {
+          picture: { src: dataUri("image/jpeg", iccBetweenFillAndStray(read("gradient.jpg"))) },
+        },
+      },
+      layers: [{ type: "image", asset: "picture", width: 32, height: 16, fit: "fill" }],
+    };
+    const svg = svgOf(design);
+    const warm = countImagePixels(svg, 1);
+    expect(sniffCache.stats.misses).toBe(1);
+    sniffCache.clear();
+    expect(countImagePixels(svg, 1)).toEqual(warm);
+    expect(sniffCache.stats.misses).toBe(1);
+    await expect(
+      exportRaster(designInput(design), { format: "png", scale: 1 }),
+    ).resolves.toMatchObject({ format: "png", width: 32, height: 16 });
   });
 
   test("an animated export checks each JPEG once, not once per frame", async () => {

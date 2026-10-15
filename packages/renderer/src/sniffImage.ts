@@ -28,7 +28,7 @@ export interface ImageInfo {
   readonly orientationFields: readonly OrientationField[];
   /**
    * Every whole segment or chunk, in file order, that tells a decoder how to colour-manage the pixels where decoders
-   * read it: JPEG APP2 `ICC_PROFILE` before the first scan; PNG iCCP, sRGB, gAMA, cHRM, cICP, mDCV, cLLI before the
+   * read it: JPEG APP2 `ICC_PROFILE` before the first scan, with the 0xFF fill bytes before its marker; PNG iCCP, sRGB, gAMA, cHRM, cICP, mDCV, cLLI before the
    * image data; WebP ICCP. Chromium applies them and resvg ignores them, so `plainColourImage` removes them.
    */
   readonly colourData: readonly ColourRange[];
@@ -55,7 +55,8 @@ const png = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
  *
  * An accepted JPEG's result is kept by its bytes in `sniffCache` for the module instance: the same bytes again (a
  * repeated render, the next frame, the raster pass) skip the symbol check, yet get the same result and charge `budget`
- * the same steps, so the outcome never depends on what was sniffed before. The result is frozen and shared.
+ * the same steps, so the outcome never depends on what was sniffed before. An accepted JPEG's result is frozen, from
+ * the first sniff on.
  */
 export function sniffImage(
   data: Uint8Array,
@@ -316,8 +317,9 @@ function sniffJpeg(bytes: Bytes, budget: EntropyBudget | undefined): SniffResult
         blocks.push(exifOrientation(bytes.data, offset + 8, offset + length));
       }
       if (isIccSegment(bytes, marker, offset, length)) {
-        // From the marker on: `offset` is the length field, two bytes past the 0xFF and the marker byte.
-        addColourRange(bytes, offset - 2, offset + length, colourData);
+        // From the first fill byte before the marker on: the walk of a copy without the range then reads on from its
+        // end as it does here, where stray bytes past the frame header would otherwise meet the fill bytes left.
+        addColourRange(bytes, next.fillStart, offset + length, colourData);
       }
       lossless.readSegment(marker, bytes, offset, length);
       const segmentProblem = structure.segmentProblem(marker, bytes, offset, length);

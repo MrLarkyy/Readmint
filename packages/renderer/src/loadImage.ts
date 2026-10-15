@@ -125,7 +125,7 @@ function plainImage(bytes: Uint8Array, info: ImageInfo): Uint8Array {
  */
 function rememberPlain(bytes: Uint8Array, plain: Uint8Array, info: ImageInfo, steps: number): void {
   if (plain === bytes) return;
-  const plainInfo = plainImageInfo(bytes, info);
+  const plainInfo = plainImageInfo(info);
   if (plainInfo !== undefined) sniffCache.remember(plain, { ok: true, info: plainInfo }, steps);
 }
 

@@ -279,6 +279,19 @@ export function costlyProgressiveJpeg(): Uint8Array {
   ]);
 }
 
+/**
+ * `costlyProgressiveJpeg` with a comment segment holding `index` after SOI: as costly, but bytes of its own for every
+ * index, so copies of it are different files to the sniff cache and each one is checked.
+ */
+export function costlyProgressiveVariant(index: number): Uint8Array {
+  const costly = costlyProgressiveJpeg();
+  return new Uint8Array([
+    ...costly.subarray(0, 2),
+    ...segment(0xfe, [(index >> 8) & 255, index & 255]),
+    ...costly.subarray(2),
+  ]);
+}
+
 /** Lossless difference categories 0-16 at five bits each; `17` adds an unused category 17. */
 const losslessTable = (extra: readonly number[] = []) =>
   huffman(0x00, [[], [], [], [], [...range(17), ...extra]]);
