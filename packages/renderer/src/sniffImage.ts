@@ -185,7 +185,12 @@ function pngExifBlock(
   });
 }
 
-/** SOF0-SOF2: the frame types (baseline, extended and progressive Huffman, 8-bit) every output draws alike. */
+/**
+ * SOF0-SOF2: the frame types (baseline, extended and progressive Huffman, 8-bit) every output draws alike. SOF5-7, C8
+ * and SOF13-15 libjpeg does not draw. SOF3 and SOF9-11 are refused after the RM-51 probe (Chromium 156, resvg-wasm
+ * 2.6.2; fixtures in test/assets/jpeg): resvg draws arithmetic coding empty, and lossless differently from Chromium
+ * (grey black there, YCbCr other colours; only RGB-coded files match).
+ */
 function isFrameHeader(marker: number): boolean {
   return marker >= 0xc0 && marker <= 0xc2;
 }
@@ -216,7 +221,9 @@ function jpegMarkerProblem(marker: number, sawFrame: boolean): string | undefine
   }
   if (isFrameHeader(marker)) return sawFrame ? "JPEG holds a second frame header" : undefined;
   if (marker === 0xc3 || (marker >= 0xc9 && marker <= 0xcb)) {
-    return `JPEG frame type ${hex(marker)} (lossless or arithmetic coded) is refused, because not every output draws it alike`;
+    return marker === 0xc3
+      ? `JPEG frame type ${hex(marker)} (lossless) is refused, because Chromium and resvg draw lossless JPEGs differently`
+      : `JPEG frame type ${hex(marker)} (arithmetic coded) is refused, because resvg draws it empty`;
   }
   if ((marker >= 0xc5 && marker <= 0xc8) || (marker >= 0xcd && marker <= 0xcf)) {
     return `JPEG frame type ${hex(marker)} is not supported`;
@@ -225,11 +232,14 @@ function jpegMarkerProblem(marker: number, sawFrame: boolean): string | undefine
   return `JPEG holds an unknown marker ${hex(marker)}`;
 }
 
-/** Why the frame header segment at `offset` (its length field) is refused: libjpeg's checks, 8-bit samples only. */
+/**
+ * Why the frame header segment at `offset` (its length field) is refused: libjpeg's checks, 8-bit samples only.
+ * resvg-wasm 2.6.2 draws a DCT frame of 12 bits empty (RM-51 fixtures sof1-12bit-*).
+ */
 function frameHeaderProblem(bytes: Bytes, offset: number, length: number): string | undefined {
   const precision = bytes.u8(offset + 2);
   if (precision !== 8) {
-    return `JPEG sample precision of ${String(precision)} bits is not supported, only 8 bits`;
+    return `JPEG sample precision of ${String(precision)} bits is refused, because resvg draws it empty; only 8 bits are supported`;
   }
   const components = bytes.u8(offset + 7);
   if (components === 0 || length !== 8 + 3 * components) {

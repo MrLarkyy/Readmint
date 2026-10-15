@@ -11,9 +11,9 @@ export interface RefusedJpeg extends JpegVariant {
   /** A part of the sniffer's message. */
   readonly message: string;
   /**
-   * Chromium draws it at 0x0. False where the variant is no genuine file of its kind (a frame type or precision
-   * patched onto baseline Huffman data), so what Chromium makes of it says nothing about a real one, or where
-   * Chromium draws it and only resvg draws nothing (RSTn, TEM, DNL, DAC, a segment length below 2).
+   * Chromium draws it at 0x0 (the default). False where Chromium draws it and only resvg draws nothing (RSTn, TEM, DNL,
+   * DAC, a segment length below 2). SOF5, C8, SOF13 and 16-bit samples are patched onto baseline Huffman data, so
+   * Chromium refuses them as unsupported headers, which a genuine file of that kind may not share.
    */
   readonly chromiumDrawsNothing: boolean;
 }
@@ -111,14 +111,9 @@ export function refusedJpegs(jpeg: Uint8Array): RefusedJpeg[] {
       "segment 0xFE length",
       false,
     ),
-    refused("SOF3 (lossless)", frameType(jpeg, 0xc3), "frame type 0xC3", false),
     refused("SOF5 (differential)", frameType(jpeg, 0xc5), "frame type 0xC5"),
     refused("JPG (0xC8)", frameType(jpeg, 0xc8), "frame type 0xC8"),
-    refused("SOF9 (arithmetic)", frameType(jpeg, 0xc9), "frame type 0xC9", false),
-    refused("SOF10 (arithmetic progressive)", frameType(jpeg, 0xca), "frame type 0xCA", false),
-    refused("SOF11 (arithmetic lossless)", frameType(jpeg, 0xcb), "frame type 0xCB", false),
     refused("SOF13 (arithmetic differential)", frameType(jpeg, 0xcd), "frame type 0xCD"),
-    refused("12-bit samples", patched(jpeg, frame + 4, 12), "precision of 12 bits", false),
     refused("16-bit samples", patched(jpeg, frame + 4, 16), "precision of 16 bits"),
     refused("a frame header one byte too long", lengthPlusOne, "frame header length is invalid"),
     refused("a frame header without components", noComponents, "frame header length is invalid"),
