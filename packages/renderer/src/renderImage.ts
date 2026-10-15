@@ -38,8 +38,8 @@ const orientations: Readonly<
  * which the layer's rotation applies as for any image.
  */
 export function renderImage(context: RenderContext, node: ImageNode, extra = ""): void {
-  const { asset, dataUri, dataKey, exif } = node.image;
-  const shared = !exif && (context.imageUses.get(dataKey) ?? 0) > 1;
+  const { asset, dataUri, dataKey } = node.image;
+  const shared = isSharedImage(context, node);
   const written = shared && context.sharedImages.has(dataKey) ? 0 : dataUri.length;
   context.imageBytes.set(asset, (context.imageBytes.get(asset) ?? 0) + written);
   const label = node.alt === undefined ? "" : ` aria-label="${escapeAttribute(node.alt)}"`;
@@ -72,6 +72,11 @@ export function renderImage(context: RenderContext, node: ImageNode, extra = "")
   // A <use> has no implicit role, unlike <image>, so the accessible name needs one.
   const role = label === "" ? "" : ` role="img"${label}`;
   context.writer.write(`<use href="#${symbolId(context, node)}" ${box}${role}${rest}/>`);
+}
+
+/** Whether the node is drawn as a `<use>` of the shared definition of its data (see `renderImage`). */
+export function isSharedImage(context: RenderContext, node: ImageNode): boolean {
+  return !node.image.exif && (context.imageUses.get(node.image.dataKey) ?? 0) > 1;
 }
 
 function boxAttributes(x: number, y: number, width: number, height: number): string {

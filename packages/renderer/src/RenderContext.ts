@@ -2,6 +2,7 @@ import type { Design } from "@readmint/format";
 import type { ExprResult, Template } from "@readmint/expr";
 import { OutlineBudget, type GlyphOutline, type SfntFont } from "@readmint/fonts";
 import { AnimationCss } from "./AnimationCss.js";
+import { CanvasPlacement } from "./CanvasPlacement.js";
 import type { FontUse } from "./FontUse.js";
 import type { LoadedFont } from "./loadFont.js";
 import type { LoadedImage } from "./loadImage.js";
@@ -11,6 +12,7 @@ import type { Bounds } from "./pathBounds.js";
 import { RenderFailure } from "./RenderFailure.js";
 import type { RenderIssue, RenderIssueCode } from "./RenderIssue.js";
 import { RenderLimits } from "./RenderLimits.js";
+import type { RenderNode } from "./RenderNode.js";
 import type { RenderAssets, RenderOptions } from "./RenderOptions.js";
 import { SvgWriter } from "./SvgWriter.js";
 
@@ -95,6 +97,10 @@ export class RenderContext {
   readonly cutTracks = new Set<string>();
   /** The milliseconds of the frame to draw; undefined draws the animated SVG (static attributes at frame 0). */
   readonly time: number | undefined;
+  /** The transforms of the groups around the node being drawn, and the canvas `renderSvg` sets. */
+  readonly placement = new CanvasPlacement();
+  /** `inkBounds` of the nodes measured so far; a node's bounds do not change within one render. */
+  readonly inkBounds = new WeakMap<RenderNode, Bounds | undefined>();
   readonly animationCss: AnimationCss;
   private readonly trail: string[] = [];
   private depth = 0;
