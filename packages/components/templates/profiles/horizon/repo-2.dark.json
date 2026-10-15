@@ -1,0 +1,294 @@
+{
+  "$schema": "https://raw.githubusercontent.com/MrLarkyy/Readmint/main/packages/format/schema/design-v0.schema.json",
+  "version": 0,
+  "title": "Repository",
+  "description": "A repository ranked by stars: its place, name, description, a bar of its stars against the best repository and a bar code of its commits in the last 52 weeks.",
+  "canvas": {
+    "width": 840,
+    "height": 210
+  },
+  "assets": {
+    "fonts": {
+      "display": {
+        "family": "Archivo Condensed",
+        "src": "fonts/ArchivoCondensed-ExtraBold.ttf",
+        "weight": 800,
+        "licence": {
+          "embedding": "allowed",
+          "name": "OFL-1.1"
+        }
+      },
+      "mono": {
+        "family": "Geist Mono",
+        "src": "fonts/GeistMono-Regular.ttf",
+        "weight": 400,
+        "licence": {
+          "embedding": "allowed",
+          "name": "OFL-1.1"
+        }
+      },
+      "monoM": {
+        "family": "Geist Mono",
+        "src": "fonts/GeistMono-Medium.ttf",
+        "weight": 500,
+        "licence": {
+          "embedding": "allowed",
+          "name": "OFL-1.1"
+        }
+      }
+    }
+  },
+  "animation": {
+    "duration": 60000,
+    "loop": false
+  },
+  "components": {
+    "card": {
+      "description": "The section: a rounded panel in the theme's colours; the theme prop is the only switch between light and dark.",
+      "props": {
+        "theme": {
+          "type": "enum",
+          "values": ["light", "dark"],
+          "default": "light"
+        },
+        "slot": {
+          "type": "number",
+          "default": 0
+        }
+      },
+      "layers": [
+        {
+          "type": "rect",
+          "x": 0,
+          "y": 0,
+          "width": 840,
+          "height": 210,
+          "fill": "{{ props.theme == \"dark\" ? \"#121110\" : \"#f4efe6\" }}"
+        },
+        {
+          "type": "rect",
+          "x": 40,
+          "y": 20,
+          "width": 760,
+          "height": 2,
+          "fill": "{{ props.theme == \"dark\" ? \"#f2ede4\" : \"#141414\" }}"
+        },
+        {
+          "type": "group",
+          "children": [
+            {
+              "type": "text",
+              "x": 36,
+              "y": 36,
+              "content": "{{ [\"01\", \"02\", \"03\", \"04\"][props.slot] }}",
+              "font": "display",
+              "fontSize": 88,
+              "fill": "{{ props.theme == \"dark\" ? \"#ff7a3d\" : \"#ff5a1f\" }}"
+            },
+            {
+              "type": "group",
+              "x": 150,
+              "y": 40,
+              "width": 650,
+              "height": 54,
+              "clip": true,
+              "children": [
+                {
+                  "type": "text",
+                  "x": 0,
+                  "y": 0,
+                  "content": "{{ r.name | upper | truncate(30) }}",
+                  "font": "display",
+                  "fontSize": 46,
+                  "fill": "{{ props.theme == \"dark\" ? \"#f2ede4\" : \"#141414\" }}"
+                }
+              ]
+            },
+            {
+              "type": "group",
+              "x": 150,
+              "y": 100,
+              "width": 400,
+              "height": 36,
+              "clip": true,
+              "children": [
+                {
+                  "type": "text",
+                  "x": 0,
+                  "y": 0,
+                  "content": "{{ r.description | truncate(90) }}",
+                  "font": "mono",
+                  "fontSize": 12,
+                  "fill": "{{ props.theme == \"dark\" ? \"#9a948a\" : \"#6b645a\" }}",
+                  "lineHeight": 1.5,
+                  "width": 400
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "x": 150,
+              "y": 146,
+              "content": "STARS",
+              "font": "mono",
+              "fontSize": 11,
+              "fill": "{{ props.theme == \"dark\" ? \"#9a948a\" : \"#6b645a\" }}",
+              "letterSpacing": 1.5
+            },
+            {
+              "type": "group",
+              "x": 210,
+              "y": 146,
+              "width": 110,
+              "height": 16,
+              "clip": true,
+              "children": [
+                {
+                  "type": "text",
+                  "x": 0,
+                  "y": 0,
+                  "content": "{{ (r.stars < 1000000 ? (r.stars | number) : (r.stars | compact)) }}",
+                  "font": "monoM",
+                  "fontSize": 13,
+                  "fill": "{{ props.theme == \"dark\" ? \"#f2ede4\" : \"#141414\" }}"
+                }
+              ]
+            },
+            {
+              "type": "group",
+              "x": 150,
+              "y": 166,
+              "width": 260,
+              "height": 10,
+              "clip": true,
+              "children": [
+                {
+                  "type": "rect",
+                  "x": 0,
+                  "y": 0,
+                  "width": 260,
+                  "height": 10,
+                  "fill": "{{ props.theme == \"dark\" ? \"#2a2724\" : \"#ddd5c6\" }}"
+                },
+                {
+                  "type": "rect",
+                  "x": 0,
+                  "y": 0,
+                  "width": "{{ (260 * (r.stars / ((((github.pinned || github.repositories)[0]).stars) | max(1)) | min(1))) | max(2) }}",
+                  "height": 10,
+                  "fill": "{{ props.theme == \"dark\" ? \"#ff7a3d\" : \"#ff5a1f\" }}"
+                },
+                {
+                  "type": "rect",
+                  "x": 260,
+                  "y": 0,
+                  "width": 260,
+                  "height": 10,
+                  "fill": "{{ props.theme == \"dark\" ? \"#121110\" : \"#f4efe6\" }}",
+                  "animate": {
+                    "x": {
+                      "keyframes": [
+                        {
+                          "offset": 0,
+                          "value": 0
+                        },
+                        {
+                          "offset": 0,
+                          "value": -260
+                        },
+                        {
+                          "offset": 0.125,
+                          "value": -260
+                        },
+                        {
+                          "offset": 1,
+                          "value": 0
+                        }
+                      ],
+                      "duration": 1600,
+                      "easing": "ease-out"
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "x": 560,
+              "y": 100,
+              "content": "52 WEEKS",
+              "font": "mono",
+              "fontSize": 11,
+              "fill": "{{ props.theme == \"dark\" ? \"#9a948a\" : \"#6b645a\" }}",
+              "letterSpacing": 1.5
+            },
+            {
+              "type": "group",
+              "children": [
+                {
+                  "type": "rect",
+                  "x": "{{ k * 4.6 }}",
+                  "y": "{{ 40 - (((v | min(6 + (v - 6) / 4) | min(14))) * 2.8 | max(1)) }}",
+                  "width": 3,
+                  "height": "{{ (((v | min(6 + (v - 6) / 4) | min(14))) * 2.8 | max(1)) }}",
+                  "fill": "{{ props.theme == \"dark\" ? \"#f2ede4\" : \"#141414\" }}"
+                }
+              ],
+              "x": 560,
+              "y": 120,
+              "repeat": {
+                "each": "{{ r.weeklyCommits }}",
+                "as": "v",
+                "index": "k"
+              },
+              "if": "{{ k < 52 }}"
+            },
+            {
+              "type": "rect",
+              "x": 560,
+              "y": 162,
+              "width": 238,
+              "height": 1,
+              "fill": "{{ props.theme == \"dark\" ? \"#f2ede4\" : \"#141414\" }}"
+            },
+            {
+              "type": "text",
+              "x": 560,
+              "y": 124,
+              "content": "No weekly activity yet.",
+              "font": "mono",
+              "fontSize": 12,
+              "fill": "{{ props.theme == \"dark\" ? \"#9a948a\" : \"#6b645a\" }}",
+              "if": "{{ !(r.weeklyCommits | length) }}"
+            }
+          ],
+          "repeat": {
+            "each": "{{ [((github.pinned || github.repositories)[props.slot])] }}",
+            "as": "r"
+          },
+          "if": "{{ r }}"
+        },
+        {
+          "type": "text",
+          "x": 40,
+          "y": 90,
+          "content": "{{ \"No repository in slot \" + [\"1\", \"2\", \"3\", \"4\"][props.slot] + \".\" }}",
+          "font": "mono",
+          "fontSize": 13,
+          "fill": "{{ props.theme == \"dark\" ? \"#9a948a\" : \"#6b645a\" }}",
+          "if": "{{ !((github.pinned || github.repositories)[props.slot]) }}"
+        }
+      ]
+    }
+  },
+  "layers": [
+    {
+      "type": "component",
+      "ref": "card",
+      "props": {
+        "theme": "dark",
+        "slot": 1
+      }
+    }
+  ]
+}

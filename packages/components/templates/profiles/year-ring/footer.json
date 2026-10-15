@@ -1,0 +1,204 @@
+{
+  "$schema": "https://raw.githubusercontent.com/MrLarkyy/Readmint/main/packages/format/schema/design-v0.schema.json",
+  "version": 0,
+  "title": "Contact",
+  "description": "Where to find the author: profile address, website and handle, and the date of the data.",
+  "canvas": {
+    "width": 840,
+    "height": 120
+  },
+  "assets": {
+    "fonts": {
+      "reg": {
+        "family": "Archivo",
+        "src": "fonts/Archivo-Regular.ttf",
+        "weight": 400,
+        "licence": {
+          "embedding": "allowed",
+          "name": "OFL-1.1"
+        }
+      },
+      "semi": {
+        "family": "Archivo",
+        "src": "fonts/Archivo-SemiBold.ttf",
+        "weight": 600,
+        "licence": {
+          "embedding": "allowed",
+          "name": "OFL-1.1"
+        }
+      },
+      "bold": {
+        "family": "Archivo",
+        "src": "fonts/Archivo-Bold.ttf",
+        "weight": 700,
+        "licence": {
+          "embedding": "allowed",
+          "name": "OFL-1.1"
+        }
+      }
+    }
+  },
+  "components": {
+    "card": {
+      "description": "The section: a rounded panel in the theme's colours; the theme prop is the only switch between light and dark.",
+      "props": {
+        "theme": {
+          "type": "enum",
+          "values": ["light", "dark"],
+          "default": "light"
+        }
+      },
+      "layers": [
+        {
+          "type": "rect",
+          "x": 0.5,
+          "y": 0.5,
+          "width": 839,
+          "height": 119,
+          "radius": 14,
+          "fill": "{{ props.theme == \"dark\" ? \"#0b1020\" : \"#f6f8fd\" }}",
+          "stroke": "{{ props.theme == \"dark\" ? \"#1f2a4a\" : \"#d6dcec\" }}",
+          "strokeWidth": 1
+        },
+        {
+          "type": "text",
+          "x": 40,
+          "y": 30,
+          "content": "CONTACT",
+          "font": "semi",
+          "fontSize": 12,
+          "letterSpacing": 2,
+          "fill": "{{ props.theme == \"dark\" ? \"#6b8cff\" : \"#1f4fe0\" }}"
+        },
+        {
+          "type": "text",
+          "x": 40,
+          "y": 56,
+          "content": "GitHub",
+          "font": "reg",
+          "fontSize": 12,
+          "fill": "{{ props.theme == \"dark\" ? \"#8d9aca\" : \"#5d6788\" }}"
+        },
+        {
+          "type": "group",
+          "x": 40,
+          "y": 74,
+          "width": 240,
+          "height": 22,
+          "clip": true,
+          "children": [
+            {
+              "type": "text",
+              "x": 0,
+              "y": 0,
+              "content": "{{ \"github.com/\" + (github.login | truncate(24)) }}",
+              "font": "semi",
+              "fontSize": 16,
+              "fill": "{{ props.theme == \"dark\" ? \"#e9eeff\" : \"#0b1230\" }}"
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "x": 300,
+          "y": 56,
+          "content": "Website",
+          "font": "reg",
+          "fontSize": 12,
+          "fill": "{{ props.theme == \"dark\" ? \"#8d9aca\" : \"#5d6788\" }}",
+          "if": "{{ github.websiteUrl }}"
+        },
+        {
+          "type": "group",
+          "x": 300,
+          "y": 74,
+          "width": 260,
+          "height": 22,
+          "clip": true,
+          "children": [
+            {
+              "type": "text",
+              "x": 0,
+              "y": 0,
+              "content": "{{ github.websiteUrl | truncate(36) }}",
+              "font": "semi",
+              "fontSize": 16,
+              "fill": "{{ props.theme == \"dark\" ? \"#e9eeff\" : \"#0b1230\" }}"
+            }
+          ],
+          "if": "{{ github.websiteUrl }}"
+        },
+        {
+          "type": "text",
+          "x": 580,
+          "y": 56,
+          "content": "X",
+          "font": "reg",
+          "fontSize": 12,
+          "fill": "{{ props.theme == \"dark\" ? \"#8d9aca\" : \"#5d6788\" }}",
+          "if": "{{ github.twitterUsername }}"
+        },
+        {
+          "type": "group",
+          "x": 580,
+          "y": 74,
+          "width": 220,
+          "height": 22,
+          "clip": true,
+          "children": [
+            {
+              "type": "text",
+              "x": 0,
+              "y": 0,
+              "content": "{{ \"@\" + (github.twitterUsername | truncate(24)) }}",
+              "font": "semi",
+              "fontSize": 16,
+              "fill": "{{ props.theme == \"dark\" ? \"#e9eeff\" : \"#0b1230\" }}"
+            }
+          ],
+          "if": "{{ github.twitterUsername }}"
+        },
+        {
+          "type": "group",
+          "x": 40,
+          "y": 100,
+          "width": 500,
+          "height": 14,
+          "clip": true,
+          "children": [
+            {
+              "type": "text",
+              "x": 0,
+              "y": 0,
+              "content": "{{ \"Data as of \" + (github.contributions.to | date(\"MMM d, yyyy\")) }}",
+              "font": "reg",
+              "fontSize": 11,
+              "fill": "{{ props.theme == \"dark\" ? \"#8d9aca\" : \"#5d6788\" }}"
+            }
+          ],
+          "if": "{{ github.contributions.to }}"
+        },
+        {
+          "type": "text",
+          "x": 560,
+          "y": 100,
+          "content": "Made with Readmint",
+          "font": "reg",
+          "fontSize": 11,
+          "fill": "{{ props.theme == \"dark\" ? \"#8d9aca\" : \"#5d6788\" }}",
+          "width": 240,
+          "align": "end"
+        }
+      ]
+    }
+  },
+  "layers": [
+    {
+      "type": "component",
+      "ref": "card",
+      "props": {
+        "theme": "light"
+      }
+    }
+  ]
+}

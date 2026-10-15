@@ -9,3 +9,11 @@ declare module "*?inline" {
   const dataUri: string;
   export default dataUri;
 }
+
+// The glob import Vite resolves at build time, in both test projects.
+interface ImportMeta {
+  glob(
+    pattern: string,
+    options: { eager: true; query: string; import: "default" },
+  ): Record<string, string>;
+}

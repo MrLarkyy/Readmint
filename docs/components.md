@@ -142,6 +142,118 @@ Five complete designs that show what the format can do; each is an ordinary desi
 - **The sample data** the goldens render is synthetic (an invented account, `readmint-sample`), shaped like the
   data-github object.
 
+## Profile templates
+
+Three full README profiles, each a folder of designs under `@readmint/components/templates/profiles/<name>/`:
+
+| template    | look                                                                                                     | fonts (SIL OFL 1.1)           | year visual                                            |
+| ----------- | -------------------------------------------------------------------------------------------------------- | ----------------------------- | ------------------------------------------------------ |
+| `year-ring` | calm and cobalt; header with a typed last push, index table, recent work, repositories with 52-week line | Archivo                       | a rotating 3D ring, one line per day, streak in cobalt |
+| `horizon`   | an orange poster: name in large type, commit ticker, ranked repositories, stack columns and a ticker     | Archivo Condensed, Geist Mono | a lit 3D terrain with a peak per day                   |
+| `pinscreen` | an IDE: status bar header, repositories as Kotlin objects, a terminal git log, a build script stack      | Geist, Geist Mono             | a pin screen with a ripple from today                  |
+
+`profileTemplates` from `@readmint/components` maps each name to its sections (`ProfileTemplate`, `ProfileSection`).
+A folder holds, per section, `<section>.json` and its dark twin `<section>.dark.json`, an example `README.md` and
+`fonts/` (the TTF files the designs name, the licence of each family and the sha256 of every file):
+
+| template    | sections                                                            |
+| ----------- | ------------------------------------------------------------------- |
+| `year-ring` | `header`, `year`, `index`, `recent`, `repo-1` to `repo-4`, `footer` |
+| `horizon`   | `header`, `year`, `repo-1` to `repo-4`, `stack`, `footer`           |
+| `pinscreen` | `header`, `year`, `repo-1` to `repo-4`, `log`, `stack`, `footer`    |
+
+- **One design per section.** Every section is a design of 840 pixels width with a transparent canvas that draws its
+  own panel, so each is an image of its own in the README. The Action writes `readmint/<section>.svg` and
+  `readmint/<section>.dark.svg` and prints the `<picture>` snippet that switches on `prefers-color-scheme`
+  ([action.md](action.md#outputs-on-disk-and-the-dark-variant)): list only the light designs. The dark twin is the
+  light file with the root prop `theme` set to `"dark"`, nothing else (a test compares them); the colours are chosen
+  from that prop inside the design.
+- **Links.** SVG links do not work inside an `<img>`, so a clickable element is a link around the image: the example
+  `README.md` wraps each repository and the contact footer.
+- **Repository slots.** `repo-1` to `repo-4` are the same design with the root prop `slot` 0 to 3 (a test pins that
+  they differ in nothing else). A slot shows `github.pinned[slot]`, else `github.repositories[slot]` (stars
+  descending); a slot past the list shows a plain "No repository in slot n." line.
+- **No user in a design.** No design contains a login, name or address; every text comes from `github.*`, so another
+  account's data needs no edit. The "data as of" date is `github.contributions.to`: a render reads no clock.
+- **Fonts.** Archivo, Archivo Condensed (Omnibus-Type), Geist and Geist Mono (Vercel) are SIL OFL 1.1 static TTFs, byte
+  copies of the upstream files (origin, version and sha256 in each `fonts/README.md`), none with a Reserved Font Name
+  and all with OS/2 `fsType` 0, so the renderer embeds a subset of the glyphs a section draws. Only the files a
+  template names are in its folder, with the licence text beside them. Archivo and Archivo Condensed have no Cyrillic
+  and none of the four families has emoji or CJK glyphs: such a name or commit message is not drawn and the render
+  warns `missing-glyph` ([renderer](renderer.md)). Add a font asset that has them and list it in the `fallback` of the
+  design's fonts ([design format](design-format.md#assets)), and mind the size budget below.
+
+### Data the templates read
+
+Everything but the fields below is the [GitHub data object](data-github.md). The loader does not produce those fields
+yet, so a template reads them as optional (a missing property reads as `null`, see
+[expressions](expressions.md#semantics)) and shows a plain line where they are missing; pass them in a data file
+(`data-file`, `--data`) until the loader does:
+
+| path                                      | type           | used by                                                                 |
+| ----------------------------------------- | -------------- | ----------------------------------------------------------------------- |
+| `github.status.message`                   | string \| null | `horizon` header (status), `pinscreen` header (status bar)              |
+| `github.pushes[]`                         | array          | last push, recent work, commit ticker, git log: items below             |
+| `github.pushes[].repository`, `.hash`     | string         | repository name and short hash of the push                              |
+| `github.pushes[].message`                 | string         | commit message                                                          |
+| `github.pushes[].additions`, `.deletions` | number         | lines added and removed                                                 |
+| `github.pinned[]`                         | array          | the pinned repositories, same items as `github.repositories[]`          |
+| `github.repositories[].weeklyCommits`     | number[52]     | the 52-week line (`year-ring`) and bar code (`horizon`) of a repository |
+
+Without these, `year-ring` shows "No recent push yet." and "No recent pushes yet.", `horizon` "No commits to show yet."
+and `pinscreen` "no pushes yet" and "no commits yet"; the sections that do not read them render in full.
+
+### Writing a template like these
+
+- **The first frame is the final state.** The raster export draws frame 0, and so do a viewer that ignores CSS and a
+  reader who asks for less motion. A one-shot track (odometer, typewriter wipe, bar growth, line drawing) therefore
+  lists its keyframes as `[final@0, initial@0, ..., final@1]`: the equal offsets make a jump, so the static attribute
+  and frame 0 are the final value, and a browser shows the start for the instant after it. A delay would hold the
+  first value (the final one), so a one-shot that starts later holds `initial` for a keyframe instead; a reveal that
+  runs line by line is one panel-coloured cover whose `y` steps (at most 15 steps in the 32 keyframes of a track).
+  Motions that never need a start (the turning ring, a ticker, the pulse, the ripple) start and end in their rest pose,
+  and a test compares frame 0 with the frame at the end of every section.
+- **One timeline per design.** The three footers and the Pinscreen repository slots are static; the other sections
+  but two play once over 60000 ms (the format maximum; the ring turns once per view and rests), `loop: false`. The
+  Horizon header and stack are tickers: `loop: true`, the row drawn several times and moved by exactly one set of items.
+- **A 3D ring without trigonometry.** A point of an ellipse with semi-axes `R1 + R2` and `R1 - R2` is the sum of two
+  counter-rotating circles. Each day is three nested groups, each only a rotation (outer `phi`, middle `-2 phi` turning
+  twice as fast the other way, inner `phi` so the line stays upright), so all 365 copies share three animation rules
+  and differ only in their static rotations.
+- **Square root without a filter.** The expression language has no square root: heights use chords of the square root
+  through 0, 1, 4, 16 and 64 (clamped at 64 a day; a chord is at most 6 % below the root).
+- **Text without measuring.** Geist Mono advances 0.6 em, so a token of the Pinscreen editor sits at `columns x 8.4`
+  pixels; free text is cut with `truncate` and held in a `clip` group. Keep every clip group inside the canvas: resvg-js
+  2.6.2 aborts the process on a clip group whose box lies wholly outside it.
+
+### Bytes per section
+
+UTF-8 bytes of the animated SVG on the sample data of the tests and on the worst-case data (1024-character texts, counts
+of 10^15, 600 pushes, a 54-column calendar at 1000000 a day); every section is within the budget below.
+
+| template    | section | sample | worst case |
+| ----------- | ------- | ------ | ---------- |
+| `year-ring` | header  | 31 KB  | 29 KB      |
+| `year-ring` | year    | 163 KB | 204 KB     |
+| `year-ring` | index   | 21 KB  | 20 KB      |
+| `year-ring` | recent  | 22 KB  | 18 KB      |
+| `year-ring` | repo-1  | 13 KB  | 12 KB      |
+| `year-ring` | footer  | 10 KB  | 9 KB       |
+| `horizon`   | header  | 36 KB  | 31 KB      |
+| `horizon`   | year    | 90 KB  | 86 KB      |
+| `horizon`   | repo-1  | 17 KB  | 15 KB      |
+| `horizon`   | stack   | 28 KB  | 41 KB      |
+| `horizon`   | footer  | 8 KB   | 8 KB       |
+| `pinscreen` | header  | 19 KB  | 18 KB      |
+| `pinscreen` | year    | 117 KB | 115 KB     |
+| `pinscreen` | repo-1  | 15 KB  | 14 KB      |
+| `pinscreen` | log     | 24 KB  | 22 KB      |
+| `pinscreen` | stack   | 22 KB  | 22 KB      |
+| `pinscreen` | footer  | 7 KB   | 7 KB       |
+
+The ring of the Year Ring prototype was about 390 KB; sharing the three rotation rules between the days and leaving
+out the days without commits brings it to 163 KB.
+
 ## Size budget
 
 Every calendar template, and a custom cell like the one above, renders the worst-case calendar (54 columns of 7 days, every
@@ -153,3 +265,7 @@ isometric template about 123 KB.
 The starter templates render the worst-case GitHub data (1024-character name, login and bio, 600 languages with
 1024-character names, counts of 10^15, a 54-column calendar at 1000000) within **512 KiB** and the same half work
 limits; a test pins it too.
+
+The profile templates render every section on the worst-case data of the starters (and 600 pushes, six repositories
+with 1024-character texts) within **512 KiB** and the same half work limits; the year ring is held to **256 KiB** on the
+sample data. A test pins both; the numbers per section are in [Profile templates](#profile-templates).
