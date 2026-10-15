@@ -1,6 +1,9 @@
 /** Bounds applied to every template while it is compiled and evaluated; part of the public contract. */
 export const ExpressionLimits = Object.freeze({
-  /** Length of a compiled text in UTF-16 code units, checked before scanning. */
+  /**
+   * Length of a compiled text in code points (a surrogate pair counts once), as the design format counts string
+   * lengths; checked before scanning.
+   */
   maxSourceLength: 10_000,
   /** Nesting of parentheses, brackets, unary operators, conditional branches and filter arguments. */
   maxDepth: 64,

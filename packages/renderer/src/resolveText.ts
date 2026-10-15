@@ -9,6 +9,7 @@ import { resolveBase } from "./resolveBase.js";
 import { resolveStyle } from "./resolveStyle.js";
 import { stripXmlInvalid } from "./stripXmlInvalid.js";
 import { evaluateText } from "./expressions.js";
+import { exceedsCodePoints } from "./exceedsCodePoints.js";
 import { resolveOptionalNumber } from "./resolveValue.js";
 import type { TextLine, TextRun } from "./TextLine.js";
 import type { TextLayout } from "./TextLayout.js";
@@ -202,11 +203,11 @@ function record(
 function interpolate(context: RenderContext, content: string, path: string, scope: Scope): string {
   const text = evaluateText(context, content, path, scope);
   const max = context.limits.maxTextLength;
-  if (text.length > max) {
+  if (exceedsCodePoints(text, max)) {
     context.fail(
       path,
       "too-large",
-      `the text is ${String(text.length)} characters long after filling placeholders; at most ${String(max)} are allowed`,
+      `the text is longer than ${String(max)} characters after filling placeholders`,
     );
   }
   // Removed before reserving, wrapping and measuring, so what is laid out is exactly what is written.

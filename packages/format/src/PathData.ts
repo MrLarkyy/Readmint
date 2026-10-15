@@ -14,7 +14,7 @@ export const PathData = Object.freeze({
    * ends at the first `}}`, so a `}}` inside a string literal of a placeholder is refused, never misread.
    */
   templatePattern: `^(?=[\\s\\S]*\\{\\{)(?:[${commandsAndNumbers}]|\\{\\{(?:(?!\\}\\})[\\s\\S])+\\}\\})+$`,
-  /** A template is compiled as an expression text, which takes at most 10000 UTF-16 code units. */
+  /** A template is compiled as an expression text, which takes at most 10000 code points (`ExpressionLimits`). */
   maxTemplateLength: 10_000,
 });
 
