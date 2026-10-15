@@ -270,8 +270,9 @@ budget?, maxBytes? })`, `encodeWoff`, `decodeWoff`, `glyphClosure`, `OutlineBudg
   frame header, and any other code (`02`-`BF`, `DE`, `DF`, `F0`-`FD`). Only SOF0, SOF1 and SOF2 (baseline, extended
   and progressive Huffman) with 8-bit samples are accepted: SOF5-7, `C8` and SOF13-15 libjpeg does not draw, and the rest is
   refused because the outputs differ, as probed with genuine files (Chromium 156, resvg-wasm 2.6.2, fixtures in
-  `packages/renderer/test/assets/jpeg`): Chromium draws them all, resvg draws arithmetic coding (SOF9-11) and DCT
-  samples above 8 bits empty, and traps on a 12-bit lossless RGB file. 8-bit lossless (SOF3) is drawn differently: grey
+  `packages/renderer/test/assets/jpeg`): Chromium draws them all except 16-bit DCT samples (0x0), resvg draws
+  arithmetic coding (SOF9-11), DCT samples above 8 bits and 12- and 16-bit lossless grey empty, and traps on a 12-bit
+  lossless RGB file. 8-bit lossless (SOF3) is drawn differently: grey
   is black in Chromium and YCbCr gets other colours; only a file coded as RGB matches, and it is refused with its type.
   A frame header whose length is not 8 plus 3 per component, or which has no component, is refused too.
 - EXIF orientation (tag `0x0112` in IFD0 of a JPEG APP1 `Exif` segment, a PNG `eXIf` chunk before or after the image

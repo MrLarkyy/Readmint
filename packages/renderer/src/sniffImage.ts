@@ -186,10 +186,10 @@ function pngExifBlock(
 }
 
 /**
- * SOF0-SOF2: the frame types (baseline, extended and progressive Huffman, 8-bit) every output draws alike. The others
- * are refused after the RM-51 probe (Chromium 156, resvg-wasm 2.6.2; fixtures in test/assets/jpeg): resvg draws
- * arithmetic coding (SOF9-11) empty, and lossless (SOF3) differently from Chromium (grey black there, YCbCr other
- * colours; only RGB-coded files match).
+ * SOF0-SOF2: the frame types (baseline, extended and progressive Huffman, 8-bit) every output draws alike. SOF5-7, C8
+ * and SOF13-15 libjpeg does not draw. SOF3 and SOF9-11 are refused after the RM-51 probe (Chromium 156, resvg-wasm
+ * 2.6.2; fixtures in test/assets/jpeg): resvg draws arithmetic coding empty, and lossless differently from Chromium
+ * (grey black there, YCbCr other colours; only RGB-coded files match).
  */
 function isFrameHeader(marker: number): boolean {
   return marker >= 0xc0 && marker <= 0xc2;
@@ -222,7 +222,7 @@ function jpegMarkerProblem(marker: number, sawFrame: boolean): string | undefine
   if (isFrameHeader(marker)) return sawFrame ? "JPEG holds a second frame header" : undefined;
   if (marker === 0xc3 || (marker >= 0xc9 && marker <= 0xcb)) {
     return marker === 0xc3
-      ? `JPEG frame type ${hex(marker)} (lossless) is refused, because Chromium and resvg draw it differently`
+      ? `JPEG frame type ${hex(marker)} (lossless) is refused, because Chromium and resvg draw lossless JPEGs differently`
       : `JPEG frame type ${hex(marker)} (arithmetic coded) is refused, because resvg draws it empty`;
   }
   if ((marker >= 0xc5 && marker <= 0xc8) || (marker >= 0xcd && marker <= 0xcf)) {

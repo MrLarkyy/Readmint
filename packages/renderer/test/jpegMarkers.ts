@@ -11,9 +11,9 @@ export interface RefusedJpeg extends JpegVariant {
   /** A part of the sniffer's message. */
   readonly message: string;
   /**
-   * Chromium draws it at 0x0. False where the variant is no genuine file of its kind (SOF5, C8, SOF13 and 16-bit
-   * samples patched onto baseline Huffman data: no genuine one exists), so what Chromium makes of it says nothing about
-   * a real one, or where Chromium draws it and only resvg draws nothing (RSTn, TEM, DNL, DAC, a segment length below 2).
+   * Chromium draws it at 0x0 (the default). False where Chromium draws it and only resvg draws nothing (RSTn, TEM, DNL,
+   * DAC, a segment length below 2). SOF5, C8, SOF13 and 16-bit samples are patched onto baseline Huffman data, so
+   * Chromium refuses them as unsupported headers, which a genuine file of that kind may not share.
    */
   readonly chromiumDrawsNothing: boolean;
 }

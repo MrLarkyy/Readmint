@@ -24,10 +24,12 @@ describe("the genuine JPEG frame types the renderer refuses", () => {
 // sof3-12bit-rgb is never handed to resvg here: it traps ("unreachable") and poisons the wasm instance of the worker,
 // which is why the renderer's refusal has to hold; its row above covers it.
 describe("what resvg-wasm 2.6.2 draws of them, the reason for the refusal", () => {
-  const direct = jpegFrameFixtures.filter((row) => row.resvg !== "traps");
+  const direct = jpegFrameFixtures.flatMap((row) =>
+    row.resvg === "traps" ? [] : ([[row.name, row.bytes, row.resvg]] as const),
+  );
 
-  test.each(direct.map((row) => [row.name, row] as const))("%s", (_name, row) => {
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="16"><image width="32" height="16" href="${dataUri("image/jpeg", row.bytes)}"/></svg>`;
+  test.each(direct)("%s", (_name, bytes, outcome) => {
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="16"><image width="32" height="16" href="${dataUri("image/jpeg", bytes)}"/></svg>`;
     const resvg = new Resvg(svg);
     const image = resvg.render();
     const pixels = image.pixels;
@@ -35,10 +37,10 @@ describe("what resvg-wasm 2.6.2 draws of them, the reason for the refusal", () =
     resvg.free();
     let drawn = 0;
     for (let index = 3; index < pixels.length; index += 4) if (pixels[index] !== 0) drawn++;
-    if (row.resvg === "nothing" || row.resvg === "traps") {
+    if (outcome === "nothing") {
       expect(drawn).toBe(0);
     } else {
-      expect([...pixels.subarray(5 * 4, 5 * 4 + 3)]).toEqual(row.resvg);
+      expect([...pixels.subarray(5 * 4, 5 * 4 + 3)]).toEqual(outcome);
     }
   });
 });

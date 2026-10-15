@@ -29,14 +29,19 @@ export type ResvgOutcome = "nothing" | "traps" | readonly [number, number, numbe
  */
 export interface JpegFrameFixture {
   readonly name: string;
-  readonly file: string;
   readonly bytes: Uint8Array;
-  /** A part of the sniffer's message. */
+  /** A part of the sniffer's message: the type or precision and the reason for the refusal. */
   readonly message: string;
   /** Chromium's pixel at (5,0) where the row pins it: the file draws at 32x16 either way. */
   readonly chromiumPixel?: readonly [number, number, number];
   readonly resvg: ResvgOutcome;
 }
+
+const precision12 = "precision of 12 bits is refused, because resvg draws it empty";
+const lossless =
+  "frame type 0xC3 (lossless) is refused, because Chromium and resvg draw lossless JPEGs differently";
+const arithmetic = (marker: string) =>
+  `frame type ${marker} (arithmetic coded) is refused, because resvg draws it empty`;
 
 const row = (
   file: string,
@@ -46,7 +51,6 @@ const row = (
   chromiumPixel?: readonly [number, number, number],
 ): JpegFrameFixture => ({
   name: file,
-  file: `${file}.jpg`,
   bytes: dataUriBytes(uri),
   message,
   resvg,
@@ -54,15 +58,15 @@ const row = (
 });
 
 export const jpegFrameFixtures: readonly JpegFrameFixture[] = [
-  row("sof1-12bit-rgb", sof1Rgb12, "precision of 12 bits", "nothing"),
-  row("sof1-12bit-grey", sof1Grey12, "precision of 12 bits", "nothing"),
-  row("sof3-8bit-rgb", sof3Rgb8, "frame type 0xC3", [40, 0, 215], [40, 0, 215]),
-  row("sof3-8bit-grey", sof3Grey8, "frame type 0xC3", [30, 30, 30], [0, 0, 0]),
-  row("sof3-8bit-ycbcr", sof3Ycbcr8, "frame type 0xC3", [245, 128, 109], [36, 228, 130]),
-  row("sof3-12bit-grey", sof3Grey12, "frame type 0xC3", "nothing"),
-  row("sof3-12bit-rgb", sof3Rgb12, "frame type 0xC3", "traps"),
-  row("sof3-16bit-grey", sof3Grey16, "frame type 0xC3", "nothing"),
-  row("sof9", sof9, "frame type 0xC9", "nothing"),
-  row("sof10", sof10, "frame type 0xCA", "nothing"),
-  row("sof11", sof11, "frame type 0xCB", "nothing"),
+  row("sof1-12bit-rgb", sof1Rgb12, precision12, "nothing"),
+  row("sof1-12bit-grey", sof1Grey12, precision12, "nothing"),
+  row("sof3-8bit-rgb", sof3Rgb8, lossless, [40, 0, 215], [40, 0, 215]),
+  row("sof3-8bit-grey", sof3Grey8, lossless, [30, 30, 30], [0, 0, 0]),
+  row("sof3-8bit-ycbcr", sof3Ycbcr8, lossless, [245, 128, 109], [36, 228, 130]),
+  row("sof3-12bit-grey", sof3Grey12, lossless, "nothing"),
+  row("sof3-12bit-rgb", sof3Rgb12, lossless, "traps"),
+  row("sof3-16bit-grey", sof3Grey16, lossless, "nothing"),
+  row("sof9", sof9, arithmetic("0xC9"), "nothing"),
+  row("sof10", sof10, arithmetic("0xCA"), "nothing"),
+  row("sof11", sof11, arithmetic("0xCB"), "nothing"),
 ];
