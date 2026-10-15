@@ -1,6 +1,7 @@
 import { parseDesign, type Design } from "@readmint/format";
 import { renderSvg, type RenderLimits } from "@readmint/renderer";
 import type { ProfileSection, ProfileTemplate } from "../src/index.js";
+import { profileExampleProps } from "./profileExampleProps.js";
 
 export type ProfileTheme = "light" | "dark";
 
@@ -53,6 +54,22 @@ export function loadProfile(
       `${template}/${profileFile(section, theme)} does not validate: ${JSON.stringify(result.issues)}`,
     );
   return result.value;
+}
+
+/**
+ * A section with the example's personal texts set as root props, as a user fills them in (the files ship empty
+ * defaults). Sections without personal texts are returned as they are.
+ */
+export function loadExampleProfile(
+  template: ProfileTemplate,
+  section: ProfileSection,
+  theme: ProfileTheme = "light",
+): Design {
+  const design = loadProfile(template, section, theme);
+  const props = profileExampleProps[template][section];
+  const [root, ...rest] = design.layers;
+  if (props === undefined || root?.type !== "component") return design;
+  return { ...design, layers: [{ ...root, props: { ...root.props, ...props } }, ...rest] };
 }
 
 /** The font files of one template folder, by the relative `src` its designs give them. */
