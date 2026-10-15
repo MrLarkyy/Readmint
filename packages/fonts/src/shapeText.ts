@@ -24,7 +24,7 @@ const zwj = 0x200d;
 
 /**
  * Shapes one run of text in one font (OpenType layout as HarfBuzz does it): characters normalized against the font's
- * cmap per cluster (`normalizeCharacters`: canonically decomposed, marks ordered, recomposed into what the font maps,
+ * cmap per cluster (`normalizeCharacters`: canonically decomposed, marks ordered (Arabic modifier marks first), recomposed into what the font maps,
  * so canonically equivalent texts shape alike), to glyphs through the cmap (a space variant the font lacks takes the U+0020 glyph with the HarfBuzz fallback advance, U+2011 the U+2010 or U+002D glyph; mirrored in a right-to-left run), the script's shaper (Arabic joining, Devanagari syllables and reordering, or the
  * default), GSUB lookups stage by stage, default ignorables removed, advances, GPOS lookups (or the legacy kern
  * table), mark advances zeroed and attachments resolved. Pure and deterministic: integer font units, no clock,
