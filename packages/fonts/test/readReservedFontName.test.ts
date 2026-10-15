@@ -69,6 +69,26 @@ describe("the Reserved Font Name hint of a name table", () => {
     ).toBe(true);
   });
 
+  test("a renamed fork keeping the upstream copyright states no Reserved Font Name it uses", () => {
+    const upstream = 'Copyright 2026 The Rfn Authors, with Reserved Font Name "Rfn".';
+    const fork = (names: Readonly<Record<number, string | null>>, family: string) =>
+      parse(buildTestFont({ family, glyphs, names }));
+    expect(fork({ 0: upstream }, "Forked Sans").reservedFontName).toBe(false);
+    expect(fork({ 0: upstream, 16: "Forked Display" }, "Rfn").reservedFontName).toBe(true);
+    expect(fork({ 0: upstream }, "Rfn Mono").reservedFontName).toBe(true);
+    expect(fork({ 0: upstream }, "RFN").reservedFontName).toBe(true);
+    const several = 'with Reserved Font Names "Rfn" and "Rfn Sans".';
+    expect(fork({ 0: several }, "Forked").reservedFontName).toBe(false);
+    expect(fork({ 0: several }, "Rfn Sans").reservedFontName).toBe(true);
+  });
+
+  test("a statement whose names cannot be read counts as used", () => {
+    const vague = (copyright: string) =>
+      parse(buildTestFont({ family: "Forked", glyphs, names: { 0: copyright } }));
+    expect(vague('with Reserved Font Name "".').reservedFontName).toBe(true);
+    expect(vague("with Reserved Font Name Rfn, , Other.").reservedFontName).toBe(true);
+  });
+
   test("the default test font and every committed font state no Reserved Font Name", () => {
     expect(fontWith({}).reservedFontName).toBe(false);
     for (const bytes of [

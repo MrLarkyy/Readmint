@@ -221,7 +221,10 @@ Drawn in document order, first at the back. Layer `id` and `name` are not emitte
   `OFL-1.0-no-RFN` and `OFL-1.1-no-RFN` none; compared without ASCII case), then the font's name table: the copyright
   (name 0) or licence description (name 13) says "with Reserved Font Name" (any ASCII case, also "Names") followed by
   a name, not by the OFL template's `<Reserved Font Name>` (so the OFL text itself, which only defines the term, is no
-  statement), whatever licence the font or its asset names. The warning points at what decided: `licence/reservedFontName`, `licence/name` or the asset.
+  statement), whatever licence the font or its asset names, and only when the font's own family name (name 1 or
+  16) contains a stated name (any ASCII case): a renamed fork that keeps the upstream copyright line but not the name
+  is embedded as before. A statement whose names cannot be told apart, or a font without a family name, counts as
+  used. The warning points at what decided: `licence/reservedFontName`, `licence/name` or the asset.
   A restricted font warns only `font-not-embeddable`, and `drawAs: "paths"` draws an RFN font as paths without a
   warning. Detection reads only the name table (other licence texts, name 7 and the trademark are not read) and
   decodes at most 131072 characters of names per font, so a crafted table costs nothing; a statement it misses is
