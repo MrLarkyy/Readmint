@@ -35,7 +35,8 @@ screens. The Action's README snippet gives a raster `<img>` the design's `width`
 design's size.
 
 `quality` switches WebP, still and animated, to lossy frames at that libwebp quality. It is for photo-heavy animations
-that pass the 5 MiB output limit as lossless WebP. The same quality gives the same bytes; any other format refuses it.
+that pass the 5 MiB output limit as lossless WebP. The same quality gives the same bytes. The raster API and the CLI refuse a quality for
+another format; the Action needs `webp` among its `formats` and leaves the other formats unchanged.
 
 ## Timing and looping
 
