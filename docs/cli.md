@@ -137,9 +137,15 @@ as `render --data` with that object.
   (exit code 1 or 3) costs no request and is reported before a missing or refused token (exit code 4). `preview` loads
   the data first, before it reads the design or starts serving: a missing token or a failed load exits with 4 at once,
   and a design error is then shown on the page like any later one.
-- **Requests**: a load sends the requests of [data-github.md](data-github.md#rate-limits) (at most 4 with `--login`
-  and 5 without it, plus retries; fewer for a user with fewer repositories), only to `https://api.github.com/graphql`, and takes at most 300 s in all, retries and
+- **Requests**: a load sends the requests of [data-github.md](data-github.md#rate-limits) (at most 6 with `--login`
+  and 7 without it, plus retries; fewer for a user with fewer repositories), only to `https://api.github.com/graphql`, and takes at most 300 s in all, retries and
   rate-limit waits included. There is no cache and nothing is written to disk.
+- **Incomplete data**: when GitHub refuses the activity or the weekly-commit request (a token that cannot read the
+  profile status or the pinned items, for instance the Actions `GITHUB_TOKEN`), the load still succeeds with those
+  fields empty and the CLI prints one line on standard error, `warning: GitHub data is incomplete (activity, weeks):
+github.status, github.pushes and github.pinned[].weeklyCommits may be empty`, naming the parts
+  ([data-github.md](data-github.md#pinned-repositories-pushes-and-status)). Standard output and the exit code are not
+  affected.
 - **Errors**: a failed load is one line `GitHub data (<code>): <message>`, its code one of the `GitHubDataError` codes
   of [data-github.md](data-github.md#errors) (`unauthorized`, `rate-limited`, `network`, ...), exit code 4.
 - **`preview`** loads the data once, before it starts serving; editing the design or an asset never

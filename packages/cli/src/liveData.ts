@@ -29,6 +29,11 @@ export function liveData(
         token,
         ...(args.login === undefined ? {} : { login: args.login }),
         fetch: io.fetch ?? globalThis.fetch,
+        onPartial: (parts) => {
+          void io.stderr(
+            `warning: GitHub data is incomplete (${parts.join(", ")}): github.status, github.pushes and github.pinned[].weeklyCommits may be empty\n`,
+          );
+        },
         ...(stop === undefined ? {} : { signal: stop }),
       });
     },

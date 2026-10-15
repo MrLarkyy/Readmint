@@ -125,6 +125,11 @@ of private repositories; in a public repository they are then published in the S
 [data-github.md](data-github.md#repositories-and-privacy) before you use a personal token. The owner must be a user;
 an organisation login fails to load.
 
+The profile status, the pinned repositories, the recent pushes and the weekly commits (`github.status`, `github.pinned`,
+`github.pushes`) come from two extra requests. A token that may not read them leaves those fields empty and the
+templates show their plain fallback lines; the run goes on. Private repositories never appear in them, with any token
+([data-github.md](data-github.md#pinned-repositories-pushes-and-status)).
+
 The token is used for the GitHub data only. It is never printed: log lines, errors and step outputs are redacted (also
 its base64 forms), and the GitHub loader never puts it into an error. It is never given to git, neither as an
 argument nor in git's environment, and never sent to an image host.
