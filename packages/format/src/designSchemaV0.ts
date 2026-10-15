@@ -120,6 +120,21 @@ function layer(
 const shape = { "fill?": paint, "stroke?": paint, "strokeWidth?": strokeWidth };
 
 const scalar = choice(string("a string", { maxLength: 10_000 }), number({}), boolean());
+const propList = array("a list of prop values", scalar, { maxItems: 1000 });
+const propValue = choice(
+  string("a string", { maxLength: 10_000 }),
+  number({}),
+  boolean(),
+  propList,
+);
+
+function scalarProp(type: string): ObjectNode {
+  return object(`a ${type} prop definition`, {
+    type: literal(type),
+    "required?": boolean(),
+    "default?": scalar,
+  });
+}
 
 function gradient(type: string, properties: Record<string, SchemaNode>): ObjectNode {
   return object(`a ${type} gradient`, {
@@ -220,7 +235,7 @@ const defs = new Map<string, SchemaNode>([
         ref: id,
         "width?": size,
         "height?": size,
-        "props?": record("component props", idKey, scalar),
+        "props?": record("component props", idKey, propValue),
       }),
     ]),
   ],
@@ -316,11 +331,27 @@ const defs = new Map<string, SchemaNode>([
   ],
   [
     "ComponentProp",
-    object("a component prop definition", {
-      type: enumOf(["string", "number", "boolean", "color"]),
-      "required?": boolean(),
-      "default?": scalar,
-    }),
+    union("a component prop definition", [
+      ...["string", "number", "boolean", "color"].map(scalarProp),
+      object("an enum prop definition", {
+        type: literal("enum"),
+        values: array(
+          "a list of allowed values",
+          string("an allowed value", { minLength: 1, maxLength: 128 }),
+          {
+            minItems: 1,
+            maxItems: 64,
+          },
+        ),
+        "required?": boolean(),
+        "default?": string("an allowed value", { maxLength: 128 }),
+      }),
+      object("an array prop definition", {
+        type: literal("array"),
+        "required?": boolean(),
+        "default?": propList,
+      }),
+    ]),
   ],
 ]);
 

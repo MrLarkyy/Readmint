@@ -207,11 +207,21 @@ folder: see [asset-loading.md](asset-loading.md).
 ## Components
 
 A component definition is `{ description?, width?, height?, props?, layers }` (`width`/`height` are literal sizes).
-`props` maps a prop name to `{ type: "string" | "number" | "boolean" | "color", required?: boolean, default? }`.
+`props` maps a prop name to `{ type: "string" | "number" | "boolean" | "color", required?: boolean, default? }`, to
+`{ type: "enum", values, required?, default? }` or to `{ type: "array", required?, default? }`.
 Component layers read their props as bindings (`{{props.label}}`).
 
+An `enum` prop takes a string that is one of `values` (1 to 64 strings of 1 to 128 characters); a `default` not listed
+is an `enum` issue at `.../default`. An `array` prop takes a list: a literal list of at most 1000 strings, numbers or
+booleans (more is `count`, an object item is `type`), or a binding yielding any array, for example a list of data
+objects. A `repeat: { each: "{{ props.days }}" }` in the component iterates it, under the usual repeat limits. The items of a literal list are not evaluated (`["{{ user.login }}"]` holds the braces
+as text). A prop `default` is a literal value, never evaluated: a binding-shaped default of an `enum`, `array`, `number`
+or `boolean` prop is an issue (`enum` or `type` at `.../default`), and the braces in a `string` or `color` default are
+literal text.
+
 A `component` layer must reference an existing component, may set only declared props, must set every required one,
-and each value must match the declared type (a `color` is a colour) unless it is a binding. Components may use other
+and each value must match the declared type (a `color` is a colour) unless it is a binding; a literal value an `enum`
+prop does not list is an `enum` issue at the prop. Components may use other
 components but never themselves, directly or through others.
 
 ## Animation
@@ -350,27 +360,27 @@ interface DesignIssue {
 - A message quotes at most 64 characters of an input value, JSON-escaped. A property name longer than 64 characters or
   holding control, bidi or line-separator characters is never put into a path: the issue is reported at its parent.
 
-| code                  | meaning                                                                           |
-| --------------------- | --------------------------------------------------------------------------------- |
-| `parse`               | invalid JSON or YAML syntax, an unknown YAML tag, several YAML documents          |
-| `duplicate-key`       | the same key twice in one object                                                  |
-| `too-large`           | source too long, too many values or YAML aliases                                  |
-| `too-deep`            | nesting over the limit (also a reference cycle in an editor object)               |
-| `unsupported-version` | `version` newer than this reader, or negative                                     |
-| `migration-missing`   | no migration step from the document's version                                     |
-| `missing-property`    | a required property is absent (`animation` when a layer has `animate`)            |
-| `unknown-property`    | a property the format does not define, or a prop the component does not declare   |
-| `type`                | wrong kind of value (string instead of number, not finite, not an integer)        |
-| `enum`                | not one of the allowed words, including an unknown layer `type`                   |
-| `pattern`             | a string in the wrong shape (colour, id, asset source, path data, arcs in `draw`) |
-| `range`               | a number outside its range, or a keyframe offset below the one before it          |
-| `length`              | a string too long or empty                                                        |
-| `count`               | an array with too few or too many items                                           |
-| `duplicate-id`        | a layer id used twice in one scope                                                |
-| `unknown-reference`   | `style`, `font`, `asset` or `ref` names nothing in the document                   |
-| `component-cycle`     | components that contain themselves; reported at the `ref` closing the loop        |
-| `missing-font`        | a text with neither `font` nor a style with a font                                |
-| `too-many-layers`     | the document expands to more than 10000 layers                                    |
+| code                  | meaning                                                                                               |
+| --------------------- | ----------------------------------------------------------------------------------------------------- |
+| `parse`               | invalid JSON or YAML syntax, an unknown YAML tag, several YAML documents                              |
+| `duplicate-key`       | the same key twice in one object                                                                      |
+| `too-large`           | source too long, too many values or YAML aliases                                                      |
+| `too-deep`            | nesting over the limit (also a reference cycle in an editor object)                                   |
+| `unsupported-version` | `version` newer than this reader, or negative                                                         |
+| `migration-missing`   | no migration step from the document's version                                                         |
+| `missing-property`    | a required property is absent (`animation` when a layer has `animate`)                                |
+| `unknown-property`    | a property the format does not define, or a prop the component does not declare                       |
+| `type`                | wrong kind of value (string instead of number, not finite, not an integer)                            |
+| `enum`                | not one of the allowed words, including an unknown layer `type` or a value an enum prop does not list |
+| `pattern`             | a string in the wrong shape (colour, id, asset source, path data, arcs in `draw`)                     |
+| `range`               | a number outside its range, or a keyframe offset below the one before it                              |
+| `length`              | a string too long or empty                                                                            |
+| `count`               | an array (a prop list too) with too few or too many items                                             |
+| `duplicate-id`        | a layer id used twice in one scope                                                                    |
+| `unknown-reference`   | `style`, `font`, `asset` or `ref` names nothing in the document                                       |
+| `component-cycle`     | components that contain themselves; reported at the `ref` closing the loop                            |
+| `missing-font`        | a text with neither `font` nor a style with a font                                                    |
+| `too-many-layers`     | the document expands to more than 10000 layers                                                        |
 
 ## YAML
 
