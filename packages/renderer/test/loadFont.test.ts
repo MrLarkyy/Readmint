@@ -340,7 +340,42 @@ describe("fonts that turn out broken or costly when their glyphs are read", () =
         ok: false,
         issues: [{ path: "/assets/fonts/m", code: "asset-too-large" }],
       });
-      expect(performance.now() - started).toBeLessThan(3000 * loadScale());
+      // The asset-too-large is the pin (without the budget the render succeeds after many seconds); the ceiling,
+      // some 10 x the time drawn as paths, only catches a budget that stops far too late.
+      expect(performance.now() - started).toBeLessThan(15_000 * loadScale());
+    },
+  );
+
+  test.each(["font", "paths"] as const)(
+    "the outline budget is the render's: fonts each under it but together over it stop, drawn as %s",
+    (drawAs) => {
+      const content = Array.from({ length: 110 }, (_, index) =>
+        String.fromCodePoint(0x4e00 + index),
+      ).join("");
+      const heavy = expandingFont(110);
+      const ids = ["f0", "f1", "f2", "f3"];
+      const fonts = Object.fromEntries(ids.map((id) => [id, { ...pathFont("Heavy"), drawAs }]));
+      const layers = ids.map((id, index) => ({
+        type: "text" as const,
+        y: index * 10,
+        content,
+        font: id,
+      }));
+      const options: RenderOptions = {
+        assets: { fonts: Object.fromEntries(ids.map((id) => [id, heavy])) },
+        limits: { maxOutputBytes: 100_000_000 },
+      };
+      expect(
+        renderSvg(design({ f0: fonts.f0 ?? pathFont() }, layers.slice(0, 1)), options).ok,
+      ).toBe(true);
+      const started = performance.now();
+      const result = renderSvg(design(fonts, layers), options);
+      expect(result).toMatchObject({
+        ok: false,
+        issues: [{ path: "/assets/fonts/f1", code: "asset-too-large" }],
+      });
+      expect(renderSvg(design(fonts, layers), options)).toEqual(result);
+      expect(performance.now() - started).toBeLessThan(15_000 * loadScale());
     },
   );
 

@@ -162,10 +162,11 @@ Drawn in document order, first at the back. Layer `id` and `name` are not emitte
   deep with at most 256 components and 65535 points; CFF charstrings call subroutines at most 10 deep, keep at most 48
   operands and run at most 20000 operations per glyph; kerning visits each `kern` feature once, reads at most 4096
   lookup entries and uses at most 64 lookups of 64 subtables. Outlines, kerning and subsets are read on first use: a
-  fault found then is `asset-format` at the asset's `src`. One font's outline work in one render (charstring
-  operations, TrueType points), shared by text drawn as paths and by flattening its CFF subset, is at most 4000000;
-  past it, and when a subset's outlines pass four times the output budget still left while the subset is built, the
-  render fails with `asset-too-large` at the asset. A CFF font whose FontMatrix is not 1/unitsPerEm is
+  fault found then is `asset-format` at the asset's `src`. The outline work of one render, all fonts together
+  (charstring operations, TrueType points; text drawn as paths reads each glyph once, CFF subsets are flattened through
+  the same budget), is at most 4000000; the font whose outlines cross it fails the render with `asset-too-large` at
+  that asset, in the same order on every run. A subset whose outlines pass four times the output budget still left
+  while it is built fails the same way. A CFF font whose FontMatrix is not 1/unitsPerEm is
   `unsupported-font`.
 - **Behaviour changes for existing designs** (no format version step, see
   [design-format.md](design-format.md#versioning)): pair kerning is on by default, so text is placed slightly

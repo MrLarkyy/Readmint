@@ -1,6 +1,6 @@
 import type { Design } from "@readmint/format";
 import type { ExprResult, Template } from "@readmint/expr";
-import type { GlyphOutline } from "@readmint/fonts";
+import { OutlineBudget, type GlyphOutline } from "@readmint/fonts";
 import { AnimationCss } from "./AnimationCss.js";
 import type { FontUse } from "./FontUse.js";
 import type { LoadedFont } from "./loadFont.js";
@@ -25,6 +25,11 @@ export class RenderContext {
   readonly fontUse = new Map<string, FontUse>();
   /** Glyph outlines by asset id and glyph, read once per render for text drawn as paths. */
   readonly outlines = new Map<string, GlyphOutline>();
+  /**
+   * Outline work of the whole render, every font together: paths (each glyph once, then cached) and CFF subsets.
+   * Per font it would grow with the number of font assets.
+   */
+  readonly outlineBudget = new OutlineBudget();
   readonly missingGlyphs = new MissingGlyphs();
   /** Loaded images by asset id, in first-use order. */
   readonly images = new Map<string, LoadedImage>();

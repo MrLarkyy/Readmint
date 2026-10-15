@@ -1,15 +1,16 @@
 import { FontRefused } from "./FontRefused.js";
 
 /**
- * Outline work of one font in one render: some 200 glyphs at the per-glyph charstring cap, far more than any real
- * font needs for a README graphic, and well under a second.
+ * Outline work of one render, all its fonts together: some 200 glyphs at the per-glyph charstring cap, far more than
+ * any real README graphic needs, and well under a second.
  */
 export const defaultOutlineOperations = 4_000_000;
 
 /**
- * Work one font may cost while its outlines are read (charstring operations; points of TrueType glyphs), shared by
- * everything that reads them: drawing text as paths and flattening a CFF subset. A crafted font whose glyphs expand
- * through subroutines stops here with `too-large`, the same way on every run.
+ * Work the outlines of a render may cost (charstring operations; points of TrueType glyphs), shared by every font
+ * and by everything that reads outlines: text drawn as paths and flattened CFF subsets. A crafted font whose glyphs
+ * expand through subroutines, or many fonts together, stop here with `too-large`: the reader that crosses the limit
+ * fails, in the same order on every run.
  */
 export class OutlineBudget {
   private remaining: number;
@@ -23,7 +24,7 @@ export class OutlineBudget {
     if (this.remaining < 0) {
       throw new FontRefused(
         "too-large",
-        `its outlines take more than ${String(this.limit)} operations in one render`,
+        `reading its outlines brings the render past ${String(this.limit)} outline operations (all fonts together)`,
       );
     }
   }
