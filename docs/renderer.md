@@ -166,8 +166,11 @@ Drawn in document order, first at the back. Layer `id` and `name` are not emitte
   (charstring operations, TrueType points; text drawn as paths reads each glyph once, CFF subsets are flattened through
   the same budget), is at most 4000000; the font whose outlines cross it fails the render with `asset-too-large` at
   that asset, in the same order on every run. A subset whose outlines pass four times the output budget still left
-  while it is built fails the same way. A CFF font whose FontMatrix is not 1/unitsPerEm is
-  `unsupported-font`.
+  while it is built fails the same way, as does the subset that brings all subsets of the render past four times
+  `maxOutputBytes` uncompressed. The fonts of a render decode to at most `maxTotalFontBytes` together (see Limits): an
+  asset's source is checked against what is left before it decodes, and assets with the same source (the same
+  supplied bytes, or the same data URI) decode it once; the CLI and the Action read a path used by several assets
+  once. A CFF font whose FontMatrix is not 1/unitsPerEm is `unsupported-font`.
 - **Behaviour changes for existing designs** (no format version step, see
   [design-format.md](design-format.md#versioning)): pair kerning is on by default, so text is placed slightly
   differently than before (`kerning: false` per font asset turns it off); `font-not-embeddable` is a warning (the text
@@ -287,17 +290,18 @@ the canvas background and the layers.
 
 `RenderLimits` (override per call with `limits`):
 
-| limit                   | default | why                                                                                                                  | issue                |
-| ----------------------- | ------- | -------------------------------------------------------------------------------------------------------------------- | -------------------- |
-| `maxOutputBytes`        | 5242880 | GitHub's camo proxy refuses larger images                                                                            | `too-large`          |
-| `maxImageBytes`         | 4194304 | one image, decoded size, checked before decoding                                                                     | `asset-too-large`    |
-| `maxFontBytes`          | 4194304 | one font, decoded size, checked before decoding                                                                      | `asset-too-large`    |
-| `maxImageSide`          | 8192    | pixels per side; keeps the raster path within memory                                                                 | `asset-too-large`    |
-| `maxAnimationFrames`    | 1000    | frames of an animated image                                                                                          | `asset-too-large`    |
-| `maxTextLength`         | 10000   | characters of a text after its placeholders are filled                                                               | `too-large`          |
-| `maxExpressionSteps`    | 5000000 | expression work of the whole render (under a second of the costliest string filters), including copies an `if` drops | `binding` (`budget`) |
-| `maxRepeatCopies`       | 100000  | copies made by every `repeat` of the render together, including copies an `if` or `visible: false` drops             | `too-large`          |
-| `maxAnimationKeyframes` | 100000  | keyframes of every animation track of the render together, every repeat copy counted, in a frame too                 | `too-large`          |
+| limit                   | default  | why                                                                                                                                       | issue                |
+| ----------------------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------- | -------------------- |
+| `maxOutputBytes`        | 5242880  | GitHub's camo proxy refuses larger images                                                                                                 | `too-large`          |
+| `maxImageBytes`         | 4194304  | one image, decoded size, checked before decoding                                                                                          | `asset-too-large`    |
+| `maxFontBytes`          | 4194304  | one font, decoded size, checked before decoding                                                                                           | `asset-too-large`    |
+| `maxTotalFontBytes`     | 16777216 | every font of the render together, decoded size (WOFF/WOFF2 as declared, before inflating); one source used by several assets counts once | `asset-too-large`    |
+| `maxImageSide`          | 8192     | pixels per side; keeps the raster path within memory                                                                                      | `asset-too-large`    |
+| `maxAnimationFrames`    | 1000     | frames of an animated image                                                                                                               | `asset-too-large`    |
+| `maxTextLength`         | 10000    | characters of a text after its placeholders are filled                                                                                    | `too-large`          |
+| `maxExpressionSteps`    | 5000000  | expression work of the whole render (under a second of the costliest string filters), including copies an `if` drops                      | `binding` (`budget`) |
+| `maxRepeatCopies`       | 100000   | copies made by every `repeat` of the render together, including copies an `if` or `visible: false` drops                                  | `too-large`          |
+| `maxAnimationKeyframes` | 100000   | keyframes of every animation track of the render together, every repeat copy counted, in a frame too                                      | `too-large`          |
 
 The output size is counted while the SVG is written (a shared definition once, when its first use writes it), and
 every layer reserves the least markup of its kind before it is built (a path also its data, a text its filled-in

@@ -22,6 +22,8 @@ export interface SfntFont {
   /** Typographic family (name 16), else the family (name 1); empty when the font names none. */
   readonly familyName: string;
   readonly numGlyphs: number;
+  /** Bytes of the sfnt the font is read from: the file itself, or what its WOFF / WOFF2 decoded to. */
+  readonly sfntBytes: number;
   /** Glyph of a Unicode code point; 0 (.notdef) when the font has none. */
   glyphFor(codePoint: number): number;
   /** Advance width of a glyph in font units. */

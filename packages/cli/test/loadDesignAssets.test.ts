@@ -91,3 +91,16 @@ test("a design folder that is gone is an input error without its absolute path",
   expect(error.exitCode).toBe(ExitCode.input);
   expect(error.message).toBe("d/design.json: the design folder cannot be opened (ENOENT)");
 });
+
+test("font assets with the same path share one read, so the renderer decodes the font once", async () => {
+  await tree.file("d/f.ttf", "font bytes");
+  const assets = await loadDesignAssets(
+    designFile({
+      fonts: {
+        a: { family: "F", src: "f.ttf", licence },
+        b: { family: "F", src: "f.ttf", licence },
+      },
+    }),
+  );
+  expect(assets.fonts?.["a"]).toBe(assets.fonts?.["b"]);
+});

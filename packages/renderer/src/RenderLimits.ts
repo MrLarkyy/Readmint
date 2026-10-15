@@ -6,6 +6,11 @@ export interface RenderLimits {
   readonly maxImageBytes: number;
   /** One font asset, decoded, checked before decoding. */
   readonly maxFontBytes: number;
+  /**
+   * Every font asset of the render together, decoded (WOFF and WOFF2 by the sizes they declare, checked before
+   * anything inflates); assets with identical sources are decoded and counted once.
+   */
+  readonly maxTotalFontBytes: number;
   /** Pixels per image side. */
   readonly maxImageSide: number;
   /** Frames of an animated GIF, APNG or WebP. */
@@ -25,6 +30,8 @@ export const RenderLimits: RenderLimits = Object.freeze({
   maxOutputBytes: 5_242_880,
   maxImageBytes: 4_194_304,
   maxFontBytes: 4_194_304,
+  /** Four fonts at the per-font limit. */
+  maxTotalFontBytes: 16_777_216,
   /** Keeps the raster path (RM-15) within memory. */
   maxImageSide: 8192,
   maxAnimationFrames: 1000,

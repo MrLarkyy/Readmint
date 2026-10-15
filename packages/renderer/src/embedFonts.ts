@@ -16,12 +16,12 @@ export function embedFonts(context: RenderContext): void {
     const loaded = use.font;
     if (use.embedded.size === 0 || loaded.drawAs !== "font") continue;
     // zlib rarely shrinks font outlines past a quarter: a subset larger than that could never fit what is left.
-    const maxBytes = context.writer.remaining * 4;
-    const woff = withFont(context, loaded, () =>
-      encodeWoff(
-        subsetFont(loaded.font, use.embedded, { budget: context.outlineBudget, maxBytes }),
-      ),
+    const maxBytes = Math.min(context.writer.remaining * 4, context.subsetBytesLeft);
+    const sfnt = withFont(context, loaded, () =>
+      subsetFont(loaded.font, use.embedded, { budget: context.outlineBudget, maxBytes }),
     );
+    context.subsetBytesLeft -= sfnt.length;
+    const woff = withFont(context, loaded, () => encodeWoff(sfnt));
     const dataUri = `data:font/woff;base64,${encodeBase64(woff)}`;
     use.embeddedBytes = dataUri.length;
     context.writer.style(

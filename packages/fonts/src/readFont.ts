@@ -56,6 +56,7 @@ export function readFont(
     weightClass: reader.u16(os2.offset + 4),
     familyName: readFamilyName(reader, tables.get("name")),
     numGlyphs,
+    sfntBytes: reader.length,
     glyphFor(codePoint: number): number {
       const glyph = lookup(codePoint);
       return glyph < numGlyphs ? glyph : 0;

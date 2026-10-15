@@ -1,6 +1,6 @@
 import type { Design } from "@readmint/format";
 import type { ExprResult, Template } from "@readmint/expr";
-import { OutlineBudget, type GlyphOutline } from "@readmint/fonts";
+import { OutlineBudget, type GlyphOutline, type SfntFont } from "@readmint/fonts";
 import { AnimationCss } from "./AnimationCss.js";
 import type { FontUse } from "./FontUse.js";
 import type { LoadedFont } from "./loadFont.js";
@@ -30,6 +30,21 @@ export class RenderContext {
    * Per font it would grow with the number of font assets.
    */
   readonly outlineBudget = new OutlineBudget();
+  /**
+   * Parsed fonts by source: the bytes a caller supplied (by identity) or the `src` data URI (by value), so assets
+   * sharing one source decode it once and count it once against `maxTotalFontBytes`.
+   */
+  readonly parsedFonts = new Map<
+    Uint8Array | string,
+    { font: SfntFont; mime: string | undefined }
+  >();
+  /** Decoded font bytes the render may still take (`maxTotalFontBytes`). */
+  fontBytesLeft: number;
+  /**
+   * Uncompressed bytes the font subsets of the render may still take: four times the output budget, for all subsets
+   * together (each one is also held to four times what is left of the output).
+   */
+  subsetBytesLeft: number;
   readonly missingGlyphs = new MissingGlyphs();
   /** Loaded images by asset id, in first-use order. */
   readonly images = new Map<string, LoadedImage>();
@@ -67,6 +82,8 @@ export class RenderContext {
     this.limits = mergeLimits(options.limits);
     this.assets = options.assets ?? {};
     this.writer = new SvgWriter(this.limits.maxOutputBytes);
+    this.fontBytesLeft = this.limits.maxTotalFontBytes;
+    this.subsetBytesLeft = this.limits.maxOutputBytes * 4;
     this.time = options.time;
     this.animationCss = new AnimationCss(this.writer);
   }

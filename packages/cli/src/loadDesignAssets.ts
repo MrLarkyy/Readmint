@@ -17,7 +17,9 @@ const maxBytes: Readonly<Record<AssetKind, number>> = {
 /**
  * Reads every asset of the design whose `src` is a path, used or not, through `readAsset` with the
  * renderer's per-kind byte limit; `data:` sources are left to the renderer. Fonts first, then
- * images, ids in sorted order. A refusal throws `CliError` (exit code 1) naming the asset.
+ * images, ids in sorted order. Assets of one kind with the same `src` share one read (the same
+ * bytes, so the renderer decodes a font once). A refusal throws `CliError` (exit code 1) naming
+ * the asset.
  */
 export async function loadDesignAssets(file: DesignFile): Promise<RenderAssets> {
   return {
@@ -29,11 +31,15 @@ export async function loadDesignAssets(file: DesignFile): Promise<RenderAssets> 
 async function loadKind(file: DesignFile, kind: AssetKind): Promise<Record<string, Uint8Array>> {
   const declared = file.design.assets?.[kind] ?? {};
   const entries: [string, Uint8Array][] = [];
+  const read = new Map<string, Uint8Array>();
   for (const id of Object.keys(declared).sort()) {
     const src = declared[id]?.src;
     if (src === undefined || src.startsWith("data:")) continue;
     try {
-      entries.push([id, await readAsset(file.designDir, src, { maxBytes: maxBytes[kind] })]);
+      const bytes =
+        read.get(src) ?? (await readAsset(file.designDir, src, { maxBytes: maxBytes[kind] }));
+      read.set(src, bytes);
+      entries.push([id, bytes]);
     } catch (error) {
       if (!(error instanceof AssetPathError)) throw folderError(file, error);
       const at = `/assets/${kind}/${id.replaceAll("~", "~0").replaceAll("/", "~1")}/src`;

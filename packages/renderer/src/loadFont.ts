@@ -86,20 +86,7 @@ export function loadFont(context: RenderContext, assetId: string, asset: FontAss
   if (cached !== undefined) return cached;
   const assetPath = pointer("/assets/fonts", assetId);
   const name = echo(assetId);
-  const { bytes, mime } = fontBytes(context, assetId, asset, assetPath);
-  const parsed = parseSfnt(bytes, { maxBytes: context.limits.maxFontBytes });
-  if (!parsed.ok) {
-    context.fail(
-      parsed.kind === "too-large" ? assetPath : pointer(assetPath, "src"),
-      parsed.kind === "unsupported"
-        ? "unsupported-font"
-        : parsed.kind === "too-large"
-          ? "asset-too-large"
-          : "asset-format",
-      `font asset ${name}: ${parsed.message}`,
-    );
-  }
-  const font = parsed.font;
+  const { font, mime } = readFontOnce(context, assetId, asset, assetPath);
   if (mime !== undefined && mime !== `font/${font.container}`) {
     context.fail(
       pointer(assetPath, "src"),
@@ -125,6 +112,51 @@ export function loadFont(context: RenderContext, assetId: string, asset: FontAss
   };
   context.fonts.set(assetId, loaded);
   return loaded;
+}
+
+/**
+ * The parsed font of an asset's source, read once per render per source. A new source is charged against
+ * `maxTotalFontBytes` before it decodes (its declared size: the parse may decode at most what is left) and by what it
+ * decoded to; the asset that crosses the allowance fails with `asset-too-large`, in the same order on every run.
+ */
+function readFontOnce(
+  context: RenderContext,
+  assetId: string,
+  asset: FontAsset,
+  assetPath: string,
+): { font: SfntFont; mime: string | undefined } {
+  const supplied = ownEntry(context.assets.fonts, assetId);
+  const key = supplied instanceof Uint8Array ? supplied : asset.src;
+  const known = context.parsedFonts.get(key);
+  if (known !== undefined) return known;
+  const name = echo(assetId);
+  const { bytes, mime } = fontBytes(context, assetId, asset, assetPath);
+  const left = context.fontBytesLeft;
+  const total = () =>
+    context.fail(
+      assetPath,
+      "asset-too-large",
+      `font asset ${name} brings the fonts of this render past ${String(context.limits.maxTotalFontBytes)} decoded bytes together (maxTotalFontBytes); assets with the same source count once`,
+    );
+  if (bytes.length > left) total();
+  const parsed = parseSfnt(bytes, { maxBytes: Math.min(context.limits.maxFontBytes, left) });
+  if (!parsed.ok) {
+    if (parsed.kind === "too-large" && left < context.limits.maxFontBytes) total();
+    context.fail(
+      parsed.kind === "too-large" ? assetPath : pointer(assetPath, "src"),
+      parsed.kind === "unsupported"
+        ? "unsupported-font"
+        : parsed.kind === "too-large"
+          ? "asset-too-large"
+          : "asset-format",
+      `font asset ${name}: ${parsed.message}`,
+    );
+  }
+  if (parsed.font.sfntBytes > left) total();
+  context.fontBytesLeft = left - parsed.font.sfntBytes;
+  const read = { font: parsed.font, mime };
+  context.parsedFonts.set(key, read);
+  return read;
 }
 
 /** Fallback ids of a font asset; the schema allows 1 to 8, an unvalidated design gets the same bound. */
