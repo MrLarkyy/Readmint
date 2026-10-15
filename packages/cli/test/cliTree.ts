@@ -1,7 +1,9 @@
 import { readFileSync } from "node:fs";
 import { mkdir, mkdtemp, rename, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
+import { setTimeout as sleep } from "node:timers/promises";
 import { dirname, join } from "node:path";
+import { errnoCode } from "../src/errnoCode.js";
 import { type CliIo, runCli } from "../src/index.js";
 
 /** A PNG of the renderer's own test assets (24x16, own-made). */
@@ -46,6 +48,23 @@ export interface CliTree {
 
 let writes = 0;
 
+/** Windows refuses a rename for a moment while another handle (the preview's poll, a virus scanner) touches the file. */
+const busy = new Set(["EPERM", "EBUSY", "EACCES"]);
+const renameAttempts = 6;
+
+/** `rename`, retried a few times with a short, growing pause when Windows reports the target busy. */
+async function renameRetrying(from: string, to: string): Promise<void> {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      await rename(from, to);
+      return;
+    } catch (error) {
+      if (attempt >= renameAttempts || !busy.has(errnoCode(error) ?? "")) throw error;
+      await sleep(10 * 2 ** attempt);
+    }
+  }
+}
+
 export async function makeCliTree(): Promise<CliTree> {
   const root = await mkdtemp(join(tmpdir(), "readmint-cli-"));
   return {
@@ -59,7 +78,7 @@ export async function makeCliTree(): Promise<CliTree> {
           : JSON.stringify(content);
       const temporary = `${path}.${String(process.pid)}.${String(++writes)}.tmp`;
       await writeFile(temporary, data);
-      await rename(temporary, path);
+      await renameRetrying(temporary, path);
       return path;
     },
     async run(argv, io = {}) {

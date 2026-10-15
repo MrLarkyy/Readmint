@@ -171,6 +171,11 @@ Drawn in document order, first at the back. Layer `id` and `name` are not emitte
   asset's source is checked against what is left before it decodes, and assets with the same source (the same
   supplied bytes, or the same data URI) decode it once; the CLI and the Action read a path used by several assets
   once. A CFF font whose FontMatrix is not 1/unitsPerEm is `unsupported-font`.
+- **`@readmint/fonts`**: `parseSfnt(bytes, { maxBytes? })` reads TTF, OTF, WOFF and WOFF2 into an `SfntFont` (metrics,
+  `glyphFor`, `advanceOf`, `bearingOf`, `kerning`, `outline(glyph, budget?)`, `table(tag)`, `container`,
+  `outlines`, and `sfntBytes`: the size of the sfnt it was read from, decoded, which the renderer charges against
+  `maxTotalFontBytes`); `subsetFont(font, codePoints, { budget?, maxBytes? })`, `encodeWoff`, `decodeWoff`,
+  `glyphClosure`, `OutlineBudget`, and the errors `MalformedFont` and `FontRefused` (`unsupported`, `too-large`).
 - **Behaviour changes for existing designs** (no format version step, see
   [design-format.md](design-format.md#versioning)): pair kerning is on by default, so text is placed slightly
   differently than before (`kerning: false` per font asset turns it off); `font-not-embeddable` is a warning (the text
