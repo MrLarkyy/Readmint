@@ -1,6 +1,5 @@
 import { parseSfnt } from "@readmint/fonts";
-import { RenderLimits } from "@readmint/renderer";
-import { decodeBase64 } from "./base64.js";
+import { decodeBase64, RenderLimits } from "@readmint/renderer";
 import { unescapeCss } from "./cssText.js";
 import { woffFont } from "./woffFont.js";
 import { RasterError } from "./RasterError.js";

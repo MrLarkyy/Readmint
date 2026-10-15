@@ -152,11 +152,12 @@ test("the built app exports the CLI's PNG and WebP from its raster worker withou
 test("the built app ships both WebAssembly files and the licence notices they need", async () => {
   const assets = await readdir(join(outDir, "assets"));
   expect(assets.filter((name) => name.endsWith(".wasm"))).toHaveLength(2);
-  expect((await readdir(join(outDir, "licences"))).sort()).toEqual([
-    "libwebp-COPYING",
-    "libwebp-PATENTS",
-    "resvg-wasm-crates.txt",
-    "resvg-wasm.LICENSE",
-    "wasm-webp.LICENSE",
-  ]);
+  expect(await readdir(join(outDir, "licences"))).toEqual(["THIRD-PARTY.txt"]);
+  const notices = await readFile(join(outDir, "licences", "THIRD-PARTY.txt"), "utf8");
+  for (const name of ["fflate", "gifenc", "yaml", "@resvg/resvg-wasm", "wasm-webp"]) {
+    expect(notices, name).toContain(`Package: ${name}@`);
+  }
+  // The wasm-only notices: the Rust crates in resvg.wasm, libwebp's copyright and patent grant.
+  expect(notices).toContain("Mozilla Public License");
+  expect(notices).toContain("Additional IP Rights Grant");
 });

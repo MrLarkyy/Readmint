@@ -167,7 +167,7 @@ page's main thread. A worker that serves one export and is then terminated also 
 objects resvg-wasm leaks on a failed drawing (above). The editor does exactly that
 ([editor.md](editor.md#raster-export)).
 
-Base64 in the SVG (image and font data URIs) is read strictly: standard alphabet, padded, nothing else. Malformed
+Base64 in the SVG (image and font data URIs) is read strictly with the renderer's loop-based codec (any size the renderer accepts): standard alphabet, padded, nothing else. Malformed
 base64 is a `raster-image` or `raster-font` error naming the part, never a silently shortened file.
 
 The same bytes in Node and in Chromium are pinned: `packages/raster/test/browserParity.ts` holds the SHA-256 of a
@@ -191,5 +191,6 @@ text in its banner, plus the libwebp notice and patent grant for wasm-webp, and 
 licence file) the MPL-2.0 text and the list of Rust crates in its WebAssembly with their licences
 (`packages/action/scripts/licences/`).
 
-The editor app ships both WebAssembly files as separate assets and the same texts, with the MIT licence of wasm-webp,
-in its `licences/` folder (the app build copies them from `packages/action/scripts/licences/`).
+The editor app ships both WebAssembly files as separate assets and, in `licences/THIRD-PARTY.txt`, the licence texts of
+every npm package it bundles (fflate, gifenc and yaml among them) with the notices above, made by the script that
+makes the Action bundle's banner.

@@ -1,5 +1,7 @@
 import type { Design } from "@readmint/format";
 import { renderSvg } from "@readmint/renderer";
+import pattern from "../../renderer/test/assets/pattern.png?inline";
+import tall from "../../renderer/test/assets/tall.webp?inline";
 import font from "../../renderer/test/fonts/Montserrat-Medium.ttf?inline";
 import type { RasterFormat } from "../src/RasterFormat.js";
 import type { RasterInput } from "../src/RasterInput.js";
@@ -40,6 +42,18 @@ const text: Design = {
     },
   ],
 };
+
+function pictureDesign(src: string): Design {
+  return {
+    version: 0,
+    canvas: { width: 32, height: 24, background: "#f6f8fa" },
+    assets: { images: { picture: { src } } },
+    layers: [{ type: "image", asset: "picture", x: 4, y: 4, width: 24, height: 16 }],
+  };
+}
+
+const pngImage = pictureDesign(pattern);
+const webpImage = pictureDesign(tall);
 
 const loop: Design = {
   version: 0,
@@ -83,6 +97,8 @@ export const parityCases: readonly ParityCase[] = [
   { name: "text", design: text, format: "png" },
   { name: "text", design: text, format: "webp" },
   { name: "loop", design: loop, format: "webp" },
+  { name: "image-png", design: pngImage, format: "png" },
+  { name: "image-webp", design: webpImage, format: "png" },
 ];
 
 /**
@@ -94,6 +110,8 @@ export const parityPins: Readonly<Record<string, string>> = {
   "shapes.webp": "2d64686e065bcdf5c470c793c5d0aa844ecd8bd624e81202f45c7b35b04cb5db",
   "text.png": "c4b41334149956a65e8b2d13d239cfda183fae9899ad5f240391fd6af698efef",
   "text.webp": "6a0651113a23811f26913825e4cffe0b1720a51bf05e916089d4c40918181f13",
+  "image-png.png": "a23070b974339260462aa8a7ba44760a8f644bbfc66b75aca058446bf3bc52da",
+  "image-webp.png": "7359fa4645e6160c3666122429dc241e0a4f78123b6b65a0332f3d9a4e0ac68c",
   "loop.webp": "db864fbe90c5b8121598ba4f5509fc8cee0fdbdbeea2d5c004414a3c359a8734",
 };
 

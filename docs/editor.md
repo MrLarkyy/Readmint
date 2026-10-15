@@ -135,7 +135,9 @@ worker (budget 250 kB gzip) and the raster worker, which also holds the rasteriz
 budget 230 kB). The two WebAssembly files (resvg 2.5 MB, libwebp 0.5 MB) are separate assets, never inlined, fetched
 only by a raster export. A test bundles the app and checks the budgets, which chunk holds what, that the rasterizer is
 in the raster worker alone, and that the editor pins the WebAssembly packages to the versions `@readmint/raster` pins.
-The app build also writes the licence texts of the WebAssembly files to `licences/`.
+The app build also writes `licences/THIRD-PARTY.txt`: the name, version, licence and licence texts of every npm
+package bundled into the page or a worker (fflate, gifenc, yaml, the font and WebAssembly packages), made by the
+same script as the Action bundle's banner, with the notices of the WebAssembly code (resvg's Rust crates, libwebp).
 
 ## API
 

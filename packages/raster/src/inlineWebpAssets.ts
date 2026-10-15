@@ -1,5 +1,4 @@
-import { RenderLimits } from "@readmint/renderer";
-import { decodeBase64, encodeBase64 } from "./base64.js";
+import { decodeBase64, encodeBase64, RenderLimits } from "@readmint/renderer";
 import { encodePng } from "./encodePng.js";
 import { OutputBudget } from "./OutputBudget.js";
 import { RasterError } from "./RasterError.js";

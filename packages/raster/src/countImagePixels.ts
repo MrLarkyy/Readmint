@@ -1,5 +1,4 @@
-import { RenderLimits, sniffImage } from "@readmint/renderer";
-import { decodeBase64 } from "./base64.js";
+import { decodeBase64, RenderLimits, sniffImage } from "@readmint/renderer";
 import { RasterError } from "./RasterError.js";
 
 /** What drawing the images of an SVG decodes, frame after frame. */

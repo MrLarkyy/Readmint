@@ -69,7 +69,8 @@ interface Timeline {
  * with a timeline (and no `time`) becomes an animated WebP, APNG or GIF sampled at `frameRate`; a still design, one
  * frame of it, or any design as `png`, a still image (PNG for `apng`). WebP is lossless unless `quality` asks for lossy frames. Every limit that can be known in advance (side, duration, frames, total pixels) is
  * checked before the first frame is drawn, the output size while encoding; any failure is a `RasterError` and
- * nothing is returned. Same input, same bytes.
+ * nothing is returned, except a call before the rasterizer was loaded (`initRaster`), which, once the input has
+ * passed those checks, throws a plain `Error`. Same input, same bytes.
  */
 export async function exportRaster(
   input: RasterInput,

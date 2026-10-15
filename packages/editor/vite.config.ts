@@ -1,8 +1,6 @@
-import { readFileSync } from "node:fs";
-import { createRequire } from "node:module";
-import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { defineConfig, type Plugin } from "vite";
+import { licenceBanner } from "../action/scripts/licenceBanner.ts";
 
 const source = (name: string) => fileURLToPath(new URL(`../${name}/src/index.ts`, import.meta.url));
 const raster = (entry: string) => fileURLToPath(new URL(`../raster/src/${entry}`, import.meta.url));
@@ -14,41 +12,39 @@ const devConnect: Plugin = {
   transformIndexHtml: (html) => html.replace("connect-src 'none'", "connect-src 'self'"),
 };
 
-const licenceDir = fileURLToPath(new URL("../action/scripts/licences/", import.meta.url));
-const licenceFiles = [
-  "resvg-wasm.LICENSE",
-  "resvg-wasm-crates.txt",
-  "libwebp-COPYING",
-  "libwebp-PATENTS",
-];
+/** Where a bundled module comes from: every module of either build (the page's and the workers') passes through. */
+const bundledModules = new Set<string>();
+const collectModules: Plugin = {
+  name: "readmint-collect-modules",
+  apply: "build",
+  transform(_code, id) {
+    bundledModules.add(id.split("?")[0] ?? id);
+    return null;
+  },
+};
 
 /**
- * The app ships resvg and libwebp as WebAssembly, whose licences ask for their notices to travel with them: the
- * texts the Action bundle carries go to `licences/` next to the app, with the MIT licence of wasm-webp itself.
+ * The app ships npm packages (fflate, gifenc, yaml, resvg and libwebp as WebAssembly) whose licences ask for their
+ * notices to travel with them: `licences/THIRD-PARTY.txt` holds, for every npm package any bundled module comes from,
+ * its name, version, licence and the licence texts, as the Action bundle's banner does (resvg-wasm and libwebp
+ * included, whose notices that script supplies).
  */
-const wasmLicences: Plugin = {
-  name: "readmint-wasm-licences",
+const thirdPartyLicences: Plugin = {
+  name: "readmint-third-party-licences",
   apply: "build",
   generateBundle() {
-    for (const file of licenceFiles) {
-      this.emitFile({
-        type: "asset",
-        fileName: `licences/${file}`,
-        source: readFileSync(join(licenceDir, file)),
-      });
-    }
-    const webpDir = dirname(createRequire(import.meta.url).resolve("wasm-webp/package.json"));
     this.emitFile({
       type: "asset",
-      fileName: "licences/wasm-webp.LICENSE",
-      source: readFileSync(join(webpDir, "LICENSE")),
+      fileName: "licences/THIRD-PARTY.txt",
+      source: `${licenceBanner(bundledModules)}
+`,
     });
   },
 };
 
 // The app is built from the workspace sources, so it never depends on a stale `dist` of another package.
 export default defineConfig({
-  plugins: [devConnect, wasmLicences],
+  plugins: [devConnect, collectModules, thirdPartyLicences],
   resolve: {
     alias: [
       { find: /^@readmint\/raster\/browser$/u, replacement: raster("browser.ts") },
@@ -58,7 +54,7 @@ export default defineConfig({
       })),
     ],
   },
-  worker: { format: "es" },
+  worker: { format: "es", plugins: () => [collectModules] },
   // Never inlined: the WebAssembly files are fetched by the raster worker from the app's own origin.
   build: {
     outDir: "dist-app",

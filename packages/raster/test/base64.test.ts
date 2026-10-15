@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { decodeBase64, encodeBase64 } from "../src/base64.js";
+import { decodeBase64, encodeBase64 } from "@readmint/renderer";
 import { countImagePixels } from "../src/countImagePixels.js";
 import { inlineWebpAssets } from "../src/inlineWebpAssets.js";
 import { RasterError } from "../src/RasterError.js";
@@ -61,4 +61,23 @@ test("malformed base64 in an embedded font is a raster-font error", () => {
   const svg =
     "<svg><style>@font-face{font-family:A;src:url(data:font/ttf;base64,AA=A) format('truetype')}</style></svg>";
   expect(codeOf(() => rasterFonts(svg))).toBe("raster-font");
+});
+
+test("data URIs of 4.5 million characters are decoded, or refused as malformed, without a stack overflow", () => {
+  const png = Uint8Array.from(
+    Buffer.from(
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNgYGD4DwABBAEAwS2OUAAAAABJRU5ErkJggg==",
+      "base64",
+    ),
+  );
+  const bytes = new Uint8Array(3_400_000);
+  bytes.set(png);
+  const text = encodeBase64(bytes);
+  expect(text.length).toBeGreaterThanOrEqual(4_500_000);
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg"><image href="data:image/png;base64,${text}"/></svg>`;
+  expect(countImagePixels(svg, 1).pixels).toBeGreaterThan(0);
+  const font = (payload: string) =>
+    `<svg><style>@font-face{font-family:A;src:url(data:font/ttf;base64,${payload}) format('truetype')}</style></svg>`;
+  expect(codeOf(() => rasterFonts(font(text.slice(0, -1))))).toBe("raster-font");
+  expect(codeOf(() => rasterFonts(font(`${text.slice(0, -4)}AA=A`)))).toBe("raster-font");
 });
