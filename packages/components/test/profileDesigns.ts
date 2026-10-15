@@ -74,7 +74,8 @@ export function profileFontAssets(
   const assets: Record<string, Uint8Array> = {};
   for (const [id, font] of Object.entries(design.assets?.fonts ?? {})) {
     const bytes = files[font.src];
-    if (bytes === undefined) throw new Error(`font asset ${id} names ${font.src}, not in ${template}/fonts`);
+    if (bytes === undefined)
+      throw new Error(`font asset ${id} names ${font.src}, not in ${template}/fonts`);
     assets[id] = bytes;
   }
   return assets;

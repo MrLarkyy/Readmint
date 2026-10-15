@@ -22,14 +22,14 @@ export interface ProfileRepository extends GitHubRepository {
 }
 
 /** The data object the profile templates read: `github.*` plus the fields the loader will add. */
-export interface ProfileData {
+export type ProfileData = {
   readonly github: Omit<GitHubData, "repositories"> & {
     readonly repositories: readonly ProfileRepository[];
     readonly pinned: readonly ProfileRepository[];
     readonly status: { readonly emoji: string | null; readonly message: string | null };
     readonly pushes: readonly ProfilePush[];
   };
-}
+};
 
 function level(count: number): GitHubContributionLevel {
   if (count === 0) return 0;
@@ -108,10 +108,42 @@ export function sampleProfileData(): ProfileData {
   const base = sampleGitHubData().github;
   const owner = "readmint-sample";
   const pinned = [
-    repository(owner, "tinydb", "An embedded key-value store with a tiny, readable core.", 4210, 188, ["Rust", "#dea584"], 1),
-    repository(owner, "pagewright", "Static pages from plain Markdown, no config files.", 2760, 94, ["TypeScript", "#3178c6"], 2),
-    repository(owner, "gantry", "A deploy runner for small teams that run their own servers.", 1180, 41, ["Go", "#00add8"], 3),
-    repository(owner, "notebook-kit", "Helpers for reproducible analysis notebooks.", 640, 22, ["Python", "#3572a5"], 4),
+    repository(
+      owner,
+      "tinydb",
+      "An embedded key-value store with a tiny, readable core.",
+      4210,
+      188,
+      ["Rust", "#dea584"],
+      1,
+    ),
+    repository(
+      owner,
+      "pagewright",
+      "Static pages from plain Markdown, no config files.",
+      2760,
+      94,
+      ["TypeScript", "#3178c6"],
+      2,
+    ),
+    repository(
+      owner,
+      "gantry",
+      "A deploy runner for small teams that run their own servers.",
+      1180,
+      41,
+      ["Go", "#00add8"],
+      3,
+    ),
+    repository(
+      owner,
+      "notebook-kit",
+      "Helpers for reproducible analysis notebooks.",
+      640,
+      22,
+      ["Python", "#3572a5"],
+      4,
+    ),
   ];
   return {
     github: {
@@ -129,7 +161,7 @@ export function sampleProfileData(): ProfileData {
         message,
         additions: [128, 9, 342, 61, 7, 24, 1800, 95][index] ?? 0,
         deletions: [12, 9, 288, 4, 7, 0, 640, 3][index] ?? 0,
-        date: `2026-10-${String(14 - index).padStart(2, "0")}T1${index}:20:00Z`,
+        date: `2026-10-${String(14 - index).padStart(2, "0")}T1${String(index)}:20:00Z`,
       })),
       contributions: withCounts(base, (day, index) =>
         day.count === 0 && index >= 90 && index < 124 ? 1 + (index % 4) : day.count,
@@ -146,7 +178,16 @@ export function worstCaseProfileData(): ProfileData {
   const huge = 1e15;
   const week = Array.from({ length: 52 }, () => huge);
   const repositories = Array.from({ length: 6 }, (_, index) =>
-    repository(long(1024), long(1024), long(1024), huge, huge, [long(1024), "#ff00ff"], index, week),
+    repository(
+      long(1024),
+      long(1024),
+      long(1024),
+      huge,
+      huge,
+      [long(1024), "#ff00ff"],
+      index,
+      week,
+    ),
   );
   return {
     github: {
@@ -172,9 +213,9 @@ export function otherProfileData(): ProfileData {
   const base = sampleGitHubData().github;
   const pinned = sample.pinned.map((entry, index) => ({
     ...entry,
-    name: `other-${index}`,
-    nameWithOwner: `other-dev/other-${index}`,
-    description: `The ${index + 1}. project of another developer.`,
+    name: `other-${String(index)}`,
+    nameWithOwner: `other-dev/other-${String(index)}`,
+    description: `The ${String(index + 1)}. project of another developer.`,
     stars: 90 + index * 7,
     forks: 3 + index,
     weeklyCommits: entry.weeklyCommits.map((count) => (count * 2) % 17),
@@ -197,8 +238,8 @@ export function otherProfileData(): ProfileData {
       status: { emoji: null, message: "Reading papers" },
       pushes: sample.pushes.map((push, index) => ({
         ...push,
-        repository: `other-${index % 4}`,
-        message: `Other change ${index + 1}`,
+        repository: `other-${String(index % 4)}`,
+        message: `Other change ${String(index + 1)}`,
       })),
       contributions: withCounts(base, (day, index) => (index % 3 === 0 ? 0 : (day.count % 6) + 1)),
     },

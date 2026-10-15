@@ -43,8 +43,10 @@ test("each profile template folder holds a light and a dark design per section, 
         .map((entry) => entry.name)
         .sort(),
     ).toEqual(
-      [...sections.flatMap((section) => [`${section}.json`, `${section}.dark.json`]), "README.md"]
-        .sort(),
+      [
+        ...sections.flatMap((section) => [`${section}.json`, `${section}.dark.json`]),
+        "README.md",
+      ].sort(),
     );
   }
 });
@@ -53,7 +55,8 @@ test("the template lists are frozen and share no name", () => {
   expect(Object.isFrozen(calendarTemplates)).toBe(true);
   expect(Object.isFrozen(starterTemplates)).toBe(true);
   expect(Object.isFrozen(profileTemplates)).toBe(true);
-  for (const sections of Object.values(profileTemplates)) expect(Object.isFrozen(sections)).toBe(true);
+  for (const sections of Object.values(profileTemplates))
+    expect(Object.isFrozen(sections)).toBe(true);
   expect(
     starterTemplates.filter((name) => (calendarTemplates as readonly string[]).includes(name)),
   ).toEqual([]);
