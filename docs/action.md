@@ -163,8 +163,8 @@ with 2.51) loads every DLL it ships from its own directories and its optional sy
 helper, filter or credential helper you install on a Windows runner is inside that boundary: install it with its
 DLLs beside it. Linux and macOS have no current-directory library search, but `LD_LIBRARY_PATH`, `DYLD_LIBRARY_PATH` and
 `DYLD_FALLBACK_LIBRARY_PATH` entries that are empty or relative resolve against it, so the Action removes those and
-the entries inside the workspace from them; other loader inputs (such as the rpath of a helper you install) are your
-trust boundary.
+the entries inside the workspace from them (splitting `LD_LIBRARY_PATH` on `;` as well as `:`, as glibc does); other
+loader inputs (such as the rpath of a helper you install) are your trust boundary.
 
 On Windows runners git may convert line ends; a `.gitattributes` line such as `readmint/*.svg -text` keeps the SVG
 bytes as written. The Action compares with the last commit after staging, so a line-end conversion alone never

@@ -122,6 +122,25 @@ describe("runGit", { timeout: 30_000 }, () => {
     },
   );
 
+  test.skipIf(win32)(
+    "git and what it starts get LD_LIBRARY_PATH without relative, empty or workspace entries",
+    async () => {
+      const printLibraryPath = ["-c", 'alias.ldp=!echo "${LD_LIBRARY_PATH-unset}"', "ldp"];
+      const run = (libraryPath: string): ReturnType<typeof runGit> =>
+        runGit(printLibraryPath, {
+          cwd: workspace,
+          env: { ...envWithPath(process.env["PATH"] ?? ""), LD_LIBRARY_PATH: libraryPath },
+          timeoutMs: 30_000,
+        });
+      const mixed = await run(`${workspace};.;:${empty}:rel;${workspace}/lib:`);
+      expect(mixed.code).toBe(0);
+      expect(mixed.stdout.trim()).toBe(empty);
+      const dropped = await run(`.;:rel;${workspace}`);
+      expect(dropped.code).toBe(0);
+      expect(dropped.stdout.trim()).toBe("unset");
+    },
+  );
+
   test("a relative cwd is resolved against the process directory, not the git directory", async () => {
     const env = envWithPath(process.env["PATH"] ?? "");
     const init = await runGit(["init", "--quiet"], { cwd: workspace, env, timeoutMs: 30_000 });
