@@ -1,5 +1,7 @@
 import { expect, test } from "vitest";
 import { readImageFile } from "../src/index.js";
+import { colourImages } from "../../renderer/test/colourImages.js";
+import { dataUriBytes } from "./testFonts.js";
 import { testImages } from "./testImages.js";
 
 /** A small seeded generator (mulberry32): the same mutations on every run. */
@@ -45,6 +47,14 @@ test("reads the size, type and frames of every supported format", () => {
   expect(readImageFile(testImages.turnedJpeg.bytes)).toMatchObject({
     ok: true,
     info: { mime: "image/jpeg", width: 32, height: 16, orientation: 6 },
+  });
+});
+
+test("accepts an image with a Display P3 profile; the renderer removes the profile when it inlines it", () => {
+  const p3 = colourImages.find((row) => row.name === "JPEG with a Display P3 ICC profile");
+  expect(readImageFile(dataUriBytes(p3?.uri ?? ""))).toMatchObject({
+    ok: true,
+    info: { mime: "image/jpeg", width: 32, height: 16, colourData: [{ start: 20, end: 518 }] },
   });
 });
 

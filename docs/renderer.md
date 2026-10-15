@@ -359,10 +359,12 @@ budget?, maxBytes? })`, `encodeWoff`, `decodeWoff`, `glyphClosure`, `OutlineBudg
 ## Images
 
 - Accepted by magic bytes: PNG (APNG), JPEG, GIF, WebP. SVG and anything else is `asset-format`; a `data:` URI whose
-  type differs from the sniffed one is `asset-format`. The bytes are re-encoded as a data URI of the sniffed type.
+  type differs from the sniffed one is `asset-format`. The bytes are re-encoded as a data URI of the sniffed type,
+  with their colour-management data removed (below).
 - Checked before anything is decoded: size, then dimensions from the header, then animation frames (GIF image
   descriptors, APNG `acTL`, WebP `ANMF`). `sniffImage(bytes, maxFrames)`, exported, is that check (format, size, frames, EXIF
-  and its orientation from the header alone); raster export sizes its image decoding budget with it.
+  and its orientation, and where the colour data lies, `colourData`, from the headers alone); raster export sizes its
+  image decoding budget with it.
 - A JPEG not every output draws is `asset-format`: Chromium (libjpeg) draws nothing for the markers it rejects, and
   resvg (jpeg-decoder) draws nothing for RST0-7, TEM, DNL, DAC and a segment shorter than its two length bytes, so the
   asset is refused with the marker named instead of an empty box in one output or both. Up to the image data (SOS),
@@ -504,17 +506,33 @@ refused:` and the reason (`a JFIF segment`, `Adobe transform 1`, `component ids 
   prefix. The first EXIF block holding an Orientation entry
   decides, its first entry of type SHORT with count 1; a value outside 1-8, another type or count, an entry only in
   IFD1, or a block whose TIFF header or IFD0 lies outside it counts as 1 and is never an error.
+- Colour-management data is removed from the inlined copy, never applied: Chromium colour-manages an image by its
+  embedded ICC profile and PNG colour chunks, resvg ignores them, so the preview would draw other colours than the
+  raster output (a Display P3 or Adobe RGB profile, a P3 cICP or cHRM, gAMA 1.0 alone: 40 to 73 levels per channel
+  apart). Removed, as whole segments or chunks, where decoders read them: JPEG APP2 `ICC_PROFILE\0` segments before
+  the first SOS (every part of a split profile; another APP2, such as `MPF`, stays); PNG `iCCP`, `sRGB`, `gAMA`,
+  `cHRM`, `cICP`, `mDCV` and `cLLI` before the first `IDAT` (no decoder reads later copies); WebP `ICCP` chunks, with
+  the VP8X ICC flag (0x20) cleared, with or without a chunk, and the RIFF size lowered by the bytes removed. Every
+  other byte stays; a segment or chunk the data cuts off is not removed. The removal runs after the EXIF rewrite, whose
+  offsets it would move. A GIF's `ICCRGBG1` `012` application extension stays: Chromium draws it unapplied, as resvg
+  does. No profile is parsed and no pixel is converted, so Chromium and resvg agree for every profile: an image tagged
+  Display P3 or Adobe RGB draws its stored values as sRGB in both, less saturated than a colour-managed viewer shows
+  it; an sRGB profile, the PNG `sRGB` chunk and gAMA 45455 alone Chromium was measured to draw as untagged, so
+  removing them changes nothing. Probed with Chromium 156.0.8078.4 and resvg-wasm 2.6.2 on Pillow 12.0.0 files
+  (`packages/renderer/test/assets/colour`, provenance in `colourImages.ts`); pinned by `colourImages.browser.test.ts`
+  (renderer), `colourImages.test.ts` (raster) and the `image-colour-profiles` golden.
 - `fit`: `contain` (default) = `preserveAspectRatio="xMidYMid meet"`, `cover` = `xMidYMid slice`, `fill` = `none`.
   `alt` becomes `aria-label`.
 - An image drawn once is an `<image>` holding its data URI. Image data drawn more than once (a `repeat`, several
-  layers, or several assets with the same bytes) is written once: an `<image id="d<hash>-i<hash>">` at its own pixel size in
+  layers, or several assets whose inlined copies are the same bytes, such as two that differ only by a colour
+  profile) is written once: an `<image id="d<hash>-i<hash>">` at its own pixel size in
   `<defs>`, one `<symbol id="d<hash>-s<hash>">` per `fit` that shows it (its `viewBox` and `preserveAspectRatio` do what the
   inline image does, its viewport clips like `cover`), and per layer a `<use>` with the layer's `x y width height`,
   opacity and rotation. A `<use>` with an `alt` gets `role="img"` beside its `aria-label`, so it keeps the accessible
   name an `<image>` has. Animation classes and transform groups apply to the `<use>` as to an `<image>`. An image
   with EXIF data (JPEG APP1 `Exif`, PNG `eXIf`, WebP `EXIF`) is never shared and stays an inline `<image>` at every
   use, each carrying its own orientation transform.
-- An animated GIF, APNG or WebP is inlined as is; browsers play it, rasterizers draw the first frame. The Node golden
+- An animated GIF, APNG or WebP is inlined with every frame; browsers play it, rasterizers draw the first frame. The Node golden
   rasterizer (resvg-js 2.6.2) cannot decode WebP, so WebP has unit tests but no golden image. Raster export draws WebP
   all the same: it swaps each WebP for a PNG of the same pixels (the first frame of an animation) in its own copy of the
   SVG ([raster.md](raster.md#webp-images)); the SVG output never changes.
