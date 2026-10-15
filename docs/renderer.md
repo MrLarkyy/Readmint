@@ -128,7 +128,9 @@ Drawn in document order, first at the back. Layer `id` and `name` are not emitte
   copy read the words, not the private-use characters; a text with right-to-left glyphs carries
   `direction="ltr" unicode-bidi="bidi-override"`, so the drawer keeps the visual order written. The embedded subsets
   hold no GSUB, GPOS or `kern`, so neither Chromium nor resvg shapes, kerns, reorders, aligns or substitutes anything;
-  plain text (no glyph substituted, offset or right to left) is written exactly as before shaping existed.
+  a glyph no lookup changed and that sits on the baseline, left to right, is written as its own character, with the
+  pen positions the renderer computed before shaping existed whenever the font applies nothing but pair kerning to
+  it.
 - **Missing glyphs**: a code point neither the font nor its fallbacks have is not written, so no engine draws it (no
   browser fallback font, no `.notdef` box); it keeps the advance of the font's `.notdef` glyph, so the layout does not
   depend on it. The render warns `missing-glyph` once per font asset a text names (also when a `fontWeight` picked
@@ -205,9 +207,13 @@ Drawn in document order, first at the back. Layer `id` and `name` are not emitte
   never by time, so a hostile font fails the same way everywhere: at most 1024 lookups per table and 64 subtables per
   lookup; feature selection visits each feature once and reads at most 4096 lookup indices; an extension lookup may
   not point to another extension; a context rule or ligature names at most 64 glyphs; lookups nest at most 8 deep;
-  one shaping call spends at most max(16384, 64 x its characters) operations (a subtable tried, a glyph stepped over,
-  a rule or ligature entry compared, glyphs moved) and grows its buffer to at most max(4096, 8 x its characters)
-  glyphs; Coverage tables are read once each and together no further than the table's size. The bidi algorithm is
+  shaping one text (every word measured and every line laid out, together) spends at most max(16384, 128 x the text's
+  length) operations (a subtable tried, a glyph stepped over, a rule, ligature or lookup entry compared, glyphs
+  moved; the Devanagari probes for reph and below-base forms included, each answered once per font); one shaping call
+  grows its buffer to at most max(4096, 8 x its characters) glyphs; a mark finds its base by searching back only to
+  where the last search stopped (HarfBuzz's last base), and a cluster holds at most 32 code points, so long runs of
+  marks or conjuncts cost linear work; Coverage tables are read once each and together no further than the table's
+  size. The bidi algorithm is
   linear in the text (embedding depth 125, bracket pairs 63 deep). Outlines, layout tables and subsets are read on
   first use: a fault found then, or a cap passed, is `asset-format` at the asset's `src`. The outline work of one render, all fonts together
   (charstring operations, TrueType points; text drawn as paths reads each glyph once, CFF subsets are flattened through
@@ -222,8 +228,9 @@ Drawn in document order, first at the back. Layer `id` and `name` are not emitte
   `glyphFor`, `advanceOf`, `bearingOf`, `kerning` (the GPOS kern lookups applied to the pair by the shaping engine,
   else the `kern` table), `outline(glyph, budget?)`, `table(tag)`, `container`, `outlines`, and `sfntBytes`: the size
   of the sfnt it was read from, decoded, which the renderer charges against `maxTotalFontBytes`);
-  `shapeText(font, text, { script?, rtl?, kerning?, ligatures? })` shapes one run into a `ShapedRun` (glyphs, UTF-16
-  cluster starts, advances and x/y offsets in font units, mark flags, in visual order); `resolveLevels(text,
+  `shapeText(font, text, { script?, rtl?, kerning?, ligatures?, budget? })` shapes one run into a `ShapedRun` (glyphs, UTF-16
+  cluster starts, advances and x/y offsets in font units, mark flags, in visual order), spending a `ShapingBudget`
+  (its own, or one shared by many calls: `ShapingBudget.forText(length)`); `resolveLevels(text,
 direction?)`, `lineLevels(paragraph, start, end)` and `visualOrder(levels)` (UAX #9); `clusterStarts`, `scriptOf`,
   `isDefaultIgnorable`, `isNonSpacingMark` (from the package's own Unicode 16.0.0 tables, never from RegExp property
   escapes or `Intl`, whose Unicode version differs between Node and browsers); `subsetFont(font, codePoints, {
@@ -236,8 +243,7 @@ budget?, maxBytes? })`, `encodeWoff`, `decodeWoff`, `glyphClosure`, `OutlineBudg
   that treated `font-not-embeddable` as a failure must now look at the warnings. Since shaping (RM-44), fonts with
   `liga`, `ccmp` or `mark` draw standard ligatures (fi, fl, ...) and attach combining marks, right-to-left text is
   reordered, `align` start and end follow the paragraph direction, pair kerning skips marks its lookup ignores, and
-  font-mode text may hold private-use characters with an `aria-label`; text without ligatures, marks or right-to-left
-  characters is written byte for byte as before.
+  font-mode text may hold private-use characters with an `aria-label`. Plain text keeps its exact positions only where the font does nothing but pair kerning to it: contextual alternates (`calt`, e.g. a font that changes the colon in 12:30), `ccmp` or `locl` substitutions of plain Latin, contextual kerning (GPOS 7/8), non-Latin text now kerned under its own script tag, and the lost pair kerning across a script change (two runs) all move or change plain text too.
 - **Dependencies**: `fflate` 0.8.3 (MIT; zlib inflate for WOFF input, deflate for the subsets) and `brotli` 1.3.3
   (MIT, its decoder a port of Google's Apache-2.0 decoder; only `brotli/decompress.js`, for WOFF2 input) with `base64-js`
   1.5.1 (MIT). Both are pure ECMAScript and run the same in Node and browsers. In the Action bundle they add about

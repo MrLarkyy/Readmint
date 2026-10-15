@@ -411,7 +411,6 @@ placed slightly differently; a font whose licence or fsType forbids embedding is
 of its glyphs. Text shaping (RM-44) changed rendering again without a version step: fonts with ligature, composition
 or mark features draw standard ligatures and attach combining marks, right-to-left text is reordered by the Unicode
 Bidirectional Algorithm, `align` start and end follow each paragraph's direction (the right edge is the start of a
-right-to-left paragraph), and font-mode text may hold private-use characters with an `aria-label`; text without
-ligatures, marks or right-to-left characters renders byte for byte as before. See [renderer.md](renderer.md#text).
+right-to-left paragraph), and font-mode text may hold private-use characters with an `aria-label`. Plain text keeps its exact positions only where the font does nothing but pair kerning to it: contextual alternates (`calt`, e.g. a font that changes the colon in 12:30), `ccmp` or `locl` substitutions of plain Latin, contextual kerning (GPOS 7/8), non-Latin text now kerned under its own script tag, and the lost pair kerning across a script change (two runs) all move or change plain text too. See [renderer.md](renderer.md#text).
 The grammar inside bindings is
 the expression language v0 of `@readmint/expr`, described in [docs/expressions.md](expressions.md).
