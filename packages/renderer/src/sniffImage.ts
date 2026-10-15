@@ -242,7 +242,7 @@ function frameHeaderProblem(bytes: Bytes, offset: number, length: number): strin
  * Walks the segments up to the image data: the size from the frame header, EXIF from any APP1 `Exif` segment before
  * the scan (decoders read every marker up to it). Before the frame header the segments must follow each other
  * exactly; past it the walk reads markers as libjpeg (and so Chromium) does, so it finds the same EXIF segments, and a
- * cut-off walk just ends. A marker libjpeg rejects, before or after the frame header, refuses the image. Every step
+ * cut-off walk just ends. A marker libjpeg rejects or resvg draws empty, before or after the frame header, refuses the image. Every step
  * advances, so the walk is one pass at most.
  */
 function sniffJpeg(bytes: Bytes): SniffResult {

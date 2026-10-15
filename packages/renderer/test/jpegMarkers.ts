@@ -54,7 +54,7 @@ function patched(jpeg: Uint8Array, at: number, value: number): Uint8Array {
 const frameType = (jpeg: Uint8Array, marker: number) =>
   patched(jpeg, layout(jpeg).frame + 1, marker);
 
-/** The JPEGs the sniffer refuses, each with a marker libjpeg rejects before its image data. */
+/** The JPEGs the sniffer refuses, each with a marker libjpeg rejects or resvg draws empty before its image data. */
 export function refusedJpegs(jpeg: Uint8Array): RefusedJpeg[] {
   const { frame, frameEnd } = layout(jpeg);
   const before = (insert: readonly number[]) => inserted(jpeg, frame, insert);
@@ -125,7 +125,7 @@ export function refusedJpegs(jpeg: Uint8Array): RefusedJpeg[] {
   ];
 }
 
-/** The JPEGs the sniffer accepts at 32x16: markers libjpeg reads on. */
+/** The JPEGs the sniffer accepts at 32x16: markers both libjpeg and resvg read on. */
 export function acceptedJpegs(jpeg: Uint8Array): JpegVariant[] {
   const { frame, frameEnd } = layout(jpeg);
   return [
