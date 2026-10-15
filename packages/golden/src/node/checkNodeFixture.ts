@@ -68,7 +68,10 @@ function checkRaster<I>(
   result: FixtureCheck,
 ): void {
   const path = store.pngPath(fixture.name);
-  const png = rasterizeSvg(svg, fixture.scale ?? 1, suite.fonts);
+  const png =
+    suite.fontsFromSvg === undefined
+      ? rasterizeSvg(svg, fixture.scale ?? 1, suite.fonts)
+      : rasterizeSvg(svg, fixture.scale ?? 1, [], suite.fontsFromSvg(svg));
   const width = png.readUInt32BE(16);
   const height = png.readUInt32BE(20);
   if (width > maxPngSide || height > maxPngSide) {

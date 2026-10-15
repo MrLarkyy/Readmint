@@ -9,8 +9,8 @@ import type { TextNode } from "./RenderNode.js";
 import { withFont } from "./withFont.js";
 
 /**
- * Text drawn as one `<path>`: every glyph's outline placed where the renderer laid it out, so nothing of the font
- * is embedded and every drawer shows the same shapes. The text stays readable to assistive technology through
+ * Text drawn as one `<path>`: every glyph's outline placed where the renderer laid it out (marks off the baseline
+ * included), so nothing of the font is embedded and every drawer shows the same shapes. The text stays readable to assistive technology through
  * `aria-label`. The path data is checked against the output budget glyph by glyph while it is built, so a long text
  * stops early instead of building megabytes first.
  */
@@ -26,7 +26,7 @@ export function renderTextPaths(context: RenderContext, node: TextNode, extra = 
         const piece = pathData(
           outlineOf(context, run.font, glyph.glyph),
           node.x + glyph.x,
-          baseline,
+          glyph.y === 0 ? baseline : baseline - glyph.y,
           scale,
         );
         length += piece.length;

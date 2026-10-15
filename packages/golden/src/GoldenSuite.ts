@@ -15,6 +15,11 @@ export interface GoldenSuite<I> {
   browserTolerance?: Partial<GoldenTolerance>;
   /** TTF/OTF files resvg may draw text with; system fonts are never loaded. Required when a fixture has text. */
   fonts?: string[];
+  /**
+   * The fonts resvg draws a rendered SVG's text with, taken from the SVG itself (its embedded subsets, decoded to
+   * TTF/OTF): used instead of `fonts` when given, for text whose shaped glyphs only the subsets map.
+   */
+  fontsFromSvg?: (svg: string) => readonly Uint8Array[];
   /** Decimal places kept in normalized SVG numbers, default 3. */
   precision?: number;
 }
