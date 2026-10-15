@@ -1,6 +1,7 @@
 # Asset loading
 
-A design names its fonts and images by relative paths (see [design-format.md](design-format.md#assets)). The design
+A design names its fonts and images by relative paths (see [design-format.md](design-format.md#assets)); an image may
+instead take its URL from data ([below](#images-bound-from-data)). The design
 comes from a repository the CLI or the Action does not trust, so a path the format accepts is checked again when the
 asset is loaded: it must name a regular file inside the design's folder, on Windows as on Linux.
 
@@ -60,6 +61,48 @@ Symlinks and junctions are followed: one that resolves inside the design folder 
 `maxBytes` is required and has no default: the font and image loaders own their limits. It must be a positive safe
 integer (else `RangeError`). The size is checked on the open file before reading, and the read never takes more than
 `maxBytes + 1` bytes, so a file that grows meanwhile is still refused.
+
+## Images bound from data
+
+An image asset's `src` may be a `{{binding}}` (see [design-format.md](design-format.md#assets)), such as
+`"{{ github.avatarUrl }}"`. The renderer never fetches: `fetchBoundImages(design, data, options)` of `@readmint/cli`
+does it before the render and returns the bytes by asset id, which `loadRenderInput` hands to the renderer as
+`RenderAssets.images`. The renderer then checks and inlines them like the bytes of a file asset, so the SVG is the same
+as for a design whose asset is a file with those bytes. The CLI fetches only with `--fetch-images` (see
+[cli.md](cli.md#options)); the Action always does, in both data modes (see [action.md](action.md#data-and-the-token)).
+
+For every image asset whose `src` is a binding, used or not, ids in sorted order:
+
+- The binding is evaluated against the root of the render data (never a repeat item) and must give a string.
+- The URL must parse, be `https`, carry no user name, password or port, be at most 2048 characters, and its host name
+  (lower case and punycode, as `URL` normalises it) must be exactly on the allow-list: `defaultImageHosts`
+  (`avatars.githubusercontent.com`) unless `RemoteImageOptions.allowedHosts` says otherwise. A suffix
+  (`avatars.githubusercontent.com.evil.example`), a sub-domain or a trailing dot does not match.
+- The request is exactly `GET` with one header, `accept: image/png,image/jpeg,image/gif,image/webp`, `credentials:
+"omit"` and `redirect: "error"`: no token, cookie or other credential is ever sent to an image host, and a redirect is
+  refused rather than followed to a host nobody checked. It times out after 30 s (`RemoteImageLimits.timeoutMs`), body
+  included.
+- The body is refused once it is larger than the renderer's `maxImageBytes`, by the declared `content-length` first and
+  then by the bytes streamed, so a lying header cannot make it buffer more. The type comes from the magic bytes, never
+  the `content-type`: only PNG, JPEG, GIF and WebP pass (SVG never), within `maxImageSide` pixels per side and
+  `maxAnimationFrames` frames.
+- Each distinct URL is fetched once per `RemoteImageOptions.cache` (one per CLI run, preview rebuild or Action run),
+  at most 32 URLs per cache (`RemoteImageLimits.maxUrls`); a failed URL keeps its error, so every design binding it fails
+  the same way.
+
+The first refusal throws `RemoteImageError` with the asset id and a stable `code`; the CLI and the Action print it as
+`<design>: error <code> at /assets/images/<id>/src: <message>`. The message quotes the URL with the CLI's escape set
+and never a request header or the text of a network error.
+
+| code                | meaning                                                                                                                                                                          |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `image-binding`     | the binding does not evaluate, gives no string, or there is no data                                                                                                              |
+| `image-url`         | not a URL, not https, a user name, password or port in it, or over 2048 characters                                                                                               |
+| `image-host`        | the host is not on the allow-list                                                                                                                                                |
+| `image-fetch`       | network error, timeout, redirect, a status outside 200..299, or a 33rd URL in one run                                                                                            |
+| `image-too-large`   | over `maxImageBytes`, `maxImageSide` pixels per side or `maxAnimationFrames` frames                                                                                              |
+| `image-format`      | not a PNG, JPEG, GIF or WebP image                                                                                                                                               |
+| `image-not-fetched` | the design binds an image `src`, there is data, and fetching is off (the CLI without `--fetch-images`); without data nothing is fetched and only a render fails, `missing-asset` |
 
 ## Residual risks
 

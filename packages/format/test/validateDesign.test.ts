@@ -329,6 +329,30 @@ describe("hostile strings", () => {
   });
 });
 
+describe("an asset src bound to data (RM-28)", () => {
+  const font = (src: string) => ({ family: "F", src, licence: { embedding: "allowed" } });
+  const withImage = (src: string) => ({
+    ...base(),
+    assets: { images: { avatar: { src } } },
+    layers: [{ type: "image", asset: "avatar", width: 8, height: 8 }],
+  });
+
+  test("an image src may be a binding", () => {
+    expect(validateDesign(withImage("{{ github.avatarUrl }}")).ok).toBe(true);
+  });
+
+  test("an unclosed image src binding is refused at the src", () => {
+    expect(issuesOf(withImage("{{ github.avatarUrl")).issues).toMatchObject([
+      { path: "/assets/images/avatar/src", code: "pattern" },
+    ]);
+  });
+
+  test("a font src may not be a binding", () => {
+    const design = { ...base(), assets: { fonts: { f: font("{{ github.fontUrl }}") } } };
+    expect(issuesOf(design).issues).toMatchObject([{ path: "/assets/fonts/f/src" }]);
+  });
+});
+
 function collectPatterns(node: unknown, found: string[] = []): string[] {
   if (Array.isArray(node)) for (const item of node) collectPatterns(item, found);
   else if (typeof node === "object" && node !== null)

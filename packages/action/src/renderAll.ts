@@ -3,6 +3,7 @@ import {
   formatIssue,
   loadRenderInput,
   type OutputFormat,
+  type RemoteImageOptions,
   renderOutput,
 } from "@readmint/cli";
 import { ActionError } from "./ActionError.js";
@@ -29,13 +30,16 @@ export interface RenderAllOptions {
   readonly scale?: number;
   readonly frameRate?: number;
   readonly quality?: number;
+  /** Fetches the images designs bind to data; one cache per run, so a dark twin shares the fetch. */
+  readonly images?: RemoteImageOptions;
 }
 
 /**
  * Loads and renders every planned design and dark twin the way `readmint render` does
- * (`loadRenderInput` inside the workspace, then `renderOutput` for every planned format), so the
- * bytes are the CLI's. All or nothing: when any design or raster export fails, `ActionError`
- * (render) lists every problem and no file is returned to be written.
+ * (`loadRenderInput` inside the workspace with the run's data and bound images, then
+ * `renderOutput` for every planned format), so the bytes are the CLI's. All or nothing: when any
+ * design or raster export fails, `ActionError` (render) lists every problem and no file is
+ * returned to be written.
  */
 export async function renderAll(
   plan: readonly PlannedDesign[],
@@ -43,18 +47,22 @@ export async function renderAll(
   data: Record<string, unknown>,
   options: RenderAllOptions = {},
 ): Promise<RenderAllResult> {
+  const { images, ...outputOptions } = options;
   const files: RenderedFile[] = [];
   const warnings: string[] = [];
   const problems: string[] = [];
   for (const entry of plan) {
     for (const planned of entry.dark === undefined ? [entry.light] : [entry.light, entry.dark]) {
       try {
-        const input = await loadRenderInput({ design: planned.design }, { cwd: workspace });
+        const input = await loadRenderInput(
+          { design: planned.design },
+          { cwd: workspace, data, ...(images === undefined ? {} : { images }) },
+        );
         const name = input.file.name;
         const result = await renderOutput(
-          { ...input, data },
+          input,
           planned.outputs.map((output) => output.format),
-          options,
+          outputOptions,
         );
         if (!result.ok) {
           problems.push(...result.issues.map((issue) => formatIssue(name, issue, "error")));

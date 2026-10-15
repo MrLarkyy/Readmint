@@ -20,11 +20,13 @@ Options:
                       default 30, gif 25)
   --quality <n>       Lossy WebP at this quality, 1..100 (webp; default lossless)
   --port <n>          Preview port, 0 for any free one (preview; default 4870)
+  --fetch-images      Fetch the images whose src is bound to data (https, allowed hosts only)
   -h, --help          Show this help
   --version           Show the version
 
 An animated design becomes an animated webp, apng or gif; png is always a still image.
-The CLI reads no token and makes no network requests: data comes only from --data.
+The CLI reads no token: data comes only from --data. It makes no network requests,
+except image requests without credentials with --fetch-images.
 
 Exit codes: 0 ok, 1 invalid design or failed render, 2 usage, 3 file or port problem, 70 internal error.
 See docs/cli.md.

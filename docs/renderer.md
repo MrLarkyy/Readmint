@@ -25,8 +25,8 @@ type RenderResult =
   binding gives against the ranges of the format (`ValueRanges`, shared with the schema), not the structure.
 - The render is pure and synchronous: it reads no file, no clock, no randomness and no host locale. Asset bytes are keyed
   by asset id; the caller resolves paths (and keeps them inside the design's folder). An asset given in
-  `options.assets` wins over its `src`; a `data:` URI `src` is decoded by the renderer; a path without bytes is
-  `missing-asset`.
+  `options.assets` wins over its `src`; a `data:` URI `src` is decoded by the renderer; a path, or an image `src` bound
+  to data (`{{binding}}`, fetched by the CLI with `--fetch-images` and by the Action), without bytes is `missing-asset`.
 - The render stops at the first issue, in document order. Issues and warnings carry a JSON Pointer into the design.
 - `time` must be a number of milliseconds in [0, 86400000] (else `range` at `""`); a design without `animation` ignores
   it and renders the same bytes at any time.
@@ -353,7 +353,7 @@ keyframes before any is resolved. Fixed limits: 10000 items per `repeat` (expr, 
 | `binding`              | an expression failed to compile or evaluate, the step budget ran out, a repeat `each` is not a list or has more than 10000 items, or its `as`/`index` names are unreadable or equal (the message names expr's error code)                              |
 | `type`                 | a value of the wrong kind (also a prop of the wrong type, a list or object written into text)                                                                                                                                                          |
 | `range`                | a number outside the format's range, a keyframe offset below the one before it, a `time` outside [0, 86400000], a template `d` that gives empty, over-long (100000) or non-path data (at `d`), an arc a template `d` gives under `draw` (at the track) |
-| `missing-asset`        | an asset path without supplied bytes, or a reference to no asset                                                                                                                                                                                       |
+| `missing-asset`        | an asset path or an image `src` bound to data (`{{binding}}`) without supplied bytes, or a reference to no asset                                                                                                                                       |
 | `asset-format`         | not an accepted image or a malformed font (also one found broken when its glyphs, kerning or subset are read, or a table that decompresses past its declared size); a data URI type that does not match                                                |
 | `asset-too-large`      | over a byte, side or frame limit; a font past its outline budget or whose subset could not fit the output budget                                                                                                                                       |
 | `unsupported-font`     | a font collection (TTC, or WOFF2 with several fonts), CFF2 outlines or a CFF FontMatrix other than 1/unitsPerEm                                                                                                                                        |

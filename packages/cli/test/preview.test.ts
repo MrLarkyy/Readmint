@@ -2,7 +2,7 @@ import { request, type IncomingHttpHeaders, type IncomingMessage } from "node:ht
 import { createServer, type Server } from "node:net";
 import { setTimeout as sleep } from "node:timers/promises";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
-import { ExitCode, runCli } from "../src/index.js";
+import { ExitCode, type ImageFetch, runCli } from "../src/index.js";
 import { PreviewServer } from "../src/PreviewServer.js";
 import { boundDesign, type CliTree, makeCliTree, png } from "./cliTree.js";
 
@@ -35,10 +35,15 @@ afterEach(async () => {
   await tree.remove();
 });
 
-async function startPreview(design = "bound/design.json"): Promise<Preview> {
+async function startPreview(
+  design = "bound/design.json",
+  extra: { readonly args?: readonly string[]; readonly fetch?: ImageFetch } = {},
+): Promise<Preview> {
   const controller = new AbortController();
   let stderr = "";
-  const exit = runCli(["preview", design, "--data", "data.json", "--port", "0"], {
+  const argv = ["preview", design, "--data", "data.json", "--port", "0", ...(extra.args ?? [])];
+  const exit = runCli(argv, {
+    ...(extra.fetch === undefined ? {} : { fetch: extra.fetch }),
     stdout: () => undefined,
     stderr: (text) => {
       stderr += text;
@@ -372,4 +377,65 @@ describe("resources", () => {
     // libuv releases a closed handle on a later turn of the loop.
     await until(() => servers() === before, 2000);
   });
+});
+
+test("--fetch-images serves the bound image inlined (RM-28)", async () => {
+  const avatar = "https://avatars.githubusercontent.com/u/1?v=4";
+  await tree.file("avatar.json", {
+    version: 0,
+    canvas: { width: 20, height: 20 },
+    assets: { images: { avatar: { src: "{{ github.avatarUrl }}" } } },
+    layers: [{ type: "image", asset: "avatar", width: 16, height: 16 }],
+  });
+  await tree.file("data.json", { github: { avatarUrl: avatar } });
+  const urls: string[] = [];
+  const { port } = await startPreview("avatar.json", {
+    args: ["--fetch-images"],
+    fetch: (url) => {
+      urls.push(url);
+      return Promise.resolve(new Response(new Uint8Array(png), { status: 200 }));
+    },
+  });
+  const svg = await get(port, "/render.svg");
+  expect(svg.status).toBe(200);
+  expect(svg.body).toContain('href="data:image/png;base64,');
+  expect(svg.body).not.toContain("https:");
+  expect(urls).toEqual([avatar]);
+});
+
+test("Ctrl+C stops a preview whose image fetch never answers (RM-28)", async () => {
+  await tree.file("avatar.json", {
+    version: 0,
+    canvas: { width: 20, height: 20 },
+    assets: { images: { avatar: { src: "{{ github.avatarUrl }}" } } },
+    layers: [{ type: "image", asset: "avatar", width: 16, height: 16 }],
+  });
+  await tree.file("data.json", {
+    github: { avatarUrl: "https://avatars.githubusercontent.com/u/1" },
+  });
+  const controller = new AbortController();
+  const signals: AbortSignal[] = [];
+  const started = Date.now();
+  const exit = runCli(
+    ["preview", "avatar.json", "--data", "data.json", "--port", "0", "--fetch-images"],
+    {
+      stdout: () => undefined,
+      stderr: () => undefined,
+      cwd: tree.root,
+      signal: controller.signal,
+      pollIntervalMs: 20,
+      fetch: (_url, init) =>
+        new Promise<Response>((_resolve, reject) => {
+          if (init.signal) signals.push(init.signal);
+          init.signal?.addEventListener("abort", () => {
+            reject(init.signal?.reason as Error);
+          });
+        }),
+    },
+  );
+  await until(() => signals.length === 1);
+  controller.abort();
+  expect(await exit).toBe(ExitCode.ok);
+  expect(signals[0]?.aborted).toBe(true);
+  expect(Date.now() - started).toBeLessThan(10_000);
 });

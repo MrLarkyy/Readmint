@@ -4,7 +4,7 @@ import { fnv1a } from "./fnv1a.js";
 import { ownEntry } from "./ownEntry.js";
 import { pointer } from "./pointer.js";
 import type { RenderContext } from "./RenderContext.js";
-import { echo } from "./resolveValue.js";
+import { echo, isBinding } from "./resolveValue.js";
 import { sniffImage, type ImageInfo } from "./sniffImage.js";
 import { uprightImage } from "./uprightImage.js";
 
@@ -54,6 +54,12 @@ export function loadImage(context: RenderContext, assetId: string, usePath: stri
     }
     bytes = decoded.bytes;
     mime = decoded.mime;
+  } else if (isBinding(asset.src)) {
+    context.fail(
+      srcPath,
+      "missing-asset",
+      `image asset ${name} takes its src from data (${echo(asset.src)}); its bytes must be supplied (the CLI fetches them with --fetch-images, the Action always)`,
+    );
   } else {
     context.fail(
       srcPath,

@@ -431,6 +431,24 @@ describe("rendered images", () => {
     expect(render(src, options)).toMatchObject({ ok: false, issues: [{ path, code }] });
   });
 
+  test("a src bound to data without bytes names who supplies them (RM-28)", () => {
+    const result = render("{{ github.avatarUrl }}", { data: { github: { avatarUrl: "x" } } });
+    expect(result).toMatchObject({
+      ok: false,
+      issues: [{ path: "/assets/images/i/src", code: "missing-asset" }],
+    });
+    expect(!result.ok && result.issues[0]?.message).toBe(
+      'image asset "i" takes its src from data ("{{ github.avatarUrl }}"); its bytes must be supplied (the CLI fetches them with --fetch-images, the Action always)',
+    );
+  });
+
+  test("bytes supplied for a bound src render exactly as for a path (RM-28)", () => {
+    const bound = render("{{ github.avatarUrl }}", { assets: { images: { i: png } } });
+    const file = render("img/a.png", { assets: { images: { i: png } } });
+    expect(bound.ok && bound.svg).toMatch(/href="data:image\/png;base64,/u);
+    expect(bound.ok && bound.svg).toBe(file.ok && file.svg);
+  });
+
   test("supplied bytes win over the path and are capped too", () => {
     expect(render("img/a.png", { assets: { images: { i: png } } }).ok).toBe(true);
     expect(
