@@ -4,6 +4,7 @@ import { expect, test } from "vitest";
 import * as cli from "../src/index.js";
 import { ExitCode, outputFormats } from "../src/index.js";
 import { helpText } from "../src/helpText.js";
+import { parseCliArgs } from "../src/parseCliArgs.js";
 
 const docs = readFileSync(join(import.meta.dirname, "..", "..", "..", "docs", "cli.md"), "utf8");
 
@@ -54,4 +55,13 @@ test("docs/cli.md or docs/asset-loading.md names every export of @readmint/cli",
     (name) => !docs.includes(`\`${name}`) && !assetDocs.includes(`\`${name}`),
   );
   expect(missing).toEqual([]);
+});
+
+test("--help and docs/cli.md name every --out extension that picks a raster format", () => {
+  for (const extension of [".png", ".apng", ".webp", ".gif"]) {
+    expect(helpText).toContain(extension);
+    expect(section("Options")).toContain("`" + extension + "`");
+    const command = parseCliArgs(["render", "d.json", "--out", `a${extension}`]);
+    expect(command.name === "render" ? command.format : "").not.toBe("svg");
+  }
 });

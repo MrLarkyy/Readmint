@@ -15,7 +15,7 @@ export interface DesignArgs {
 export interface RenderArgs {
   readonly time?: number;
   readonly out?: string;
-  /** `--format`, else from the `--out` extension (`.png`, `.webp`, `.gif`), else `svg`. */
+  /** `--format`, else from the `--out` extension (`.png`, `.apng`, `.webp`, `.gif`), else `svg`. */
   readonly format: OutputFormat;
   /** Raster pixels per SVG pixel (`--scale`); raster formats only. */
   readonly scale?: number;

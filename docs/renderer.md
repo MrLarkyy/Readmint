@@ -124,7 +124,8 @@ Drawn in document order, first at the back. Layer `id` and `name` are not emitte
 - Accepted by magic bytes: PNG (APNG), JPEG, GIF, WebP. SVG and anything else is `asset-format`; a `data:` URI whose
   type differs from the sniffed one is `asset-format`. The bytes are re-encoded as a data URI of the sniffed type.
 - Checked before anything is decoded: size, then dimensions from the header, then animation frames (GIF image
-  descriptors, APNG `acTL`, WebP `ANMF`).
+  descriptors, APNG `acTL`, WebP `ANMF`). `sniffImage(bytes, maxFrames)`, exported, is that check (format, size, frames, EXIF
+  from the header alone); raster export sizes its image decoding budget with it.
 - `fit`: `contain` (default) = `preserveAspectRatio="xMidYMid meet"`, `cover` = `xMidYMid slice`, `fill` = `none`.
   `alt` becomes `aria-label`.
 - An image drawn once is an `<image>` holding its data URI. Image data drawn more than once (a `repeat`, several

@@ -14,7 +14,7 @@ Options:
   --time <ms>         Render one frame of the animation as a still image (render, validate)
   --out <file>        Write the output to this file instead of standard output (render)
   --format <name>     svg, png, webp, apng or gif (render; default: from the --out extension
-                      .png, .webp or .gif, else svg); raster formats need --out
+                      .png, .apng, .webp or .gif, else svg); raster formats need --out
   --scale <n>         Raster pixels per design pixel, 1..4 (raster formats; default 2)
   --frame-rate <n>    Frames per second of an animation, 1..60, gif 1..50 (raster formats;
                       default 30, gif 25)
