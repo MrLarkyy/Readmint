@@ -1,0 +1,279 @@
+{
+  "$schema": "https://raw.githubusercontent.com/MrLarkyy/Readmint/main/packages/format/schema/design-v0.schema.json",
+  "version": 0,
+  "title": "Repository",
+  "description": "A repository: name, description, stars and forks, with its commits of the last 52 weeks drawn as a line.",
+  "canvas": {
+    "width": 840,
+    "height": 180
+  },
+  "assets": {
+    "fonts": {
+      "reg": {
+        "family": "Archivo",
+        "src": "fonts/Archivo-Regular.ttf",
+        "weight": 400,
+        "licence": {
+          "embedding": "allowed",
+          "name": "OFL-1.1"
+        }
+      },
+      "semi": {
+        "family": "Archivo",
+        "src": "fonts/Archivo-SemiBold.ttf",
+        "weight": 600,
+        "licence": {
+          "embedding": "allowed",
+          "name": "OFL-1.1"
+        }
+      },
+      "bold": {
+        "family": "Archivo",
+        "src": "fonts/Archivo-Bold.ttf",
+        "weight": 700,
+        "licence": {
+          "embedding": "allowed",
+          "name": "OFL-1.1"
+        }
+      }
+    }
+  },
+  "animation": {
+    "duration": 60000,
+    "loop": false
+  },
+  "components": {
+    "card": {
+      "description": "The section: a rounded panel in the theme's colours; the theme prop is the only switch between light and dark.",
+      "props": {
+        "theme": {
+          "type": "enum",
+          "values": ["light", "dark"],
+          "default": "light"
+        },
+        "slot": {
+          "type": "number",
+          "default": 0
+        }
+      },
+      "layers": [
+        {
+          "type": "rect",
+          "x": 0.5,
+          "y": 0.5,
+          "width": 839,
+          "height": 179,
+          "radius": 14,
+          "fill": "{{ props.theme == \"dark\" ? \"#0b1020\" : \"#f6f8fd\" }}",
+          "stroke": "{{ props.theme == \"dark\" ? \"#1f2a4a\" : \"#d6dcec\" }}",
+          "strokeWidth": 1
+        },
+        {
+          "type": "group",
+          "children": [
+            {
+              "type": "ellipse",
+              "x": 40,
+              "y": 31,
+              "width": 10,
+              "height": 10,
+              "fill": "{{ r.primaryLanguage.color || (props.theme == \"dark\" ? \"#56659b\" : \"#8a97c4\") }}"
+            },
+            {
+              "type": "group",
+              "x": 58,
+              "y": 26,
+              "width": 200,
+              "height": 18,
+              "clip": true,
+              "children": [
+                {
+                  "type": "text",
+                  "x": 0,
+                  "y": 0,
+                  "content": "{{ r.primaryLanguage.name | truncate(18) }}",
+                  "font": "semi",
+                  "fontSize": 13,
+                  "fill": "{{ props.theme == \"dark\" ? \"#8d9aca\" : \"#5d6788\" }}"
+                }
+              ]
+            },
+            {
+              "type": "group",
+              "x": 40,
+              "y": 48,
+              "width": 500,
+              "height": 38,
+              "clip": true,
+              "children": [
+                {
+                  "type": "text",
+                  "x": 0,
+                  "y": 0,
+                  "content": "{{ r.name | truncate(26) }}",
+                  "font": "bold",
+                  "fontSize": 28,
+                  "fill": "{{ props.theme == \"dark\" ? \"#e9eeff\" : \"#0b1230\" }}"
+                }
+              ]
+            },
+            {
+              "type": "group",
+              "x": 40,
+              "y": 92,
+              "width": 500,
+              "height": 42,
+              "clip": true,
+              "children": [
+                {
+                  "type": "text",
+                  "x": 0,
+                  "y": 0,
+                  "content": "{{ r.description | truncate(110) }}",
+                  "font": "reg",
+                  "fontSize": 15,
+                  "lineHeight": 1.4,
+                  "width": 500,
+                  "fill": "{{ props.theme == \"dark\" ? \"#8d9aca\" : \"#5d6788\" }}"
+                }
+              ]
+            },
+            {
+              "type": "path",
+              "d": "M7 0 L8.8 4.9 L14 5.1 L9.9 8.3 L11.3 13.4 L7 10.5 L2.7 13.4 L4.1 8.3 L0 5.1 L5.2 4.9 Z",
+              "fill": "{{ props.theme == \"dark\" ? \"#6b8cff\" : \"#1f4fe0\" }}",
+              "x": 40,
+              "y": 146
+            },
+            {
+              "type": "group",
+              "x": 62,
+              "y": 144,
+              "width": 90,
+              "height": 20,
+              "clip": true,
+              "children": [
+                {
+                  "type": "text",
+                  "x": 0,
+                  "y": 0,
+                  "content": "{{ (r.stars < 1000000 ? (r.stars | number) : (r.stars | compact)) }}",
+                  "font": "semi",
+                  "fontSize": 15,
+                  "fill": "{{ props.theme == \"dark\" ? \"#e9eeff\" : \"#0b1230\" }}"
+                }
+              ]
+            },
+            {
+              "type": "group",
+              "x": 160,
+              "y": 144,
+              "width": 160,
+              "height": 20,
+              "clip": true,
+              "children": [
+                {
+                  "type": "text",
+                  "x": 0,
+                  "y": 0,
+                  "content": "{{ (r.forks < 1000000 ? (r.forks | number) : (r.forks | compact)) + \" forks\" }}",
+                  "font": "reg",
+                  "fontSize": 15,
+                  "fill": "{{ props.theme == \"dark\" ? \"#8d9aca\" : \"#5d6788\" }}"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "x": 576,
+              "y": 26,
+              "content": "52 WEEKS",
+              "font": "semi",
+              "fontSize": 11,
+              "letterSpacing": 2,
+              "fill": "{{ props.theme == \"dark\" ? \"#8d9aca\" : \"#5d6788\" }}"
+            },
+            {
+              "type": "rect",
+              "x": 576,
+              "y": 130,
+              "width": 224,
+              "height": 1,
+              "fill": "{{ props.theme == \"dark\" ? \"#19213d\" : \"#e3e8f5\" }}"
+            },
+            {
+              "type": "group",
+              "children": [
+                {
+                  "type": "path",
+                  "d": "M0 {{ 80 - (r.weeklyCommits[0] | min(6 + (r.weeklyCommits[0] - 6) / 4) | min(14)) * 5.5 }} L4.392 {{ 80 - (r.weeklyCommits[1] | min(6 + (r.weeklyCommits[1] - 6) / 4) | min(14)) * 5.5 }} L8.784 {{ 80 - (r.weeklyCommits[2] | min(6 + (r.weeklyCommits[2] - 6) / 4) | min(14)) * 5.5 }} L13.176 {{ 80 - (r.weeklyCommits[3] | min(6 + (r.weeklyCommits[3] - 6) / 4) | min(14)) * 5.5 }} L17.568 {{ 80 - (r.weeklyCommits[4] | min(6 + (r.weeklyCommits[4] - 6) / 4) | min(14)) * 5.5 }} L21.96 {{ 80 - (r.weeklyCommits[5] | min(6 + (r.weeklyCommits[5] - 6) / 4) | min(14)) * 5.5 }} L26.352 {{ 80 - (r.weeklyCommits[6] | min(6 + (r.weeklyCommits[6] - 6) / 4) | min(14)) * 5.5 }} L30.744 {{ 80 - (r.weeklyCommits[7] | min(6 + (r.weeklyCommits[7] - 6) / 4) | min(14)) * 5.5 }} L35.136 {{ 80 - (r.weeklyCommits[8] | min(6 + (r.weeklyCommits[8] - 6) / 4) | min(14)) * 5.5 }} L39.528 {{ 80 - (r.weeklyCommits[9] | min(6 + (r.weeklyCommits[9] - 6) / 4) | min(14)) * 5.5 }} L43.92 {{ 80 - (r.weeklyCommits[10] | min(6 + (r.weeklyCommits[10] - 6) / 4) | min(14)) * 5.5 }} L48.312 {{ 80 - (r.weeklyCommits[11] | min(6 + (r.weeklyCommits[11] - 6) / 4) | min(14)) * 5.5 }} L52.704 {{ 80 - (r.weeklyCommits[12] | min(6 + (r.weeklyCommits[12] - 6) / 4) | min(14)) * 5.5 }} L57.096 {{ 80 - (r.weeklyCommits[13] | min(6 + (r.weeklyCommits[13] - 6) / 4) | min(14)) * 5.5 }} L61.488 {{ 80 - (r.weeklyCommits[14] | min(6 + (r.weeklyCommits[14] - 6) / 4) | min(14)) * 5.5 }} L65.88 {{ 80 - (r.weeklyCommits[15] | min(6 + (r.weeklyCommits[15] - 6) / 4) | min(14)) * 5.5 }} L70.272 {{ 80 - (r.weeklyCommits[16] | min(6 + (r.weeklyCommits[16] - 6) / 4) | min(14)) * 5.5 }} L74.664 {{ 80 - (r.weeklyCommits[17] | min(6 + (r.weeklyCommits[17] - 6) / 4) | min(14)) * 5.5 }} L79.056 {{ 80 - (r.weeklyCommits[18] | min(6 + (r.weeklyCommits[18] - 6) / 4) | min(14)) * 5.5 }} L83.448 {{ 80 - (r.weeklyCommits[19] | min(6 + (r.weeklyCommits[19] - 6) / 4) | min(14)) * 5.5 }} L87.84 {{ 80 - (r.weeklyCommits[20] | min(6 + (r.weeklyCommits[20] - 6) / 4) | min(14)) * 5.5 }} L92.232 {{ 80 - (r.weeklyCommits[21] | min(6 + (r.weeklyCommits[21] - 6) / 4) | min(14)) * 5.5 }} L96.624 {{ 80 - (r.weeklyCommits[22] | min(6 + (r.weeklyCommits[22] - 6) / 4) | min(14)) * 5.5 }} L101.016 {{ 80 - (r.weeklyCommits[23] | min(6 + (r.weeklyCommits[23] - 6) / 4) | min(14)) * 5.5 }} L105.408 {{ 80 - (r.weeklyCommits[24] | min(6 + (r.weeklyCommits[24] - 6) / 4) | min(14)) * 5.5 }} L109.8 {{ 80 - (r.weeklyCommits[25] | min(6 + (r.weeklyCommits[25] - 6) / 4) | min(14)) * 5.5 }} L114.192 {{ 80 - (r.weeklyCommits[26] | min(6 + (r.weeklyCommits[26] - 6) / 4) | min(14)) * 5.5 }} L118.584 {{ 80 - (r.weeklyCommits[27] | min(6 + (r.weeklyCommits[27] - 6) / 4) | min(14)) * 5.5 }} L122.976 {{ 80 - (r.weeklyCommits[28] | min(6 + (r.weeklyCommits[28] - 6) / 4) | min(14)) * 5.5 }} L127.368 {{ 80 - (r.weeklyCommits[29] | min(6 + (r.weeklyCommits[29] - 6) / 4) | min(14)) * 5.5 }} L131.76 {{ 80 - (r.weeklyCommits[30] | min(6 + (r.weeklyCommits[30] - 6) / 4) | min(14)) * 5.5 }} L136.152 {{ 80 - (r.weeklyCommits[31] | min(6 + (r.weeklyCommits[31] - 6) / 4) | min(14)) * 5.5 }} L140.544 {{ 80 - (r.weeklyCommits[32] | min(6 + (r.weeklyCommits[32] - 6) / 4) | min(14)) * 5.5 }} L144.936 {{ 80 - (r.weeklyCommits[33] | min(6 + (r.weeklyCommits[33] - 6) / 4) | min(14)) * 5.5 }} L149.328 {{ 80 - (r.weeklyCommits[34] | min(6 + (r.weeklyCommits[34] - 6) / 4) | min(14)) * 5.5 }} L153.72 {{ 80 - (r.weeklyCommits[35] | min(6 + (r.weeklyCommits[35] - 6) / 4) | min(14)) * 5.5 }} L158.112 {{ 80 - (r.weeklyCommits[36] | min(6 + (r.weeklyCommits[36] - 6) / 4) | min(14)) * 5.5 }} L162.504 {{ 80 - (r.weeklyCommits[37] | min(6 + (r.weeklyCommits[37] - 6) / 4) | min(14)) * 5.5 }} L166.896 {{ 80 - (r.weeklyCommits[38] | min(6 + (r.weeklyCommits[38] - 6) / 4) | min(14)) * 5.5 }} L171.288 {{ 80 - (r.weeklyCommits[39] | min(6 + (r.weeklyCommits[39] - 6) / 4) | min(14)) * 5.5 }} L175.68 {{ 80 - (r.weeklyCommits[40] | min(6 + (r.weeklyCommits[40] - 6) / 4) | min(14)) * 5.5 }} L180.072 {{ 80 - (r.weeklyCommits[41] | min(6 + (r.weeklyCommits[41] - 6) / 4) | min(14)) * 5.5 }} L184.464 {{ 80 - (r.weeklyCommits[42] | min(6 + (r.weeklyCommits[42] - 6) / 4) | min(14)) * 5.5 }} L188.856 {{ 80 - (r.weeklyCommits[43] | min(6 + (r.weeklyCommits[43] - 6) / 4) | min(14)) * 5.5 }} L193.248 {{ 80 - (r.weeklyCommits[44] | min(6 + (r.weeklyCommits[44] - 6) / 4) | min(14)) * 5.5 }} L197.64 {{ 80 - (r.weeklyCommits[45] | min(6 + (r.weeklyCommits[45] - 6) / 4) | min(14)) * 5.5 }} L202.032 {{ 80 - (r.weeklyCommits[46] | min(6 + (r.weeklyCommits[46] - 6) / 4) | min(14)) * 5.5 }} L206.424 {{ 80 - (r.weeklyCommits[47] | min(6 + (r.weeklyCommits[47] - 6) / 4) | min(14)) * 5.5 }} L210.816 {{ 80 - (r.weeklyCommits[48] | min(6 + (r.weeklyCommits[48] - 6) / 4) | min(14)) * 5.5 }} L215.208 {{ 80 - (r.weeklyCommits[49] | min(6 + (r.weeklyCommits[49] - 6) / 4) | min(14)) * 5.5 }} L219.6 {{ 80 - (r.weeklyCommits[50] | min(6 + (r.weeklyCommits[50] - 6) / 4) | min(14)) * 5.5 }} L223.992 {{ 80 - (r.weeklyCommits[51] | min(6 + (r.weeklyCommits[51] - 6) / 4) | min(14)) * 5.5 }}",
+                  "fill": "none",
+                  "stroke": "{{ props.theme == \"dark\" ? \"#6b8cff\" : \"#1f4fe0\" }}",
+                  "strokeWidth": 2,
+                  "animate": {
+                    "draw": {
+                      "keyframes": [
+                        {
+                          "offset": 0,
+                          "value": 1
+                        },
+                        {
+                          "offset": 0,
+                          "value": 0
+                        },
+                        {
+                          "offset": 1,
+                          "value": 1
+                        }
+                      ],
+                      "duration": 2200,
+                      "easing": "ease-in-out"
+                    }
+                  },
+                  "if": "{{ (r.weeklyCommits | length) == 52 }}"
+                }
+              ],
+              "x": 576,
+              "y": 50
+            },
+            {
+              "type": "text",
+              "x": 576,
+              "y": 80,
+              "content": "No weekly activity yet.",
+              "font": "reg",
+              "fontSize": 13,
+              "fill": "{{ props.theme == \"dark\" ? \"#8d9aca\" : \"#5d6788\" }}",
+              "if": "{{ (r.weeklyCommits | length) != 52 }}"
+            }
+          ],
+          "repeat": {
+            "each": "{{ [((github.pinned || github.repositories)[props.slot])] }}",
+            "as": "r"
+          },
+          "if": "{{ r }}"
+        },
+        {
+          "type": "text",
+          "x": 40,
+          "y": 80,
+          "content": "{{ \"No repository in slot \" + [\"1\", \"2\", \"3\", \"4\"][props.slot] + \".\" }}",
+          "font": "reg",
+          "fontSize": 15,
+          "fill": "{{ props.theme == \"dark\" ? \"#8d9aca\" : \"#5d6788\" }}",
+          "if": "{{ !((github.pinned || github.repositories)[props.slot]) }}"
+        }
+      ]
+    }
+  },
+  "layers": [
+    {
+      "type": "component",
+      "ref": "card",
+      "props": {
+        "theme": "dark",
+        "slot": 0
+      }
+    }
+  ]
+}
