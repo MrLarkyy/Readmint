@@ -1,5 +1,6 @@
 import { encodeBase64 } from "./base64.js";
 import { decodeDataUri } from "./decodeDataUri.js";
+import { EntropyBudget } from "./EntropyBudget.js";
 import { fnv1a } from "./fnv1a.js";
 import { ownEntry } from "./ownEntry.js";
 import { pointer } from "./pointer.js";
@@ -67,8 +68,13 @@ export function loadImage(context: RenderContext, assetId: string, usePath: stri
       `image asset ${name}: no bytes were supplied for ${echo(asset.src)}`,
     );
   }
-  const sniffed = sniffImage(bytes, limits.maxAnimationFrames);
-  if (!sniffed.ok) context.fail(srcPath, "asset-format", `image asset ${name}: ${sniffed.message}`);
+  const sniffed = sniffImage(bytes, limits.maxAnimationFrames, context.entropyBudget);
+  if (!sniffed.ok) {
+    if (context.entropyBudget.exhausted) {
+      context.fail(srcPath, "asset-too-large", `image asset ${name}: ${EntropyBudget.message()}`);
+    }
+    context.fail(srcPath, "asset-format", `image asset ${name}: ${sniffed.message}`);
+  }
   const info = sniffed.info;
   if (mime !== undefined && mime !== info.mime) {
     context.fail(

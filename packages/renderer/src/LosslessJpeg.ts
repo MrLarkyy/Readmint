@@ -23,8 +23,9 @@ const isRgb = (ids: readonly number[]) => ids.every((id, index) => id === rgbIds
  * exactly on an 8-bit frame of components R G B at 1x1 with no JFIF, no Adobe transform but 0 and one interleaved scan
  * of R G B on Huffman table 0, its image data ending at EOI; everything else is refused, restart intervals and point
  * transforms too (not probed). A file cut inside its image data, one without EOI and one with a second scan the two
- * draw differently (Chromium the rows or the scan it has, resvg nothing or the last scan). Fixtures and the probe:
- * test/assets/jpeg/sof3-* and test/losslessJpegs.ts.
+ * draw differently (Chromium the rows or the scan it has, resvg nothing or the last scan). The difference symbols of
+ * the image data are checked by `JpegEntropy.losslessFault`. Fixtures and the probe: test/assets/jpeg/sof3-* and
+ * test/losslessJpegs.ts.
  */
 export class LosslessJpeg {
   /** The first JFIF, Adobe or DRI segment that rules the file out, on either side of the frame header. */
@@ -64,6 +65,7 @@ export class LosslessJpeg {
   /**
    * Why the file is refused by what ends its image data: `marker` as `skipEntropyData` found it without passing
    * restart markers (a DRI being refused, none can belong there), undefined when the data ran out. Only EOI qualifies.
+   * The symbols up to it `JpegEntropy.losslessFault` has checked.
    */
   problemAfterImageData(marker: number | undefined): string | undefined {
     const reason = imageDataReason(marker);

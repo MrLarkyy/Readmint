@@ -3,7 +3,7 @@ import cmykUri from "./assets/jpeg/cmyk.jpg?inline";
 import progressiveUri from "./assets/jpeg/progressive.jpg?inline";
 
 /**
- * What one output draws of a 32x16 case: nothing (no opaque pixel), or every pixel opaque, pinned by the one at (0,0).
+ * What one output draws of a 32x16 case: nothing (no opaque pixel), or every pixel opaque, pinned by one (0,0 unless named).
  * "partial" never is a pin; a test that measures it fails.
  */
 export type DrawnOutcome = "nothing" | "partial" | readonly [number, number, number];
@@ -18,13 +18,17 @@ export interface JpegStructureCase {
   readonly resvg?: DrawnOutcome;
 }
 
-/** Classifies RGBA pixels of a 32x16 drawing. */
-export function drawnOutcome(rgba: Uint8Array | Uint8ClampedArray): DrawnOutcome {
+/** Classifies RGBA pixels of a 32x16 drawing, pinned by the pixel `at`. */
+export function drawnOutcome(
+  rgba: Uint8Array | Uint8ClampedArray,
+  at: readonly [x: number, y: number] = [0, 0],
+): DrawnOutcome {
   let opaque = 0;
   for (let index = 3; index < rgba.length; index += 4) if (rgba[index] === 255) opaque++;
   if (opaque === 0) return "nothing";
   if (opaque !== 32 * 16) return "partial";
-  return [rgba[0] ?? -1, rgba[1] ?? -1, rgba[2] ?? -1];
+  const offset = 4 * (at[1] * 32 + at[0]);
+  return [rgba[offset] ?? -1, rgba[offset + 1] ?? -1, rgba[offset + 2] ?? -1];
 }
 
 const segment = (marker: number, body: readonly number[]) => [

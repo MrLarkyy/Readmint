@@ -4,6 +4,7 @@ import { Resvg } from "@resvg/resvg-wasm";
 import { beforeAll, describe, expect, test } from "vitest";
 import { exportRaster } from "../src/index.js";
 import { initRaster } from "../src/initRaster.js";
+import { jpegEntropyCases } from "../../renderer/test/jpegEntropyCases.js";
 import { acceptedJpegs, refusedJpegs } from "../../renderer/test/jpegMarkers.js";
 import { drawnOutcome, jpegStructureCases } from "../../renderer/test/jpegStructureCases.js";
 import { decodeApng } from "./decodeRaster.js";
@@ -51,6 +52,29 @@ describe("what resvg draws of the JPEG structure cases", () => {
 
   test.each(pinned)("%s", (_name, bytes, outcome) => {
     expect(drawnOutcome(resvgPixels(bytes))).toEqual(outcome);
+  });
+
+  test.each(cases.map((row) => [row.name, row] as const))(
+    "exportRaster follows the sniffer on %s",
+    async (_name, row) => {
+      const output = exportRaster(designInput(imageDesign(dataUri("image/jpeg", row.bytes))), {
+        format: "png",
+        scale: 2,
+      });
+      if (row.message === undefined) await expect(output).resolves.toMatchObject({ format: "png" });
+      else await expect(output).rejects.toThrow(/asset-format/);
+    },
+  );
+});
+
+describe("what resvg draws of the JPEG entropy cases", () => {
+  const cases = jpegEntropyCases(jpeg);
+  const pinned = cases.flatMap((row) =>
+    row.resvg === undefined ? [] : [[row.name, row] as const],
+  );
+
+  test.each(pinned)("%s", (_name, row) => {
+    expect(drawnOutcome(resvgPixels(row.bytes), row.at)).toEqual(row.resvg);
   });
 
   test.each(cases.map((row) => [row.name, row] as const))(
