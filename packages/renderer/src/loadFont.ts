@@ -1,5 +1,6 @@
 import { embeddingAllowed, parseSfnt, type SfntFont } from "@readmint/fonts";
 import type { FontAsset } from "@readmint/format";
+import { bytesKey, sameBytes } from "./bytesKey.js";
 import { decodeDataUri } from "./decodeDataUri.js";
 import { ownEntry } from "./ownEntry.js";
 import { pointer } from "./pointer.js";
@@ -115,7 +116,7 @@ export function loadFont(context: RenderContext, assetId: string, asset: FontAss
 }
 
 /**
- * The parsed font of an asset's source, read once per render per source. A new source is charged against
+ * The parsed font of an asset's source, read once per render per source (supplied bytes also by content). A new source is charged against
  * `maxTotalFontBytes` before it decodes (its declared size: the parse may decode at most what is left) and by what it
  * decoded to; the asset that crosses the allowance fails with `asset-too-large`, in the same order on every run.
  */
@@ -129,6 +130,16 @@ function readFontOnce(
   const key = supplied instanceof Uint8Array ? supplied : asset.src;
   const known = context.parsedFonts.get(key);
   if (known !== undefined) return known;
+  const sameContent = supplied instanceof Uint8Array ? bytesKey(supplied) : undefined;
+  if (supplied instanceof Uint8Array && sameContent !== undefined) {
+    const shared = context.fontsByContent
+      .get(sameContent)
+      ?.find((candidate) => sameBytes(candidate.bytes, supplied));
+    if (shared !== undefined) {
+      context.parsedFonts.set(key, shared.read);
+      return shared.read;
+    }
+  }
   const name = echo(assetId);
   const { bytes, mime } = fontBytes(context, assetId, asset, assetPath);
   const left = context.fontBytesLeft;
@@ -156,6 +167,11 @@ function readFontOnce(
   context.fontBytesLeft = left - parsed.font.sfntBytes;
   const read = { font: parsed.font, mime };
   context.parsedFonts.set(key, read);
+  if (supplied instanceof Uint8Array && sameContent !== undefined) {
+    const list = context.fontsByContent.get(sameContent) ?? [];
+    list.push({ bytes: supplied, read });
+    context.fontsByContent.set(sameContent, list);
+  }
   return read;
 }
 

@@ -74,6 +74,16 @@ describe("decoded font bytes are bounded per render, not per asset", () => {
     expect(result.ok && result.report.fonts).toHaveLength(400);
   });
 
+  test("equal bytes in distinct arrays (any caller) decode once and count once", () => {
+    const one = woffBomb(0);
+    const { design: copies } = bombs(400, 1);
+    const supplied = Object.fromEntries(
+      Array.from({ length: 400 }, (_, index) => [`f${String(index)}`, one.slice()]),
+    );
+    expect(supplied["f0"]).not.toBe(supplied["f1"]);
+    expect(renderSvg(copies, { assets: { fonts: supplied } }).ok).toBe(true);
+  });
+
   test("the same holds for one data URI used by many assets", () => {
     const src = `data:font/woff;base64,${Buffer.from(woffBomb(0)).toString("base64")}`;
     const fonts = Object.fromEntries(
