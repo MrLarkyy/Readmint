@@ -14,7 +14,10 @@ export interface CliIo {
   readonly pollIntervalMs?: number;
   /** `fetch` for `--fetch-images` and `--github`, the only network use of the CLI; the global one when absent. */
   readonly fetch?: ImageFetch;
-  /** Opens the `preview --open` address in a browser; `openInBrowser` when absent, tests inject one. */
+  /**
+   * Opens the `preview --open` address in a browser (with `--github` the one-time launch address, never the secret
+   * one); `openInBrowser` when absent, tests inject one.
+   */
   readonly openUrl?: (url: string) => Promise<void>;
   /**
    * The environment: `GH_TOKEN`, else `GITHUB_TOKEN`, is the token of `--github`; the GitHub load reads it only with
