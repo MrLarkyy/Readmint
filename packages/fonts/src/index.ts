@@ -5,6 +5,7 @@ export type { GlyphOutline, OutlineCommand } from "./GlyphOutline.js";
 export type { ParseSfntOptions } from "./ParseSfntOptions.js";
 export type { SubsetOptions } from "./SubsetOptions.js";
 export type { SfntFont, SfntProblemKind, SfntResult } from "./SfntFont.js";
+export { decodeWoff } from "./decodeWoff.js";
 export { encodeWoff } from "./encodeWoff.js";
 export { FS_TYPE_BITMAP_ONLY, FS_TYPE_RESTRICTED, embeddingAllowed } from "./fontEmbedding.js";
 export { FontRefused } from "./FontRefused.js";
