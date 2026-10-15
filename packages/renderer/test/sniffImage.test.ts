@@ -10,7 +10,6 @@ import {
   dataUriBytes,
   jpegWithExif,
   orientationTiff,
-  pngChunk,
   pngWithExif,
   vp8x,
   webpWithExif,
@@ -612,7 +611,7 @@ describe("rendered images", () => {
       ),
     ).toHaveLength(3);
     // The data as written: gradient.jpg's ICC profile is not inlined.
-    const length = /href="([^"]*)"/u.exec(result.svg)?.[1]?.length;
+    const length = (/href="([^"]*)"/u.exec(result.svg)?.[1] ?? "").length;
     expect(result.report.images).toEqual([
       { asset: "i", bytes: 2 * length },
       { asset: "j", bytes: length },
