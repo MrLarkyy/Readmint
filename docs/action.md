@@ -140,6 +140,10 @@ The push uses the credentials `actions/checkout` stores in the repository, so:
 
 - keep `persist-credentials` of the checkout on (its default) and give the job `permissions: contents: write`;
 - check the repository out into the workspace root (no `path:`), since git runs there;
+- git must be on `PATH` (every GitHub-hosted runner has it). The Action starts it by the absolute path it finds there,
+  skipping relative or empty `PATH` entries and any directory inside the workspace, and git, with the programs it
+  starts (remote helpers, ssh, filters, gpg), gets a `PATH` without those entries, so a `git`, `git.exe` or other
+  program committed to the repository never runs;
 - check out the branch the Action pushes to (the default of `actions/checkout` on a schedule or `workflow_dispatch`
   run): the commit is pushed with the checkout's history, so the Action refuses to run, before writing anything, when
   the checkout is not the latest commit of that branch on `origin` (a detached HEAD, a pull request merge, another

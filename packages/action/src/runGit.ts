@@ -1,16 +1,31 @@
 import { spawn } from "node:child_process";
-import type { GitResult, GitRunner } from "./GitRunner.js";
+import { findExecutable, withSearchPath } from "./findExecutable.js";
+import type { GitResult, GitRunOptions, GitRunner } from "./GitRunner.js";
 
 /** Most bytes kept of each output stream; git's answers here are short. */
 const maxOutputBytes = 1024 * 1024;
 
 /**
- * The real `GitRunner`: spawns `git` without a shell, so no argument is ever parsed by one.
- * A failure to start resolves with code `null` and the error code as standard error.
+ * The real `GitRunner`: spawns `git` without a shell, so no argument is ever parsed by one, and by the absolute path
+ * found on `PATH`, never from the workspace, with a `PATH` holding only the entries searched for it (see
+ * `findExecutable`), so the programs git starts by name are not found there either. A failure to start, or no git
+ * found, resolves with code `null` and the error code as standard error.
  */
-export const runGit: GitRunner = (args, options) =>
-  new Promise<GitResult>((resolve) => {
-    const child = spawn("git", [...args], {
+export const runGit: GitRunner = async (args, options) => {
+  const platform = process.platform;
+  const env = withSearchPath(options.env, { platform, cwd: options.cwd });
+  const file = await findExecutable("git", { platform, env, cwd: options.cwd });
+  if (file === undefined) return { code: null, stdout: "", stderr: "git could not run (ENOENT)" };
+  return spawnGit(file, args, { ...options, env });
+};
+
+function spawnGit(
+  file: string,
+  args: readonly string[],
+  options: GitRunOptions,
+): Promise<GitResult> {
+  return new Promise<GitResult>((resolve) => {
+    const child = spawn(file, [...args], {
       cwd: options.cwd,
       env: options.env,
       shell: false,
@@ -38,6 +53,7 @@ export const runGit: GitRunner = (args, options) =>
     child.stdin.on("error", () => undefined);
     child.stdin.end(options.input ?? "");
   });
+}
 
 function collect(): { add: (chunk: Buffer) => void; text: () => string } {
   const chunks: Buffer[] = [];
