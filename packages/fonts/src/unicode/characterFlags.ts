@@ -18,11 +18,6 @@ export function isDefaultIgnorable(codePoint: number): boolean {
   return (table.get(codePoint) & 4) !== 0;
 }
 
-/** General category L* (any letter). */
-export function isLetter(codePoint: number): boolean {
-  return (table.get(codePoint) & 8) !== 0;
-}
-
 /** General category Cf. */
 export function isFormat(codePoint: number): boolean {
   return (table.get(codePoint) & 16) !== 0;

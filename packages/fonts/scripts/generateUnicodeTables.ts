@@ -94,7 +94,8 @@ const bidiValues = [
   "FSI",
   "PDI",
 ];
-const joiningValues = ["U", "L", "R", "D", "C", "T"];
+/** X: not listed in ArabicShaping.txt (T for Mn, Me and Cf, else U: derived at run time from the flags). */
+const joiningValues = ["X", "U", "L", "R", "D", "C", "T"];
 
 const directory = process.argv[2];
 if (directory === undefined) {
@@ -186,14 +187,8 @@ function bidiClasses(): Uint8Array {
 }
 
 /** ArabicShaping.txt; an unlisted Mn, Me or Cf is transparent (the file's own rule), anything else U. */
-function joiningTypes(categories: readonly string[]): Uint8Array {
+function joiningTypes(): Uint8Array {
   const values = new Uint8Array(codeSpace);
-  const transparent = index(joiningValues, "T");
-  for (let codePoint = 0; codePoint < codeSpace; codePoint++) {
-    const category = categories[codePoint];
-    if (category === "Mn" || category === "Me" || category === "Cf")
-      values[codePoint] = transparent;
-  }
   for (const line of read("ArabicShaping.txt")) {
     const parts = fields(line);
     if (parts !== undefined) fill(values, parts[0] ?? "", index(joiningValues, parts[2] ?? ""));
@@ -226,7 +221,7 @@ function indicTable(
   return { values, names };
 }
 
-/** Bit 1: Mn or Me; 2: Mc; 4: Default_Ignorable_Code_Point; 8: a letter (L*); 16: Cf. */
+/** Bit 1: Mn or Me; 2: Mc; 4: Default_Ignorable_Code_Point; 16: Cf. */
 function flags(categories: readonly string[]): Uint8Array {
   const values = new Uint8Array(codeSpace);
   for (let codePoint = 0; codePoint < codeSpace; codePoint++) {
@@ -234,7 +229,6 @@ function flags(categories: readonly string[]): Uint8Array {
     let value = 0;
     if (category === "Mn" || category === "Me") value |= 1;
     if (category === "Mc") value |= 2;
-    if (category.startsWith("L")) value |= 8;
     if (category === "Cf") value |= 16;
     values[codePoint] = value;
   }
@@ -374,7 +368,7 @@ export const bidiClassRuns =
 
 export const joiningValues = ${list(joiningValues)} as const;
 export const joiningRuns =
-  "${runs(joiningTypes(categories))}";
+  "${runs(joiningTypes())}";
 
 export const indicSyllabicValues = ${list(syllabic.names)} as const;
 export const indicSyllabicRuns =
@@ -384,7 +378,7 @@ export const indicPositionalValues = ${list(positional.names)} as const;
 export const indicPositionalRuns =
   "${runs(positional.values)}";
 
-/** Bit 1: Mn or Me; 2: Mc; 4: Default_Ignorable_Code_Point; 8: a letter (L*); 16: Cf. */
+/** Bit 1: Mn or Me; 2: Mc; 4: Default_Ignorable_Code_Point; 16: Cf. */
 export const flagRuns =
   "${runs(flags(categories))}";
 

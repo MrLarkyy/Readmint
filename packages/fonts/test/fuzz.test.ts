@@ -177,7 +177,7 @@ describe.each(layoutTexts)("mutated layout tables of %s", (bytes, name, texts) =
             expect(run.glyphs.length).toBe(run.advances.length);
           } catch (error) {
             if (!(error instanceof MalformedFont)) {
-              throw new Error(`round ${String(round)} threw ${String(error)}`);
+              throw new Error(`round ${String(round)} threw ${String(error)}`, { cause: error });
             }
             failures++;
           }

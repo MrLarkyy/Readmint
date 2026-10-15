@@ -2,12 +2,11 @@ import { readFileSync } from "node:fs";
 import ts from "typescript";
 import { expect, test } from "vitest";
 import { joiningTypeOf } from "../src/unicode/arabicJoining.js";
-import { bidiClassOf } from "../src/unicode/bidiClass.js";
+import { bidiClassOf, isStrong } from "../src/unicode/bidiClass.js";
 import { bracketOf } from "../src/unicode/bidiBrackets.js";
 import { mirrorOf } from "../src/unicode/bidiMirror.js";
 import {
   isDefaultIgnorable,
-  isLetter,
   isNonSpacingMark,
   isSpacingMark,
 } from "../src/unicode/characterFlags.js";
@@ -104,8 +103,8 @@ test("character flags", () => {
   expect(isDefaultIgnorable(0xfe0f)).toBe(true);
   expect(isDefaultIgnorable(0xe0100)).toBe(true);
   expect(isDefaultIgnorable(0x41)).toBe(false);
-  expect(isLetter(0x0628)).toBe(true);
-  expect(isLetter(0x30)).toBe(false);
+  expect([0x41, 0x0628, 0x05d0, 0x0915].every(isStrong)).toBe(true);
+  expect([0x30, 0x20, 0x2764, 0x1f469].some(isStrong)).toBe(false);
 });
 
 test("brackets and mirrors", () => {

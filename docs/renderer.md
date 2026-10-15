@@ -246,7 +246,7 @@ budget?, maxBytes? })`, `encodeWoff`, `decodeWoff`, `glyphClosure`, `OutlineBudg
   banner takes its MIT and Apache-2.0 texts from `packages/action/scripts/licences/brotli.txt`. The shaping engine
   and its Unicode tables (generated from the Unicode Character Database 16.0.0 by
   `packages/fonts/scripts/generateUnicodeTables.ts`, under the Unicode License V3 kept in the generated file and in
-  `packages/fonts/LICENSE-UNICODE`) need no dependency; they add about 64 kB minified (25 kB gzip, 14 kB of it the
+  `packages/fonts/LICENSE-UNICODE`) need no dependency; they add about 60 kB minified (23 kB gzip, 9 kB of it the
   tables) to `@readmint/fonts`.
 
 ## Images

@@ -11,6 +11,11 @@ export function bidiClassOf(codePoint: number): BidiClass {
   return bidiClassValues[table.get(codePoint)] ?? "L";
 }
 
+/** Bidi_Class L, R or AL: a strong character, which letters of every script are. */
+export function isStrong(codePoint: number): boolean {
+  return table.get(codePoint) <= 2;
+}
+
 /** The Bidi_Class as its index in `bidiClassValues` (the bidi algorithm works on these). */
 export function bidiClassIndex(codePoint: number): number {
   return table.get(codePoint);

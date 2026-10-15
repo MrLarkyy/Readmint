@@ -1,7 +1,8 @@
 import { wouldSubstitute } from "../layout/GsubLookups.js";
 import { glyphInfo, type GlyphInfo } from "../layout/GlyphBuffer.js";
 import { GlyphClass } from "../layout/Gdef.js";
-import { isFormat, isLetter, isNonSpacingMark, isSpacingMark } from "../unicode/characterFlags.js";
+import { isStrong } from "../unicode/bidiClass.js";
+import { isFormat, isNonSpacingMark, isSpacingMark } from "../unicode/characterFlags.js";
 import {
   Category,
   consonants,
@@ -402,14 +403,14 @@ function finalReorderSyllable({ buffer, plan }: ShapingState, start: number, end
     while (start < base && (is(glyphs[base], Category.N) || isHalant(glyphs[base]))) base--;
   }
   base = reorderPreBaseMatras(buffer, start, end, base);
-  base = reorderReph(buffer, start, end, base);
+  reorderReph(buffer, start, end, base);
   const first = glyphs[start];
   if (first?.position === Position.preM) {
     const previous = glyphs[start - 1];
     const wordStart =
       previous === undefined ||
       !(
-        isLetter(previous.codePoint) ||
+        isStrong(previous.codePoint) ||
         isNonSpacingMark(previous.codePoint) ||
         isSpacingMark(previous.codePoint) ||
         isFormat(previous.codePoint)
