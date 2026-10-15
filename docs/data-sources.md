@@ -63,8 +63,9 @@ rejects with `timeout`.
 A `DataSourceCache` is `get(key)` (the stored text or `undefined`) and `set(key, value, ttlSeconds)`. Values are JSON
 text and validated again on read. The cache is best effort: a failed read is a miss and a failed write is ignored.
 Keys come from `dataSourceCacheKey(source, input)`, the SHA-256 hex digest (64 lowercase characters, `sha256Hex`) of the
-namespace, the data version and the input fields; the input never holds a secret, and a non-finite number (`NaN`, `Infinity`) throws a `TypeError` naming the field. `MemoryCache` and `FileCache` of
-`@readmint/data-github` work with any source.
+namespace, the data version and the input fields; the input never holds a secret, and a non-finite number (`NaN`, `Infinity`) throws a `TypeError` naming the field. `MemoryCache` (browser-safe, `{ now?, maxEntries? }`,
+32 entries by default) comes from `@readmint/data`, `FileCache` (Node only) from `@readmint/data/node`; both work with any
+source, and `@readmint/data-github` re-exports them unchanged.
 
 ## Host duties
 

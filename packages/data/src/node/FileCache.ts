@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { mkdir, open, rename, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import type { GitHubCache } from "../GitHubCache.js";
+import type { DataSourceCache } from "../DataSourceCache.js";
 
 export interface FileCacheOptions {
   /** Created with mode 0o700 when missing. */
@@ -19,7 +19,7 @@ const KEY_PATTERN = /^[0-9a-f]{64}$/;
  * One `<key>.json` file per entry, `{ storedAt, ttlSeconds, value }`, written atomically with
  * mode 0o600. Corrupt, oversized or expired files read as a miss.
  */
-export class FileCache implements GitHubCache {
+export class FileCache implements DataSourceCache {
   private readonly directory: string;
   private readonly now: () => number;
 

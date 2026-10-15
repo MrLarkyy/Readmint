@@ -16,6 +16,10 @@ export default defineConfig(({ mode }) => ({
       { find: new RegExp("^@readmint/golden/browser$"), replacement: golden("browser/index.ts") },
       { find: new RegExp("^@readmint/golden/vitest$"), replacement: golden("vitest/index.ts") },
       { find: new RegExp("^@readmint/golden$"), replacement: golden("index.ts") },
+      {
+        find: new RegExp("^@readmint/data/node$"),
+        replacement: fileURLToPath(new URL("./packages/data/src/node/index.ts", import.meta.url)),
+      },
       ...["cli", "data", "data-github", "expr", "format", "fonts", "renderer"].map((name) => ({
         find: new RegExp(`^@readmint/${name}$`),
         replacement: source(name),

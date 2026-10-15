@@ -4,7 +4,7 @@
     "lib": ["ES2023", "DOM"],
     "rootDir": "src",
     "outDir": "dist",
-    "types": []
+    "types": ["node"]
   },
   "include": ["src"]
 }

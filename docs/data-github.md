@@ -6,7 +6,7 @@ through the GraphQL API with the user's own token, and returns a plain-JSON data
 
 ```ts
 import { loadGitHubData, MemoryCache, GITHUB_DATA_NAMESPACE } from "@readmint/data-github";
-import { FileCache } from "@readmint/data-github/node";
+import { FileCache } from "@readmint/data-github/node"; // or "@readmint/data/node"
 
 const { data, meta } = await loadGitHubData({
   token,
@@ -29,7 +29,7 @@ The main entry imports no `node:` module; `FileCache` lives in the `./node` subp
   `resetAt`, `retryAfterSeconds` or `causeCode` when they apply.
 - `GitHubCache` — the `DataSourceCache` interface: `get(key)` resolves to the stored text or `undefined`, `set(key, value,
 ttlSeconds)` stores it.
-- `MemoryCache({ now?, maxEntries? })` — an in-process cache (default 32 entries, oldest dropped first).
+- `MemoryCache({ now?, maxEntries? })` — an in-process cache (default 32 entries, oldest dropped first); defined in `@readmint/data`, re-exported here.
 - `FileCache({ directory, now? })` from `@readmint/data-github/node` — see [Cache](#cache).
 - `GitHubLimits` — the option ranges, defaults and fixed caps below, frozen.
 - `GITHUB_DATA_VERSION` (`0`) and `GITHUB_DATA_NAMESPACE` (`"github"`).

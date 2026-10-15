@@ -2,6 +2,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { expect, test } from "vitest";
 import * as main from "../src/index.js";
+import * as node from "../src/node/index.js";
 
 test("exposes its package name and the pinned API", () => {
   expect(main.packageName).toBe("@readmint/data");
@@ -9,6 +10,7 @@ test("exposes its package name and the pinned API", () => {
     "DATA_SOURCE_COMMON_ERROR_CODES",
     "DATA_SOURCE_INTERFACE_VERSION",
     "DataSourceError",
+    "MemoryCache",
     "checkDataSource",
     "dataSourceCacheKey",
     "isDataNamespace",
@@ -20,8 +22,9 @@ test("exposes its package name and the pinned API", () => {
 
 test("is browser-safe and has no dependencies", () => {
   const dir = join(import.meta.dirname, "..", "src");
-  for (const file of readdirSync(dir)) {
-    expect(readFileSync(join(dir, file), "utf8"), file).not.toMatch(/from\s+["']node:/);
+  const files = readdirSync(dir, { withFileTypes: true }).filter((entry) => entry.isFile());
+  for (const file of files) {
+    expect(readFileSync(join(dir, file.name), "utf8"), file.name).not.toMatch(/from\s+["']node:/);
   }
   const manifest = JSON.parse(
     readFileSync(join(import.meta.dirname, "..", "package.json"), "utf8"),
@@ -32,4 +35,8 @@ test("is browser-safe and has no dependencies", () => {
 test("isDataNamespace follows the namespace rule", () => {
   expect(["github", "a1", "x".repeat(32)].every((name) => main.isDataNamespace(name))).toBe(true);
   expect(["", "Git", "a-b", "1a", "true", "x".repeat(33)].some(main.isDataNamespace)).toBe(false);
+});
+
+test("exposes the file cache on the node entry", () => {
+  expect(Object.keys(node).sort()).toEqual(["FILE_CACHE_MAX_ENTRY_BYTES", "FileCache"]);
 });
