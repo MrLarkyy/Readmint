@@ -24,7 +24,7 @@ export async function writeOutputs(
   const pending: { file: RenderedFile; bytes: Uint8Array; full: string }[] = [];
   for (const file of files) {
     const full = path.resolve(root, file.output);
-    const bytes = new TextEncoder().encode(file.svg);
+    const bytes = file.bytes;
     const current = await readRegular(full, file.output);
     if (current !== undefined && Buffer.from(current).equals(bytes)) continue;
     pending.push({ file, bytes, full });

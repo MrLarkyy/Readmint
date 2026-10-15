@@ -58,3 +58,29 @@ test("a comment end inside a licence text cannot close the banner", async () => 
   const banner = licenceBanner([join(odd, "index.js")]);
   expect(banner.indexOf("*/")).toBe(banner.length - 2);
 });
+
+test("a package that publishes no licence file gets the text this repository supplies", async () => {
+  const resvg = join(dir, "node_modules", "@resvg", "resvg-wasm");
+  await mkdir(resvg, { recursive: true });
+  await writeFile(
+    join(resvg, "package.json"),
+    JSON.stringify({ name: "@resvg/resvg-wasm", version: "2.6.2", license: "MPL-2.0" }),
+  );
+  const banner = licenceBanner([join(resvg, "index.mjs")]);
+  expect(banner).toContain(" * Package: @resvg/resvg-wasm@2.6.2 (MPL-2.0)");
+  expect(banner).toContain(" * Mozilla Public License Version 2.0");
+});
+
+test("a licence a package keeps in a subfolder is bundled too", async () => {
+  const webp = join(dir, "node_modules", "@jsquash", "webp");
+  await mkdir(join(webp, "codec"), { recursive: true });
+  await writeFile(
+    join(webp, "package.json"),
+    JSON.stringify({ name: "@jsquash/webp", version: "1.5.0", license: "Apache-2.0" }),
+  );
+  await writeFile(join(webp, "LICENSE"), "Apache text");
+  await writeFile(join(webp, "codec", "LICENSE.codec.md"), "libwebp BSD text");
+  const banner = licenceBanner([join(webp, "codec", "enc", "webp_enc_simd.js")]);
+  expect(banner).toContain(" * Apache text");
+  expect(banner).toContain(" * libwebp BSD text");
+});

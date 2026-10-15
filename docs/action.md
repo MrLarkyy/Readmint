@@ -1,7 +1,7 @@
 # GitHub Action
 
-The Readmint Action renders your designs in your own repository, on a schedule or on demand, and commits the SVG files
-that changed. It uses the same loaders and renderer as `readmint render` ([cli.md](cli.md)): for the same design,
+The Readmint Action renders your designs in your own repository, on a schedule or on demand, and commits the SVG (or PNG, WebP,
+APNG, GIF) files that changed. It uses the same loaders and renderer as `readmint render` ([cli.md](cli.md)): for the same design,
 assets and data the Action writes byte for byte what the CLI prints.
 
 ## Example workflow
@@ -37,18 +37,20 @@ Use an exact release tag (`vX.Y.Z`); see [Releases](#releases). Then put the pri
 
 ## Inputs
 
-| input            | default                          | meaning                                                                                                                                                                                           |
-| ---------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `designs`        | (required)                       | design files, one per line, relative to the workspace; blank lines are ignored; 1 to 64                                                                                                           |
-| `output-dir`     | `readmint`                       | folder inside the workspace the SVG files go to; created when missing                                                                                                                             |
-| `formats`        | `svg`                            | output formats, comma or newline separated; only `svg` until raster export exists, anything else is an input error                                                                                |
-| `token`          | `${{ github.token }}`            | token for the GitHub data; not used with `data-file`; never printed and never given to git                                                                                                        |
-| `login`          | `${{ github.repository_owner }}` | the GitHub user whose data is loaded; needed with `GITHUB_TOKEN`, which belongs to no user                                                                                                        |
-| `data-file`      | none                             | fixture data JSON (the CLI `--data` format) used instead of loading GitHub data: no token, no network                                                                                             |
-| `locale`         | none                             | BCP 47 tag for the `number`, `compact`, `percent` and `date` filters, checked as the CLI `--locale` (`en`, `de`, `fr`, `es`, `cs` or a region tag of one); none: the design's `locale`, else `en` |
-| `commit-message` | `Update Readmint graphics`       | message of the commit; at most 4096 characters                                                                                                                                                    |
-| `branch`         | the checked-out branch           | branch the commit is pushed to, without `refs/`; the checkout must be this branch at its latest commit on `origin` (see [Pushing](#pushing))                                                      |
-| `dry-run`        | `false`                          | `true` renders and writes the files but runs no git command                                                                                                                                       |
+| input            | default                          | meaning                                                                                                                                                                                                                                                         |
+| ---------------- | -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `designs`        | (required)                       | design files, one per line, relative to the workspace; blank lines are ignored; 1 to 64                                                                                                                                                                         |
+| `output-dir`     | `readmint`                       | folder inside the workspace the output files go to; created when missing                                                                                                                                                                                        |
+| `formats`        | `svg`                            | output formats, comma or newline separated: `svg`, `png`, `webp`, `apng`, `gif` (see [raster.md](raster.md)); each design is written once per format; the first one is what the snippet shows; `png` and `apng` together are an input error (both write `.png`) |
+| `scale`          | `2`                              | raster pixels per design pixel, 1..4 (up to three decimals), as the CLI `--scale`                                                                                                                                                                               |
+| `frame-rate`     | none                             | frames per second of an animated raster output, a whole number in 1..60 (1..50 when `gif` is listed), as the CLI `--frame-rate`; none: 30, `gif` 25                                                                                                             |
+| `token`          | `${{ github.token }}`            | token for the GitHub data; not used with `data-file`; never printed and never given to git                                                                                                                                                                      |
+| `login`          | `${{ github.repository_owner }}` | the GitHub user whose data is loaded; needed with `GITHUB_TOKEN`, which belongs to no user                                                                                                                                                                      |
+| `data-file`      | none                             | fixture data JSON (the CLI `--data` format) used instead of loading GitHub data: no token, no network                                                                                                                                                           |
+| `locale`         | none                             | BCP 47 tag for the `number`, `compact`, `percent` and `date` filters, checked as the CLI `--locale` (`en`, `de`, `fr`, `es`, `cs` or a region tag of one); none: the design's `locale`, else `en`                                                               |
+| `commit-message` | `Update Readmint graphics`       | message of the commit; at most 4096 characters                                                                                                                                                                                                                  |
+| `branch`         | the checked-out branch           | branch the commit is pushed to, without `refs/`; the checkout must be this branch at its latest commit on `origin` (see [Pushing](#pushing))                                                                                                                    |
+| `dry-run`        | `false`                          | `true` renders and writes the files but runs no git command                                                                                                                                                                                                     |
 
 Booleans are YAML core booleans: `true`, `True`, `TRUE`, `false`, `False`, `FALSE`. A blank input takes its default.
 Every problem with the inputs is reported at once, before anything is rendered.
@@ -64,8 +66,9 @@ Every problem with the inputs is reported at once, before anything is rendered.
 
 ## Outputs on disk and the dark variant
 
-A design `card.yaml` is written to `<output-dir>/card.svg`: the file name without its last extension, plus `.svg`. Two
-designs that would write the same file (also when only the letter case differs) are an input error.
+A design `card.yaml` is written to `<output-dir>/card.svg`: the file name without its last extension, plus the extension
+of each format (`.svg`, `.png`, `.webp`, `.gif`; `apng` writes `.png`). Two designs that would write the same file
+(also when only the letter case differs) are an input error.
 
 A design file `card.dark.yaml` next to `card.yaml` (same folder, same extension) is its dark variant: it is rendered
 too, to `<output-dir>/card.dark.svg`, and the snippet switches to it when the reader's system is in dark mode. It is a
@@ -80,7 +83,14 @@ list it; if you do, list its light design too, else it is an input error.
 </picture>
 ```
 
-Paths in the snippet are relative to the repository root (where the README is), each segment percent-encoded.
+Paths in the snippet are relative to the repository root (where the README is), each segment percent-encoded. The
+snippet shows the first listed format; when that is a raster format, the `<img>` carries the design's `width` and
+`height` in CSS pixels, so an image exported at `scale` 2 shows sharp at the design's size:
+
+<!-- prettier-ignore -->
+```text
+<img alt="card" src="readmint/card.png" width="420" height="120">
+```
 
 Outputs of designs you remove from the list are not deleted.
 
@@ -91,7 +101,8 @@ Outputs of designs you remove from the list are not deleted.
    commit on `origin`, before anything is written.
 3. Loads the data once: the `data-file`, else the GitHub data of `login`, bound as `github` (see
    [data-github.md](data-github.md)). The load is given 5 minutes.
-4. Loads and renders every design and dark variant. Design files and their assets are read only inside the workspace,
+4. Loads and renders every design and dark variant, in every listed format (a raster export samples an animated design
+   at `frame-rate` and stays within the limits of [raster.md](raster.md)). Design files and their assets are read only inside the workspace,
    also through links ([asset-loading.md](asset-loading.md)). If any design fails, nothing is written and the run
    fails: the output set is never half updated.
 5. Writes each output whose bytes differ from the file already there (a file with the same bytes is not touched).
@@ -150,7 +161,8 @@ A failed run exits with 1 and prints one `::error::` line per problem, each nami
 - inputs: a missing or invalid input (all at once);
 - data: the fixture file's problem, or `GitHub data (<code>): <message>` with the code of
   [data-github.md](data-github.md#errors);
-- render: the design's issues, as `readmint render` prints them;
+- render: the design's issues, as `readmint render` prints them, or a raster export over a limit (the measured value,
+  the limit and a fix);
 - output: an output folder outside the workspace, an output that is not a regular file, a file that cannot be written;
 - git: the git command that failed and the last 20 lines of what it printed.
 
@@ -159,7 +171,8 @@ Anything unexpected prints only `internal error (<name>)`.
 
 ## Releases
 
-The bundle (`packages/action/dist/action.js`) is not in the main branch. The `Release Action` workflow
+The bundle (`packages/action/dist/action.js`, with the raster WebAssembly modules in `packages/action/dist/wasm/`) is
+not in the main branch. The `Release Action` workflow
 (`workflow_dispatch` with a `version` such as `v0.1.0`) builds it on `main`, commits it on a detached commit and
 pushes a new tag that points there. It never moves or overwrites a tag, so a tag always runs the same code. The
 Action is version 0: an added input or output is compatible, a renamed or removed one is a new major version.

@@ -25,6 +25,7 @@ describe("readInputs", () => {
       designs: ["card.json"],
       outputDir: "readmint",
       formats: ["svg"],
+      scale: 2,
       token: "t0ken-value",
       login: "",
       commitMessage: "Update Readmint graphics",
@@ -69,6 +70,7 @@ describe("readInputs", () => {
       designs: ["card.json"],
       outputDir: "images/readme",
       formats: ["svg"],
+      scale: 2,
       token: "",
       login: "octocat",
       dataFile: "fixture.json",
@@ -94,11 +96,41 @@ describe("readInputs", () => {
     ]);
   });
 
-  test("formats other than svg are refused until raster export", () => {
-    expect(problems({ ...base, formats: "svg,png" })).toEqual([
-      'input formats: "png" is not supported; only svg until raster export',
+  test("reads raster formats once each in the listed order, with scale and frame-rate", () => {
+    expect(
+      readInputs(
+        env({ ...base, formats: "webp\n svg, webp,apng", scale: "1.5", "frame-rate": "60" }),
+      ),
+    ).toMatchObject({ formats: ["webp", "svg", "apng"], scale: 1.5, frameRate: 60 });
+    expect(readInputs(env({ ...base, formats: "gif", "frame-rate": "50" })).frameRate).toBe(50);
+  });
+
+  test("an unknown format is refused, naming the formats there are", () => {
+    expect(problems({ ...base, formats: "svg,jpeg" })).toEqual([
+      'input formats: "jpeg" is not one of svg, png, webp, apng, gif',
     ]);
     expect(problems({ ...base, formats: "SVG" })).toHaveLength(1);
+  });
+
+  test("png and apng together are refused: both write <stem>.png", () => {
+    expect(problems({ ...base, formats: "png, apng" })).toEqual([
+      "input formats lists png and apng, which both write .png files; list one",
+    ]);
+  });
+
+  test.each([
+    [{ scale: "0" }, 'input scale "0" is not a number in 1..4'],
+    [{ scale: "4.5" }, 'input scale "4.5" is not a number in 1..4'],
+    [{ scale: "two" }, 'input scale "two" is not a number in 1..4'],
+    [{ "frame-rate": "0" }, 'input frame-rate "0" is not a whole number in 1..60'],
+    [{ "frame-rate": "61" }, 'input frame-rate "61" is not a whole number in 1..60'],
+    [{ "frame-rate": "12.5" }, 'input frame-rate "12.5" is not a whole number in 1..60'],
+    [
+      { formats: "svg,gif", "frame-rate": "51" },
+      'input frame-rate "51" is not a whole number in 1..50 (gif)',
+    ],
+  ])("%j is refused, naming the range", (inputs, message) => {
+    expect(problems({ ...base, ...inputs })).toEqual([message]);
   });
 
   test("an empty design list is refused", () => {
@@ -187,7 +219,7 @@ describe("readInputs", () => {
     const lines = problems({
       designs: "",
       token: "ghp_secretsecretsecret",
-      formats: "gif",
+      formats: "bmp",
       "dry-run": "maybe",
     });
     expect(lines).toHaveLength(3);

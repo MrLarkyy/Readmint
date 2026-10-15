@@ -16,7 +16,8 @@
   },
   "dependencies": {
     "@readmint/cli": "workspace:*",
-    "@readmint/data-github": "workspace:*"
+    "@readmint/data-github": "workspace:*",
+    "@readmint/raster": "workspace:*"
   },
   "devDependencies": {
     "rolldown": "1.2.13",

@@ -44,6 +44,9 @@ importers:
       '@readmint/data-github':
         specifier: workspace:*
         version: link:../data-github
+      '@readmint/raster':
+        specifier: workspace:*
+        version: link:../raster
     devDependencies:
       rolldown:
         specifier: 1.2.13
