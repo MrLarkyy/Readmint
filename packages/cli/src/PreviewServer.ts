@@ -35,6 +35,11 @@ export interface PreviewServerOptions {
    * method, that path answers like any other path without the secret.
    */
   readonly launchToken?: string;
+  /**
+   * Called at most once per server, with no arguments (it never sees the token or the secret), when a GET asks
+   * for the launch path again after it was spent. The reply is unchanged.
+   */
+  readonly onLaunchReused?: () => void;
 }
 
 const svgCsp = "default-src 'none'; style-src 'unsafe-inline'; img-src data:; font-src data:";
@@ -59,6 +64,7 @@ export class PreviewServer {
   readonly #prefix: Buffer | undefined;
   readonly #secret: string | undefined;
   readonly #launch: LaunchPath | undefined;
+  readonly #onLaunchReused: (() => void) | undefined;
   #hosts: ReadonlySet<string> = new Set();
   #origins: ReadonlySet<string> = new Set();
   #svg: string | undefined;
@@ -83,6 +89,7 @@ export class PreviewServer {
     this.#prefix = options.secret === undefined ? undefined : Buffer.from(`/${options.secret}`);
     this.#launch =
       options.launchToken === undefined ? undefined : new LaunchPath(options.launchToken);
+    this.#onLaunchReused = options.onLaunchReused;
     this.#server = createServer((request, response) => {
       this.#handle(request, response);
     });
@@ -163,6 +170,13 @@ export class PreviewServer {
     if (request.method === "GET" && this.#launch?.take(target) === true) {
       send(response, 303, "text/plain", "see other\n", { Location: `/${this.#secret ?? ""}/` });
       return;
+    }
+    if (request.method === "GET" && this.#launch?.reused(target) === true) {
+      try {
+        this.#onLaunchReused?.();
+      } catch {
+        // a failing notice never changes the answer
+      }
     }
     // Before the method and the event-stream limit: a request without the secret learns nothing
     // and cannot take a slot.

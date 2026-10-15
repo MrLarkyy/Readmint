@@ -341,13 +341,27 @@ test("--github --open opens a one-time launch address, never the secret one", as
     expect(first.status).toBe(303);
     expect(first.location).toBe(`/${printed.secret}/`);
     expect(first.body).not.toContain(printed.secret);
+    expect((await getRaw(`${new URL(seen).origin}${first.location ?? ""}`)).status).toBe(200);
     const again = await getRaw(seen);
     expect(again.status).toBe(403);
     expect(again.body).toBe("forbidden: open the address the preview printed\n");
 
-    expect(stderr).toBe(before);
+    const warning = "preview: the one-time launch address was used again;";
+    const warned = Date.now() + 10_000;
+    while (!stderr.includes(warning)) {
+      if (Date.now() > warned) throw new Error("timed out waiting for the reuse warning");
+      await sleep(10);
+    }
+    expect(stderr.startsWith(before)).toBe(true);
+    expect(stderr.slice(before.length)).toMatch(
+      /^preview: the one-time launch address was used again; [^\n]*\n$/,
+    );
     expect(stderr.split(printed.secret)).toHaveLength(2);
     expect(stderr).not.toContain(seen.slice(-43));
+
+    expect((await getRaw(seen)).status).toBe(403);
+    await sleep(100);
+    expect(stderr.split(warning)).toHaveLength(2);
   } finally {
     controller.abort();
   }
