@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Readmint editor</title>
+    <style>
+      body {
+        margin: 0;
+        font:
+          14px/1.4 system-ui,
+          sans-serif;
+        color: #1f2328;
+      }
+      .rm-toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+        padding: 8px;
+        border-bottom: 1px solid #d0d7de;
+      }
+      .rm-main {
+        display: grid;
+        grid-template-columns: 260px 1fr 280px;
+        gap: 12px;
+        padding: 12px;
+      }
+      .rm-canvas {
+        overflow: auto;
+        background: repeating-conic-gradient(#f6f8fa 0 25%, #fff 0 50%) 0 0 / 16px 16px;
+      }
+      .rm-layers ul,
+      .rm-issues {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+      }
+      .rm-selected {
+        font-weight: 600;
+      }
+      .rm-field {
+        display: grid;
+        grid-template-columns: 100px 1fr;
+        gap: 4px;
+        margin-bottom: 4px;
+      }
+      .rm-bound {
+        background: #fff8c5;
+      }
+      .rm-note {
+        color: #59636e;
+      }
+      .rm-issues {
+        padding: 0 12px 12px;
+        color: #d1242f;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

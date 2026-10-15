@@ -1,0 +1,133 @@
+import { DesignLimits } from "@readmint/format";
+import { RenderLimits } from "@readmint/renderer";
+import { describe, expect, test } from "vitest";
+import {
+  addLayer,
+  checkFonts,
+  createEditorState,
+  EditorLimits,
+  newDesign,
+  renderPreview,
+  setFontAsset,
+  uploadFont,
+} from "../src/index.js";
+import { testFonts } from "./testFonts.js";
+
+const empty = createEditorState(newDesign());
+
+describe("uploadFont", () => {
+  test.each(["ttf", "otf", "woff", "woff2"] as const)(
+    "adds a %s as a data URI font asset",
+    (kind) => {
+      const next = uploadFont(empty, testFonts[kind]);
+      expect(next.issues).toEqual([]);
+      const asset = next.design.assets?.fonts?.["Montserrat-Medium"];
+      expect(asset).toMatchObject({
+        family: "Montserrat",
+        weight: 500,
+        licence: { embedding: "allowed" },
+      });
+      expect(asset?.src.startsWith(`data:font/${kind};base64,`)).toBe(true);
+      expect(next.fontChecks["Montserrat-Medium"]).toEqual({ fsType: 0, embeddable: true });
+    },
+  );
+
+  test("gives a second upload of the same file its own id", () => {
+    const twice = uploadFont(uploadFont(empty, testFonts.ttf), testFonts.ttf);
+    expect(Object.keys(twice.design.assets?.fonts ?? {})).toEqual([
+      "Montserrat-Medium",
+      "Montserrat-Medium-2",
+    ]);
+  });
+
+  test("stores a font whose fsType forbids embedding as restricted: drawn as paths", () => {
+    let next = uploadFont(empty, testFonts.restricted);
+    expect(next.design.assets?.fonts?.["Montserrat-Restricted"]?.licence).toEqual({
+      embedding: "restricted",
+    });
+    expect(next.fontChecks["Montserrat-Restricted"]).toEqual({ fsType: 2, embeddable: false });
+    next = addLayer(next, "text");
+    const result = renderPreview(next);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.svg).not.toContain("@font-face");
+    expect(result.report.fonts).toMatchObject([{ drawnAs: "paths" }]);
+  });
+
+  test("never lets a restricted font be loosened; an allowed one may be restricted and back", () => {
+    const restricted = uploadFont(empty, testFonts.restricted);
+    const loosened = setFontAsset(restricted, "Montserrat-Restricted", { embedding: "allowed" });
+    expect(loosened.design).toBe(restricted.design);
+    expect(loosened.issues).toMatchObject([{ source: "font", message: /fsType \(0x0002\)/u }]);
+    const allowed = uploadFont(empty, testFonts.ttf);
+    const tightened = setFontAsset(allowed, "Montserrat-Medium", { embedding: "restricted" });
+    expect(tightened.design.assets?.fonts?.["Montserrat-Medium"]?.licence.embedding).toBe(
+      "restricted",
+    );
+    const back = setFontAsset(tightened, "Montserrat-Medium", {
+      embedding: "allowed",
+      licenceName: "OFL-1.1",
+    });
+    expect(back.design.assets?.fonts?.["Montserrat-Medium"]?.licence).toEqual({
+      embedding: "allowed",
+      name: "OFL-1.1",
+    });
+  });
+
+  test("checkFonts reads the fsType again from the data URI of an imported design", () => {
+    const restricted = uploadFont(empty, testFonts.restricted);
+    const reopened = checkFonts(createEditorState(restricted.design));
+    expect(reopened.fontChecks).toEqual({
+      "Montserrat-Restricted": { fsType: 2, embeddable: false },
+    });
+    const loosened = setFontAsset(reopened, "Montserrat-Restricted", { embedding: "allowed" });
+    expect(loosened.design).toBe(reopened.design);
+  });
+
+  test("refuses a file over maxFontBytes before parsing it", () => {
+    expect(EditorLimits.maxFontBytes).toBe(RenderLimits.maxFontBytes);
+    expect(EditorLimits.maxImageBytes).toBe(RenderLimits.maxImageBytes);
+    // Valid TTF magic, then nothing a parser could read: only the size check words the issue this way.
+    const bytes = new Uint8Array(EditorLimits.maxFontBytes + 1);
+    bytes.set([0, 1, 0, 0]);
+    const next = uploadFont(empty, { name: "big.ttf", bytes });
+    expect(next.design).toBe(empty.design);
+    expect(next.issues).toEqual([
+      {
+        source: "font",
+        message: 'font "big.ttf" is 4194305 bytes, more than the 4194304 a font may have',
+      },
+    ]);
+  });
+
+  test.each([
+    ["garbage", new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8])],
+    ["a truncated font", testFonts.ttf.bytes.subarray(0, 200)],
+    ["a collection", new Uint8Array([0x74, 0x74, 0x63, 0x66, 0, 0, 0, 0])],
+  ])("reports %s as an issue and keeps the design", (_name, bytes) => {
+    const next = uploadFont(empty, { name: "x.ttf", bytes });
+    expect(next.design).toBe(empty.design);
+    expect(next.issues).toMatchObject([{ source: "font", message: /cannot be used/u }]);
+  });
+
+  test("refuses a font that would make the design file longer than maxSourceLength", () => {
+    // An image asset whose data URI fills the file up to the space the font would need.
+    const dataUri = Math.ceil(testFonts.ttf.bytes.length / 3) * 4;
+    const filler = `data:image/png;base64,${"A".repeat(DesignLimits.maxSourceLength - dataUri)}`;
+    const big = createEditorState({
+      ...newDesign(),
+      assets: { images: { filler: { src: filler } } },
+    });
+    const next = uploadFont(big, testFonts.ttf);
+    expect(next.design).toBe(big.design);
+    expect(next.issues).toMatchObject([
+      {
+        source: "font",
+        message: new RegExp(
+          `characters long, more than the ${String(DesignLimits.maxSourceLength)} a design may have`,
+          "u",
+        ),
+      },
+    ]);
+  });
+});

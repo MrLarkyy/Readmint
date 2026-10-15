@@ -11,9 +11,19 @@
   },
   "scripts": {
     "build": "tsc -b tsconfig.build.json",
-    "typecheck": "tsc -p tsconfig.json"
+    "typecheck": "tsc -p tsconfig.json",
+    "dev": "vite",
+    "app": "vite build"
   },
   "dependencies": {
-    "@readmint/format": "workspace:*"
+    "@readmint/data": "workspace:*",
+    "@readmint/fonts": "workspace:*",
+    "@readmint/format": "workspace:*",
+    "@readmint/renderer": "workspace:*"
+  },
+  "devDependencies": {
+    "@readmint/cli": "workspace:*",
+    "@readmint/golden": "workspace:*",
+    "vite": "8.3.4"
   }
 }
