@@ -15,6 +15,7 @@ import type { DesignFile } from "./loadDesignFile.js";
 import { loadRenderInput } from "./loadRenderInput.js";
 import { retryWhileChanging } from "./retryWhileChanging.js";
 import { PreviewServer, type PreviewUpdate } from "./PreviewServer.js";
+import { previewSecret } from "./previewSecret.js";
 import { printLines } from "./printLines.js";
 import { redactSecrets } from "./redactSecrets.js";
 import { renderInput } from "./renderInput.js";
@@ -27,7 +28,8 @@ type PreviewArgs = Extract<CliCommand, { name: "preview" }>;
  * Serves the render on http://127.0.0.1:<port>/ and re-renders when the design, the fixture data or
  * an asset changes; a failing render keeps the last SVG and shows its issues. Ends with exit code 0
  * when `io.signal` aborts. `--github` data is loaded once, before the server starts: a design edit never costs
- * GitHub requests.
+ * GitHub requests. With that token-scoped data the routes live under a per-session secret path
+ * (http://127.0.0.1:<port>/<secret>/), printed once and kept in memory only.
  */
 export async function previewCommand(args: PreviewArgs, io: CliIo): Promise<ExitCode> {
   const { loadData } = liveData(args, io, io.signal);
@@ -38,7 +40,8 @@ export async function previewCommand(args: PreviewArgs, io: CliIo): Promise<Exit
     if (io.signal?.aborted === true) return ExitCode.ok;
     throw error;
   }
-  const server = new PreviewServer();
+  const secret = loadData === undefined ? undefined : previewSecret();
+  const server = new PreviewServer(secret === undefined ? {} : { secret });
   let port: number;
   try {
     ({ port } = await server.listen(args.port));
@@ -76,7 +79,10 @@ export async function previewCommand(args: PreviewArgs, io: CliIo): Promise<Exit
       nextPoll: (signal) => sleep(io.pollIntervalMs ?? 300, undefined, { signal }),
     });
     try {
-      await printLines(io.stderr, [`preview: http://127.0.0.1:${String(port)}/`]);
+      const base = `http://127.0.0.1:${String(port)}/`;
+      await printLines(io.stderr, [
+        `preview: ${secret === undefined ? base : `${base}${secret}/`}`,
+      ]);
       await aborted(io.signal);
     } finally {
       await watcher.close();
