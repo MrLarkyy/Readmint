@@ -1,4 +1,8 @@
+import { Bytes, Truncated } from "./Bytes.js";
 import { exifOrientation, type Orientation, type OrientationField } from "./exifOrientation.js";
+import { JpegStructure } from "./JpegStructure.js";
+import { LosslessJpeg } from "./LosslessJpeg.js";
+import { nextJpegMarker } from "./nextJpegMarker.js";
 
 export type ImageMime = "image/png" | "image/jpeg" | "image/gif" | "image/webp";
 
@@ -25,49 +29,6 @@ export interface ImageInfo {
 export type SniffResult =
   | { readonly ok: true; readonly info: ImageInfo }
   | { readonly ok: false; readonly message: string };
-
-class Truncated extends Error {}
-
-class Bytes {
-  constructor(readonly data: Uint8Array) {}
-
-  u8(offset: number): number {
-    const value = this.data[offset];
-    if (value === undefined) throw new Truncated();
-    return value;
-  }
-
-  u16be(offset: number): number {
-    return (this.u8(offset) << 8) | this.u8(offset + 1);
-  }
-
-  u16le(offset: number): number {
-    return this.u8(offset) | (this.u8(offset + 1) << 8);
-  }
-
-  u24le(offset: number): number {
-    return this.u16le(offset) + this.u8(offset + 2) * 65_536;
-  }
-
-  u32be(offset: number): number {
-    return this.u16be(offset) * 65_536 + this.u16be(offset + 2);
-  }
-
-  u32le(offset: number): number {
-    return this.u16le(offset) + this.u16le(offset + 2) * 65_536;
-  }
-
-  ascii(offset: number, length: number): string {
-    let text = "";
-    for (let index = 0; index < length; index++)
-      text += String.fromCharCode(this.u8(offset + index));
-    return text;
-  }
-
-  startsWith(signature: readonly number[]): boolean {
-    return signature.every((byte, index) => this.data[index] === byte);
-  }
-}
 
 const png = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
 
@@ -186,13 +147,14 @@ function pngExifBlock(
 }
 
 /**
- * SOF0-SOF2: the frame types (baseline, extended and progressive Huffman, 8-bit) every output draws alike. SOF5-7, C8
- * and SOF13-15 libjpeg does not draw. SOF3 and SOF9-11 are refused after the RM-51 probe (Chromium 156, resvg-wasm
- * 2.6.2; fixtures in test/assets/jpeg): resvg draws arithmetic coding empty, and lossless differently from Chromium
- * (grey black there, YCbCr other colours; only RGB-coded files match).
+ * SOF0-SOF2: the frame types (baseline, extended and progressive Huffman, 8-bit) every output draws alike. SOF3
+ * (lossless) only under the `LosslessJpeg` rule: 8-bit RGB-coded files, which Chromium and resvg draw alike (RM-54);
+ * other lossless files they draw differently (RM-51: grey black in Chromium, YCbCr other colours). SOF5-7, C8 and
+ * SOF13-15 libjpeg does not draw; SOF9-11 (arithmetic) resvg draws empty. Probes: Chromium 156, resvg-wasm 2.6.2;
+ * fixtures in test/assets/jpeg.
  */
 function isFrameHeader(marker: number): boolean {
-  return marker >= 0xc0 && marker <= 0xc2;
+  return marker >= 0xc0 && marker <= 0xc3;
 }
 
 /** The segments every output reads (or skips) by their length: DHT, DQT, DRI, APPn, COM. */
@@ -220,10 +182,8 @@ function jpegMarkerProblem(marker: number, sawFrame: boolean): string | undefine
     return `JPEG holds marker ${hex(marker)} before its image data`;
   }
   if (isFrameHeader(marker)) return sawFrame ? "JPEG holds a second frame header" : undefined;
-  if (marker === 0xc3 || (marker >= 0xc9 && marker <= 0xcb)) {
-    return marker === 0xc3
-      ? `JPEG frame type ${hex(marker)} (lossless) is refused, because Chromium and resvg draw lossless JPEGs differently`
-      : `JPEG frame type ${hex(marker)} (arithmetic coded) is refused, because resvg draws it empty`;
+  if (marker >= 0xc9 && marker <= 0xcb) {
+    return `JPEG frame type ${hex(marker)} (arithmetic coded) is refused, because resvg draws it empty`;
   }
   if ((marker >= 0xc5 && marker <= 0xc8) || (marker >= 0xcd && marker <= 0xcf)) {
     return `JPEG frame type ${hex(marker)} is not supported`;
@@ -233,7 +193,7 @@ function jpegMarkerProblem(marker: number, sawFrame: boolean): string | undefine
 }
 
 /**
- * Why the frame header segment at `offset` (its length field) is refused: libjpeg's checks, 8-bit samples only.
+ * Why the DCT frame header (SOF0-2) at `offset` (its length field) is refused: libjpeg's checks, 8-bit samples only.
  * resvg-wasm 2.6.2 draws a DCT frame of 12 bits empty (RM-51 fixtures sof1-12bit-*).
  */
 function frameHeaderProblem(bytes: Bytes, offset: number, length: number): string | undefined {
@@ -252,17 +212,22 @@ function frameHeaderProblem(bytes: Bytes, offset: number, length: number): strin
  * Walks the segments up to the image data: the size from the frame header, EXIF from any APP1 `Exif` segment before
  * the scan (decoders read every marker up to it). Before the frame header the segments must follow each other
  * exactly; past it the walk reads markers as libjpeg (and so Chromium) does, so it finds the same EXIF segments, and a
- * cut-off walk just ends. A marker libjpeg rejects or resvg draws empty, before or after the frame header, refuses the image. Every step
- * advances, so the walk is one pass at most.
+ * cut-off walk just ends. A marker libjpeg rejects or resvg draws empty, before or after the frame header, refuses the
+ * image. `JpegStructure` holds every segment, the frame and, from the first scan on, the rest of the file to EOI to
+ * what Chromium and resvg both draw alike. A lossless (SOF3) file is judged at its first scan by `LosslessJpeg`, fed
+ * every segment before it on both sides of the frame header (libjpeg fixes the colour space there), then its image
+ * data must end at EOI; one cut off before that is refused. Every step advances, so the walk is one pass at most.
  */
 function sniffJpeg(bytes: Bytes): SniffResult {
   let offset = 2;
   let size: readonly [width: number, height: number] | undefined;
   let exif = false;
   const blocks: OrientationField[] = [];
+  const lossless = new LosslessJpeg();
+  const structure = new JpegStructure();
   try {
     for (;;) {
-      const next = nextMarker(bytes, offset, size !== undefined);
+      const next = nextJpegMarker(bytes, offset, size !== undefined);
       if (next === undefined)
         return { ok: false, message: "JPEG segment does not start with 0xFF" };
       const marker = next.marker;
@@ -271,6 +236,8 @@ function sniffJpeg(bytes: Bytes): SniffResult {
         if (size === undefined) {
           return { ok: false, message: "JPEG has no frame header before its image data" };
         }
+        const scanProblem = structure.scansProblem(bytes, offset, lossless);
+        if (scanProblem !== undefined) return { ok: false, message: scanProblem };
         return found("image/jpeg", size[0], size[1], 1, exif, blocks);
       }
       const problem = jpegMarkerProblem(marker, size !== undefined);
@@ -284,40 +251,26 @@ function sniffJpeg(bytes: Bytes): SniffResult {
         exif = true;
         blocks.push(exifOrientation(bytes.data, offset + 8, offset + length));
       }
+      lossless.readSegment(marker, bytes, offset, length);
+      const segmentProblem = structure.segmentProblem(marker, bytes, offset, length);
+      if (segmentProblem !== undefined) return { ok: false, message: segmentProblem };
       if (isFrameHeader(marker)) {
-        const frameProblem = frameHeaderProblem(bytes, offset, length);
-        if (frameProblem !== undefined) return { ok: false, message: frameProblem };
+        const frameProblem =
+          marker === 0xc3
+            ? lossless.readFrame(bytes, offset, length)
+            : frameHeaderProblem(bytes, offset, length);
+        const structureProblem = frameProblem ?? structure.frameProblem(marker, bytes, offset);
+        if (structureProblem !== undefined) return { ok: false, message: structureProblem };
         size = [bytes.u16be(offset + 5), bytes.u16be(offset + 3)];
       }
       offset += length;
     }
   } catch (error) {
     if (!(error instanceof Truncated) || size === undefined) throw error;
+    if (lossless.lossless) return { ok: false, message: lossless.problemWhenTruncated() };
+    const cutProblem = structure.cutProblem();
+    if (cutProblem !== undefined) return { ok: false, message: cutProblem };
     return found("image/jpeg", size[0], size[1], 1, exif, blocks);
-  }
-}
-
-/**
- * The marker code at or after `start` and the offset just past it, or undefined when the bytes there are no marker.
- * Strict, a marker must start right at `start` (0xFF fill bytes allowed). Lenient is libjpeg's next_marker: bytes
- * up to a 0xFF are skipped, then fill bytes, and `FF 00` (a stuffed zero, no marker) sends the scan on.
- */
-function nextMarker(
-  bytes: Bytes,
-  start: number,
-  lenient: boolean,
-): { readonly marker: number; readonly offset: number } | undefined {
-  let offset = start;
-  for (;;) {
-    if (bytes.u8(offset) !== 0xff) {
-      if (!lenient) return undefined;
-      while (bytes.u8(offset) !== 0xff) offset++;
-    }
-    while (bytes.u8(offset) === 0xff) offset++;
-    const marker = bytes.u8(offset);
-    offset++;
-    if (marker !== 0) return { marker, offset };
-    if (!lenient) return undefined;
   }
 }
 

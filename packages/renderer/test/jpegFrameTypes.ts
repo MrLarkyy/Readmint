@@ -1,7 +1,6 @@
 import { dataUriBytes } from "./exifImages.js";
 import sof1Rgb12 from "./assets/jpeg/sof1-12bit-rgb.jpg?inline";
 import sof1Grey12 from "./assets/jpeg/sof1-12bit-grey.jpg?inline";
-import sof3Rgb8 from "./assets/jpeg/sof3-8bit-rgb.jpg?inline";
 import sof3Grey8 from "./assets/jpeg/sof3-8bit-grey.jpg?inline";
 import sof3Ycbcr8 from "./assets/jpeg/sof3-8bit-ycbcr.jpg?inline";
 import sof3Grey12 from "./assets/jpeg/sof3-12bit-grey.jpg?inline";
@@ -23,7 +22,8 @@ export type ResvgOutcome = "nothing" | "traps" | readonly [number, number, numbe
  * marker on the RGB files); ffmpeg 9 `ljpeg` (3-component yuvj444p, ids 1 2 3, so the stored samples are YCbCr);
  * arithmetic files from a port of libjpeg's jcarith.c encode_mcu (SOF9 sequential, SOF10 progressive: a DC scan and
  * an AC 1-63 scan) and a lossless arithmetic coder after ITU-T T.81 H.1.2.3 (SOF11, predictor 1), the conditioning
- * table read from the libjpeg-turbo binary. Check: the libjpeg-turbo and ffmpeg files decode identically in
+ * table read from the libjpeg-turbo binary. The 8-bit RGB lossless files the sniffer accepts since RM-54, and their
+ * refused variants, are in losslessJpegs.ts. Check: the libjpeg-turbo and ffmpeg files decode identically in
  * libjpeg-turbo 3.1.3 and in the Richter libjpeg (pylibjpeg-libjpeg 2.4.0); SOF9 and SOF10 decode within 2 of the
  * source in both; SOF11 round-trips exactly in the Richter libjpeg. mozjpeg (@jsquash/jpeg) has no arithmetic coder.
  */
@@ -38,8 +38,7 @@ export interface JpegFrameFixture {
 }
 
 const precision12 = "precision of 12 bits is refused, because resvg draws it empty";
-const lossless =
-  "frame type 0xC3 (lossless) is refused, because Chromium and resvg draw lossless JPEGs differently";
+const lossless = (reason: string) => `frame type 0xC3 (lossless) is refused: ${reason};`;
 const arithmetic = (marker: string) =>
   `frame type ${marker} (arithmetic coded) is refused, because resvg draws it empty`;
 
@@ -60,12 +59,17 @@ const row = (
 export const jpegFrameFixtures: readonly JpegFrameFixture[] = [
   row("sof1-12bit-rgb", sof1Rgb12, precision12, "nothing"),
   row("sof1-12bit-grey", sof1Grey12, precision12, "nothing"),
-  row("sof3-8bit-rgb", sof3Rgb8, lossless, [40, 0, 215], [40, 0, 215]),
-  row("sof3-8bit-grey", sof3Grey8, lossless, [30, 30, 30], [0, 0, 0]),
-  row("sof3-8bit-ycbcr", sof3Ycbcr8, lossless, [245, 128, 109], [36, 228, 130]),
-  row("sof3-12bit-grey", sof3Grey12, lossless, "nothing"),
-  row("sof3-12bit-rgb", sof3Rgb12, lossless, "traps"),
-  row("sof3-16bit-grey", sof3Grey16, lossless, "nothing"),
+  row("sof3-8bit-grey", sof3Grey8, lossless("1 component"), [30, 30, 30], [0, 0, 0]),
+  row(
+    "sof3-8bit-ycbcr",
+    sof3Ycbcr8,
+    lossless("component ids 1 2 3"),
+    [245, 128, 109],
+    [36, 228, 130],
+  ),
+  row("sof3-12bit-grey", sof3Grey12, lossless("precision of 12 bits"), "nothing"),
+  row("sof3-12bit-rgb", sof3Rgb12, lossless("precision of 12 bits"), "traps"),
+  row("sof3-16bit-grey", sof3Grey16, lossless("precision of 16 bits"), "nothing"),
   row("sof9", sof9, arithmetic("0xC9"), "nothing"),
   row("sof10", sof10, arithmetic("0xCA"), "nothing"),
   row("sof11", sof11, arithmetic("0xCB"), "nothing"),
