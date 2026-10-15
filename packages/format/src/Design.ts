@@ -209,7 +209,10 @@ export interface ImageLayer extends LayerBase {
   readonly alt?: string;
 }
 
-export type ComponentPropValue = string | number | boolean;
+export type ComponentPropScalar = string | number | boolean;
+
+/** A scalar, or a literal list of scalars for an `array` prop (at most 1000 items). */
+export type ComponentPropValue = ComponentPropScalar | readonly ComponentPropScalar[];
 
 export interface ComponentLayer extends LayerBase {
   readonly type: "component";
@@ -264,11 +267,29 @@ export interface ImageAsset {
   readonly height?: number;
 }
 
-export interface ComponentPropDefinition {
+export interface ScalarPropDefinition {
   readonly type: "string" | "number" | "boolean" | "color";
   readonly required?: boolean;
-  readonly default?: ComponentPropValue;
+  readonly default?: ComponentPropScalar;
 }
+
+/** A string that must be one of `values` (1 to 64 strings); a bound value is checked when rendering. */
+export interface EnumPropDefinition {
+  readonly type: "enum";
+  readonly values: readonly string[];
+  readonly required?: boolean;
+  readonly default?: string;
+}
+
+/** A list, literal or bound to data; a `repeat` in the component can iterate it as `{{ props.<name> }}`. */
+export interface ArrayPropDefinition {
+  readonly type: "array";
+  readonly required?: boolean;
+  readonly default?: readonly ComponentPropScalar[];
+}
+
+export type ComponentPropDefinition =
+  ScalarPropDefinition | EnumPropDefinition | ArrayPropDefinition;
 
 export interface ComponentDefinition {
   readonly description?: string;

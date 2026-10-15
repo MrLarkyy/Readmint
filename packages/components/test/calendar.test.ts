@@ -117,3 +117,17 @@ describe("size budget on the worst-case calendar", () => {
     expect(utf8Bytes(svg)).toBeLessThanOrEqual(calendarSizeBudget);
   });
 });
+
+test("an unknown orientation is an enum issue at the prop", () => {
+  const design = structuredClone(loadTemplate("calendar-heatmap"));
+  const result = validateDesign({
+    ...design,
+    layers: [{ type: "component", ref: "calendar", props: { orientation: "diagonal" } }],
+  });
+  expect(result.ok).toBe(false);
+  if (!result.ok) {
+    expect(result.issues).toContainEqual(
+      expect.objectContaining({ path: "/layers/0/props/orientation", code: "enum" }),
+    );
+  }
+});

@@ -27,7 +27,7 @@ packages/<pkg>/test/golden/<suite>/<fixture>.svg|png  committed goldens
 
 The suite file must import the renderer through code that runs in the browser too (no `fs`, no `Buffer`).
 Suite and fixture names match `^[a-z0-9][a-z0-9-]*$`. A suite is `{ name, render(input) => svg, fixtures:
-[{ name, input, scale? }], tolerance?, browserTolerance?, precision? }`; `scale` (1..4) zooms the PNG; a rendered PNG above 4096 x 4096 is a failure in every mode.
+[{ name, input, scale? }], fonts?, fontsFromSvg?, tolerance?, browserTolerance?, precision? }`; `scale` (1..4) zooms the PNG; a rendered PNG above 4096 x 4096 is a failure in every mode.
 
 Imports: `@readmint/golden` (suite types, `defineGoldenSuite`), `@readmint/golden/node` (`goldenTest`, ...),
 `@readmint/golden/browser` (`goldenBrowserTest`), `@readmint/golden/vitest`. The root `vitest.config.ts` aliases them to
@@ -35,7 +35,7 @@ the sources, so no build is needed before `pnpm test`.
 
 ## Text
 
-resvg loads no system fonts, so a fixture with `<text>` needs `fonts: [paths to TTF/OTF files]` in the suite;
+resvg loads no system fonts, so a fixture with `<text>` needs `fonts: [paths to TTF/OTF files]` (or `fontsFromSvg`, below) in the suite;
 without them the rasterizer throws "SVG has text but the suite supplies no fonts" instead of drawing nothing.
 paths are used as given, so they are relative to the working directory of the test run (the repository root under
 `pnpm test`); build absolute ones from `import.meta.dirname`. A missing file is an error naming the path. A font
@@ -49,6 +49,17 @@ same release (`renderer-fonts-formats`). Two files with the same family and weig
 ambiguous: keep them in separate suites. The `renderer-fonts` suites draw every fixture twice, with the embedded font
 (`<name>-font`) and as paths (`<name>-paths`), and `renderer-fonts.cross` checks in Node and in Chromium that the two
 look alike within the suite tolerance.
+
+Shaped text writes ligatures, joining forms, marks and right-to-left glyphs as private-use characters that only the
+embedded subsets map ([renderer.md](renderer.md#text)), so the original font files cannot draw them. A suite whose
+fixtures have such text sets `fontsFromSvg: (svg) => fonts` instead of `fonts`: resvg then draws each rendered SVG with
+the fonts that function takes from it (`packages/renderer/test/embeddedFonts.ts` decodes every `@font-face` WOFF data
+URI), exactly what Chromium draws with. resvg-js 2.6.2 reads fonts only from files, so the rasterizer writes each
+once to a temporary file named by its SHA-256. `renderer-shaping` (Latin ligatures, Arabic words, marks and lam-alef,
+Devanagari, mixed Latin and Arabic, wrapped right-to-left lines; Noto Naskh Arabic and Noto Sans Devanagari, see the
+fonts README) draws every fixture with the subsets and as paths; `renderer-shaping.cross` holds the two to zero
+differing pixels in Node, and to its `browserTolerance` (2%: Chromium antialiases each overlapping glyph of joined
+scripts on its own but a path as one shape) in Chromium.
 
 resvg-js 2.6.2 does not decode WebP images: a WebP draws nothing in the Node PNG while Chromium draws it, so a fixture
 with a WebP image fails the browser leg. Cover WebP with unit tests instead.

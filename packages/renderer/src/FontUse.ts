@@ -7,6 +7,8 @@ export interface FontUse {
   readonly embedded: Map<number, number>;
   /** Distinct glyphs drawn, either way. */
   readonly glyphs: Set<number>;
+  /** Glyph -> the private-use code point it is written as (shaped glyphs no character of the font draws). */
+  readonly privateCodes: Map<number, number>;
   /** Length of the data URI of the embedded subset. */
   embeddedBytes: number;
   /** Path data written for text drawn as paths. */
