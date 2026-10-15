@@ -1,0 +1,11 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "packageRules": [
+    {
+      "description": "Types follow the supported Node runtime (22 LTS); v26 types let fs.stat return undefined and break typecheck.",
+      "matchPackageNames": ["@types/node"],
+      "allowedVersions": "<23"
+    }
+  ]
+}
