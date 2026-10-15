@@ -142,11 +142,15 @@ const u32le = (value: number): number[] => [
   (value >>> 24) & 255,
 ];
 
-/** A WebP made of a VP8X header (10x10, `flags`) and `chunks`, without image data: enough for the sniffer. */
+/**
+ * A WebP made of a VP8X header (10x10, `flags`) and `chunks`, without image data: enough for the sniffer. Its RIFF
+ * size covers every chunk.
+ */
 export function vp8x(flags: number, ...chunks: Uint8Array[]): Uint8Array {
+  const chunkBytes = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
   return concat(
     ascii("RIFF"),
-    u32le(0),
+    u32le(4 + 18 + chunkBytes),
     ascii("WEBPVP8X"),
     u32le(10),
     [flags, 0, 0, 0],

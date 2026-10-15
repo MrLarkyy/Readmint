@@ -2,8 +2,10 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Design, ImageLayer } from "@readmint/format";
 import { describe, expect, test } from "vitest";
+import { crc32 } from "../src/crc32.js";
 import { renderSvg } from "../src/index.js";
 import { sniffImage } from "../src/sniffImage.js";
+import { colourImages } from "./colourImages.js";
 import {
   dataUriBytes,
   jpegWithExif,
@@ -143,4 +145,36 @@ describe("EXIF orientation on an inline image", () => {
     render(orientedPng(8));
     expect(render(src, { rotation: 20 })).toBe(first);
   });
+});
+
+describe("colour data on an inline image", () => {
+  const p3Png = dataUriBytes(
+    colourImages.find((row) => row.name === "PNG with a Display P3 iCCP")?.uri ?? "",
+  );
+
+  /** The CRC an `eXIf` chunk of `png` stores, and the one its type and data give. */
+  function exifCrcs(png: Uint8Array): readonly [number, number] {
+    const at = new TextDecoder("latin1").decode(png).indexOf("eXIf") - 4;
+    const view = new DataView(png.buffer, png.byteOffset);
+    const end = at + 8 + view.getUint32(at);
+    return [view.getUint32(end), crc32(png.subarray(at + 4, end))];
+  }
+
+  test.each(["before-data", "after-data"] as const)(
+    "a PNG with an iCCP and an eXIf chunk %s is inlined upright, its CRC valid, without the iCCP",
+    (at) => {
+      const src = pngWithExif(p3Png, orientationTiff(6), at);
+      const svg = render(toDataUri("image/png", src));
+      const inlined = dataUriBytes(/href="([^"]*)"/u.exec(svg)?.[1] ?? "");
+      // The iCCP chunk of the fixture is 339 bytes; every other byte stays, but the upright eXIf entry.
+      expect(inlined.length).toBe(src.length - 339);
+      expect(new TextDecoder("latin1").decode(inlined)).not.toContain("iCCP");
+      expect(sniffImage(inlined, 1000)).toMatchObject({
+        ok: true,
+        info: { exif: true, orientation: 1, width: 32, height: 16, colourData: [] },
+      });
+      const [stored, computed] = exifCrcs(inlined);
+      expect(stored).toBe(computed);
+    },
+  );
 });
