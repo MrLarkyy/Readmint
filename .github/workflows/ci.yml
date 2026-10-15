@@ -9,16 +9,23 @@ permissions:
   contents: read
 
 jobs:
-  check:
+  static:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 22
-      - run: corepack enable
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm exec playwright install --with-deps --only-shell chromium
+      - uses: ./.github/actions/setup
+      - run: pnpm -r build
+      - run: pnpm typecheck
+      - run: pnpm lint
+      - run: pnpm format:check
+
+  bundle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
       - run: pnpm -r build
       - run: pnpm --filter @readmint/editor app
       - run: pnpm --filter @readmint/action bundle
@@ -46,25 +53,42 @@ jobs:
           test -f "$work/readmint/card.webp"
           test -f "$work/readmint/card.gif"
           grep -q "^changed<<" "$work/output.txt"
-      - run: pnpm typecheck
-      - run: pnpm lint
-      - run: pnpm format:check
-      - run: pnpm test
+
+  test:
+    name: test (${{ matrix.project }} ${{ matrix.shard }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { project: node, shard: 1/3 }
+          - { project: node, shard: 2/3 }
+          - { project: node, shard: 3/3 }
+          - { project: browser, shard: 1/2 }
+          - { project: browser, shard: 2/2 }
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+      - run: pnpm -r build
+      - uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+      - run: pnpm exec playwright install --with-deps --only-shell chromium
+      - run: pnpm exec vitest run --project ${{ matrix.project }} --shard=${{ matrix.shard }}
       - uses: actions/upload-artifact@v7
         if: failure()
         with:
-          name: golden-results
+          name: golden-results-${{ matrix.project }}-${{ strategy.job-index }}
           path: test-results/golden
           retention-days: 14
           if-no-files-found: ignore
 
   windows-paths:
     runs-on: windows-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 22
-      - run: corepack enable
-      - run: pnpm install --frozen-lockfile
+      - uses: ./.github/actions/setup
       - run: pnpm exec vitest run --project node packages/cli packages/action
