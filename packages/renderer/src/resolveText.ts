@@ -1,3 +1,4 @@
+import { ShapingBudget } from "@readmint/fonts";
 import { ValueRanges, type TextLayer } from "@readmint/format";
 import type { Scope } from "@readmint/expr";
 import { selectFont } from "./loadFont.js";
@@ -131,7 +132,9 @@ function layOut(
   options: TextShaperOptions,
   contentPath: string,
 ): TextLayout {
-  const shaper = new TextShaper(context, options);
+  // One shaping budget for the whole text, shared by every word and line: words are shaped to measure them and again
+  // as lines, so it allows two passes, max(16384, 64 x twice its length).
+  const shaper = new TextShaper(context, options, ShapingBudget.forText(2 * content.length));
   const paragraphs = wrapParagraphs(
     content,
     width,

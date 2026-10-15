@@ -1,3 +1,4 @@
+import { ShapingBudget } from "@readmint/fonts";
 import type { Design, FontAsset, Layer } from "@readmint/format";
 import { describe, expect, test } from "vitest";
 import { renderSvg } from "../src/index.js";
@@ -20,13 +21,11 @@ function design(layers: Layer[] = []): Design {
 function shaper(asset = "m", letterSpacing = 0): TextShaper {
   const context = new RenderContext(design(), {});
   const primary = selectFont(context, asset, undefined, "/layers/0/font");
-  return new TextShaper(context, {
-    referenced: asset,
-    primary,
-    weight: undefined,
-    fontSize: 20,
-    letterSpacing,
-  });
+  return new TextShaper(
+    context,
+    { referenced: asset, primary, weight: undefined, fontSize: 20, letterSpacing },
+    ShapingBudget.forText(1000),
+  );
 }
 
 function line(text: string, asset = "m", letterSpacing = 0) {

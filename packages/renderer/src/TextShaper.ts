@@ -10,6 +10,7 @@ import {
   type BidiParagraph,
   type ScriptCode,
   type ShapedRun,
+  type ShapingBudget,
 } from "@readmint/fonts";
 import { fontFallbacks, selectFont, type LoadedFont } from "./loadFont.js";
 import { ownEntry } from "./ownEntry.js";
@@ -76,7 +77,9 @@ const isPrivateUse = (codePoint: number) =>
  * each character cluster takes the first of the primary font and its fallbacks that has its base (a mark, joiner or
  * variation selector stays with its base's font when that font has it); a paragraph's bidi levels split it into runs
  * of one font, script and level, each shaped once and cached; runs are put in visual order (UAX #9 L2); letter
- * spacing follows every cluster. Positions are summed left to right, so every engine adds the same numbers.
+ * spacing follows every cluster. Positions are summed left to right, so every engine adds the same numbers. Every
+ * shaping call of the text (each word measured, each run laid out) spends one shared `budget`, so a hostile font
+ * cannot cost a fresh allowance per word.
  */
 export class TextShaper {
   /** Widths of the strings measured for wrapping (words repeat): at most one entry per word of the text. */
@@ -89,6 +92,7 @@ export class TextShaper {
   constructor(
     private readonly context: RenderContext,
     private readonly options: TextShaperOptions,
+    private readonly budget: ShapingBudget,
   ) {
     this.fallbackIds = fontFallbacks(ownEntry(context.design.assets?.fonts, options.referenced));
   }
@@ -278,6 +282,7 @@ export class TextShaper {
           rtl,
           kerning: font.kerning,
           ligatures: this.options.letterSpacing === 0,
+          budget: this.budget,
         }),
       );
       this.shapedRuns.set(key, shaped);
