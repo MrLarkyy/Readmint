@@ -1,7 +1,7 @@
 import { request, type IncomingHttpHeaders, type IncomingMessage } from "node:http";
 import { createServer, type Server } from "node:net";
 import { setTimeout as sleep } from "node:timers/promises";
-import { afterEach, beforeEach, describe, expect, test } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { ExitCode, type ImageFetch, runCli } from "../src/index.js";
 import { previewPage } from "../src/previewPage.js";
 import { PreviewServer } from "../src/PreviewServer.js";
@@ -38,13 +38,18 @@ afterEach(async () => {
 
 async function startPreview(
   design = "bound/design.json",
-  extra: { readonly args?: readonly string[]; readonly fetch?: ImageFetch } = {},
+  extra: {
+    readonly args?: readonly string[];
+    readonly fetch?: ImageFetch;
+    readonly openUrl?: (url: string) => Promise<void>;
+  } = {},
 ): Promise<Preview> {
   const controller = new AbortController();
   let stderr = "";
   const argv = ["preview", design, "--data", "data.json", "--port", "0", ...(extra.args ?? [])];
   const exit = runCli(argv, {
     ...(extra.fetch === undefined ? {} : { fetch: extra.fetch }),
+    ...(extra.openUrl === undefined ? {} : { openUrl: extra.openUrl }),
     stdout: () => undefined,
     stderr: (text) => {
       stderr += text;
@@ -377,6 +382,45 @@ describe("resources", () => {
     await expect(get(preview.port, "/status")).rejects.toMatchObject({ code: "ECONNREFUSED" });
     // libuv releases a closed handle on a later turn of the loop.
     await until(() => servers() === before, 2000);
+  });
+});
+
+describe("--open", () => {
+  test("opens exactly the printed address, once", async () => {
+    const opened: string[] = [];
+    const preview = await startPreview("bound/design.json", {
+      args: ["--open"],
+      openUrl: (url) => {
+        opened.push(url);
+        return Promise.resolve();
+      },
+    });
+    await until(() => opened.length > 0);
+    expect(opened).toEqual([`http://127.0.0.1:${String(preview.port)}/`]);
+    expect(preview.stderr()).toContain(`preview: ${opened[0] ?? ""}
+`);
+    expect(preview.stderr()).not.toContain("cannot open");
+    expect(await preview.stop()).toBe(ExitCode.ok);
+    running = undefined;
+    expect(opened).toHaveLength(1);
+  });
+
+  test("without --open nothing is opened, also after a reload", async () => {
+    const openUrl = vi.fn(() => Promise.resolve());
+    const { port } = await startPreview("bound/design.json", { openUrl });
+    await get(port, "/render.svg");
+    await tree.file("data.json", { v: 13 });
+    await until(async () => (await status(port)).version === 2);
+    expect(openUrl).not.toHaveBeenCalled();
+  });
+
+  test("an opener that never settles does not delay Ctrl+C", async () => {
+    const preview = await startPreview("bound/design.json", {
+      args: ["--open"],
+      openUrl: () => new Promise<void>(() => undefined),
+    });
+    expect(await preview.stop()).toBe(ExitCode.ok);
+    running = undefined;
   });
 });
 

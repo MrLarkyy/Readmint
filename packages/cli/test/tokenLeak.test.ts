@@ -202,3 +202,73 @@ test("the preview page's issues never show the token", async () => {
   expect(await exit).toBe(ExitCode.ok);
   expectNoToken({ code: 0, stdout: "", stderr });
 });
+
+describe("a failing --open opener never leaks the secret address", () => {
+  async function previewWith(openUrl: (url: string) => Promise<void>) {
+    const controller = new AbortController();
+    let stderr = "";
+    const exit = runCli(["preview", "bound/design.json", "--github", "--open", "--port", "0"], {
+      stdout: () => undefined,
+      stderr: (text) => {
+        stderr += text;
+      },
+      cwd: tree.root,
+      signal: controller.signal,
+      pollIntervalMs: 20,
+      env,
+      fetch: githubReplay().fetch,
+      openUrl,
+    });
+    const deadline = Date.now() + 10_000;
+    while (!stderr.includes("cannot open a browser")) {
+      if (Date.now() > deadline) throw new Error("timed out waiting for the opener line");
+      await sleep(10);
+    }
+    controller.abort();
+    return { code: await exit, stderr };
+  }
+
+  function expectOnlyThePreviewLine(stderr: string, line: string): string {
+    const printed = /preview: (http:\/\/127\.0\.0\.1:\d+\/([A-Za-z0-9_-]{43})\/)\n/.exec(stderr);
+    expect(printed).not.toBeNull();
+    const secret = printed?.[2] ?? "";
+    expect(stderr.split(secret)).toHaveLength(2);
+    expect(stderr).toContain(line);
+    expect(stderr).not.toContain("internal error");
+    return printed?.[1] ?? "";
+  }
+
+  test("a rejection with the address in its message, path and arguments", async () => {
+    let seen = "";
+    const { code, stderr } = await previewWith((url) => {
+      seen = url;
+      return Promise.reject(
+        Object.assign(new Error(`spawn xdg-open ENOENT ${url}`), {
+          code: "ENOENT",
+          path: url,
+          spawnargs: [url],
+        }),
+      );
+    });
+    expect(code).toBe(ExitCode.ok);
+    expect(
+      expectOnlyThePreviewLine(
+        stderr,
+        "preview: cannot open a browser (ENOENT); open the address above\n",
+      ),
+    ).toBe(seen);
+    expectNoToken({ code, stdout: "", stderr });
+  });
+
+  test("a synchronous throw with the address as its code", async () => {
+    let seen = "";
+    const { code, stderr } = await previewWith((url) => {
+      seen = url;
+      throw Object.assign(new Error(`boom ${url}`), { code: url });
+    });
+    expect(code).toBe(ExitCode.ok);
+    expect(
+      expectOnlyThePreviewLine(stderr, "preview: cannot open a browser; open the address above\n"),
+    ).toBe(seen);
+  });
+});

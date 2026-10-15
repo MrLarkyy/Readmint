@@ -84,6 +84,18 @@ Drawn in document order, first at the back. Layer `id` and `name` are not emitte
   row is as tall as its tallest child. In a stack or grid a child's own `x`/`y` is an offset inside its slot.
 - **rotation** turns a layer around the centre of its box and does not change the layout. **opacity** applies to the
   layer and everything in it. **clip** on a group clips to the group box.
+- **Layers off the canvas**: a layer drawn as a layer of its own (one with `opacity`, a group with `clip`, an image
+  drawn through a shared `<use>`) whose drawing lies wholly outside the canvas is not written: it draws nothing in any
+  viewer, and resvg 2.6.2 aborts (resvg-js: the whole process) on such a layer once it lies beyond twice the canvas. Its
+  gradients and clip path are not written either; its fonts are embedded as for any text, and `layerBoxes` still lists
+  it so the editor can select it. A clip group on the canvas whose children all lie outside the canvas counts as
+  outside. The box tested is generous and never trimmed (strokes, miters, glyph overhang padded; text by its glyphs,
+  not its layout box; a turn by the L1 radius about its centre) and computed with `+ - * min max abs` and, for arcs, a
+  square root (exactly rounded per IEEE 754) only, so Node and every browser decide alike. Being generous, it keeps a few far layers that draw nothing: text padded by up to
+  2 em and a stroke by twice its width, so very large text or a very wide stroke just past the canvas; and a group
+  turned about its centre with a child far from that centre. Such a layer is written, browsers draw the SVG as usual,
+  and raster export of it beyond twice the canvas refuses with `raster-image` ([raster.md](raster.md)). Layers without
+  an own layer stay wherever they are; resvg draws them anywhere.
 - **Path data template**: a `d` with `{{...}}` placeholders is evaluated per copy like a text, then checked as the
   format checks a literal `d` (not empty, at most 100000 characters, path data characters only; else `range` at `d`).
   Each copy gets the box and the `draw` length of its own data; a literal `d` is measured once per layer.
@@ -505,6 +517,11 @@ Output:
   With a rotation or scale the groups sit in `<g transform="translate(cx cy)">` and the element is drawn moved by
   `-cx -cy`, so both turn around the centre of the laid-out box. Layout never sees the animation.
 - resvg-js ignores `@keyframes`, `animation` and `@media`, which is why the static attributes carry frame 0.
+- Layers off the canvas ([Layers](#layers)): a frame places every layer by its sampled transforms (and an `opacity`
+  track makes a layer one of its own), so it leaves out a layer while its tracks hold it wholly off the canvas. The
+  animated SVG keeps every animated layer and everything inside one, since its CSS may move them onto the canvas; its
+  frame-0 attributes may then hold a layer far off the canvas, which a resvg drawing of the animated SVG itself (not a
+  frame) would abort on. Raster export always draws frames.
 
 `frameTimes(animation, frameRate)` gives the frame times of a timeline (`report.animation` or the design's
 `animation`) at 1..60 frames per second: `i * 1000 / frameRate` below the duration, plus the duration itself when the

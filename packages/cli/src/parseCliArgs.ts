@@ -34,7 +34,13 @@ const valueOptions: ReadonlySet<string> = new Set<ValueOption>([
   "quality",
   "login",
 ]);
-const flagOptions: ReadonlySet<string> = new Set(["help", "version", "fetch-images", "github"]);
+const flagOptions: ReadonlySet<string> = new Set([
+  "help",
+  "version",
+  "fetch-images",
+  "github",
+  "open",
+]);
 
 // No host option, ever: the preview listens on 127.0.0.1 only.
 const allowed: Readonly<Record<DesignCommand, ReadonlySet<ValueOption>>> = {
@@ -79,6 +85,7 @@ export function parseCliArgs(argv: readonly string[]): CliCommand {
       version: { type: "boolean" },
       "fetch-images": { type: "boolean" },
       github: { type: "boolean" },
+      open: { type: "boolean" },
     },
     allowPositionals: true,
     strict: false,
@@ -115,6 +122,8 @@ export function parseCliArgs(argv: readonly string[]): CliCommand {
   for (const name of values.keys()) {
     if (!allowed[command].has(name)) usage(`option --${name} does not apply to ${command}`);
   }
+  if (flags.has("open") && command !== "preview")
+    usage(`option --open does not apply to ${command}`);
   const github = flags.has("github");
   if (github && values.has("data")) usage("--github and --data exclude each other");
   if (!github && values.has("login")) usage("option --login needs --github");
@@ -140,6 +149,7 @@ export function parseCliArgs(argv: readonly string[]): CliCommand {
         name: "preview",
         ...common,
         port: port === undefined ? defaultPreviewPort : parsePort(port),
+        ...(flags.has("open") ? { open: true } : {}),
       };
     }
   }
