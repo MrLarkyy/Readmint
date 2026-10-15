@@ -167,6 +167,9 @@ A folder holds, per section, `<section>.json` and its dark twin `<section>.dark.
   cards of `year-ring` and `pinscreen` 412, two to a row: the example `README.md` sets two linked images of 49 % width
   side by side). The canvas is transparent and the sections draw no card: they sit on the page like the prototype,
   in the GitHub page colours of the theme; only the Pinscreen panels (status bar, code, terminal) have a surface.
+  The format has no mask, so the few fades (the veil over the far half of the Year Ring, the shade behind its total,
+  the edges of the Horizon tickers) are gradients of the page colour, `#ffffff` or `#0d1117`, that run out to
+  transparent: on another page colour (GitHub's dimmed themes) they show as a soft shade, never as a box.
   `work` is the heading strip above the repositories. The Action writes `readmint/<section>.svg` and
   `readmint/<section>.dark.svg` and prints the `<picture>` snippet that switches on `prefers-color-scheme`
   ([action.md](action.md#outputs-on-disk-and-the-dark-variant)): list only the light designs. The dark twin is the
@@ -175,9 +178,11 @@ A folder holds, per section, `<section>.json` and its dark twin `<section>.dark.
 - **Links.** SVG links do not work inside an `<img>`, so a clickable element is a link around the image: the example
   `README.md` wraps each repository and the contact footer.
 - **Repository slots.** `repo-1` to `repo-6` are the same design with the root prop `slot` 0 to 5 (a test pins that
-  they differ in nothing else). In `year-ring` and `pinscreen` a slot shows `github.pinned[slot]`; `horizon` ranks the
-  pinned repositories by stars (ties keep their order) and slot n shows the n-th. A slot past the list shows a plain
-  "No repository in slot n." line (`pinscreen`: an empty file).
+  they differ in nothing else). A slot reads `github.pinned`, or `github.repositories` where the data has no pinned
+  list (the loader does not produce one yet). In `year-ring` and `pinscreen` slot n shows the n-th of that list;
+  `horizon` ranks its first six by stars (ties keep their order) and slot n shows the n-th. A slot past the list shows
+  a plain "No repository in slot n." line (`pinscreen`: an empty file); a repository without `weeklyCommits` shows
+  no line (`year-ring`) and flat bars (`horizon`).
 - **Personal texts are root props.** What only a person can say (an introduction, a role, index rows, stack groups,
   the people worked with, the footer and the contact) is a prop of the root instance, declared per section with an
   empty default; an empty prop hides its block (an empty introduction falls back to `github.bio`, an empty contact to
@@ -207,16 +212,16 @@ yet, so a template reads them as optional (a missing property reads as `null`, s
 [expressions](expressions.md#semantics)) and shows a plain line where they are missing; pass them in a data file
 (`data-file`, `--data`) until the loader does:
 
-| path                                      | type           | used by                                                                 |
-| ----------------------------------------- | -------------- | ----------------------------------------------------------------------- |
-| `github.status.message`                   | string \| null | `horizon` header (status), `pinscreen` header (status bar)              |
-| `github.pushes[]`                         | array          | last push, recent work, commit ticker, git log: items below             |
-| `github.pushes[].repository`, `.hash`     | string         | repository name and short hash of the push                              |
-| `github.pushes[].message`                 | string         | commit message                                                          |
-| `github.pushes[].additions`, `.deletions` | number         | lines added and removed                                                 |
-| `github.pushes[].date`                    | ISO date       | "today", "yesterday", "n days ago" against the calendar's last day      |
-| `github.pinned[]`                         | array          | the pinned repositories, same items as `github.repositories[]`          |
-| `github.pinned[].weeklyCommits`           | number[52]     | the 52-week line (`year-ring`) and bar code (`horizon`) of a repository |
+| path                                      | type           | used by                                                                     |
+| ----------------------------------------- | -------------- | --------------------------------------------------------------------------- |
+| `github.status.message`                   | string \| null | `horizon` header (status), `pinscreen` header (status bar)                  |
+| `github.pushes[]`                         | array          | last push, recent work, commit ticker, git log: items below                 |
+| `github.pushes[].repository`, `.hash`     | string         | repository name and short hash of the push                                  |
+| `github.pushes[].message`                 | string         | commit message                                                              |
+| `github.pushes[].additions`, `.deletions` | number         | lines added and removed                                                     |
+| `github.pushes[].date`                    | ISO date       | "today", "yesterday", "n days ago" against the calendar's last day          |
+| `github.pinned[]`                         | array          | the pinned repositories, same items as `github.repositories[]` (else those) |
+| `github.pinned[].weeklyCommits`           | number[52]     | the 52-week line (`year-ring`) and bar code (`horizon`) of a repository     |
 
 Without these, `year-ring` shows "No recent push yet." and "No recent pushes yet.", `horizon` "No commits to show yet."
 and `pinscreen` "no pushes yet" and "no commits yet"; the sections that do not read them render in full.
@@ -243,17 +248,20 @@ and `pinscreen` "no pushes yet" and "no commits yet"; the sections that do not r
   counter-rotating circles. Each day is three nested groups, each only a rotation (outer `phi`, middle `-2 phi` turning
   twice as fast the other way, inner `phi` so the line stays upright), so all 365 copies share three animation rules
   and differ only in their static rotations. The ellipse is the one the prototype's perspective ring draws; the far
-  half fades under a veil of the page colour, and the month labels fade in and out with a cosine looked up in a table.
+  half fades under a soft ellipse of the page colour, and the month labels, set below the ring's base, fade in and
+  out with a cosine looked up in a table.
 - **Perspective without a camera.** The Horizon terrain and the Pinscreen pins project each point with the prototype's
   camera as plain arithmetic (`x = cx + f X / z`, `y = cy - f Y / z` after one fixed tilt), per vertex in bindings.
   The terrain is 52 weeks by 12 rows of quads, anchored at the calendar's last day (its column is the last; a day's
   row is its `weekday`), so any calendar of 364 to 371 days fills the grid; each weekday row is smoothed along the
   weeks (two passes of 1-2-1), every second row is the mean of two weekdays, the quads are drawn back to front, shaded
-  by their slope against a light from the upper left, tinted with the accent above half the height, and outlined a few
-  shades off their fill. A test checks the rows' order and that the grid has no hole for every length from 364 to 371.
+  by their slope against a light from the upper left, tinted with the accent above half the height and 0.15 above the
+  root of the mean day (so a calendar of near constant counts stays a grey plateau, never an orange band), and
+  outlined a few shades off their fill. Heights are the root of a count over the root of the largest, both from the
+  same table and capped at 1, so no peak rises past the totals above the terrain. A test checks the rows' order and that the grid has no hole for every length from 364 to 371.
 - **Square root without a filter.** The expression language has no square root: day counts use chords of the root
   through the squares 0, 1, 4, 9, 16, 36, 64, 100, 169, 256, 400, 1024, 4096 and 16384; the terrain's smoothed values
-  look the root up in a table of sixteenths.
+  and its largest count look the root up in a table of sixteenths.
 - **Values computed once.** A one-item `repeat` binds a value for everything below it (`"each": "{{ [expr] }}"`). A
   binding holds at most 2048 characters, so long work (the largest count of a year, the weekday sums) is split into a
   chain of such bindings.

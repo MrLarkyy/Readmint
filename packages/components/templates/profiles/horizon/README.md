@@ -48,7 +48,7 @@ jobs:
             readmint/designs/horizon/footer.json
 ```
 
-The repository rows rank `github.pinned` by stars: `repo-1` shows the most starred, `repo-6` the sixth. Each slot's design differs only in its root prop `slot` (0 to 5).
+The repository rows rank the first six of `github.pinned` (else of `github.repositories`, which the loader produces today) by stars: `repo-1` shows the most starred, `repo-6` the sixth. Each slot's design differs only in its root prop `slot` (0 to 5).
 
 ## Your texts
 
@@ -167,9 +167,10 @@ SVG links do not work inside an `<img>`, so each repository and the contact foot
 Every section reads the `github.*` object of the [GitHub data source](../../../../../docs/data-github.md). Some fields are
 not loaded yet; a design reads them as optional (a missing property is `null`) and shows a plain line where they are
 missing, so it renders with today's data too. Until the loader provides them, pass a data file with them
-(`data-file`): `github.status`, `github.pushes[]` and `github.pinned[]` with `weeklyCommits[52]`.
+(`data-file`): `github.status`, `github.pushes[]` and `github.pinned[]` with `weeklyCommits[52]`. Without
+`github.pinned` the repository slots show `github.repositories`.
 [docs/components.md](../../../../../docs/components.md#profile-templates) lists the fields and their shape.
 
 ## Motion
 
-The ticker and the worked-with line run without end, the status and today's dot pulse, and the total counts up; the bar codes, star bars and stack columns grow in once. A PNG export and a reader who asks for less motion see the final state.
+The ticker and the worked-with line run without end and the status and today's dot pulse; the bar codes, star bars and stack columns grow in once. The header, the ticker, the year and the worked-with line loop every 60 seconds, so the year's one-shot replays once per loop: the total counts up again every minute. A PNG export and a reader who asks for less motion see the final state.

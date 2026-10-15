@@ -47,7 +47,7 @@ jobs:
             readmint/designs/pinscreen/footer.json
 ```
 
-The repository cards show `github.pinned` in the order the data gives. Change which repository a card shows by changing the root prop `slot` of its design (0 to 5).
+The repository cards show `github.pinned` in the order the data gives, or `github.repositories` where the data has no pinned list (the loader does not produce one yet). Change which repository a card shows by changing the root prop `slot` of its design (0 to 5).
 
 ## Your texts
 
@@ -165,9 +165,10 @@ SVG links do not work inside an `<img>`, so each repository and the contact foot
 Every section reads the `github.*` object of the [GitHub data source](../../../../../docs/data-github.md). Some fields are
 not loaded yet; a design reads them as optional (a missing property is `null`) and shows a plain line where they are
 missing, so it renders with today's data too. Until the loader provides them, pass a data file with them
-(`data-file`): `github.status`, `github.pushes[]` and `github.pinned[]` with `weeklyCommits[52]`.
+(`data-file`): `github.status`, `github.pushes[]` and `github.pinned[]` with `weeklyCommits[52]`. Without
+`github.pinned` the repository slots show `github.repositories`.
 [docs/components.md](../../../../../docs/components.md#profile-templates) lists the fields and their shape.
 
 ## Motion
 
-The ripple runs through the pins every nine seconds, the status dot pulses and the carets blink; the code lines, the terminal output and the language bars appear once. A PNG export and a reader who asks for less motion see the final state.
+The ripple runs through the pins every nine seconds, the status dot pulses and the carets blink; the repositories' code lines and the stack's language bars appear once. The header and the git log loop every 60 seconds and the year every 54 seconds (six ripples), so their one-shots replay once per loop: the push types itself out again, the git log prints again and the total counts up again. A PNG export and a reader who asks for less motion see the final state.

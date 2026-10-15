@@ -612,13 +612,119 @@ describe("the horizon terrain", () => {
     const faces = terrainFaces(frame(sparseProfileData()));
     expect(faces).toHaveLength(624);
     expect(new Set(faces.map((face) => face.fill)).size).toBeGreaterThanOrEqual(6);
-    // the light accent #E8590C pulls red far above blue; the ink greys keep them equal
-    const accent = faces.filter(({ fill }) => {
-      const [r, , b] = [1, 3, 5].map((i) => parseInt(fill.slice(i, i + 2), 16));
-      return (r ?? 0) - (b ?? 0) > 15;
-    });
-    expect(accent.length).toBeLessThanOrEqual(624 * 0.15);
+    expect(accentFaces(faces).length).toBeLessThanOrEqual(624 * 0.15);
     for (const face of faces) expect(face.stroke).not.toBe(face.fill);
+  });
+
+  test.each([
+    ["the worst-case data", () => worstCaseProfileData()],
+    ["a constant calendar of 371 days", () => calendarOf(Array.from({ length: 371 }, () => 9))],
+  ])("stays below the totals and grey, without an accent band, on %s", (_, data) => {
+    const faces = terrainFaces(frame(data()));
+    expect(faces).toHaveLength(624);
+    // the totals end with the busiest_day label at y 133; a full-height back row reaches y 163
+    for (const face of faces) for (const [, y] of face.corners) expect(y).toBeGreaterThan(140);
+    expect(accentFaces(faces)).toHaveLength(0);
+  });
+
+  test("still tints the peaks that rise above an even calendar", () => {
+    const counts = Array.from({ length: 371 }, (_, index) =>
+      index >= 180 && index < 200 ? 400 : 4,
+    );
+    const accent = accentFaces(terrainFaces(frame(calendarOf(counts)))).length;
+    expect(accent).toBeGreaterThan(0);
+    expect(accent).toBeLessThanOrEqual(624 * 0.15);
+  });
+});
+
+/** The faces of a light terrain in the accent: #E8590C pulls red far above blue, the ink greys keep them equal. */
+function accentFaces(faces: ReturnType<typeof terrainFaces>) {
+  return faces.filter(({ fill }) => {
+    const [r, , b] = [1, 3, 5].map((i) => parseInt(fill.slice(i, i + 2), 16));
+    return (r ?? 0) - (b ?? 0) > 15;
+  });
+}
+
+/** The sample data with a calendar of these counts, its total written the way the loader writes it. */
+function calendarOf(counts: readonly number[]): { github: ProfileData["github"] } {
+  const sample = sampleProfileData();
+  const base = sample.github.contributions.days;
+  const days = counts.map((count, index) => ({
+    ...(base[index % base.length] as (typeof base)[number]),
+    count,
+  }));
+  const total = counts.reduce((sum, count) => sum + count, 0);
+  return withPatch(sample, { contributions: { ...sample.github.contributions, days, total } });
+}
+
+describe("the repository slots without a pinned list", () => {
+  // the loader's data: repositories without weeklyCommits and no pinned list; the least starred first
+  const ranked = sampleProfileData().github.repositories;
+  const repositories = ranked
+    .map((entry) =>
+      Object.fromEntries(Object.entries(entry).filter(([key]) => key !== "weeklyCommits")),
+    )
+    .reverse();
+  const data = { github: { ...sampleGitHubData().github, repositories } };
+  const first = String(repositories[0]?.name);
+  const shown: Readonly<Record<ProfileTemplate, string>> = {
+    "year-ring": `>${first}<`,
+    horizon: `>${(ranked[0]?.name ?? "").toUpperCase()}<`,
+    pinscreen: `>${first}.kt<`,
+  };
+
+  test.each(names)("%s repo-1 shows a repository of github.repositories", (template) => {
+    for (const theme of themes) {
+      const svg = renderProfile({ template, design: loadProfile(template, "repo-1", theme), data });
+      expect(svg).toContain(shown[template]);
+      expect(svg).not.toContain(fallbackText[template]["repo-1"]);
+    }
+  });
+});
+
+describe("the page-coloured fades", () => {
+  const page = /#ffffff|#0d1117/u;
+  type Painted = { type?: string; x?: unknown; width?: unknown; fill?: unknown };
+  type Gradient = { type: string; stops: readonly { color: string }[] };
+  const gradients = (node: unknown, out: { layer: Painted; fill: Gradient }[] = []) => {
+    if (Array.isArray(node)) for (const item of node) gradients(item, out);
+    else if (typeof node === "object" && node !== null) {
+      const fill = (node as Painted).fill;
+      if (typeof fill === "object" && fill !== null && "stops" in fill)
+        out.push({ layer: node, fill: fill as Gradient });
+      for (const value of Object.values(node)) gradients(value, out);
+    }
+    return out;
+  };
+
+  test.each(cases)(
+    "%s %s draws no page-coloured box: each fade runs out to transparent",
+    (template, section) => {
+      const design = loadProfile(template, section);
+      for (const { layer, fill } of gradients(design.components)) {
+        if (!fill.stops.some(({ color }) => page.test(color))) continue;
+        const alphas = fill.stops.map(
+          ({ color }) => /\+ "([0-9a-f]{2})" \}\}$/u.exec(color)?.[1] ?? "ff",
+        );
+        if (fill.type === "radial") {
+          expect(layer.type).toBe("ellipse");
+          expect(alphas.at(-1)).toBe("00");
+        } else {
+          // a linear edge fade: opaque only at the canvas edge, transparent where it meets the content
+          expect(alphas).toContain("00");
+          expect(
+            layer.x === 0 || Number(layer.x) + Number(layer.width) === design.canvas.width,
+          ).toBe(true);
+        }
+      }
+    },
+  );
+
+  test("finds the fades it checks: the ring's veil and the shade behind its total", () => {
+    const fades = gradients(loadProfile("year-ring", "year").components).filter(({ fill }) =>
+      fill.stops.some(({ color }) => page.test(color)),
+    );
+    expect(fades.map(({ layer }) => layer.type)).toEqual(["ellipse", "ellipse"]);
   });
 });
 

@@ -390,7 +390,7 @@
                                                                   "x": -29,
                                                                   "width": 60,
                                                                   "align": "middle",
-                                                                  "y": -4.34,
+                                                                  "y": 2.66,
                                                                   "content": "{{ day.date | date(\"MMM\") | upper }}",
                                                                   "font": "med",
                                                                   "fontSize": 10,
@@ -994,17 +994,13 @@
                                               ]
                                             },
                                             {
-                                              "type": "rect",
+                                              "type": "ellipse",
                                               "x": 83.346,
-                                              "y": 71.468,
+                                              "y": 7.281,
                                               "width": 673.309,
-                                              "height": 172.947,
+                                              "height": 228.864,
                                               "fill": {
-                                                "type": "linear",
-                                                "x1": 0,
-                                                "y1": 0,
-                                                "x2": 0,
-                                                "y2": 1,
+                                                "type": "radial",
                                                 "stops": [
                                                   {
                                                     "offset": 0,

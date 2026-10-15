@@ -463,17 +463,13 @@
                                           ]
                                         },
                                         {
-                                          "type": "rect",
+                                          "type": "ellipse",
                                           "x": 675.79,
-                                          "y": 86.973,
+                                          "y": 74.279,
                                           "width": 152.419,
-                                          "height": 34.207,
+                                          "height": 45.265,
                                           "fill": {
-                                            "type": "linear",
-                                            "x1": 0,
-                                            "y1": 0,
-                                            "x2": 0,
-                                            "y2": 1,
+                                            "type": "radial",
                                             "stops": [
                                               {
                                                 "offset": 0,

@@ -47,7 +47,7 @@ jobs:
             readmint/designs/year-ring/footer.json
 ```
 
-The repository slots show `github.pinned` in the order the data gives. Change which repository a slot shows by changing the root prop `slot` of its design (0 to 5).
+The repository slots show `github.pinned` in the order the data gives, or `github.repositories` where the data has no pinned list (the loader does not produce one yet). Change which repository a slot shows by changing the root prop `slot` of its design (0 to 5).
 
 ## Your texts
 
@@ -160,9 +160,10 @@ SVG links do not work inside an `<img>`, so each repository and the contact foot
 Every section reads the `github.*` object of the [GitHub data source](../../../../../docs/data-github.md). Some fields are
 not loaded yet; a design reads them as optional (a missing property is `null`) and shows a plain line where they are
 missing, so it renders with today's data too. Until the loader provides them, pass a data file with them
-(`data-file`): `github.status`, `github.pushes[]` and `github.pinned[]` with `weeklyCommits[52]`.
+(`data-file`): `github.status`, `github.pushes[]` and `github.pinned[]` with `weeklyCommits[52]`. Without
+`github.pinned` the repository slots show `github.repositories`.
 [docs/components.md](../../../../../docs/components.md#profile-templates) lists the fields and their shape.
 
 ## Motion
 
-The header's ring and the year's ring turn without end (one turn a minute), the dots pulse and the last push types itself out; the index, recent work and repository lines grow or draw in once. A minute in, the one-shots of a turning section play again with the loop. A PNG export and a reader who asks for less motion see the final state.
+The header's ring and the year's ring turn without end (one turn a minute), the dots pulse and the last push types itself out; the index and recent work grow in once. The header, the year and the six repository slots loop every 60 seconds, so their one-shots replay once per loop: the last push types itself out again, the total counts up again and each repository line draws in again every minute. A PNG export and a reader who asks for less motion see the final state.
