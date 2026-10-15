@@ -144,7 +144,8 @@ as `render --data` with that object.
 - **`preview`** loads the data once, before it starts serving; editing the design or an asset never
   loads it again. Restart the preview for fresh data. Ctrl+C during the load ends it with exit code 0. The page and the
   render are then served only under the secret address it prints, `http://127.0.0.1:<port>/<secret>/` (see
-  [Preview](#preview)).
+  [Preview](#preview)). Each run prints a new address: a tab left open from an earlier run shows "forbidden: open the
+  address the preview printed" and must be reopened at the new one.
 - **Images** bound to the data (`--fetch-images`) are fetched with their own requests, which never carry the token or
   another credential.
 - **Never printed**: the token is redacted to `***` from every line on standard error and on the preview page (the

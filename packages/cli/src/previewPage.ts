@@ -7,6 +7,12 @@ const issues = document.getElementById("issues");
 let shown = -1;
 async function refresh() {
   const response = await fetch("status", { cache: "no-store" });
+  if (!response.ok) {
+    issues.textContent = await response.text();
+    image.hidden = true;
+    shown = -1;
+    return;
+  }
   const status = await response.json();
   issues.textContent = status.issues.join("\\n");
   if (status.version !== shown) {
@@ -16,7 +22,12 @@ async function refresh() {
 }
 image.addEventListener("load", () => { image.hidden = false; });
 image.addEventListener("error", () => { image.hidden = true; });
-new EventSource("events").addEventListener("reload", () => { refresh().catch(() => {}); });
+const events = new EventSource("events");
+events.addEventListener("reload", () => { refresh().catch(() => {}); });
+// A refused stream (a tab of an earlier run, whose secret is gone) never reconnects: say why.
+events.addEventListener("error", () => {
+  if (events.readyState === EventSource.CLOSED) refresh().catch(() => {});
+});
 refresh().catch(() => {});
 `;
 
