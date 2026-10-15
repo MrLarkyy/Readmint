@@ -49,6 +49,11 @@ test("the Preview section names --open", () => {
   expect(section("Preview")).toContain("--open");
 });
 
+test("the Preview section says --github --open opens a one-time launch address", () => {
+  expect(section("Preview")).toContain("one-time launch address");
+  expect(section("Preview")).not.toContain("secret included, passes through the opener");
+});
+
 test("docs/cli.md or docs/asset-loading.md names every export of @readmint/cli", () => {
   const assetDocs = readFileSync(
     join(import.meta.dirname, "..", "..", "..", "docs", "asset-loading.md"),
