@@ -511,8 +511,9 @@ refused:` and the reason (`a JFIF segment`, `Adobe transform 1`, `component ids 
   raster output (a Display P3 or Adobe RGB profile, a P3 cICP or cHRM, gAMA 1.0 alone: 40 to 73 levels per channel
   apart). Removed, as whole segments or chunks, where decoders read them: JPEG APP2 `ICC_PROFILE\0` segments before
   the first SOS (every part of a split profile; another APP2, such as `MPF`, stays); PNG `iCCP`, `sRGB`, `gAMA`,
-  `cHRM`, `cICP`, `mDCV` and `cLLI` before the first `IDAT` (no decoder reads later copies); WebP `ICCP` chunks, with
-  the VP8X ICC flag (0x20) cleared, with or without a chunk, and the RIFF size lowered by the bytes removed. Every
+  `cHRM`, `cICP`, `mDCV` and `cLLI` before the first `IDAT` (no decoder reads later copies); WebP `ICCP` chunks inside
+  the RIFF payload (bytes after it are left alone), with the VP8X ICC flag (0x20) cleared, with or without a chunk,
+  and the RIFF size lowered by the bytes removed. Every
   other byte stays; a segment or chunk the data cuts off is not removed. The removal runs after the EXIF rewrite, whose
   offsets it would move. A GIF's `ICCRGBG1` `012` application extension stays: Chromium draws it unapplied, as resvg
   does. No profile is parsed and no pixel is converted, so Chromium and resvg agree for every profile: an image tagged
@@ -690,7 +691,8 @@ listed when it draws at least one glyph: `bytes` is the data URI of its subset p
 it as paths, `glyphs` the distinct glyphs it draws, `drawnAs` `font` when a subset is embedded, else `paths`; the
 subset's size grows with distinct glyphs, not with repeats. An image is `{ asset, bytes }`. The data of an image counts
 once however often it is drawn (an image with EXIF data, inline at every use, once per use), and 0 for an asset whose
-bytes an earlier asset already wrote, so the image bytes add up to what the SVG holds. A design with a timeline also reports `animation: { duration, loop }`, what `frameTimes`
+inlined copy an earlier asset already wrote (the copy, not the asset's own bytes: two assets that differ only by
+their colour profile write one image), so the image bytes add up to what the SVG holds. A design with a timeline also reports `animation: { duration, loop }`, what `frameTimes`
 takes.
 
 With the option `layerBoxes: true` a successful render also returns `layerBoxes`, one per drawn node in paint order

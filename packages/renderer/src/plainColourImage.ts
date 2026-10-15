@@ -8,7 +8,8 @@ const webpIccFlag = 0x20;
  * Chromium draws the stored pixel values as sRGB, as resvg always does: the preview and the output agree for every
  * profile, sRGB or not, and no profile is ever parsed. The pixels are not converted. The ranges are ascending and
  * disjoint (one walk records them), so the copy is a single pass; the given bytes are never changed, and returned as
- * they are when there is nothing to remove.
+ * they are when there is nothing to remove. A WebP's ranges lie inside its RIFF payload, so its RIFF size stays above
+ * the bytes removed.
  */
 export function plainColourImage(data: Uint8Array, info: ImageInfo): Uint8Array {
   const webp = isExtendedWebp(data, info);
@@ -27,8 +28,7 @@ export function plainColourImage(data: Uint8Array, info: ImageInfo): Uint8Array 
   plain.set(data.subarray(from), to);
   if (webp) {
     const view = new DataView(plain.buffer, plain.byteOffset, plain.byteLength);
-    // A forged RIFF size smaller than what is removed stays at 0 rather than wrapping around.
-    view.setUint32(4, Math.max(0, view.getUint32(4, true) - removed), true);
+    view.setUint32(4, view.getUint32(4, true) - removed, true);
     plain[20] = webpFlags & ~webpIccFlag;
   }
   return plain;

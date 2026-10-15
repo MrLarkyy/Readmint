@@ -122,9 +122,15 @@ const pngColourChunks: ReadonlySet<string> = new Set([
   "cLLI",
 ]);
 
-/** Adds `start` to `end` to `ranges` when the whole range lies inside the data. */
-function addColourRange(bytes: Bytes, start: number, end: number, ranges: ColourRange[]): void {
-  if (end <= bytes.data.length) ranges.push({ start, end });
+/** Adds `start` to `end` to `ranges` when the whole range lies inside the data, and before `limit` where given. */
+function addColourRange(
+  bytes: Bytes,
+  start: number,
+  end: number,
+  ranges: ColourRange[],
+  limit = bytes.data.length,
+): void {
+  if (end <= Math.min(limit, bytes.data.length)) ranges.push({ start, end });
 }
 
 function sniffPng(bytes: Bytes, maxFrames: number): SniffResult {
@@ -395,6 +401,8 @@ function sniffWebp(bytes: Bytes, maxFrames: number): SniffResult {
   let exif = (flags & 0x08) !== 0;
   const blocks: OrientationField[] = [];
   const colourData: ColourRange[] = [];
+  // Bytes past the RIFF payload are no chunk of the image: removing one there would cut the RIFF size into its data.
+  const riffEnd = 8 + bytes.u32le(4);
   let frames = 0;
   let offset = 12;
   while (offset + 8 <= bytes.data.length && frames <= maxFrames) {
@@ -405,7 +413,9 @@ function sniffWebp(bytes: Bytes, maxFrames: number): SniffResult {
       exif = true;
       blocks.push(exifOrientation(bytes.data, offset + 8, offset + 8 + size));
     }
-    if (type === "ICCP") addColourRange(bytes, offset, offset + 8 + size + (size % 2), colourData);
+    if (type === "ICCP") {
+      addColourRange(bytes, offset, offset + 8 + size + (size % 2), colourData, riffEnd);
+    }
     offset += 8 + size + (size % 2);
   }
   if ((flags & 0x02) === 0) {
