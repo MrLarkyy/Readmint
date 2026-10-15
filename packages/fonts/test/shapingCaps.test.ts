@@ -17,21 +17,25 @@ const { a, b, x } = glyph;
 /** The criterion's bound for a hostile table to fail. */
 const ceilingMs = 50;
 
-function failure(font: SfntFont, text: string): { error: unknown; ms: number } {
+/** The bound for the run: the load is probed before and after, as a spike can end before the probe runs. */
+function failure(font: SfntFont, text: string): { error: unknown; ms: number; limitMs: number } {
+  const scaleBefore = loadScale();
   const started = performance.now();
+  let error: unknown;
   try {
     shapeText(font, text);
-    return { error: undefined, ms: performance.now() - started };
-  } catch (error) {
-    return { error, ms: performance.now() - started };
+  } catch (caught) {
+    error = caught;
   }
+  const ms = performance.now() - started;
+  return { error, ms, limitMs: ceilingMs * Math.max(scaleBefore, loadScale()) };
 }
 
 function expectMalformed(font: SfntFont, text: string, message: RegExp): void {
-  const { error, ms } = failure(font, text);
+  const { error, ms, limitMs } = failure(font, text);
   expect(error).toBeInstanceOf(MalformedFont);
   expect((error as Error).message).toMatch(message);
-  expect(ms).toBeLessThan(ceilingMs * loadScale());
+  expect(ms).toBeLessThan(limitMs);
 }
 
 const gsubFont = (lookups: readonly TestLookup[], featureLookups = [0]) =>
@@ -71,9 +75,9 @@ describe("hostile layout tables fail as MalformedFont within the caps", () => {
       lookups,
       lookups.map((_, index) => index),
     );
-    const { error, ms } = failure(font, "a");
+    const { error, ms, limitMs } = failure(font, "a");
     expect(error).toBeInstanceOf(MalformedFont);
-    expect(ms).toBeLessThan(ceilingMs * loadScale());
+    expect(ms).toBeLessThan(limitMs);
   });
 
   test("65535 feature indices naming a feature with 65535 entries of lookup 0 are refused unread", () => {
