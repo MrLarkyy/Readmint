@@ -1,0 +1,172 @@
+{
+  "$schema": "https://raw.githubusercontent.com/MrLarkyy/Readmint/main/packages/format/schema/design-v0.schema.json",
+  "version": 0,
+  "title": "Contact",
+  "description": "Where to find the author, set as a poster footer, with the date of the data.",
+  "canvas": {
+    "width": 840,
+    "height": 170
+  },
+  "assets": {
+    "fonts": {
+      "display": {
+        "family": "Archivo Condensed",
+        "src": "fonts/ArchivoCondensed-ExtraBold.ttf",
+        "weight": 800,
+        "licence": {
+          "embedding": "allowed",
+          "name": "OFL-1.1"
+        }
+      },
+      "mono": {
+        "family": "Geist Mono",
+        "src": "fonts/GeistMono-Regular.ttf",
+        "weight": 400,
+        "licence": {
+          "embedding": "allowed",
+          "name": "OFL-1.1"
+        }
+      },
+      "monoM": {
+        "family": "Geist Mono",
+        "src": "fonts/GeistMono-Medium.ttf",
+        "weight": 500,
+        "licence": {
+          "embedding": "allowed",
+          "name": "OFL-1.1"
+        }
+      }
+    }
+  },
+  "components": {
+    "card": {
+      "description": "The section: a rounded panel in the theme's colours; the theme prop is the only switch between light and dark.",
+      "props": {
+        "theme": {
+          "type": "enum",
+          "values": ["light", "dark"],
+          "default": "light"
+        }
+      },
+      "layers": [
+        {
+          "type": "rect",
+          "x": 0,
+          "y": 0,
+          "width": 840,
+          "height": 170,
+          "fill": "{{ props.theme == \"dark\" ? \"#121110\" : \"#f4efe6\" }}"
+        },
+        {
+          "type": "rect",
+          "x": 40,
+          "y": 30,
+          "width": 760,
+          "height": 100,
+          "fill": "{{ props.theme == \"dark\" ? \"#ff7a3d\" : \"#ff5a1f\" }}"
+        },
+        {
+          "type": "group",
+          "x": 60,
+          "y": 40,
+          "width": 720,
+          "height": 60,
+          "clip": true,
+          "children": [
+            {
+              "type": "text",
+              "x": 0,
+              "y": 0,
+              "content": "{{ \"GITHUB.COM/\" + (github.login | upper | truncate(24)) }}",
+              "font": "display",
+              "fontSize": 46,
+              "fill": "#141414"
+            }
+          ]
+        },
+        {
+          "type": "group",
+          "x": 60,
+          "y": 104,
+          "width": 360,
+          "height": 18,
+          "clip": true,
+          "children": [
+            {
+              "type": "text",
+              "x": 0,
+              "y": 0,
+              "content": "{{ github.websiteUrl | truncate(40) }}",
+              "font": "monoM",
+              "fontSize": 14,
+              "fill": "#141414"
+            }
+          ],
+          "if": "{{ github.websiteUrl }}"
+        },
+        {
+          "type": "group",
+          "x": 440,
+          "y": 104,
+          "width": 340,
+          "height": 18,
+          "clip": true,
+          "children": [
+            {
+              "type": "text",
+              "x": 0,
+              "y": 0,
+              "content": "{{ \"@\" + (github.twitterUsername | truncate(24)) }}",
+              "font": "monoM",
+              "fontSize": 14,
+              "fill": "#141414",
+              "width": 340,
+              "align": "end"
+            }
+          ],
+          "if": "{{ github.twitterUsername }}"
+        },
+        {
+          "type": "group",
+          "x": 40,
+          "y": 142,
+          "width": 500,
+          "height": 16,
+          "clip": true,
+          "children": [
+            {
+              "type": "text",
+              "x": 0,
+              "y": 0,
+              "content": "{{ \"Data as of \" + (github.contributions.to | date(\"MMM d, yyyy\")) }}",
+              "font": "mono",
+              "fontSize": 11,
+              "fill": "{{ props.theme == \"dark\" ? \"#9a948a\" : \"#6b645a\" }}"
+            }
+          ],
+          "if": "{{ github.contributions.to }}"
+        },
+        {
+          "type": "text",
+          "x": 560,
+          "y": 142,
+          "content": "Made with Readmint",
+          "font": "mono",
+          "fontSize": 11,
+          "fill": "{{ props.theme == \"dark\" ? \"#9a948a\" : \"#6b645a\" }}",
+          "width": 240,
+          "align": "end"
+        }
+      ]
+    }
+  },
+  "layers": [
+    {
+      "type": "component",
+      "ref": "card",
+      "props": {
+        "theme": "light"
+      }
+    }
+  ]
+}

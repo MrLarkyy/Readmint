@@ -3,7 +3,14 @@ import { sniffImage } from "../src/sniffImage.js";
 import gradientJpeg from "./assets/gradient.jpg?inline";
 import { dataUriBytes, toDataUri } from "./exifImages.js";
 import { jpegFrameFixtures } from "./jpegFrameTypes.js";
+import { type DrawnOutcome, drawnOutcome, jpegStructureCases } from "./jpegStructureCases.js";
 import { acceptedJpegs, refusedJpegs } from "./jpegMarkers.js";
+import {
+  acceptedLosslessJpegs,
+  type LosslessOutcome,
+  losslessOutcome,
+  refusedLosslessJpegs,
+} from "./losslessJpegs.js";
 
 const jpeg = dataUriBytes(gradientJpeg);
 
@@ -29,6 +36,27 @@ describe("Chromium and the sniffer agree on JPEG markers", () => {
     },
   );
 
+  const resvgOnly = refusedJpegs(jpeg).filter((row) => row.resvgDrawsNothing === true);
+
+  test.each(resvgOnly.map((row) => [row.name, row.bytes] as const))(
+    "Chromium draws a JPEG with %s, which resvg draws empty and the sniffer refuses",
+    async (_name, bytes) => {
+      expect(await drawnSize(bytes)).toEqual([32, 16]);
+      expect(await opaquePixels(bytes)).toBe(32 * 16);
+      expect(sniffImage(bytes, 1000).ok).toBe(false);
+    },
+  );
+
+  const grey = acceptedJpegs(jpeg).filter((row) => row.drawsGrey === true);
+
+  test.each(grey.map((row) => [row.name, row.bytes] as const))(
+    "Chromium draws the JPEG with %s flat grey, as resvg does",
+    async (_name, bytes) => {
+      expect(await opaquePixels(bytes)).toBe(32 * 16);
+      expect(await pixelAt(bytes)).toEqual([128, 128, 128]);
+    },
+  );
+
   test.each(acceptedJpegs(jpeg).map((row) => [row.name, row.bytes] as const))(
     "Chromium draws %s at 32x16, which the sniffer accepts at that size",
     async (_name, bytes) => {
@@ -37,6 +65,23 @@ describe("Chromium and the sniffer agree on JPEG markers", () => {
     },
   );
 });
+
+/** How many pixels Chromium draws opaque of `bytes`, through a canvas. */
+async function opaquePixels(bytes: Uint8Array): Promise<number> {
+  const image = new Image();
+  image.src = toDataUri("image/jpeg", bytes);
+  await image.decode();
+  const canvas = document.createElement("canvas");
+  canvas.width = image.naturalWidth;
+  canvas.height = image.naturalHeight;
+  const context = canvas.getContext("2d");
+  if (context === null) throw new Error("no 2d canvas");
+  context.drawImage(image, 0, 0);
+  const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
+  let opaque = 0;
+  for (let index = 3; index < pixels.length; index += 4) if (pixels[index] === 255) opaque++;
+  return opaque;
+}
 
 /** The colour Chromium draws at (5,0) of `bytes`, through a canvas. */
 async function pixelAt(bytes: Uint8Array): Promise<readonly number[]> {
@@ -51,6 +96,70 @@ async function pixelAt(bytes: Uint8Array): Promise<readonly number[]> {
   context.drawImage(image, 0, 0);
   return [...context.getImageData(5, 0, 1, 1).data.subarray(0, 3)];
 }
+
+/** What Chromium draws of the lossless JPEG `bytes`, the whole image through a canvas. */
+async function losslessDrawing(bytes: Uint8Array): Promise<LosslessOutcome> {
+  const image = new Image();
+  image.src = toDataUri("image/jpeg", bytes);
+  await image.decode().catch(() => undefined);
+  if (image.naturalWidth === 0) return "nothing";
+  const canvas = document.createElement("canvas");
+  canvas.width = image.naturalWidth;
+  canvas.height = image.naturalHeight;
+  const context = canvas.getContext("2d");
+  if (context === null) throw new Error("no 2d canvas");
+  context.drawImage(image, 0, 0);
+  const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
+  return losslessOutcome(pixels);
+}
+
+describe("Chromium and the sniffer agree on lossless JPEGs", () => {
+  test.each(acceptedLosslessJpegs.map((row) => [row.name, row.bytes] as const))(
+    "Chromium draws the 8-bit RGB lossless JPEG with %s as its source, which the sniffer accepts",
+    async (_name, bytes) => {
+      expect(await drawnSize(bytes)).toEqual([32, 16]);
+      expect(await losslessDrawing(bytes)).toBe("equal");
+      expect(sniffImage(bytes, 1000)).toMatchObject({ ok: true, info: { width: 32, height: 16 } });
+    },
+  );
+
+  const probed = refusedLosslessJpegs().flatMap((row) =>
+    row.chromium === undefined ? [] : [[row.name, row.bytes, row.chromium] as const],
+  );
+
+  test.each(probed)(
+    "Chromium's drawing of the lossless JPEG with %s is pinned, and the sniffer refuses it",
+    async (_name, bytes, outcome) => {
+      expect(await losslessDrawing(bytes)).toEqual(outcome);
+      expect(sniffImage(bytes, 1000).ok).toBe(false);
+    },
+  );
+});
+
+/** What Chromium draws of `bytes`, the whole image through a canvas. */
+async function chromiumDrawing(bytes: Uint8Array): Promise<DrawnOutcome> {
+  const image = new Image();
+  image.src = toDataUri("image/jpeg", bytes);
+  await image.decode().catch(() => undefined);
+  if (image.naturalWidth === 0) return "nothing";
+  const canvas = document.createElement("canvas");
+  canvas.width = image.naturalWidth;
+  canvas.height = image.naturalHeight;
+  const context = canvas.getContext("2d");
+  if (context === null) throw new Error("no 2d canvas");
+  context.drawImage(image, 0, 0);
+  return drawnOutcome(context.getImageData(0, 0, canvas.width, canvas.height).data);
+}
+
+describe("what Chromium draws of the JPEG structure cases", () => {
+  const pinned = jpegStructureCases(jpeg).flatMap((row) =>
+    row.chromium === undefined ? [] : [[row.name, row.bytes, row.chromium] as const],
+  );
+
+  test.each(pinned)("%s", async (_name, bytes, outcome) => {
+    expect(await chromiumDrawing(bytes)).toEqual(outcome);
+  });
+});
 
 describe("Chromium draws the genuine JPEG frame types the sniffer refuses", () => {
   test.each(jpegFrameFixtures.map((row) => [row.name, row] as const))(

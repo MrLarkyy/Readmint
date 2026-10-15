@@ -1,0 +1,165 @@
+{
+  "$schema": "https://raw.githubusercontent.com/MrLarkyy/Readmint/main/packages/format/schema/design-v0.schema.json",
+  "version": 0,
+  "title": "Contact",
+  "description": "Where to find the author, set as an editor status bar with the date of the data.",
+  "canvas": {
+    "width": 840,
+    "height": 64
+  },
+  "assets": {
+    "fonts": {
+      "sans": {
+        "family": "Geist",
+        "src": "fonts/Geist-Regular.ttf",
+        "weight": 400,
+        "licence": {
+          "embedding": "allowed",
+          "name": "OFL-1.1"
+        }
+      },
+      "sansB": {
+        "family": "Geist",
+        "src": "fonts/Geist-SemiBold.ttf",
+        "weight": 600,
+        "licence": {
+          "embedding": "allowed",
+          "name": "OFL-1.1"
+        }
+      },
+      "mono": {
+        "family": "Geist Mono",
+        "src": "fonts/GeistMono-Regular.ttf",
+        "weight": 400,
+        "licence": {
+          "embedding": "allowed",
+          "name": "OFL-1.1"
+        }
+      },
+      "monoM": {
+        "family": "Geist Mono",
+        "src": "fonts/GeistMono-Medium.ttf",
+        "weight": 500,
+        "licence": {
+          "embedding": "allowed",
+          "name": "OFL-1.1"
+        }
+      }
+    }
+  },
+  "components": {
+    "card": {
+      "description": "The section: a rounded panel in the theme's colours; the theme prop is the only switch between light and dark.",
+      "props": {
+        "theme": {
+          "type": "enum",
+          "values": ["light", "dark"],
+          "default": "light"
+        }
+      },
+      "layers": [
+        {
+          "type": "rect",
+          "x": 0.5,
+          "y": 0.5,
+          "width": 839,
+          "height": 63,
+          "radius": 8,
+          "fill": "{{ props.theme == \"dark\" ? \"#3c3f41\" : \"#f7f8fa\" }}",
+          "stroke": "{{ props.theme == \"dark\" ? \"#323232\" : \"#ebecf0\" }}",
+          "strokeWidth": 1
+        },
+        {
+          "type": "group",
+          "x": 20,
+          "y": 22,
+          "width": 230,
+          "height": 18,
+          "clip": true,
+          "children": [
+            {
+              "type": "text",
+              "x": 0,
+              "y": 0,
+              "content": "{{ \"github.com/\" + (github.login | truncate(24)) }}",
+              "font": "sansB",
+              "fontSize": 13,
+              "fill": "{{ props.theme == \"dark\" ? \"#a9b7c6\" : \"#080808\" }}"
+            }
+          ]
+        },
+        {
+          "type": "group",
+          "x": 270,
+          "y": 22,
+          "width": 250,
+          "height": 18,
+          "clip": true,
+          "children": [
+            {
+              "type": "text",
+              "x": 0,
+              "y": 0,
+              "content": "{{ github.websiteUrl | truncate(34) }}",
+              "font": "sans",
+              "fontSize": 13,
+              "fill": "{{ props.theme == \"dark\" ? \"#4a88c7\" : \"#3574f0\" }}"
+            }
+          ],
+          "if": "{{ github.websiteUrl }}"
+        },
+        {
+          "type": "group",
+          "x": 530,
+          "y": 22,
+          "width": 140,
+          "height": 18,
+          "clip": true,
+          "children": [
+            {
+              "type": "text",
+              "x": 0,
+              "y": 0,
+              "content": "{{ \"@\" + (github.twitterUsername | truncate(18)) }}",
+              "font": "sans",
+              "fontSize": 13,
+              "fill": "{{ props.theme == \"dark\" ? \"#a9b7c6\" : \"#080808\" }}"
+            }
+          ],
+          "if": "{{ github.twitterUsername }}"
+        },
+        {
+          "type": "group",
+          "x": 660,
+          "y": 22,
+          "width": 160,
+          "height": 18,
+          "clip": true,
+          "children": [
+            {
+              "type": "text",
+              "x": 0,
+              "y": 0,
+              "content": "{{ \"as of \" + (github.contributions.to | date(\"MMM d, yyyy\")) }}",
+              "font": "sans",
+              "fontSize": 12,
+              "fill": "{{ props.theme == \"dark\" ? \"#808080\" : \"#6c707e\" }}",
+              "width": 160,
+              "align": "end"
+            }
+          ],
+          "if": "{{ github.contributions.to }}"
+        }
+      ]
+    }
+  },
+  "layers": [
+    {
+      "type": "component",
+      "ref": "card",
+      "props": {
+        "theme": "light"
+      }
+    }
+  ]
+}
