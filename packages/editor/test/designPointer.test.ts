@@ -43,6 +43,19 @@ describe("getAt", () => {
 });
 
 describe("setAt", () => {
+  test("returns the root itself when the value is already there", () => {
+    const original = { a: { b: 1, c: [1, { d: "x" }] }, e: { f: 1 } };
+    expect(setAt(original, "/a/b", 1)).toBe(original);
+    expect(setAt(original, "/a/c/1/d", "x")).toBe(original);
+    expect(setAt(original, "/a/c/0", 1)).toBe(original);
+    expect(setAt(original, "/e", original.e)).toBe(original);
+    expect(setAt(original, "/a/missing", undefined)).toBe(original);
+    expect(setAt({ constructor: 1 }, "/constructor", 1)).toEqual({ constructor: 1 });
+    // A value equal but not the same object, or a key not there before, is a change.
+    expect(setAt(original, "/e", { f: 1 })).not.toBe(original);
+    expect(setAt(original, "/a/g", 1)).not.toBe(original);
+  });
+
   test("copies the path and leaves the original untouched", () => {
     const original = { a: { b: 1, c: [1, 2] }, d: { e: 1 } };
     const frozen = structuredClone(original);

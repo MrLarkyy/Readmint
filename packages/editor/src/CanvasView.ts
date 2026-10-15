@@ -107,7 +107,12 @@ export class CanvasView {
     this.layout();
   }
 
+  /**
+   * Shows the state's selection. A drag under way when the design changes (undo, redo, an upload finishing) is dropped:
+   * its layer pointer and box belong to the design it started on.
+   */
   update(state: EditorState): void {
+    if (this.drag !== undefined && state.design !== this.state?.design) this.drag = undefined;
     this.state = state;
     this.drawSelection();
   }

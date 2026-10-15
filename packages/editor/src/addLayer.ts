@@ -1,10 +1,10 @@
 import type { Layer } from "@readmint/format";
-import { commitDesign, refuse } from "./commitDesign.js";
-import { childPointer, getAt, setAt } from "./designPointer.js";
+import { appendLayer } from "./appendLayer.js";
+import { refuse } from "./commitDesign.js";
 import type { EditorState } from "./EditorState.js";
-import { findLayer, layerIds, uniqueId } from "./layerAccess.js";
+import { layerIds, uniqueId } from "./layerAccess.js";
 
-/** Layer types the editor creates; paths, images and components come from imported designs. */
+/** Layer types the toolbar adds empty; images come from `uploadImage`, paths and components from imported designs. */
 export type NewLayerType = "rect" | "ellipse" | "text" | "group";
 
 /**
@@ -34,15 +34,5 @@ export function addLayer(state: EditorState, type: NewLayerType, parent?: string
       break;
     }
   }
-  let list = "/layers";
-  if (parent !== undefined) {
-    if (findLayer(design, parent)?.type !== "group") {
-      return refuse(state, "design", "layers can only be added to a group", parent);
-    }
-    list = childPointer(parent, "children");
-  }
-  const found = getAt(design, list);
-  const siblings: readonly unknown[] = Array.isArray(found) ? found : [];
-  const next = setAt(design, list, [...siblings, layer]);
-  return commitDesign(state, next, { selection: childPointer(list, siblings.length) });
+  return appendLayer(state, design, layer, parent);
 }

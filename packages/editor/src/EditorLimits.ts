@@ -9,8 +9,13 @@ export const EditorLimits = Object.freeze({
    * before anything inflates); identical sources count once. The renderer's `maxTotalFontBytes`.
    */
   maxTotalFontBytes: 16_777_216,
-  /** One image file attached for a path-sourced asset: the renderer's `RenderLimits.maxImageBytes`. */
+  /**
+   * One image file, uploaded or attached for a path-sourced asset: the renderer's `RenderLimits.maxImageBytes`,
+   * checked before the file is read.
+   */
   maxImageBytes: 4_194_304,
+  /** Design edits undo can step back through; the oldest is dropped beyond it. */
+  maxHistory: 100,
   /** A preview render running longer is stopped (its worker terminated) and reported. */
   renderTimeoutMs: 10_000,
   /** A raster export running longer is stopped (its worker terminated) and reported. */

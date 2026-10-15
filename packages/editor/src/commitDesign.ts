@@ -8,7 +8,9 @@ type StateChanges = Partial<Omit<EditorState, "design" | "issues">>;
 /**
  * The state with `candidate` as its design when it validates and its exported file stays within
  * `DesignLimits.maxSourceLength` (what the CLI and an import read): issues cleared, `changes` applied. Otherwise the
- * state unchanged but for the issues, reported under `source`. The one way a command changes the design.
+ * state unchanged but for the issues, reported under `source`. A candidate that is the state's design (an edit that
+ * changed nothing) is no change: the same design, which a state always holds valid, with the changes applied. The one
+ * way a command changes the design.
  */
 export function commitDesign(
   state: EditorState,
@@ -16,6 +18,7 @@ export function commitDesign(
   changes: StateChanges = {},
   source: EditorIssueSource = "design",
 ): EditorState {
+  if (candidate === state.design) return { ...state, ...changes, issues: [] };
   const result = validateDesign(candidate);
   if (!result.ok) {
     return {

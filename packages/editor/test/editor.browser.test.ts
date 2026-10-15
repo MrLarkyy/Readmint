@@ -1,7 +1,8 @@
-import { afterEach, beforeEach, expect, test } from "vitest";
+import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { userEvent } from "vitest/browser";
 import type { Design } from "@readmint/format";
 import {
+  EditorLimits,
   importDesign,
   mountEditor,
   renderPreview,
@@ -9,6 +10,7 @@ import {
   type SavedDesign,
 } from "../src/index.js";
 import { testFonts } from "./testFonts.js";
+import { testImages } from "./testImages.js";
 
 let root: HTMLElement;
 let editor: EditorHandle;
@@ -271,4 +273,270 @@ test("a file for a path-sourced asset is refused by its size before it is read",
   expect(find('[aria-label="Issues"]').textContent).toContain(
     'image "logo" is 4194305 bytes, more than the 4194304 allowed',
   );
+});
+
+function button(action: string): HTMLButtonElement {
+  return find(`button[data-action="${action}"]`) as HTMLButtonElement;
+}
+
+async function press(keys: string): Promise<void> {
+  await userEvent.keyboard(keys);
+  await editor.settled();
+}
+
+test("Ctrl+Z undoes an edit and its preview, Ctrl+Shift+Z and Ctrl+Y redo it", async () => {
+  expect(button("undo").disabled).toBe(true);
+  expect(button("redo").disabled).toBe(true);
+  await click('[data-action="add-rect"]');
+  const added = editor.state.design;
+  const addedSvg = await previewSvg();
+  expect(button("undo").disabled).toBe(false);
+  await drag(find('[data-testid="overlay"]'), 50, 50, 30, 15);
+  expect(editor.state.design.layers[0]).toMatchObject({ x: 50, y: 35 });
+  const moved = editor.state.design;
+  const movedSvg = await previewSvg();
+
+  // A drag is one edit: one undo puts the rect back where it was, preview included.
+  await press("{Control>}z{/Control}");
+  expect(editor.state.design).toBe(added);
+  expect(editor.state.selection).toBe("/layers/0");
+  expect(await previewSvg()).toBe(addedSvg);
+  expect(button("redo").disabled).toBe(false);
+
+  await press("{Control>}{Shift>}z{/Shift}{/Control}");
+  expect(editor.state.design).toBe(moved);
+  expect(await previewSvg()).toBe(movedSvg);
+  expect(button("redo").disabled).toBe(true);
+
+  await press("{Control>}z{/Control}");
+  await press("{Control>}y{/Control}");
+  expect(editor.state.design).toBe(moved);
+
+  // The toolbar does the same; past the oldest edit there is nothing left to undo.
+  await click('[data-action="undo"]');
+  await click('[data-action="undo"]');
+  expect(editor.state.design.layers).toEqual([]);
+  expect(button("undo").disabled).toBe(true);
+  await press("{Control>}z{/Control}");
+  expect(editor.state.design.layers).toEqual([]);
+  await click('[data-action="redo"]');
+  expect(editor.state.design).toBe(added);
+});
+
+test("Ctrl+Z in a text field is the field's own undo, never the editor's", async () => {
+  await click('[data-action="add-rect"]');
+  const design = editor.state.design;
+  await userEvent.click(find('[aria-label="Properties"] [name="fill"]'));
+  await press("{Control>}z{/Control}");
+  expect(editor.state.design).toBe(design);
+  expect(button("undo").disabled).toBe(false);
+});
+
+test("an uploaded image is embedded in the design and previewed as the renderer renders it", async () => {
+  await upload(
+    "upload-image",
+    new File([testImages.png.bytes.slice()], "pattern.png", { type: "image/png" }),
+  );
+  expect(editor.state.issues).toEqual([]);
+  const src = editor.state.design.assets?.images?.pattern?.src ?? "";
+  expect(src.startsWith("data:image/png;base64,")).toBe(true);
+  expect(editor.state.design.layers[0]).toMatchObject({
+    type: "image",
+    asset: "pattern",
+    width: 24,
+    height: 16,
+  });
+  expect(editor.state.selection).toBe("/layers/0");
+  const expected = renderPreview(editor.state);
+  expect(expected.ok).toBe(true);
+  if (!expected.ok) return;
+  expect(editor.svg).toBe(expected.svg);
+  expect(await previewSvg()).toBe(expected.svg);
+  expect(find('[data-image="pattern"]').textContent).toBe("image pattern: embedded in the design");
+  expect(root.querySelector('input[data-attach="images/pattern"]')).toBeNull();
+
+  // Undo takes the asset and the layer away together.
+  await click('[data-action="undo"]');
+  expect(editor.state.design.assets?.images).toBeUndefined();
+  expect(editor.state.design.layers).toEqual([]);
+});
+
+test("an oversized image is refused before it is read, a malformed one with its reason", async () => {
+  const read = vi.spyOn(Blob.prototype, "arrayBuffer");
+  try {
+    const design = editor.state.design;
+    await upload(
+      "upload-image",
+      new File([new Uint8Array(EditorLimits.maxImageBytes + 1)], "big.png", { type: "image/png" }),
+    );
+    expect(read).not.toHaveBeenCalled();
+    expect(editor.state.design).toBe(design);
+    expect(find('[aria-label="Issues"]').textContent).toContain(
+      'image "big.png" is 4194305 bytes, more than the 4194304 an image may have',
+    );
+
+    await upload(
+      "upload-image",
+      new File([new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8])], "x.png", { type: "image/png" }),
+    );
+    // The spy sees a read: the oversized file above was refused without one.
+    expect(read).toHaveBeenCalledTimes(1);
+    expect(editor.state.design).toBe(design);
+    expect(find('[aria-label="Issues"]').textContent).toContain(
+      'image "x.png" cannot be used: not a PNG, JPEG, GIF or WebP image',
+    );
+    expect(button("undo").disabled).toBe(true);
+  } finally {
+    read.mockRestore();
+  }
+});
+
+test("New and Import start an empty history", async () => {
+  await click('[data-action="add-rect"]');
+  await click('[data-action="export"]');
+  await click('[data-action="add-ellipse"]');
+  expect(button("undo").disabled).toBe(false);
+  await upload(
+    "import",
+    new File([saved[0]?.text ?? ""], "design.json", { type: "application/json" }),
+  );
+  const imported = editor.state.design;
+  expect(imported.layers).toHaveLength(1);
+  expect(button("undo").disabled).toBe(true);
+  editor.undo();
+  expect(editor.state.design).toBe(imported);
+
+  await click('[data-action="add-rect"]');
+  await click('[data-action="new"]');
+  expect(editor.state.design.layers).toEqual([]);
+  expect(button("undo").disabled).toBe(true);
+  expect(button("redo").disabled).toBe(true);
+});
+
+/** Ctrl (or Cmd) with a key, sent to the document as a keyboard layout would report it. */
+function shortcut(key: string, code: string, shiftKey = false): void {
+  document.dispatchEvent(
+    new KeyboardEvent("keydown", { key, code, ctrlKey: true, shiftKey, bubbles: true }),
+  );
+}
+
+test("an undo during a drag drops the drag: releasing the pointer changes nothing", async () => {
+  await click('[data-action="add-rect"]');
+  const added = editor.state.design;
+  await drag(find('[data-testid="overlay"]'), 50, 50, 30, 15);
+  const origin = find('[data-testid="overlay"]').getBoundingClientRect();
+  const at = (x: number, y: number) => ({
+    bubbles: true,
+    button: 0,
+    pointerId: 1,
+    clientX: origin.left + x,
+    clientY: origin.top + y,
+  });
+  find('[data-testid="overlay"]').dispatchEvent(new PointerEvent("pointerdown", at(60, 50)));
+  document.body.dispatchEvent(new PointerEvent("pointermove", at(80, 60)));
+  await press("{Control>}z{/Control}");
+  expect(editor.state.design).toBe(added);
+  document.body.dispatchEvent(new PointerEvent("pointerup", at(100, 70)));
+  await editor.settled();
+  expect(editor.state.design).toBe(added);
+  expect(editor.state.issues).toEqual([]);
+  // Nothing new was recorded: the undone move is still there to redo.
+  expect(button("redo").disabled).toBe(false);
+});
+
+test("a drag that rounds to no move is no undo entry", async () => {
+  await click('[data-action="add-rect"]');
+  const added = editor.state.design;
+  await drag(find('[data-testid="overlay"]'), 50, 50, 0.2, 0.3);
+  expect(editor.state.design).toBe(added);
+  await click('[data-action="undo"]');
+  expect(editor.state.design.layers).toEqual([]);
+});
+
+test("shortcuts follow the layout's letter, and the key's place on a non-Latin layout", async () => {
+  await click('[data-action="add-rect"]');
+  const added = editor.state.design;
+  // Cyrillic: the key in the Z place types "я", in the Y place "н".
+  shortcut("я", "KeyZ");
+  await editor.settled();
+  expect(editor.state.design.layers).toEqual([]);
+  shortcut("н", "KeyY");
+  await editor.settled();
+  expect(editor.state.design).toBe(added);
+  shortcut("Я", "KeyZ");
+  await editor.settled();
+  shortcut("Я", "KeyZ", true);
+  await editor.settled();
+  expect(editor.state.design).toBe(added);
+  // QWERTZ: "z" sits in the Y place and is still undo.
+  shortcut("z", "KeyY");
+  await editor.settled();
+  expect(editor.state.design.layers).toEqual([]);
+});
+
+test("destroy removes the shortcut listener", async () => {
+  await click('[data-action="add-rect"]');
+  const destroyed = editor;
+  const design = destroyed.state.design;
+  destroyed.destroy();
+  shortcut("z", "KeyZ");
+  expect(destroyed.state.design).toBe(design);
+  editor = mountEditor(root, { save: (file) => saved.push(file) });
+  await editor.settled();
+});
+
+test("embedded fonts and images, malformed ones included, need no file; path ones do", async () => {
+  await remount({
+    version: 0,
+    canvas: { width: 100, height: 100 },
+    assets: {
+      fonts: {
+        bad: {
+          family: "Bad",
+          src: "data:font/ttf;base64,AAAAA",
+          licence: { embedding: "allowed" },
+        },
+        local: { family: "Local", src: "fonts/local.ttf", licence: { embedding: "allowed" } },
+      },
+      images: {
+        bad: { src: "data:image/png;base64,AAAAA" },
+        logo: { src: "logo.png" },
+        avatar: { src: "{{repo.avatar}}" },
+      },
+    },
+    layers: [],
+  });
+  expect(root.querySelector('input[data-attach="fonts/bad"]')).toBeNull();
+  expect(root.querySelector('input[data-attach="images/bad"]')).toBeNull();
+  expect(find('[data-image="bad"]').textContent).toBe("image bad: embedded in the design");
+  expect(root.querySelector('input[data-attach="fonts/local"]')).not.toBeNull();
+  expect(root.querySelector('input[data-attach="images/logo"]')).not.toBeNull();
+  expect(root.querySelector('input[data-attach="images/avatar"]')).toBeNull();
+  expect(find(".rm-assets").textContent).toContain("image avatar: bound to data");
+});
+
+test("a file that cannot be read is an issue, never an unhandled rejection", async () => {
+  const read = vi
+    .spyOn(Blob.prototype, "arrayBuffer")
+    .mockRejectedValue(new DOMException("the file went away", "NotReadableError"));
+  try {
+    const design = editor.state.design;
+    await upload(
+      "upload-image",
+      new File([testImages.png.bytes.slice()], "pattern.png", { type: "image/png" }),
+    );
+    expect(editor.state.design).toBe(design);
+    expect(editor.state.issues).toEqual([
+      { source: "image", message: 'image "pattern.png" could not be read: the file went away' },
+    ]);
+    await upload("upload-font", fontFile(testFonts.ttf));
+    expect(editor.state.issues).toEqual([
+      {
+        source: "font",
+        message: 'font "Montserrat-Medium.ttf" could not be read: the file went away',
+      },
+    ]);
+  } finally {
+    read.mockRestore();
+  }
 });
