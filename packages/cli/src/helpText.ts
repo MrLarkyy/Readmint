@@ -3,7 +3,7 @@ export const helpText = `Usage: readmint <command> <design> [options]
 
 Commands:
   render <design>     Render the design to SVG (standard output or --out) or to a raster image (--out)
-  validate <design>   Check the design and load its assets; with --data also render it
+  validate <design>   Check the design and load its assets; with --data or --github also render it
   preview <design>    Serve a live preview on http://127.0.0.1:<port>/ (this computer only)
   help                Show this help
 
@@ -21,13 +21,17 @@ Options:
   --quality <n>       Lossy WebP at this quality, 1..100 (webp; default lossless)
   --port <n>          Preview port, 0 for any free one (preview; default 4870)
   --fetch-images      Fetch the images whose src is bound to data (https, allowed hosts only)
+  --github            Load live GitHub data as { github } instead of --data, with the token
+                      from GH_TOKEN, else GITHUB_TOKEN
+  --login <login>     GitHub login --github loads (default: the token's owner)
   -h, --help          Show this help
   --version           Show the version
 
 An animated design becomes an animated webp, apng or gif; png is always a still image.
-The CLI reads no token: data comes only from --data. It makes no network requests,
-except image requests without credentials with --fetch-images.
+The token is never an argument: only --github uses GH_TOKEN or GITHUB_TOKEN, and no message
+shows it. The CLI makes network requests only with --github (GitHub API, with the token) and
+--fetch-images (image requests, never with credentials).
 
-Exit codes: 0 ok, 1 invalid design or failed render, 2 usage, 3 file or port problem, 70 internal error.
+Exit codes: 0 ok, 1 invalid design or failed render, 2 usage, 3 file or port problem, 4 GitHub data, 70 internal error.
 See docs/cli.md.
 `;

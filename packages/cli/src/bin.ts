@@ -14,4 +14,5 @@ process.exitCode = await runCli(process.argv.slice(2), {
   stderr: streamWriter(process.stderr),
   cwd: process.cwd(),
   signal: controller.signal,
+  env: process.env,
 });
