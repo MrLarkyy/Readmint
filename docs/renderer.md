@@ -97,6 +97,8 @@ Drawn in document order, first at the back. Layer `id` and `name` are not emitte
   wrapped, so such a text lays out and renders byte-identical to the same text without them.
 - `align` (`start`, `middle`, `end`) anchors each line at the start, centre or end of the box with `text-anchor`, so the
   drawer aligns what it actually draws.
+- Every `<text>` carries `text-rendering="geometricPrecision"`: without it Chromium on Linux rounds hinted glyph
+  advances to whole pixels and draws the text wider than the renderer measured it.
 
 ## Fonts
 

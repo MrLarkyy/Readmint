@@ -9,7 +9,8 @@ import type { SvgWriter } from "./SvgWriter.js";
 /**
  * One `<text>` with a `<tspan>` per line. Alignment is left to the drawer (`text-anchor` at the start, middle or
  * end of the box), so a small difference between measured and drawn widths never shifts the alignment.
- * `xml:space="preserve"` keeps the spaces the measurement counted.
+ * `xml:space="preserve"` keeps the spaces the measurement counted. `text-rendering="geometricPrecision"` stops
+ * Chromium on Linux from rounding hinted glyph advances to whole pixels, which drew text wider than measured.
  */
 export function renderText(writer: SvgWriter, node: TextNode, extra = ""): void {
   const anchorX =
@@ -32,6 +33,6 @@ export function renderText(writer: SvgWriter, node: TextNode, extra = ""): void 
     )
     .join("");
   writer.write(
-    `<text xml:space="preserve" font-family="${family}" font-size="${formatNumber(node.fontSize)}" font-weight="${escapeAttribute(String(node.font.weight))}"${style}${spacing}${anchor}${paintAttributes(writer, "fill", node.fill)}${opacityAttribute(node)}${transformAttribute(rotation(node, node.x, node.y))}${extra}>${lines}</text>`,
+    `<text xml:space="preserve" text-rendering="geometricPrecision" font-family="${family}" font-size="${formatNumber(node.fontSize)}" font-weight="${escapeAttribute(String(node.font.weight))}"${style}${spacing}${anchor}${paintAttributes(writer, "fill", node.fill)}${opacityAttribute(node)}${transformAttribute(rotation(node, node.x, node.y))}${extra}>${lines}</text>`,
   );
 }
