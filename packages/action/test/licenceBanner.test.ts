@@ -50,6 +50,32 @@ test("a package without a licence file fails the build", async () => {
   expect(() => licenceBanner([join(bare, "index.js")])).toThrow("bare ships no licence file");
 });
 
+test("a package without a licence file takes the text supplied for it in the repository", async () => {
+  const bare = join(dir, "node_modules", "bare");
+  const supplied = join(dir, "licences");
+  await mkdir(bare, { recursive: true });
+  await mkdir(supplied, { recursive: true });
+  await writeFile(join(bare, "package.json"), JSON.stringify({ name: "bare", version: "1.0.0" }));
+  await writeFile(join(supplied, "bare.txt"), "Supplied MIT text");
+  const banner = licenceBanner([join(bare, "index.js")], supplied);
+  expect(banner).toContain(" * Package: bare@1.0.0 (see below)");
+  expect(banner).toContain(" * Supplied MIT text");
+  expect(() => licenceBanner([join(bare, "index.js")], join(dir, "elsewhere"))).toThrow(
+    "bare ships no licence file",
+  );
+});
+
+test("brotli, which ships none, has its MIT and Apache-2.0 texts supplied", () => {
+  const text = readFileSync(
+    join(import.meta.dirname, "..", "scripts", "licences", "brotli.txt"),
+    "utf8",
+  );
+  expect(text).toContain("MIT License");
+  expect(text).toContain("Copyright 2013 Google Inc.");
+  expect(text).toContain("Apache License\n                           Version 2.0, January 2004");
+  expect(text).toContain("END OF TERMS AND CONDITIONS");
+});
+
 test("a comment end inside a licence text cannot close the banner", async () => {
   const odd = join(dir, "node_modules", "odd");
   await mkdir(odd, { recursive: true });
