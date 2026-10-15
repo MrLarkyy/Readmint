@@ -3,7 +3,7 @@ import { join } from "node:path";
 import type { Animation, Colour, Design, Layer } from "@readmint/format";
 import { renderSvg } from "@readmint/renderer";
 import { PNG } from "pngjs";
-import { rasterCodecs } from "../src/initRaster.js";
+import { openWebpCodec } from "../src/initRaster.js";
 import type { RasterInput } from "../src/index.js";
 
 const rendererTest = join(import.meta.dirname, "..", "..", "renderer", "test");
@@ -18,7 +18,7 @@ export const patternPng: Uint8Array = readFileSync(join(rendererTest, "assets", 
 /** The same pixels as a lossless still WebP, encoded by libwebp. */
 export async function patternWebp(): Promise<Uint8Array> {
   const png = PNG.sync.read(Buffer.from(patternPng));
-  const codecs = await rasterCodecs();
+  const codecs = await openWebpCodec();
   return codecs.encodeWebp({
     data: new Uint8Array(png.data),
     width: png.width,

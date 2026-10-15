@@ -1,8 +1,9 @@
 import { crc32 } from "node:zlib";
 import { GifReader } from "omggif";
 import { PNG } from "pngjs";
-import { rasterCodecs } from "../src/initRaster.js";
-import { readWebp, stillWebp } from "../src/webpChunks.js";
+import { openWebpCodec } from "../src/initRaster.js";
+import { readWebp } from "../src/readWebp.js";
+import { stillWebp } from "../src/writeWebp.js";
 
 /** One frame as a viewer shows it: the whole canvas after the frame was drawn. */
 export interface DecodedFrame {
@@ -74,7 +75,7 @@ export function decodeApng(bytes: Uint8Array): DecodedRaster {
 
 /** Reads an (animated) WebP with the package's ANMF reader and libwebp, composing frames as a viewer does. */
 export async function decodeWebp(bytes: Uint8Array): Promise<DecodedRaster> {
-  const codecs = await rasterCodecs();
+  const codecs = await openWebpCodec();
   const image = readWebp(bytes, { maxSide: 16_384, maxFrames: 10_000 });
   if (image.kind === "still") {
     const decoded = codecs.decodeWebp(bytes);

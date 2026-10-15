@@ -1,6 +1,6 @@
 import { Resvg } from "@resvg/resvg-wasm";
 import { demultiply } from "./demultiply.js";
-import type { RgbaImage } from "./RasterCodecs.js";
+import type { RgbaImage } from "./RgbaImage.js";
 import { RasterError } from "./RasterError.js";
 
 /**

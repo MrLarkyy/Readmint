@@ -1,11 +1,11 @@
 import { Resvg } from "@resvg/resvg-wasm";
 import { beforeAll, expect, test } from "vitest";
-import { rasterCodecs } from "../src/initRaster.js";
+import { initRaster } from "../src/initRaster.js";
 import { rasterizeFrame } from "../src/rasterizeFrame.js";
 import { decodePng } from "./decodeRaster.js";
 
 beforeAll(async () => {
-  await rasterCodecs();
+  await initRaster();
 });
 
 test("demultiplied pixels equal resvg's own PNG output exactly", () => {

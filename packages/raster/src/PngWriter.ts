@@ -1,4 +1,5 @@
-import { crc32, deflateSync } from "node:zlib";
+import { zlibSync } from "fflate";
+import { crc32 } from "./crc32.js";
 import type { OutputBudget } from "./OutputBudget.js";
 
 const signature = Uint8Array.of(0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a);
@@ -58,7 +59,8 @@ export function ihdr(width: number, height: number): Uint8Array {
 }
 
 /**
- * The zlib stream of an RGBA rectangle of `image` (row stride `stride` pixels). Each row takes the filter whose
+ * The zlib stream (fflate: plain JavaScript, so the same bytes on every machine) of an RGBA rectangle of `image`
+ * (row stride `stride` pixels), at `level` 9 for output, 1 for a PNG only resvg reads. Each row takes the filter whose
  * output has the smallest sum of absolute values, the heuristic libpng uses: a fixed rule, so equal pixels give
  * equal bytes.
  */
@@ -66,6 +68,7 @@ export function compressRgba(
   image: Uint8Array,
   stride: number,
   rect: { x: number; y: number; width: number; height: number },
+  level: 1 | 9 = 9,
 ): Uint8Array {
   const rowBytes = rect.width * 4;
   const filtered = new Uint8Array((rowBytes + 1) * rect.height);
@@ -90,7 +93,7 @@ export function compressRgba(
     filtered.set(candidates[best] ?? zero, target + 1);
     previous = current;
   }
-  return deflateSync(filtered, { level: 9 });
+  return zlibSync(filtered, { level });
 }
 
 function filterRow(filter: number, row: Uint8Array, above: Uint8Array, out: Uint8Array): number {

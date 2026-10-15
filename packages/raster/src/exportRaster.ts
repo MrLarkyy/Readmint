@@ -1,15 +1,16 @@
 import { frameTimes } from "@readmint/renderer";
 import { samePixels } from "./changedRect.js";
+import { countImagePixels } from "./countImagePixels.js";
 import { encodeApng } from "./encodeApng.js";
 import { encodeGif } from "./encodeGif.js";
 import { encodePng } from "./encodePng.js";
 import { encodeWebp, encodeWebpStill } from "./encodeWebp.js";
 import type { FrameEncoder } from "./FrameEncoder.js";
 import { type DelayUnit, frameDelays, type TimedFrame } from "./frameDelays.js";
-import { rasterCodecs } from "./initRaster.js";
-import { inlineWebpAssets } from "./inlineWebpAssets.js";
+import { initRaster, openWebpCodec } from "./initRaster.js";
+import { hasWebpImage, inlineWebpAssets } from "./inlineWebpAssets.js";
+import { matchFontFamilies } from "./matchFontFamilies.js";
 import { OutputBudget } from "./OutputBudget.js";
-import type { RasterCodecs } from "./RasterCodecs.js";
 import { RasterError } from "./RasterError.js";
 import { type RasterFormat, rasterFormats } from "./RasterFormat.js";
 import type { RasterInput } from "./RasterInput.js";
@@ -18,6 +19,7 @@ import type { RasterOptions } from "./RasterOptions.js";
 import type { RasterOutput } from "./RasterOutput.js";
 import { rasterFonts } from "./rasterFonts.js";
 import { rasterizeFrame } from "./rasterizeFrame.js";
+import type { WebpCodec } from "./WebpCodec.js";
 
 const defaultScale = 2;
 const defaultFrameRate = 30;
@@ -107,12 +109,16 @@ export async function exportRaster(
   const width = Math.round(Math.ceil(size.width) * settings.scale);
   const height = Math.round(Math.ceil(size.height) * settings.scale);
   checkPlan(settings, width, height, plan.length);
+  checkImageWork(limits, countImagePixels(first, plan.length), plan.length);
   const fonts = rasterFonts(first, input.fonts);
-  const codecs = await rasterCodecs();
+  const buffers = fonts.map((font) => font.bytes);
+  await initRaster();
+  const codecs = format === "webp" || hasWebpImage(first) ? await openWebpCodec() : undefined;
   const budget = new OutputBudget(limits.maxOutputBytes, labels[format]);
   const webpCache = new Map<string, string>();
   const draw = (svg: string): Uint8Array => {
-    const image = rasterizeFrame(inlineWebpAssets(svg, codecs, webpCache), settings.scale, fonts);
+    const prepared = matchFontFamilies(inlineWebpAssets(svg, codecs, webpCache), fonts);
+    const image = rasterizeFrame(prepared, settings.scale, buffers);
     if (image.width !== width || image.height !== height) {
       throw new RasterError(
         "raster-image",
@@ -190,22 +196,39 @@ function checkPlan(settings: Settings, width: number, height: number, frames: nu
   if (width > limits.maxSide || height > limits.maxSide) {
     throw new RasterError(
       "raster-too-large",
-      `the image would be ${String(width)}x${String(height)} pixels at scale ${String(settings.scale)}; each side may be at most ${String(limits.maxSide)}, so lower --scale (for example --scale 1)`,
+      `the image would be ${String(width)}x${String(height)} pixels at scale ${String(settings.scale)}; each side may be at most ${String(limits.maxSide)}, so lower the scale (for example to 1)`,
     );
   }
   if (frames > limits.maxFrames) {
     throw new RasterError(
       "raster-too-many-frames",
-      `the animation would have ${String(frames)} frames at ${String(settings.frameRate)} fps, more than the ${String(limits.maxFrames)} allowed; lower --frame-rate`,
+      `the animation would have ${String(frames)} frames at ${String(settings.frameRate)} fps, more than the ${String(limits.maxFrames)} allowed; lower the frame rate`,
     );
   }
   const pixels = width * height * frames;
   if (pixels > limits.maxTotalPixels) {
     throw new RasterError(
       "raster-too-many-pixels",
-      `the export would draw ${String(pixels)} pixels (${String(frames)} frames of ${String(width)}x${String(height)}), more than the ${String(limits.maxTotalPixels)} allowed; lower --scale or --frame-rate`,
+      `the export would draw ${String(pixels)} pixels (${String(frames)} frames of ${String(width)}x${String(height)}), more than the ${String(limits.maxTotalPixels)} allowed; lower the scale or the frame rate`,
     );
   }
+}
+
+function checkImageWork(
+  limits: RasterLimits,
+  work: { pixels: number; images: number; draws: number },
+  frames: number,
+): void {
+  if (work.pixels <= limits.maxImagePixels) return;
+  throw new RasterError(
+    "raster-too-many-image-pixels",
+    `drawing the images would decode ${String(work.pixels)} pixels (${String(work.images)} images drawn ${String(work.draws)} times a frame, ${String(frames)} frames), more than the ${String(limits.maxImagePixels)} allowed; draw large images fewer times or smaller, or lower the frame rate`,
+  );
+}
+
+function required(codec: WebpCodec | undefined): WebpCodec {
+  if (codec === undefined) throw new Error("WebP output needs the WebP codec");
+  return codec;
 }
 
 function svgSize(svg: string): { width: number; height: number } {
@@ -223,10 +246,10 @@ function encodeStill(
   pixels: Uint8Array,
   width: number,
   height: number,
-  codecs: RasterCodecs,
+  codecs: WebpCodec | undefined,
   budget: OutputBudget,
 ): Uint8Array {
-  if (format === "webp") return encodeWebpStill(pixels, width, height, codecs, budget);
+  if (format === "webp") return encodeWebpStill(pixels, width, height, required(codecs), budget);
   if (format === "gif") {
     const encoder = encodeGif(width, height, undefined, budget);
     encoder.add(pixels, 0);
@@ -240,10 +263,10 @@ function frameEncoder(
   width: number,
   height: number,
   animation: Timeline,
-  codecs: RasterCodecs,
+  codecs: WebpCodec | undefined,
   budget: OutputBudget,
 ): FrameEncoder {
-  if (format === "webp") return encodeWebp(width, height, animation.loop, codecs, budget);
+  if (format === "webp") return encodeWebp(width, height, animation.loop, required(codecs), budget);
   if (format === "gif") return encodeGif(width, height, animation, budget);
   return encodeApng(width, height, animation.loop, budget);
 }

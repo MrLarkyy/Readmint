@@ -2,8 +2,9 @@ import { changedRect, cropRgba } from "./changedRect.js";
 import type { FrameEncoder } from "./FrameEncoder.js";
 import type { OutputBudget } from "./OutputBudget.js";
 import type { PixelRect } from "./PixelRect.js";
-import type { RasterCodecs } from "./RasterCodecs.js";
-import { riffWebp, serializeChunks, type WebpChunk, webpChunks, writeU24le } from "./webpChunks.js";
+import { type WebpChunk, webpChunks } from "./readWebp.js";
+import type { WebpCodec } from "./WebpCodec.js";
+import { riffWebp, serializeChunks, writeU24le } from "./writeWebp.js";
 
 const animationFlag = 0x02;
 const alphaFlag = 0x10;
@@ -15,7 +16,7 @@ export function encodeWebpStill(
   pixels: Uint8Array,
   width: number,
   height: number,
-  codecs: RasterCodecs,
+  codecs: WebpCodec,
   budget: OutputBudget,
 ): Uint8Array {
   const bytes = codecs.encodeWebp({ data: pixels, width, height });
@@ -32,7 +33,7 @@ export function encodeWebp(
   width: number,
   height: number,
   loop: boolean,
-  codecs: RasterCodecs,
+  codecs: WebpCodec,
   budget: OutputBudget,
 ): FrameEncoder {
   const frames: WebpChunk[] = [];

@@ -10,6 +10,8 @@ export interface RasterLimits {
   readonly maxTotalPixels: number;
   /** Bytes of the encoded file. */
   readonly maxOutputBytes: number;
+  /** Image pixels decoded over the whole export: each image once per draw per frame, plus each WebP swap. */
+  readonly maxImagePixels: number;
 }
 
 export const RasterLimits: RasterLimits = Object.freeze({
@@ -22,4 +24,6 @@ export const RasterLimits: RasterLimits = Object.freeze({
   maxTotalPixels: 268_435_456,
   /** The default content length limit of GitHub's camo image proxy, as for the SVG. */
   maxOutputBytes: 5_242_880,
+  /** 256 Mpx, some 4 s of decoding: one 4096 x 4096 image drawn sixteen times, or a 512 x 512 one 1000 times. */
+  maxImagePixels: 268_435_456,
 });

@@ -2,13 +2,14 @@ import { describe, expect, test } from "vitest";
 import { OutputBudget } from "../src/OutputBudget.js";
 import { encodeWebp } from "../src/encodeWebp.js";
 import { RasterError } from "../src/index.js";
-import { rasterCodecs } from "../src/initRaster.js";
-import { readWebp, riffWebp, writeU24le } from "../src/webpChunks.js";
+import { openWebpCodec } from "../src/initRaster.js";
+import { readWebp } from "../src/readWebp.js";
+import { riffWebp, writeU24le } from "../src/writeWebp.js";
 
 const limits = { maxSide: 8192, maxFrames: 1000 };
 
 async function animatedWebp(frames: number): Promise<Uint8Array> {
-  const codecs = await rasterCodecs();
+  const codecs = await openWebpCodec();
   const encoder = encodeWebp(8, 4, true, codecs, new OutputBudget(1e9, "WebP"));
   for (let frame = 0; frame < frames; frame++) {
     encoder.add(new Uint8Array(8 * 4 * 4).fill(frame * 40 + 10), 50);

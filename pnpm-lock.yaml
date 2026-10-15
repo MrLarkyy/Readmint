@@ -117,9 +117,9 @@ importers:
 
   packages/raster:
     dependencies:
-      '@jsquash/webp':
-        specifier: 1.5.0
-        version: 1.5.0
+      '@readmint/fonts':
+        specifier: workspace:*
+        version: link:../fonts
       '@readmint/format':
         specifier: workspace:*
         version: link:../format
@@ -129,9 +129,15 @@ importers:
       '@resvg/resvg-wasm':
         specifier: 2.6.2
         version: 2.6.2
+      fflate:
+        specifier: 0.8.3
+        version: 0.8.3
       gifenc:
         specifier: 1.0.3
         version: 1.0.3
+      wasm-webp:
+        specifier: 0.1.0
+        version: 0.1.0
     devDependencies:
       '@readmint/golden':
         specifier: workspace:*
@@ -237,9 +243,6 @@ packages:
 
   '@jridgewell/trace-mapping@0.3.31':
     resolution: {integrity: sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw==}
-
-  '@jsquash/webp@1.5.0':
-    resolution: {integrity: sha512-KggLoj2MnRSfIqTeKe1EmbljTX2vuV7mh79k89PCL1pyqiDULcPM1L47twxXt0hkb68F70bXiL31MxsuoZtKFw==}
 
   '@oxc-project/types@0.153.0':
     resolution: {integrity: sha512-jSNrRIyvPVLL5E1z/tS5zLAprosGz/FuI1PWwEOz59j3E4TTTzSpqKb/RDGqJhhW0QHYISGXxq582wGx6T11Tw==}
@@ -1161,8 +1164,8 @@ packages:
       jsdom:
         optional: true
 
-  wasm-feature-detect@1.9.0:
-    resolution: {integrity: sha512-zonE+xlIIYtxPy++L24ow0hAD8CICb4+FgPyROd3buyXIqsJvUEDkBgfCCoXOd1Hu3DUr0GOfnPIdcGV+YpNaA==}
+  wasm-webp@0.1.0:
+    resolution: {integrity: sha512-Z1Sop+mLKogzDK3vJzSPfSxRF1yj/zbmn+XJuU9+7fvarxcuGhGkeLBqJr5H8LdgWuAwEKuZelCzx7ujztfhVQ==}
 
   which@2.0.2:
     resolution: {integrity: sha512-BLI3Tl1TW3Pvl70l3yq3Y64i+awpwXqsGBYWkkqMtnbXgrMD+yj7rhW0kuEDxzJaYXGjEW5ogapKNMEKNMjibA==}
@@ -1273,10 +1276,6 @@ snapshots:
     dependencies:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.6.0
-
-  '@jsquash/webp@1.5.0':
-    dependencies:
-      wasm-feature-detect: 1.9.0
 
   '@oxc-project/types@0.153.0': {}
 
@@ -2049,7 +2048,7 @@ snapshots:
     transitivePeerDependencies:
       - msw
 
-  wasm-feature-detect@1.9.0: {}
+  wasm-webp@0.1.0: {}
 
   which@2.0.2:
     dependencies:

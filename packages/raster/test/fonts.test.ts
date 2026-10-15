@@ -19,7 +19,7 @@ describe("raster fonts", () => {
   test("text with no font at all is a raster-font error, never blank text", async () => {
     const failure = exportRaster({ frame: () => textSvg() }, { format: "png" });
     await expect(failure).rejects.toMatchObject({ code: "raster-font" });
-    await expect(failure).rejects.toThrow("no TTF or OTF font");
+    await expect(failure).rejects.toThrow("has no font to draw it with");
   });
 
   test("a WOFF2 font is a raster-font error naming the format", async () => {
@@ -35,7 +35,10 @@ describe("raster fonts", () => {
         { frame: () => textSvg(), fonts: [new Uint8Array([1, 2, 3, 4])] },
         { format: "png" },
       ),
-    ).rejects.toMatchObject({ code: "raster-font", message: "font 1 is not a TTF or OTF font" });
+    ).rejects.toMatchObject({
+      code: "raster-font",
+      message: "font 1 is not a TTF, OTF or WOFF font",
+    });
   });
 
   test("the TTF the SVG embeds draws the text", async () => {

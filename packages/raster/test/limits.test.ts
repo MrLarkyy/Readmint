@@ -41,21 +41,23 @@ describe("raster limits", () => {
       maxDuration: 60_000,
       maxTotalPixels: 268_435_456,
       maxOutputBytes: 5_242_880,
+      maxImagePixels: 268_435_456,
     });
     expect(Object.isFrozen(RasterLimits)).toBe(true);
   });
 
-  test("a side over the limit fails before any frame is drawn, naming size, limit and --scale", async () => {
+  test("a side over the limit fails before any frame is drawn, naming size, limit and the scale", async () => {
     const { input, frames } = counted(shapesDesign);
     const error = await failure(input, { format: "png", scale: 2, limits: { maxSide: 100 } });
     expect(error.code).toBe("raster-too-large");
     expect(error.message).toContain("128x64");
     expect(error.message).toContain("at most 100");
-    expect(error.message).toContain("--scale 1");
+    expect(error.message).toContain("lower the scale (for example to 1)");
+    expect(error.message).not.toContain("--");
     expect(frames()).toBe(1);
   });
 
-  test("too many frames fail before drawing, naming the count, the limit and --frame-rate", async () => {
+  test("too many frames fail before drawing, naming the count, the limit and the frame rate", async () => {
     const { input, frames } = counted(loopDesign);
     const error = await failure(input, {
       format: "apng",
@@ -65,7 +67,7 @@ describe("raster limits", () => {
     expect(error.code).toBe("raster-too-many-frames");
     expect(error.message).toContain("15 frames at 30 fps");
     expect(error.message).toContain("the 10 allowed");
-    expect(error.message).toContain("--frame-rate");
+    expect(error.message).toContain("lower the frame rate");
     expect(frames()).toBe(1);
   });
 

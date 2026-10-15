@@ -3,8 +3,9 @@ import { beforeAll, describe, expect, test } from "vitest";
 import { OutputBudget } from "../src/OutputBudget.js";
 import { encodeWebp } from "../src/encodeWebp.js";
 import { exportRaster, RasterError } from "../src/index.js";
-import { rasterCodecs } from "../src/initRaster.js";
-import { riffWebp, webpChunks, writeU24le } from "../src/webpChunks.js";
+import { initRaster, openWebpCodec } from "../src/initRaster.js";
+import { webpChunks } from "../src/readWebp.js";
+import { riffWebp, writeU24le } from "../src/writeWebp.js";
 import { decodeApng, pngOf } from "./decodeRaster.js";
 import { dataUri, designInput, imageDesign, patternPng, patternWebp } from "./rasterFixtures.js";
 
@@ -21,7 +22,7 @@ function svgWithImage(src: string): string {
 }
 
 beforeAll(async () => {
-  await rasterCodecs();
+  await initRaster();
 });
 
 describe("WebP image assets", () => {
@@ -31,7 +32,7 @@ describe("WebP image assets", () => {
   });
 
   test("an animated WebP draws its first frame", async () => {
-    const codecs = await rasterCodecs();
+    const codecs = await openWebpCodec();
     const encoder = encodeWebp(
       pattern.width,
       pattern.height,
@@ -50,7 +51,7 @@ describe("WebP image assets", () => {
   });
 
   test("an animated WebP whose first frame is smaller than the canvas draws it in place", async () => {
-    const codecs = await rasterCodecs();
+    const codecs = await openWebpCodec();
     const small = new Uint8Array(4 * 6 * 4).fill(200);
     const frame = webpChunks(codecs.encodeWebp({ data: small, width: 4, height: 6 })).find(
       (chunk) => chunk.type === "VP8L",
