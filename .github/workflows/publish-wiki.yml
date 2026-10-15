@@ -1,0 +1,49 @@
+name: Publish wiki
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - docs/**
+      - packages/wiki/**
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publish-wiki
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7
+        with:
+          repository: ${{ github.repository }}.wiki
+          path: wiki-checkout
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec vitest run --project node packages/wiki
+      - run: pnpm wiki
+      - name: Commit the generated pages
+        shell: bash
+        run: |
+          find wiki-checkout -maxdepth 1 -name '*.md' -delete
+          cp .wiki-out/*.md wiki-checkout/
+          cd wiki-checkout
+          git add --all
+          if git diff --cached --quiet; then
+            echo "wiki is up to date"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Update wiki from docs/ at ${GITHUB_SHA}"
+          git push origin HEAD
