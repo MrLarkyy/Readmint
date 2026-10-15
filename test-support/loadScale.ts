@@ -12,7 +12,8 @@ const sink = { value: 0 };
 
 /**
  * How much slower this machine is right now than idle, from 1 (idle) to 20. A wall-clock bound
- * is multiplied by it; call it right after the timed operation so it sees the same load. The
+ * is multiplied by it; call it right after the timed operation so it sees the same load, and also
+ * before it when a load spike may end during the run (the larger value bounds it). The
  * cap keeps a real blow-up (orders of magnitude) above any scaled limit.
  */
 export function loadScale(): number {
