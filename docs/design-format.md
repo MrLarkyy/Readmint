@@ -29,6 +29,8 @@ migrates and validates it; the published JSON Schema gives editors completion an
 ```ts
 import {
   parseDesign,
+  parseDesignAsync,
+  parseDesignSourceAsync,
   validateDesign,
   migrateDesign,
   designJsonSchema,
@@ -48,9 +50,10 @@ quoteInput(value, { maxEcho?, escape? }); // an input value as issue messages qu
 UTF-16 unit. The default escape set is the engine-independent one of the format (C0 and C1 controls, bidi marks,
 embeddings, overrides and isolates, line and paragraph separators); a host may pass a wider one (the CLI does).
 
-`parseDesignAsync` and `parseDesignSourceAsync` give the same results as their synchronous forms. They load the YAML
+`parseDesignAsync` gives the same results as `parseDesign`; `parseDesignSourceAsync` is the parse step alone (text to a
+plain value, no migration or validation; its synchronous form is internal). They load the YAML
 parser with a dynamic import only when the source is YAML, so a browser bundle (the editor) keeps it out of its initial
-chunk; the package is marked `sideEffects: false` for that. The synchronous forms stay for Node callers.
+chunk; the package is marked `sideEffects: false` for that. `parseDesign` stays for callers that want no async step.
 
 Every function returns a `DesignResult`:
 

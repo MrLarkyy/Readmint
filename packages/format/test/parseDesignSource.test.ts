@@ -395,6 +395,9 @@ describe("async readers", () => {
     ['{"version": 0,', undefined],
     ["--- 1\n--- 2\n", "yaml"],
     ["x".repeat(DesignLimits.maxSourceLength + 1), "yaml"],
+    ["x".repeat(DesignLimits.maxYamlSourceLength + 1), undefined],
+    [`${String.fromCharCode(0xfeff)}${"#".repeat(DesignLimits.maxYamlSourceLength - 1)}`, "yaml"],
+    [`{"version": 0, "pad": "${"x".repeat(DesignLimits.maxYamlSourceLength)}"}`, undefined],
     [undefined, undefined],
   ];
 

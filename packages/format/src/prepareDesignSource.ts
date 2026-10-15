@@ -21,7 +21,7 @@ export function prepareDesignSource(
     };
   if (source.length > DesignLimits.maxSourceLength)
     return { result: tooLong("source", DesignLimits.maxSourceLength) };
-  const text = source.startsWith("﻿") ? source.slice(1) : source;
+  const text = source.startsWith(String.fromCharCode(0xfeff)) ? source.slice(1) : source;
   const chosen = format ?? (/^\s*\{/u.test(text) ? "json" : "yaml");
   if (chosen === "yaml" && source.length > DesignLimits.maxYamlSourceLength)
     return { result: tooLong("YAML source", DesignLimits.maxYamlSourceLength) };
