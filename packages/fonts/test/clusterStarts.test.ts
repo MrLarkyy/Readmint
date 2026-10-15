@@ -22,6 +22,14 @@ test("characters above the BMP, regional indicator pairs and emoji modifiers", (
   expect(clusterStarts("\u{1f44d}\u{1f3fd}x")).toEqual([0, 4]);
 });
 
+test("the conjoining jamo of a Hangul syllable stay together (UAX #29 GB6-GB8)", () => {
+  expect(clusterStarts("\u1100\u1161\u11a8")).toEqual([0]);
+  expect(clusterStarts("\uac00\u11a8\uac01\u11a8")).toEqual([0, 2]);
+  expect(clusterStarts("\u1100\u1100\u1161")).toEqual([0]);
+  expect(clusterStarts("\u11a8\u1100\uac01\u1161")).toEqual([0, 1, 3]);
+  expect(clusterStarts(`${"\u1100".repeat(39)}\u1161`)).toEqual([0, 32]);
+});
+
 test("an empty text has no clusters", () => {
   expect(clusterStarts("")).toEqual([]);
 });

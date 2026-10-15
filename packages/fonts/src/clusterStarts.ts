@@ -14,11 +14,57 @@ const isDevanagariConsonant = (codePoint: number) => {
   return codePoint >= 0x0900 && codePoint <= 0x097f && category.startsWith("Consonant");
 };
 
+/** Hangul_Syllable_Type (UAX #29), from the fixed jamo and syllable ranges. */
+const Jamo = { none: 0, leading: 1, vowel: 2, trailing: 3, lv: 4, lvt: 5 } as const;
+type Jamo = (typeof Jamo)[keyof typeof Jamo];
+
+function jamoOf(codePoint: number): Jamo {
+  if (
+    (codePoint >= 0x1100 && codePoint <= 0x115f) ||
+    (codePoint >= 0xa960 && codePoint <= 0xa97c)
+  ) {
+    return Jamo.leading;
+  }
+  if (
+    (codePoint >= 0x1160 && codePoint <= 0x11a7) ||
+    (codePoint >= 0xd7b0 && codePoint <= 0xd7c6)
+  ) {
+    return Jamo.vowel;
+  }
+  if (
+    (codePoint >= 0x11a8 && codePoint <= 0x11ff) ||
+    (codePoint >= 0xd7cb && codePoint <= 0xd7fb)
+  ) {
+    return Jamo.trailing;
+  }
+  if (codePoint >= 0xac00 && codePoint <= 0xd7a3) {
+    return (codePoint - 0xac00) % 28 === 0 ? Jamo.lv : Jamo.lvt;
+  }
+  return Jamo.none;
+}
+
+/** UAX #29 GB6-GB8: conjoining jamo that spell one syllable stay together. */
+function joinsSyllable(previous: Jamo, next: Jamo): boolean {
+  switch (previous) {
+    case Jamo.leading:
+      return next === Jamo.leading || next === Jamo.vowel || next === Jamo.lv || next === Jamo.lvt;
+    case Jamo.lv:
+    case Jamo.vowel:
+      return next === Jamo.vowel || next === Jamo.trailing;
+    case Jamo.lvt:
+    case Jamo.trailing:
+      return next === Jamo.trailing;
+    default:
+      return false;
+  }
+}
+
 /**
  * UTF-16 offsets where a cluster of characters that must stay together starts: a base with its marks, joiners,
  * variation selectors and other default ignorables (which are never drawn on their own), a symbol after ZWJ (emoji
  * sequences: UAX #29 GB11 without Extended_Pictographic data, so any character that is not strong (a letter)), a
- * Devanagari conjunct (consonant, virama, consonant: UAX #29 GB9c), a pair of regional indicators. Close to UAX #29
+ * Devanagari conjunct (consonant, virama, consonant: UAX #29 GB9c), the conjoining jamo of a Hangul syllable (GB6-GB8,
+ * so a decomposed syllable recomposes before shaping), a pair of regional indicators. Close to UAX #29
  * grapheme clusters, from this package's Unicode tables only, so every engine splits the same way. A cluster holds at
  * most 32 code points (like the stream-safe text format's 30 non-starters): a longer run of marks or conjuncts goes
  * on in a new cluster, so the work per cluster stays bounded.
@@ -43,6 +89,7 @@ export function clusterStarts(text: string): number[] {
       (extend ||
         (previous === zwj && !isStrong(codePoint)) ||
         (linker && isDevanagariConsonant(codePoint)) ||
+        joinsSyllable(jamoOf(previous), jamoOf(codePoint)) ||
         (isRegionalIndicator(codePoint) && regionalIndicators % 2 === 1));
     if (!joins) {
       starts.push(index);
