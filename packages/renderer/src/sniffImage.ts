@@ -190,12 +190,12 @@ function isFrameHeader(marker: number): boolean {
   return marker >= 0xc0 && marker <= 0xc2;
 }
 
-/** The segments libjpeg reads (or skips) by their length: DHT, DAC, DQT, DNL, DRI, APPn, COM. */
+/** The segments every output reads (or skips) by their length: DHT, DQT, DRI, APPn, COM. */
 function isLengthSegment(marker: number): boolean {
   return (
     marker === 0xc4 ||
-    marker === 0xcc ||
-    (marker >= 0xdb && marker <= 0xdd) ||
+    marker === 0xdb ||
+    marker === 0xdd ||
     (marker >= 0xe0 && marker <= 0xef) ||
     marker === 0xfe
   );
@@ -204,13 +204,16 @@ function isLengthSegment(marker: number): boolean {
 const hex = (value: number) => `0x${value.toString(16).toUpperCase().padStart(2, "0")}`;
 
 /**
- * Why a JPEG holding `marker` before its image data is refused, or undefined when the walk reads it on. Every marker
- * libjpeg (and so Chromium) rejects there makes Chromium draw nothing, where resvg may still draw: refusing it keeps
- * the preview and the raster output alike. Standalone markers (TEM, RSTn) and SOS are the caller's.
+ * Why a JPEG holding `marker` before its image data is refused, or undefined when the walk reads it on. Chromium
+ * (libjpeg) draws nothing for the markers it rejects there, and resvg (jpeg-decoder) draws nothing for RSTn, TEM, DNL
+ * and DAC: refusing them names the marker instead of an empty box in one output or both. SOS is the caller's.
  */
 function jpegMarkerProblem(marker: number, sawFrame: boolean): string | undefined {
   if (marker === 0xd8) return "JPEG holds a second start-of-image marker";
   if (marker === 0xd9) return "JPEG ends before its image data";
+  if (marker === 0x01 || (marker >= 0xd0 && marker <= 0xd7) || marker === 0xcc || marker === 0xdc) {
+    return `JPEG holds marker ${hex(marker)} before its image data`;
+  }
   if (isFrameHeader(marker)) return sawFrame ? "JPEG holds a second frame header" : undefined;
   if (marker === 0xc3 || (marker >= 0xc9 && marker <= 0xcb)) {
     return `JPEG frame type ${hex(marker)} (lossless or arithmetic coded) is refused, because not every output draws it alike`;
@@ -254,7 +257,6 @@ function sniffJpeg(bytes: Bytes): SniffResult {
         return { ok: false, message: "JPEG segment does not start with 0xFF" };
       const marker = next.marker;
       offset = next.offset;
-      if (marker === 0x01 || (marker >= 0xd0 && marker <= 0xd7)) continue;
       if (marker === 0xda) {
         if (size === undefined) {
           return { ok: false, message: "JPEG has no frame header before its image data" };
@@ -265,10 +267,7 @@ function sniffJpeg(bytes: Bytes): SniffResult {
       if (problem !== undefined) return { ok: false, message: problem };
       const length = bytes.u16be(offset);
       if (length < 2) {
-        if (size === undefined) return { ok: false, message: "JPEG segment length is invalid" };
-        // libjpeg skips nothing past such a length (or stops at a table it needs, where nothing is drawn anyway).
-        offset += 2;
-        continue;
+        return { ok: false, message: `JPEG segment ${hex(marker)} length is invalid` };
       }
       // Decoders check only `Exif\0`; the sixth byte, meant to be 0, may be anything.
       if (marker === 0xe1 && length >= 8 && bytes.ascii(offset + 2, 5) === "Exif\0") {

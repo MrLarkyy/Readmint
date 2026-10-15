@@ -12,7 +12,8 @@ export interface RefusedJpeg extends JpegVariant {
   readonly message: string;
   /**
    * Chromium draws it at 0x0. False where the variant is no genuine file of its kind (a frame type or precision
-   * patched onto baseline Huffman data), so what Chromium makes of it says nothing about a real one.
+   * patched onto baseline Huffman data), so what Chromium makes of it says nothing about a real one, or where
+   * Chromium draws it and only resvg draws nothing (RSTn, TEM, DNL, DAC, a segment length below 2).
    */
   readonly chromiumDrawsNothing: boolean;
 }
@@ -96,6 +97,20 @@ export function refusedJpegs(jpeg: Uint8Array): RefusedJpeg[] {
       after([...jpeg.subarray(frame, frameEnd)]),
       "second frame header",
     ),
+    refused("RST0 before the frame header", before([0xff, 0xd0]), "marker 0xD0", false),
+    refused("RST0 after the frame header", after([0xff, 0xd0]), "marker 0xD0", false),
+    refused("TEM before the frame header", before([0xff, 0x01]), "marker 0x01", false),
+    refused("TEM after the frame header", after([0xff, 0x01]), "marker 0x01", false),
+    refused("DAC before the frame header", before([0xff, 0xcc, 0, 2]), "marker 0xCC", false),
+    refused("DAC after the frame header", after([0xff, 0xcc, 0, 2]), "marker 0xCC", false),
+    refused("DNL after the frame header", after([0xff, 0xdc, 0, 4, 0, 16]), "marker 0xDC", false),
+    refused("APP15 of length 0", before([0xff, 0xef, 0, 0]), "segment 0xEF length", false),
+    refused(
+      "COM of length 1 after the frame header",
+      after([0xff, 0xfe, 0, 1]),
+      "segment 0xFE length",
+      false,
+    ),
     refused("SOF3 (lossless)", frameType(jpeg, 0xc3), "frame type 0xC3", false),
     refused("SOF5 (differential)", frameType(jpeg, 0xc5), "frame type 0xC5"),
     refused("JPG (0xC8)", frameType(jpeg, 0xc8), "frame type 0xC8"),
@@ -115,15 +130,9 @@ export function acceptedJpegs(jpeg: Uint8Array): JpegVariant[] {
   const { frame, frameEnd } = layout(jpeg);
   return [
     { name: "the test JPEG", bytes: jpeg },
-    { name: "RST0 before the frame header", bytes: inserted(jpeg, frame, [0xff, 0xd0]) },
-    { name: "TEM before the frame header", bytes: inserted(jpeg, frame, [0xff, 0x01]) },
     {
       name: "COM before the frame header",
       bytes: inserted(jpeg, frame, [0xff, 0xfe, 0, 4, 0x68, 0x69]),
-    },
-    {
-      name: "DNL after the frame header",
-      bytes: inserted(jpeg, frameEnd, [0xff, 0xdc, 0, 4, 0, 16]),
     },
     {
       name: "DRI after the frame header",

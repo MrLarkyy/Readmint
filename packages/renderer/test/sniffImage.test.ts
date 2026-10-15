@@ -199,10 +199,6 @@ describe("EXIF orientation", () => {
     ["a stray byte before FF 00", { afterFrame: [0, 0xff, 0] }],
     ["FF 00 twice", { afterFrame: [0xff, 0, 0xff, 0] }],
     ["stray, fill and FF 00 mixed", { afterFrame: [0x12, 0xff, 0xff, 0xff, 0, 0x34] }],
-    ["an RST0 marker, which has no length", { afterFrame: [0xff, 0xd0] }],
-    ["a TEM marker, which has no length", { afterFrame: [0xff, 0x01] }],
-    ["a COM segment of length 0", { afterFrame: [0xff, 0xfe, 0, 0] }],
-    ["an APP2 segment of length 1", { afterFrame: [0xff, 0xe2, 0, 1] }],
   ])("a JPEG with %s is read as Chromium reads it", (_name, options) => {
     expect(sniffImage(jpegWithExif(jpeg, orientationTiff(6), options), 1000)).toMatchObject({
       ok: true,

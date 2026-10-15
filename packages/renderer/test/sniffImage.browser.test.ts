@@ -16,7 +16,8 @@ async function drawnSize(bytes: Uint8Array): Promise<readonly [number, number]> 
 
 describe("Chromium and the sniffer agree on JPEG markers", () => {
   // The other refused rows patch a frame type or precision onto baseline Huffman data: no genuine file of that kind,
-  // so Chromium's take on them proves nothing; the sniffer refuses those frame types fail-closed.
+  // so Chromium's take on them proves nothing; the sniffer refuses those frame types fail-closed. RSTn, TEM, DNL, DAC
+  // and short segments Chromium draws: the sniffer refuses them for resvg parity (resvg draws them empty).
   const undrawable = refusedJpegs(jpeg).filter((row) => row.chromiumDrawsNothing);
 
   test.each(undrawable.map((row) => [row.name, row.bytes] as const))(
