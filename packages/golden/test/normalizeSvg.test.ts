@@ -101,3 +101,11 @@ describe("normalizeSvg", () => {
     expect(normalizeSvg(once)).toBe(once);
   });
 });
+
+test("an aria-label keeps its text exactly: numbers in it are words, not coordinates", () => {
+  const svg =
+    '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"><text x="1.23456" aria-label="Readmint 2.0 (v1.10)">x</text></svg>';
+  const out = normalizeSvg(svg);
+  expect(out).toContain('aria-label="Readmint 2.0 (v1.10)"');
+  expect(out).toContain('x="1.235"');
+});
