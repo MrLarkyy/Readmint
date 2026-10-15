@@ -14,7 +14,7 @@ For every fixture:
    match the same PNG golden within the (looser) browser tolerance.
 
 On a failure the actual files and a diff image are written to `test-results/golden/<package>/<suite>/` and named in
-the failure message. CI uploads that folder as the `golden-results` artefact when a job fails.
+the failure message. Every test shard of CI uploads that folder as its own `golden-results-<project>-<n>` artefact when it fails.
 
 ## Layout
 
@@ -121,6 +121,19 @@ This is the only thing that writes goldens: it creates missing ones, overwrites 
 within the tolerance stays byte-identical, so there is no churn) and removes orphan goldens of the suite. A plain
 `pnpm test` never writes, even with `READMINT_GOLDEN_UPDATE` exported, and `golden:update` refuses to run when `CI` is
 set. Look at the changed PNGs before committing them.
+
+## CI
+
+`.github/workflows/ci.yml` runs these jobs in parallel; each installs through the `.github/actions/setup` composite
+action, which caches the pnpm store keyed by `pnpm-lock.yaml`.
+
+- `static`: build, typecheck, lint, format check.
+- `bundle`: build, editor app, Action bundle and its smoke run.
+- `test`: the Vitest suite in five shards (`node` 1/3 to 3/3, `browser` 1/2 and 2/2). The browser shards also cache the
+  Playwright download (`~/.cache/ms-playwright`, keyed by the lockfile) and install the system dependencies.
+- `windows-paths`: the CLI and Action tests on Windows.
+
+To reproduce one shard locally: `pnpm exec vitest run --project node --shard=1/3`.
 
 ## Browser tests locally
 
