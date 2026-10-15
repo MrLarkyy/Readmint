@@ -396,6 +396,18 @@ describe("the animation of the profile sections", () => {
     },
   );
 
+  test.each([
+    ["year-ring", "Oct 16, 2024 to Oct 15, 2025"],
+    ["horizon", "Oct 16, 2024 - Oct 15, 2025"],
+  ] as const)("the date range of %s names the year of both ends", (template, range) => {
+    const sample = sampleProfileData();
+    const data = withPatch(sample, {
+      contributions: { ...sample.github.contributions, from: "2024-10-16", to: "2025-10-15" },
+    });
+    const svg = renderProfile({ template, design: loadProfile(template, "year"), data });
+    expect(svg).toContain(`>${range}<`);
+  });
+
   test("a streak of one day reads '1 day'", () => {
     const sample = sampleProfileData();
     const one = { length: 1, start: "2026-01-02", end: "2026-01-02" };

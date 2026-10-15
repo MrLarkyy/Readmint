@@ -159,7 +159,7 @@
           "type": "text",
           "x": 40,
           "y": 210,
-          "content": "{{ (github.contributions.from | date(\"MMM d\")) + \" - \" + (github.contributions.to | date(\"MMM d, yyyy\")) }}",
+          "content": "{{ (github.contributions.from | date(\"MMM d, yyyy\")) + \" - \" + (github.contributions.to | date(\"MMM d, yyyy\")) }}",
           "font": "mono",
           "fontSize": 12,
           "fill": "{{ props.theme == \"dark\" ? \"#9a948a\" : \"#6b645a\" }}",

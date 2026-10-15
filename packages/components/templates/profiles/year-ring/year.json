@@ -435,7 +435,7 @@
           "type": "text",
           "x": 40,
           "y": 144,
-          "content": "{{ (github.contributions.from | date(\"MMM d\")) + \" to \" + (github.contributions.to | date(\"MMM d, yyyy\")) }}",
+          "content": "{{ (github.contributions.from | date(\"MMM d, yyyy\")) + \" to \" + (github.contributions.to | date(\"MMM d, yyyy\")) }}",
           "font": "reg",
           "fontSize": 13,
           "fill": "{{ props.theme == \"dark\" ? \"#8d9aca\" : \"#5d6788\" }}",
