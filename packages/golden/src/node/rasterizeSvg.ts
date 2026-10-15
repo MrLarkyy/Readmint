@@ -10,8 +10,9 @@ import { Resvg } from "@resvg/resvg-js";
  * its SHA-256).
  *
  * resvg-js 2.6.2 aborts the whole process (a native panic, no exception) on a layer of its own (opacity, clip,
- * symbol) lying beyond twice the canvas. The renderer's SVG never has one: it leaves out such layers wholly off the
- * canvas. A hand-written SVG given to the golden must avoid them.
+ * symbol) lying beyond twice the canvas. The renderer leaves out such layers wholly off the canvas, but its box is
+ * generous: very large text or a very wide stroke near the canvas, or a turned group far from its centre, can still
+ * be written. No fixture (renderer SVG or hand-written) given to the golden may hold such a layer.
  */
 export function rasterizeSvg(
   svg: string,

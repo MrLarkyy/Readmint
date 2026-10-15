@@ -91,7 +91,11 @@ Drawn in document order, first at the back. Layer `id` and `name` are not emitte
   it so the editor can select it. A clip group on the canvas whose children all lie outside the canvas counts as
   outside. The box tested is generous and never trimmed (strokes, miters, glyph overhang padded; text by its glyphs,
   not its layout box; a turn by the L1 radius about its centre) and computed with `+ - * min max abs` only, so Node
-  and every browser decide alike. Layers without an own layer stay wherever they are; resvg draws them anywhere.
+  and every browser decide alike. Being generous, it keeps a few far layers that draw nothing: text padded by up to
+  2 em and a stroke by twice its width, so very large text or a very wide stroke just past the canvas; and a group
+  turned about its centre with a child far from that centre. Such a layer is written, browsers draw the SVG as usual,
+  and raster export of it beyond twice the canvas refuses with `raster-image` ([raster.md](raster.md)). Layers without
+  an own layer stay wherever they are; resvg draws them anywhere.
 - **Path data template**: a `d` with `{{...}}` placeholders is evaluated per copy like a text, then checked as the
   format checks a literal `d` (not empty, at most 100000 characters, path data characters only; else `range` at `d`).
   Each copy gets the box and the `draw` length of its own data; a literal `d` is measured once per layer.

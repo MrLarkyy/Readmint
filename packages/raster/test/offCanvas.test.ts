@@ -40,20 +40,55 @@ beforeAll(async () => {
   await initRaster();
 });
 
+/** Exports `offCanvas` as a PNG and checks it against the golden rasterizer's drawing of the renderer's SVG. */
+async function expectOffCanvasPng(): Promise<void> {
+  const output = await exportRaster(designInput(offCanvas), { format: "png", scale: 2 });
+  const rendered = renderSvg(offCanvas);
+  if (!rendered.ok) throw new Error("the design does not render");
+  const expected = decodePng(rasterizeSvg(rendered.svg, 2));
+  const actual = decodePng(output.bytes);
+  const comparison = comparePng(
+    pngOf(expected, output.width, output.height),
+    pngOf(actual, output.width, output.height),
+    defaultNodeTolerance,
+  );
+  expect([output.width, output.height]).toEqual([320, 200]);
+  expect(comparison.pass, `${String(comparison.diffPixels)} pixels differ`).toBe(true);
+}
+
+/**
+ * A group turned about its centre with a child far from it: the trig-free bounds of the turn reach the canvas, so
+ * the renderer keeps the layer, and resvg traps on it (never give this to the golden rasterizer).
+ */
+const turnedFar: Design = {
+  version: 0,
+  canvas: { width: 100, height: 100 },
+  layers: [
+    { type: "rect", x: 10, y: 10, width: 10, height: 10, fill: "#0969da" },
+    {
+      type: "group",
+      width: 100,
+      height: 100,
+      rotation: 45,
+      opacity: 0.5,
+      children: [{ type: "rect", x: 500, y: 500, width: 10, height: 10, fill: "#c00001" }],
+    },
+  ],
+};
+
 describe("a design with layers far off the canvas exports", () => {
   test("as a PNG with the golden rasterizer's pixels", async () => {
-    const output = await exportRaster(designInput(offCanvas), { format: "png", scale: 2 });
-    const rendered = renderSvg(offCanvas);
-    if (!rendered.ok) throw new Error("the design does not render");
-    const expected = decodePng(rasterizeSvg(rendered.svg, 2));
-    const actual = decodePng(output.bytes);
-    const comparison = comparePng(
-      pngOf(expected, output.width, output.height),
-      pngOf(actual, output.width, output.height),
-      defaultNodeTolerance,
-    );
-    expect([output.width, output.height]).toEqual([320, 200]);
-    expect(comparison.pass, `${String(comparison.diffPixels)} pixels differ`).toBe(true);
+    await expectOffCanvasPng();
+  });
+
+  test("or, for a layer the renderer keeps, refuses with raster-image; the next export draws", async () => {
+    const rendered = renderSvg(turnedFar);
+    expect(rendered.ok && rendered.svg.includes("#c00001")).toBe(true);
+    await expect(exportRaster(designInput(turnedFar), { format: "png" })).rejects.toMatchObject({
+      name: "RasterError",
+      code: "raster-image",
+    });
+    await expectOffCanvasPng();
   });
 
   test("as an APNG while an animated layer slides in from beyond twice the canvas", async () => {

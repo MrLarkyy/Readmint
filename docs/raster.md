@@ -93,9 +93,14 @@ frame (every `<use>` that reaches it) times the frames, plus one decode of each 
 `maxSide` matches the largest canvas side of the design format, so only a scale above 1 can pass it.
 
 resvg 2.6.2 stops drawing (a WebAssembly trap in resvg-wasm) on a layer of its own (an opacity, a clip, a `<symbol>`)
-that lies beyond twice the canvas. The renderer never writes one: it leaves out such layers when they lie wholly off the
-canvas ([renderer.md](renderer.md#layers)), in every frame. An SVG from elsewhere given as `RasterInput.frame` may hold
-one; the export then fails with `raster-image`, and the next export in the same process draws as before.
+that lies beyond twice the canvas. The renderer leaves out such layers when they lie wholly off the canvas
+([renderer.md](renderer.md#layers)), in every frame, but its test is generous: very large text or a very wide stroke
+just past the canvas, and a turned group with a child far from its centre, are still written. Such a design, or an SVG
+from elsewhere given as `RasterInput.frame`, fails the export with `raster-image` (move the layer onto the canvas or
+remove it), and the next export in the same process draws as before. Each failure leaks the object resvg-wasm was
+drawing with, and after some 1,500 failures in one process resvg-wasm stops drawing altogether. The CLI and the Action
+stop at the first failure; a long-running host calling `exportRaster` should restart the process (or load the module
+in a new worker) after many.
 
 ## Fonts
 
