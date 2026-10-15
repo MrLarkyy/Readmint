@@ -546,6 +546,138 @@ describe("per-session secret (--github)", () => {
   );
 });
 
+describe("one-time launch address", () => {
+  const secret = "AbCdEfGhIjKlMnOpQrStUvWxYz0123456789-_abcde";
+  const launchToken = "LaunchToken0123456789-_abcdefghijklmnopqrst";
+  const servers: PreviewServer[] = [];
+
+  afterEach(async () => {
+    await Promise.all(servers.splice(0).map((server) => server.close()));
+  });
+
+  async function launchServer(): Promise<number> {
+    const server = new PreviewServer({ secret, launchToken });
+    servers.push(server);
+    const { port } = await server.listen(0);
+    server.update({ svg: "<svg/>", issues: [] });
+    return port;
+  }
+
+  function expectNeitherToken(reply: Reply): void {
+    expect(reply.body).not.toContain(secret);
+    expect(reply.body).not.toContain(launchToken);
+  }
+
+  async function expectUnknownPath(port: number, reply: Reply): Promise<void> {
+    const unknown = await get(port, `/${"Z".repeat(43)}`);
+    expect(reply.status).toBe(unknown.status);
+    expect(reply.headers["content-type"]).toBe(unknown.headers["content-type"]);
+    expect(reply.body).toBe(unknown.body);
+    expect(reply.headers.location).toBeUndefined();
+  }
+
+  test("the test tokens have the length previewSecret makes", () => {
+    expect(launchToken).toHaveLength(43);
+  });
+
+  test("the first GET is a 303 to the secret address, which serves the page", async () => {
+    const port = await launchServer();
+    const reply = await get(port, `/${launchToken}`);
+    expect(reply.status).toBe(303);
+    expect(reply.headers.location).toBe(`/${secret}/`);
+    expect(reply.headers["cache-control"]).toBe("no-store");
+    expect(reply.headers["referrer-policy"]).toBe("no-referrer");
+    expectNeitherToken(reply);
+    const page = await get(port, reply.headers.location ?? "");
+    expect(page.status).toBe(200);
+    expect(page.body).toBe(previewPage.html);
+  });
+
+  test("a second GET is answered like an unknown path", async () => {
+    const port = await launchServer();
+    expect((await get(port, `/${launchToken}`)).status).toBe(303);
+    const again = await get(port, `/${launchToken}`);
+    expect(again.status).toBe(403);
+    await expectUnknownPath(port, again);
+  });
+
+  test.each(["HEAD", "POST", "PUT", "OPTIONS"])(
+    "%s is answered like an unknown path and does not spend it",
+    async (method) => {
+      const port = await launchServer();
+      const reply = await get(port, `/${launchToken}`, { method });
+      const unknown = await get(port, `/${"Z".repeat(43)}`, { method });
+      expect(reply.status).toBe(unknown.status);
+      expect(reply.body).toBe(unknown.body);
+      expect(reply.headers.location).toBeUndefined();
+      expect((await get(port, `/${launchToken}`)).status).toBe(303);
+    },
+  );
+
+  test.each([
+    ["a foreign Host", { host: "evil.example:PORT" }],
+    ["Sec-Fetch-Site cross-site", { headers: { "sec-fetch-site": "cross-site" } }],
+    ["a foreign Origin", { headers: { origin: "http://evil.example" } }],
+  ] as const)("%s is forbidden and does not spend it", async (_name, options) => {
+    const port = await launchServer();
+    const reply = await get(port, `/${launchToken}`, {
+      ...options,
+      ...("host" in options ? { host: options.host.replace("PORT", String(port)) } : {}),
+    });
+    expect(reply.status).toBe(403);
+    expect(reply.body).toBe("forbidden\n");
+    expect((await get(port, `/${launchToken}`)).status).toBe(303);
+  });
+
+  test("the query is ignored", async () => {
+    const port = await launchServer();
+    const reply = await get(port, `/${launchToken}?v=1`);
+    expect(reply.status).toBe(303);
+    expect(reply.headers.location).toBe(`/${secret}/`);
+  });
+
+  test.each([
+    ["with a trailing slash", `/${launchToken}/`],
+    ["with one more character", `/${launchToken}x`],
+    ["uppercased", `/${launchToken.toUpperCase()}`],
+    ["in a later segment", `/x/${launchToken}`],
+  ])("the launch path %s is an unknown path", async (_name, path) => {
+    const port = await launchServer();
+    await expectUnknownPath(port, await get(port, path));
+    expect((await get(port, `/${launchToken}`)).status).toBe(303);
+  });
+
+  test("a request under the secret address discards the launch address", async () => {
+    const port = await launchServer();
+    expect((await get(port, `/${secret}/status`)).status).toBe(200);
+    const reply = await get(port, `/${launchToken}`);
+    expect(reply.status).toBe(403);
+    await expectUnknownPath(port, reply);
+  });
+
+  test("a refused request under the secret does not discard the launch address", async () => {
+    const port = await launchServer();
+    const refused = await get(port, `/${secret}/`, { headers: { "sec-fetch-site": "cross-site" } });
+    expect(refused.status).toBe(403);
+    expect((await get(port, `/x${secret}/`)).status).toBe(403);
+    expect((await get(port, `/${launchToken}`)).status).toBe(303);
+  });
+
+  test("two concurrent GETs give exactly one 303", async () => {
+    const port = await launchServer();
+    const replies = await Promise.all([get(port, `/${launchToken}`), get(port, `/${launchToken}`)]);
+    expect(replies.map((reply) => reply.status).sort()).toEqual([303, 403]);
+  });
+
+  test.each([
+    [{ launchToken }, "the preview launch token needs a secret"],
+    [{ secret, launchToken: secret }, "the preview launch token must differ from the secret"],
+    [{ secret, launchToken: "a/b" }, "the preview launch token must be at least 32 base64url"],
+  ])("the constructor refuses %o", (options, message) => {
+    expect(() => new PreviewServer(options)).toThrow(message);
+  });
+});
+
 describe("Origin", () => {
   const secret = "AbCdEfGhIjKlMnOpQrStUvWxYz0123456789-_abcde";
   let server: PreviewServer | undefined;

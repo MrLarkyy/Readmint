@@ -1,6 +1,7 @@
 import { timingSafeEqual } from "node:crypto";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import type { AddressInfo } from "node:net";
+import { LaunchPath } from "./LaunchPath.js";
 import { previewPage } from "./previewPage.js";
 
 /** One render as the preview shows it. */
@@ -28,6 +29,12 @@ export interface PreviewServerOptions {
    * base64url characters (see `previewSecret`). Never served or put in an error.
    */
   readonly secret?: string;
+  /**
+   * Needs `secret`, same shape, never equal to it. The first GET of exactly `/<launchToken>` is redirected (303)
+   * to `/<secret>/`, so a browser opener's command line never holds the secret; once spent, or with any other
+   * method, that path answers like any other path without the secret.
+   */
+  readonly launchToken?: string;
 }
 
 const svgCsp = "default-src 'none'; style-src 'unsafe-inline'; img-src data:; font-src data:";
@@ -40,7 +47,8 @@ const secretPattern = /^[A-Za-z0-9_-]{32,}$/;
  * option); answers only a Host naming that address or localhost with its port (DNS rebinding) and
  * an Origin, when sent, that is this server; serves a fixed set of routes from memory, never a
  * file. With a secret, those routes live only under `/<secret>/`, so a local process or another
- * user of the machine that does not know the printed address reads nothing.
+ * user of the machine that does not know the printed address reads nothing; a launch token adds one
+ * single-use path that leads there.
  */
 export class PreviewServer {
   readonly #server: Server;
@@ -49,6 +57,8 @@ export class PreviewServer {
   readonly #keepAliveMs: number;
   #keepAlive: NodeJS.Timeout | undefined;
   readonly #prefix: Buffer | undefined;
+  readonly #secret: string | undefined;
+  readonly #launch: LaunchPath | undefined;
   #hosts: ReadonlySet<string> = new Set();
   #origins: ReadonlySet<string> = new Set();
   #svg: string | undefined;
@@ -60,7 +70,19 @@ export class PreviewServer {
     if (options.secret !== undefined && !secretPattern.test(options.secret)) {
       throw new Error("the preview secret must be at least 32 base64url characters");
     }
+    if (options.launchToken !== undefined) {
+      if (options.secret === undefined) throw new Error("the preview launch token needs a secret");
+      if (!secretPattern.test(options.launchToken)) {
+        throw new Error("the preview launch token must be at least 32 base64url characters");
+      }
+      if (options.launchToken === options.secret) {
+        throw new Error("the preview launch token must differ from the secret");
+      }
+    }
+    this.#secret = options.secret;
     this.#prefix = options.secret === undefined ? undefined : Buffer.from(`/${options.secret}`);
+    this.#launch =
+      options.launchToken === undefined ? undefined : new LaunchPath(options.launchToken);
     this.#server = createServer((request, response) => {
       this.#handle(request, response);
     });
@@ -135,13 +157,23 @@ export class PreviewServer {
       send(response, 403, "text/plain", "forbidden\n");
       return;
     }
+    const target = withoutQuery(request.url ?? "");
+    // Spent synchronously before any answer: of two racing GETs only the first one is redirected. Any
+    // other request to the launch path falls through and is answered like an unknown path.
+    if (request.method === "GET" && this.#launch?.take(target) === true) {
+      send(response, 303, "text/plain", "see other\n", { Location: `/${this.#secret ?? ""}/` });
+      return;
+    }
     // Before the method and the event-stream limit: a request without the secret learns nothing
     // and cannot take a slot.
-    const path = this.#route(request.url ?? "");
+    const path = this.#route(target);
     if (path === undefined) {
       send(response, 403, "text/plain", "forbidden: open the address the preview printed\n");
       return;
     }
+    // A request under the secret shows it was learned from the printed address or the redirect: the
+    // launch address, possibly readable in an opener's command line, is no longer needed.
+    this.#launch?.discard();
     if (request.method !== "GET" && request.method !== "HEAD") {
       send(response, 405, "text/plain", "method not allowed\n", { Allow: "GET, HEAD" });
       return;
@@ -167,13 +199,10 @@ export class PreviewServer {
   }
 
   /**
-   * The route of a raw target without its query; with a secret, what follows exactly
-   * `/<secret>`, or undefined when the target does not start with it and a slash.
+   * The route of a raw path (a target without its query); with a secret, what follows exactly
+   * `/<secret>`, or undefined when the path does not start with it and a slash.
    */
-  #route(target: string): string | undefined {
-    // The raw target, not a normalised URL: "/a/../status" and "/%2e%2e/" match no route.
-    const query = target.indexOf("?");
-    const path = query === -1 ? target : target.slice(0, query);
+  #route(path: string): string | undefined {
     const prefix = this.#prefix;
     if (prefix === undefined) return path;
     const bytes = Buffer.from(path);
@@ -203,6 +232,12 @@ export class PreviewServer {
       this.#clients.delete(response);
     });
   }
+}
+
+// The raw target, not a normalised URL: "/a/../status" and "/%2e%2e/" match no route.
+function withoutQuery(target: string): string {
+  const query = target.indexOf("?");
+  return query === -1 ? target : target.slice(0, query);
 }
 
 // Fetch metadata: a page of another site (even one on another localhost port) cannot use the preview.

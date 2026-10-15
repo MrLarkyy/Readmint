@@ -30,8 +30,10 @@ type PreviewArgs = Extract<CliCommand, { name: "preview" }>;
  * an asset changes; a failing render keeps the last SVG and shows its issues. Ends with exit code 0
  * when `io.signal` aborts. `--github` data is loaded once, before the server starts: a design edit never costs
  * GitHub requests. With that token-scoped data the routes live under a per-session secret path
- * (http://127.0.0.1:<port>/<secret>/), printed once and kept in memory only. With `open` the printed address is
- * handed to the browser after it is printed, without waiting; a failure to do so costs one fixed line.
+ * (http://127.0.0.1:<port>/<secret>/), printed once and kept in memory only. With `open` the browser gets, after the
+ * line is printed and without waiting, the printed address, or with a secret a one-time launch address
+ * (http://127.0.0.1:<port>/<launch>) that redirects to it, so no command line ever holds the secret; a failure to
+ * open costs one fixed line.
  */
 export async function previewCommand(args: PreviewArgs, io: CliIo): Promise<ExitCode> {
   const { loadData } = liveData(args, io, io.signal);
@@ -43,7 +45,10 @@ export async function previewCommand(args: PreviewArgs, io: CliIo): Promise<Exit
     throw error;
   }
   const secret = loadData === undefined ? undefined : previewSecret();
-  const server = new PreviewServer(secret === undefined ? {} : { secret });
+  const launchToken = secret !== undefined && args.open === true ? previewSecret() : undefined;
+  const server = new PreviewServer(
+    secret === undefined ? {} : launchToken === undefined ? { secret } : { secret, launchToken },
+  );
   let port: number;
   try {
     ({ port } = await server.listen(args.port));
@@ -84,7 +89,9 @@ export async function previewCommand(args: PreviewArgs, io: CliIo): Promise<Exit
       const base = `http://127.0.0.1:${String(port)}/`;
       const address = secret === undefined ? base : `${base}${secret}/`;
       await printLines(io.stderr, [`preview: ${address}`]);
-      if (args.open === true) void openAddress(address, io);
+      if (args.open === true) {
+        void openAddress(launchToken === undefined ? address : `${base}${launchToken}`, io);
+      }
       await aborted(io.signal);
     } finally {
       await watcher.close();
@@ -127,7 +134,7 @@ async function renderUpdate(
   return { issues: lines.map(escapeForLog) };
 }
 
-/** Never rethrows and never prints the opener's message: it can echo the address, which holds the secret. */
+/** Never rethrows and never prints the opener's message: it can echo the address, which holds the launch token. */
 async function openAddress(address: string, io: CliIo): Promise<void> {
   if (io.signal?.aborted === true) return;
   try {
