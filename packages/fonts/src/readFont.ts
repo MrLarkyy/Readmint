@@ -56,6 +56,12 @@ export function readFont(
     ascender: reader.i16(vertical),
     descender: Math.min(reader.i16(vertical + 2), 0),
     lineGap: reader.i16(vertical + 4),
+    boundingBox: Object.freeze({
+      xMin: reader.i16(head.offset + 36),
+      yMin: reader.i16(head.offset + 38),
+      xMax: reader.i16(head.offset + 40),
+      yMax: reader.i16(head.offset + 42),
+    }),
     fsType: reader.u16(os2.offset + 8),
     weightClass: reader.u16(os2.offset + 4),
     familyName: readFamilyName(reader, tables.get("name")),

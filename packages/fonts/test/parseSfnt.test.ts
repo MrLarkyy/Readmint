@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, test } from "vitest";
 import { embeddingAllowed, parseSfnt, sniffFontFormat, type SfntFont } from "../src/index.js";
+import { buildTestFont } from "./buildTestFont.js";
 
 const fontsDir = join(import.meta.dirname, "..", "..", "renderer", "test", "fonts");
 const medium = new Uint8Array(readFileSync(join(fontsDir, "Montserrat-Medium.ttf")));
@@ -58,6 +59,10 @@ describe("Montserrat", () => {
     expect(font.advanceOf(font.numGlyphs + 100)).toBe(font.advanceOf(font.numGlyphs - 1));
   });
 
+  test("the head box of every glyph", () => {
+    expect(parse(medium).boundingBox).toEqual({ xMin: -190, yMin: -263, xMax: 1613, yMax: 1053 });
+  });
+
   test("the bold weight is wider", () => {
     const regular = parse(medium);
     const bold = parse(extraBold);
@@ -67,6 +72,36 @@ describe("Montserrat", () => {
         0,
       );
     expect(width(bold)).toBeGreaterThan(width(regular));
+  });
+});
+
+describe("head bounding box", () => {
+  test("is the box the head table states, negative corners included", () => {
+    const font = parse(
+      buildTestFont({
+        family: "Box",
+        glyphs: [
+          { advance: 500 },
+          {
+            codePoints: [0x41],
+            advance: 600,
+            contours: [
+              [
+                [-120, -80, true],
+                [640, -80, true],
+                [640, 910, true],
+              ],
+            ],
+          },
+        ],
+      }),
+    );
+    expect(font.boundingBox).toEqual({ xMin: -120, yMin: -80, xMax: 640, yMax: 910 });
+  });
+
+  test("an all-zero head box is read as it is", () => {
+    const font = parse(buildTestFont({ family: "Empty", glyphs: [{ advance: 500 }] }));
+    expect(font.boundingBox).toEqual({ xMin: 0, yMin: 0, xMax: 0, yMax: 0 });
   });
 });
 
