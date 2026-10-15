@@ -1,14 +1,20 @@
 import { defineGoldenSuite } from "@readmint/golden";
 import type { ImageLayer, Layer } from "@readmint/format";
 import { renderFixture, type RenderFixture } from "./renderFixture.js";
-import { imageAssets } from "./testAssets.js";
+import { exifJpeg, exifPng, imageAssets } from "./testAssets.js";
 
-function design(image: Omit<ImageLayer, "type" | "x" | "y">): RenderFixture {
+/** EXIF-oriented copies: the PNG turned a quarter clockwise (6), the JPEG a quarter anticlockwise (8). */
+const exifAssets = { png6: exifPng(6), jpeg8: exifJpeg(8) };
+
+function design(
+  image: Omit<ImageLayer, "type" | "x" | "y">,
+  images: Record<string, { src: string }> = imageAssets,
+): RenderFixture {
   return {
     design: {
       version: 0,
       canvas: { width: 80, height: 60, background: "#eaeef2" },
-      assets: { images: imageAssets },
+      assets: { images },
       layers: [
         {
           type: "rect",
@@ -89,5 +95,27 @@ export default defineGoldenSuite<RenderFixture>({
       input: design({ asset: "gif", width: 32, height: 32, alt: "first frame of an animation" }),
     },
     { name: "image-repeat", scale: 2, input: repeated() },
+    // The stored pixels lie on their side; resvg ignores EXIF and Chromium honours it, so both drawing the same
+    // upright picture shows the orientation came from the renderer's transform alone.
+    {
+      name: "image-exif-png-6-contain",
+      scale: 2,
+      input: design({ asset: "png6", width: 60, height: 30, fit: "contain" }, exifAssets),
+    },
+    {
+      name: "image-exif-png-6-cover",
+      scale: 2,
+      input: design({ asset: "png6", width: 40, height: 20, fit: "cover" }, exifAssets),
+    },
+    {
+      name: "image-exif-png-6-fill",
+      scale: 2,
+      input: design({ asset: "png6", width: 60, height: 20, fit: "fill" }, exifAssets),
+    },
+    {
+      name: "image-exif-jpeg-8-cover",
+      scale: 2,
+      input: design({ asset: "jpeg8", width: 40, height: 30, fit: "cover" }, exifAssets),
+    },
   ],
 });
