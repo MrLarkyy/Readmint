@@ -20,6 +20,20 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec playwright install --with-deps --only-shell chromium
       - run: pnpm -r build
+      - run: pnpm --filter @readmint/action bundle
+      - name: Action bundle smoke run
+        shell: bash
+        run: |
+          grep -q "@license Unicode-3.0" packages/action/dist/action.js
+          grep -q "^ \* Package: yaml@" packages/action/dist/action.js
+          work="$RUNNER_TEMP/readmint-smoke"
+          cp -r packages/action/test/fixtures/smoke "$work"
+          env "INPUT_DESIGNS=card.json" "INPUT_DATA-FILE=data.json" "INPUT_DRY-RUN=true" \
+            "GITHUB_WORKSPACE=$work" "GITHUB_OUTPUT=$work/output.txt" \
+            node packages/action/dist/action.js
+          test -f "$work/readmint/card.svg"
+          test -f "$work/readmint/card.dark.svg"
+          grep -q "^changed<<" "$work/output.txt"
       - run: pnpm typecheck
       - run: pnpm lint
       - run: pnpm format:check
@@ -41,4 +55,4 @@ jobs:
           node-version: 22
       - run: corepack enable
       - run: pnpm install --frozen-lockfile
-      - run: pnpm exec vitest run --project node packages/cli
+      - run: pnpm exec vitest run --project node packages/cli packages/action

@@ -72,7 +72,7 @@ integer (else `RangeError`). The size is checked on the open file before reading
 - The design folder is trusted by its real path. If the folder itself is a link in an untrusted checkout, the boundary
   moves with it, so the callers must resolve the design file inside the workspace first: the CLI's `loadDesignFile`
   resolves it with `resolveAsset` inside `--root` (see [cli.md](cli.md#the-design-file-and-its-assets)); the Action
-  (RM-18) is to use the same loader (it is exported; the Action does not use it yet).
+  loads every design through the same loader with the workspace as the root (see [action.md](action.md)).
 - On Windows a symlink to a UNC path makes Windows contact that host while the path is resolved, before the link is
   refused as `outside`.
 - `AssetPathError.src` is the raw value from the design. Callers print `error.message` (quoted and escaped), never `src`.

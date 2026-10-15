@@ -11,6 +11,15 @@
   },
   "scripts": {
     "build": "tsc -b tsconfig.build.json",
+    "bundle": "rolldown -c rolldown.config.ts",
     "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@readmint/cli": "workspace:*",
+    "@readmint/data-github": "workspace:*"
+  },
+  "devDependencies": {
+    "rolldown": "1.2.13",
+    "yaml": "2.9.1"
   }
 }

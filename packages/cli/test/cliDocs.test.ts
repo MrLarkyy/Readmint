@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { expect, test } from "vitest";
+import * as cli from "../src/index.js";
 import { ExitCode } from "../src/index.js";
 import { helpText } from "../src/helpText.js";
 
@@ -36,4 +37,16 @@ test("--help and docs/cli.md list the same options", () => {
   const helpOptions = [...helpText.matchAll(/^ {2}(?:-h, )?(--[a-z]+)/gm)].map(([, name]) => name);
   const docOptions = [...docs.matchAll(/^\| `(--[a-z]+)/gm)].map(([, name]) => name);
   expect(new Set(helpOptions)).toEqual(new Set([...docOptions, "--help", "--version"]));
+});
+
+test("docs/cli.md or docs/asset-loading.md names every export of @readmint/cli", () => {
+  const assetDocs = readFileSync(
+    join(import.meta.dirname, "..", "..", "..", "docs", "asset-loading.md"),
+    "utf8",
+  );
+  const names = Object.keys(cli).filter((name) => name !== "packageName");
+  const missing = names.filter(
+    (name) => !docs.includes(`\`${name}`) && !assetDocs.includes(`\`${name}`),
+  );
+  expect(missing).toEqual([]);
 });
