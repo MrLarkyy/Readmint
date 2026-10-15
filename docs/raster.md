@@ -78,7 +78,7 @@ value, the limit and a fix.
 | `raster-too-many-image-pixels` | `maxImagePixels`: image pixels decoded (below)            | 268435456                                   | draw large images fewer times or smaller, or lower the frame rate            |
 | `raster-output-too-large`      | `maxOutputBytes`: encoded file                            | 5242880 (5 MiB, GitHub's image proxy limit) | lower the scale or the frame rate, or export SVG (WebP: or give a `quality`) |
 | `raster-font`                  | text needs a TTF, OTF or WOFF font carrying its family    |                                             | give the font asset as TTF, OTF or WOFF                                      |
-| `raster-image`                 | an image resvg or libwebp cannot read                     |                                             | fix or replace the image                                                     |
+| `raster-image`                 | an image or SVG resvg or libwebp cannot read or draw      |                                             | fix or replace the image; move layers far outside the canvas onto it         |
 | `raster-options`               | a format, scale, frame rate, quality or time out of range |                                             |                                                                              |
 
 The fixes are worded for the CLI options (`--scale`, `--frame-rate`, `--quality`) and the Action inputs (`scale`, `frame-rate`, `quality`)
@@ -91,6 +91,11 @@ frame (every `<use>` that reaches it) times the frames, plus one decode of each 
 (below), and refuses the export when that passes `maxImagePixels`.
 
 `maxSide` matches the largest canvas side of the design format, so only a scale above 1 can pass it.
+
+resvg 2.6.2 stops drawing (a WebAssembly trap in resvg-wasm) on a layer of its own (an opacity, a clip, a `<symbol>`)
+that lies beyond twice the canvas. The renderer never writes one: it leaves out such layers when they lie wholly off the
+canvas ([renderer.md](renderer.md#layers)), in every frame. An SVG from elsewhere given as `RasterInput.frame` may hold
+one; the export then fails with `raster-image`, and the next export in the same process draws as before.
 
 ## Fonts
 
