@@ -60,14 +60,14 @@ const quotes = "\"'“”‘’";
 interface Statement {
   /** The names told apart; `undefined` for one that cannot be read. */
   readonly names: readonly (string | undefined)[];
-  /** The unquoted text up to the sentence end, to match a family name's words in it; empty after a quoted name. */
+  /** The text outside quotes up to the sentence end, to match a family name's words in it. */
   readonly loose: string;
 }
 
 /**
  * The statement each "with reserved font name" phrase makes; a phrase naming nothing or the OFL template placeholder
- * makes none. A name that starts with a quote is the quoted span(s) only; unquoted text is split at "," and "and",
- * and as a whole it also counts when it shares a word with the family, so trailing words never hide a used name.
+ * makes none. After a quote every quoted span is a name; unquoted text is split at "," and "and". The text outside
+ * quotes also counts when it shares a word with the family, so trailing words or separators never hide a used name.
  */
 function statements(text: string): Statement[] {
   const found: Statement[] = [];
@@ -85,7 +85,7 @@ function statements(text: string): Statement[] {
     if (next >= text.length || text[next] === "<") continue;
     const clause = text.slice(next).split(/\. |\.$|;|with reserved font name/, 1)[0] ?? "";
     if (open !== -1) {
-      found.push({ names: quotedNames(text.slice(open, next + clause.length)), loose: "" });
+      found.push(quoted(text.slice(open, next + clause.length)));
       continue;
     }
     const names = clause.split(/,| and /).map((part) => {
@@ -97,22 +97,31 @@ function statements(text: string): Statement[] {
   return found;
 }
 
-/** The spans between quotes, several joined by "," or "and"; an unclosed or empty span cannot be read. */
-function quotedNames(text: string): (string | undefined)[] {
+/**
+ * Every span between quotes is a name, whatever separates the spans; the text outside them is the loose rest. An
+ * unclosed or empty span cannot be read.
+ */
+function quoted(clause: string): Statement {
   const names: (string | undefined)[] = [];
-  let rest = text;
-  while (quotes.includes(rest.charAt(0)) && rest !== "") {
-    let close = 1;
-    while (close < rest.length && !quotes.includes(rest.charAt(close))) close++;
-    if (close >= rest.length) {
+  let loose = "";
+  let at = 0;
+  while (at < clause.length) {
+    if (!quotes.includes(clause.charAt(at))) {
+      loose += clause.charAt(at++);
+      continue;
+    }
+    let close = at + 1;
+    while (close < clause.length && !quotes.includes(clause.charAt(close))) close++;
+    if (close >= clause.length) {
       names.push(undefined);
       break;
     }
-    const stated = rest.slice(1, close).trim();
+    const stated = clause.slice(at + 1, close).trim();
     names.push(stated === "" ? undefined : stated);
-    rest = rest.slice(close + 1).replace(/^(?:\s*,\s*|\s+and\s+|\s*,\s*and\s+)/, "");
+    loose += " ";
+    at = close + 1;
   }
-  return names;
+  return { names, loose };
 }
 
 /**

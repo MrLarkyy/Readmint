@@ -225,7 +225,8 @@ Drawn in document order, first at the back. Layer `id` and `name` are not emitte
   font's own family name (name 1 or 16) uses it (any ASCII case): it contains a stated name, or, for an unquoted
   statement, the text up to the sentence end shares a whole word with it (a word is a run of ASCII letters and digits
   or characters from U+0080 up; so trailing words, a following copyright line or a family name wider than the stated
-  name hide nothing); after a quote only the quoted names count. A renamed fork that keeps the upstream
+  name hide nothing); after a quote every quoted name counts whatever separates them, and the words outside the quotes
+  count as for an unquoted statement. A renamed fork that keeps the upstream
   copyright line but not the name is embedded as before. A statement whose names cannot be told apart, or a font
   without a family name, counts as used. The warning points at what decided: `licence/reservedFontName`, `licence/name` or the asset.
   A restricted font warns only `font-not-embeddable`, and `drawAs: "paths"` draws an RFN font as paths without a

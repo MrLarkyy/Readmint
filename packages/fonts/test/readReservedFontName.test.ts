@@ -104,6 +104,19 @@ describe("the Reserved Font Name hint of a name table", () => {
     expect(font("Forked Sans", "with Reserved Font Name Rfn and trailing words")).toBe(false);
   });
 
+  test.each([
+    'with Reserved Font Names "Alpha", "Beta", and "Gamma".',
+    'with Reserved Font Names "Alpha" & "Gamma".',
+    'with Reserved Font Names "Alpha" / "Gamma".',
+    'with Reserved Font Names "Alpha" and Gamma.',
+  ])("any separator after a quoted name keeps the later names: %s", (copyright) => {
+    const font = (family: string) =>
+      parse(buildTestFont({ family, glyphs, names: { 0: copyright } })).reservedFontName;
+    expect(font("Gamma")).toBe(true);
+    expect(font("Alpha")).toBe(true);
+    expect(font("Forked Sans")).toBe(false);
+  });
+
   test("a statement whose names cannot be read counts as used", () => {
     const vague = (copyright: string) =>
       parse(buildTestFont({ family: "Forked", glyphs, names: { 0: copyright } }));
