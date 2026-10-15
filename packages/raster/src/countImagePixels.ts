@@ -1,4 +1,5 @@
 import { RenderLimits, sniffImage } from "@readmint/renderer";
+import { decodeBase64 } from "./base64.js";
 import { RasterError } from "./RasterError.js";
 
 /** What drawing the images of an SVG decodes, frame after frame. */
@@ -69,10 +70,14 @@ export function countImagePixels(svg: string, frames: number): ImageWork {
     const source = dataHref.exec(element);
     if (source === null) continue;
     const [, mime = "", base64 = ""] = source;
-    const sniffed = sniffImage(
-      new Uint8Array(Buffer.from(base64, "base64")),
-      RenderLimits.maxAnimationFrames,
-    );
+    const decoded = decodeBase64(base64);
+    if (decoded === undefined) {
+      throw new RasterError(
+        "raster-image",
+        "an image cannot be drawn: its base64 data is malformed",
+      );
+    }
+    const sniffed = sniffImage(decoded, RenderLimits.maxAnimationFrames);
     if (!sniffed.ok) {
       throw new RasterError("raster-image", `an image cannot be drawn: ${sniffed.message}`);
     }

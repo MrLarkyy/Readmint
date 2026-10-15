@@ -2,7 +2,7 @@ import type { Design } from "@readmint/format";
 import { describe, expect, test } from "vitest";
 import { countImagePixels } from "../src/countImagePixels.js";
 import { exportRaster, RasterError, type RasterInput, type RasterOptions } from "../src/index.js";
-import { openWebpCodec } from "../src/initRaster.js";
+import { openNodeWebpCodec } from "./nodeWebpCodec.js";
 import { webpChunks } from "../src/readWebp.js";
 import { riffWebp, writeU24le } from "../src/writeWebp.js";
 import { dataUri, designInput, patternPng } from "./rasterFixtures.js";
@@ -26,7 +26,7 @@ function pngHeader(width: number, height: number): Uint8Array {
 
 /** An animated WebP declaring an 8192 x 8192 canvas around one 1 x 1 frame: tiny, but a huge canvas to decode. */
 async function canvasBomb(duration: number): Promise<Uint8Array> {
-  const codec = await openWebpCodec();
+  const codec = await openNodeWebpCodec();
   const frame = webpChunks(
     codec.encodeWebp({ data: new Uint8Array([0, 0, 255, 255]), width: 1, height: 1 }),
   ).find((chunk) => chunk.type === "VP8L");

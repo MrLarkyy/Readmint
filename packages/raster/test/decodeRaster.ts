@@ -1,7 +1,7 @@
 import { crc32 } from "node:zlib";
 import { GifReader } from "omggif";
 import { PNG } from "pngjs";
-import { openWebpCodec } from "../src/initRaster.js";
+import { openNodeWebpCodec } from "./nodeWebpCodec.js";
 import { readWebp } from "../src/readWebp.js";
 import { stillWebp } from "../src/writeWebp.js";
 
@@ -75,7 +75,7 @@ export function decodeApng(bytes: Uint8Array): DecodedRaster {
 
 /** Reads an (animated) WebP with the package's ANMF reader and libwebp, composing frames as a viewer does. */
 export async function decodeWebp(bytes: Uint8Array): Promise<DecodedRaster> {
-  const codecs = await openWebpCodec();
+  const codecs = await openNodeWebpCodec();
   const image = readWebp(bytes, { maxSide: 16_384, maxFrames: 10_000 });
   if (image.kind === "still") {
     const decoded = codecs.decodeWebp(bytes);

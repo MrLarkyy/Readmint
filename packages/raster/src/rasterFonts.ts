@@ -1,5 +1,6 @@
 import { parseSfnt } from "@readmint/fonts";
 import { RenderLimits } from "@readmint/renderer";
+import { decodeBase64 } from "./base64.js";
 import { unescapeCss } from "./cssText.js";
 import { woffFont } from "./woffFont.js";
 import { RasterError } from "./RasterError.js";
@@ -31,7 +32,11 @@ export function rasterFonts(svg: string, extra: readonly Uint8Array[] = []): Ras
       if (!parameters.endsWith(";base64")) {
         throw new RasterError("raster-font", `${label} is not base64 encoded`);
       }
-      const bytes = sfntOf(new Uint8Array(Buffer.from(payload, "base64")), mime, label);
+      const decoded = decodeBase64(payload);
+      if (decoded === undefined) {
+        throw new RasterError("raster-font", `${label} has malformed base64 data`);
+      }
+      const bytes = sfntOf(decoded, mime, label);
       const familyText = faceFamily.exec(rule)?.[1];
       fonts.push({
         bytes,

@@ -4,7 +4,7 @@ import { defaultNodeTolerance } from "@readmint/golden";
 import { renderSvg } from "@readmint/renderer";
 import { expect, test } from "vitest";
 import { exportRaster } from "../src/index.js";
-import { openWebpCodec } from "../src/initRaster.js";
+import { openNodeWebpCodec } from "./nodeWebpCodec.js";
 import { rasterFonts } from "../src/rasterFonts.js";
 import { dataUri, fontBytes, fontPath } from "./rasterFixtures.js";
 
@@ -30,7 +30,7 @@ function boundText(value: string): { design: Design; data: Record<string, unknow
 }
 
 test("data URIs in a data-bound text are text: nothing is decoded, swapped or drawn with", async () => {
-  const codec = await openWebpCodec();
+  const codec = await openNodeWebpCodec();
   const webp = dataUri(
     "image/webp",
     codec.encodeWebp({ data: new Uint8Array([255, 0, 0, 255]), width: 1, height: 1 }),

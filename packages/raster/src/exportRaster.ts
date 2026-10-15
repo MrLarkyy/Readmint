@@ -7,7 +7,7 @@ import { encodePng } from "./encodePng.js";
 import { encodeWebp, encodeWebpStill } from "./encodeWebp.js";
 import type { FrameEncoder } from "./FrameEncoder.js";
 import { type DelayUnit, frameDelays, type TimedFrame } from "./frameDelays.js";
-import { initRaster, openWebpCodec } from "./initRaster.js";
+import { loadRaster, openWebpCodec } from "./rasterRuntime.js";
 import { hasWebpImage, inlineWebpAssets } from "./inlineWebpAssets.js";
 import { matchFontFamilies } from "./matchFontFamilies.js";
 import { OutputBudget } from "./OutputBudget.js";
@@ -113,7 +113,7 @@ export async function exportRaster(
   checkImageWork(limits, countImagePixels(first, plan.length), plan.length);
   const fonts = rasterFonts(first, input.fonts);
   const buffers = fonts.map((font) => font.bytes);
-  await initRaster();
+  await loadRaster();
   const codecs = format === "webp" || hasWebpImage(first) ? await openWebpCodec() : undefined;
   const budget = new OutputBudget(
     limits.maxOutputBytes,
