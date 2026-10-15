@@ -1,0 +1,159 @@
+{
+  "$schema": "https://raw.githubusercontent.com/MrLarkyy/Readmint/main/packages/format/schema/design-v0.schema.json",
+  "version": 0,
+  "title": "Contribution calendar: heatmap",
+  "description": "GitHub's contribution calendar as rounded squares coloured by level.",
+  "canvas": {
+    "width": "{{ (github.contributions.weeks | min(53)) * 14 - 3 + 16 | max(1) }}",
+    "height": "{{ 7 * 14 - 3 + 16 }}",
+    "background": "#ffffff"
+  },
+  "components": {
+    "calendar": {
+      "description": "A contribution calendar: one cell instance per day of github.contributions, placed by orientation and projection, coloured by level. Replace components.cell to change how a day looks.",
+      "props": {
+        "cellSize": {
+          "type": "number",
+          "default": 11
+        },
+        "gap": {
+          "type": "number",
+          "default": 3
+        },
+        "radius": {
+          "type": "number",
+          "default": 2
+        },
+        "orientation": {
+          "type": "string",
+          "default": "horizontal"
+        },
+        "projection": {
+          "type": "string",
+          "default": "flat"
+        },
+        "weeks": {
+          "type": "number",
+          "default": 53
+        },
+        "maxCount": {
+          "type": "number",
+          "default": 20
+        },
+        "maxHeight": {
+          "type": "number",
+          "default": 24
+        },
+        "level0": {
+          "type": "color",
+          "default": "#ebedf0"
+        },
+        "level1": {
+          "type": "color",
+          "default": "#9be9a8"
+        },
+        "level2": {
+          "type": "color",
+          "default": "#40c463"
+        },
+        "level3": {
+          "type": "color",
+          "default": "#30a14e"
+        },
+        "level4": {
+          "type": "color",
+          "default": "#216e39"
+        }
+      },
+      "layers": [
+        {
+          "type": "component",
+          "ref": "cell",
+          "repeat": {
+            "each": "{{ github.contributions.days }}",
+            "as": "day",
+            "index": "i"
+          },
+          "if": "{{ (day.week - (github.contributions.weeks - props.weeks | max(0))) >= 0 }}",
+          "x": "{{ props.projection == \"isometric\" ? ((day.week - (github.contributions.weeks - props.weeks | max(0))) - day.weekday + 6) * (props.cellSize + props.gap) : (props.orientation == \"vertical\" ? day.weekday : (day.week - (github.contributions.weeks - props.weeks | max(0)))) * (props.cellSize + props.gap) }}",
+          "y": "{{ props.projection == \"isometric\" ? ((day.week - (github.contributions.weeks - props.weeks | max(0))) + day.weekday) * (props.cellSize + props.gap) / 2 + props.maxHeight : (props.orientation == \"vertical\" ? (day.week - (github.contributions.weeks - props.weeks | max(0))) : day.weekday) * (props.cellSize + props.gap) }}",
+          "props": {
+            "level": "{{ day.level }}",
+            "count": "{{ day.count }}",
+            "date": "{{ day.date }}",
+            "index": "{{ i }}",
+            "week": "{{ (day.week - (github.contributions.weeks - props.weeks | max(0))) }}",
+            "weekday": "{{ day.weekday }}",
+            "size": "{{ props.cellSize }}",
+            "radius": "{{ props.radius }}",
+            "height": "{{ props.projection == \"isometric\" ? ((day.count | min(props.maxCount)) / props.maxCount * props.maxHeight | round(2)) : 0 }}",
+            "color": "{{ [props.level0, props.level1, props.level2, props.level3, props.level4][day.level] | default(props.level0) }}"
+          }
+        }
+      ]
+    },
+    "cell": {
+      "description": "A rounded square in the day's colour.",
+      "props": {
+        "level": {
+          "type": "number",
+          "default": 0
+        },
+        "count": {
+          "type": "number",
+          "default": 0
+        },
+        "date": {
+          "type": "string",
+          "default": ""
+        },
+        "index": {
+          "type": "number",
+          "default": 0
+        },
+        "week": {
+          "type": "number",
+          "default": 0
+        },
+        "weekday": {
+          "type": "number",
+          "default": 0
+        },
+        "size": {
+          "type": "number",
+          "default": 11
+        },
+        "radius": {
+          "type": "number",
+          "default": 2
+        },
+        "height": {
+          "type": "number",
+          "default": 0
+        },
+        "color": {
+          "type": "color",
+          "default": "#ebedf0"
+        }
+      },
+      "layers": [
+        {
+          "type": "rect",
+          "width": "{{ props.size }}",
+          "height": "{{ props.size }}",
+          "radius": "{{ props.radius }}",
+          "fill": "{{ props.color }}"
+        }
+      ]
+    }
+  },
+  "layers": [
+    {
+      "type": "component",
+      "ref": "calendar",
+      "x": 8,
+      "y": 8,
+      "props": {}
+    }
+  ]
+}
