@@ -93,6 +93,17 @@ describe("the Reserved Font Name hint of a name table", () => {
     expect(fork.reservedFontName).toBe(false);
   });
 
+  test("an unquoted name used by a wider family name counts as used, a disjoint fork does not", () => {
+    const font = (family: string, copyright: string) =>
+      parse(buildTestFont({ family, glyphs, names: { 0: copyright } })).reservedFontName;
+    expect(font("Rfn Mono", "with Reserved Font Name Rfn and trailing words")).toBe(true);
+    expect(font("Source Sans Pro", "with Reserved Font Name Source All Rights Reserved")).toBe(
+      true,
+    );
+    expect(font("Forked Sans", "with Reserved Font Name Rfn")).toBe(false);
+    expect(font("Forked Sans", "with Reserved Font Name Rfn and trailing words")).toBe(false);
+  });
+
   test("a statement whose names cannot be read counts as used", () => {
     const vague = (copyright: string) =>
       parse(buildTestFont({ family: "Forked", glyphs, names: { 0: copyright } }));

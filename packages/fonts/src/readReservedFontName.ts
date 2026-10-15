@@ -60,14 +60,14 @@ const quotes = "\"'“”‘’";
 interface Statement {
   /** The names told apart; `undefined` for one that cannot be read. */
   readonly names: readonly (string | undefined)[];
-  /** The unquoted text up to the sentence end, to match a family name inside it; empty after a quoted name. */
+  /** The unquoted text up to the sentence end, to match a family name's words in it; empty after a quoted name. */
   readonly loose: string;
 }
 
 /**
  * The statement each "with reserved font name" phrase makes; a phrase naming nothing or the OFL template placeholder
  * makes none. A name that starts with a quote is the quoted span(s) only; unquoted text is split at "," and "and",
- * and as a whole it also counts when it mentions the family, so trailing words never hide a used name.
+ * and as a whole it also counts when it shares a word with the family, so trailing words never hide a used name.
  */
 function statements(text: string): Statement[] {
   const found: Statement[] = [];
@@ -111,19 +111,40 @@ function quotedNames(text: string): (string | undefined)[] {
     const stated = rest.slice(1, close).trim();
     names.push(stated === "" ? undefined : stated);
     rest = rest.slice(close + 1).replace(/^(?:\s*,\s*|\s+and\s+|\s*,\s*and\s+)/, "");
-    if (rest.length === text.length) break;
   }
   return names;
 }
 
-/** Whether `family` occurs in `text` as whole words. */
+/**
+ * Whether `text` and `family` share a whole word, so an unquoted name with trailing words, or one only part of a wider
+ * family name, still counts; a family without words counts when `text` contains it.
+ */
 function mentions(text: string, family: string): boolean {
-  if (family === "") return false;
-  const word = /[\p{L}\p{N}]/u;
-  for (let at = text.indexOf(family); at !== -1; at = text.indexOf(family, at + 1)) {
-    const before = text.charAt(at - 1);
-    const after = text.charAt(at + family.length);
-    if (!(at > 0 && word.test(before)) && !(after !== "" && word.test(after))) return true;
+  const own = words(family);
+  if (own.length === 0) return family !== "" && text.includes(family);
+  const stated = new Set(words(text));
+  return own.some((word) => stated.has(word));
+}
+
+/**
+ * The runs of ASCII letters and digits or characters from U+0080 up: decided by code unit alone, so no engine's
+ * Unicode data takes part.
+ */
+function words(text: string): string[] {
+  const found: string[] = [];
+  let start = -1;
+  for (let index = 0; index <= text.length; index++) {
+    const code = index < text.length ? text.charCodeAt(index) : 0;
+    const word =
+      (code >= 0x30 && code <= 0x39) ||
+      (code >= 0x41 && code <= 0x5a) ||
+      (code >= 0x61 && code <= 0x7a) ||
+      code >= 0x80;
+    if (word && start === -1) start = index;
+    if (!word && start !== -1) {
+      found.push(text.slice(start, index));
+      start = -1;
+    }
   }
-  return false;
+  return found;
 }
