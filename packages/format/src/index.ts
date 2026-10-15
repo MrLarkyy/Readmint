@@ -17,6 +17,8 @@ export { designJsonSchema } from "./designJsonSchema.js";
 export { DESIGN_FORMAT_VERSION } from "./designMigrations.js";
 export { migrateDesign } from "./migrateDesign.js";
 export { parseDesign } from "./parseDesign.js";
+export { parseDesignAsync } from "./parseDesignAsync.js";
+export { parseDesignSourceAsync } from "./parseDesignSourceAsync.js";
 export { quoteInput } from "./quoteInput.js";
 export { validateDesign } from "./validateDesign.js";
 export { ValueRanges } from "./ValueRanges.js";

@@ -1,6 +1,11 @@
 import { describe, expect, test } from "vitest";
 import { loadScale } from "../../../test-support/loadScale.js";
-import { DesignLimits, parseDesign } from "../src/index.js";
+import {
+  DesignLimits,
+  parseDesign,
+  parseDesignAsync,
+  parseDesignSourceAsync,
+} from "../src/index.js";
 import { parseDesignSource } from "../src/parseDesignSource.js";
 
 const minimalYaml = "version: 0\ncanvas: { width: 10, height: 10 }\nlayers: []\n";
@@ -377,5 +382,33 @@ describe("format choice and limits", () => {
     const long = "Q".repeat(5000);
     for (const source of [`{"${long}": 1, "${long}": 2}`, `{"a": ${long}}`, `a: !${long} x\n`])
       for (const issue of issuesOf(source)) expect(issue.message).not.toMatch(/Q{65}/u);
+  });
+});
+
+describe("async readers", () => {
+  const sources: [string | undefined, "json" | "yaml" | undefined][] = [
+    [minimalYaml, undefined],
+    [minimalJson, undefined],
+    [`${String.fromCharCode(0xfeff)}${minimalYaml}`, "yaml"],
+    ["version: 0\nlayers: [\n", undefined],
+    ["a: 1\na: 2\n", "yaml"],
+    ['{"version": 0,', undefined],
+    ["--- 1\n--- 2\n", "yaml"],
+    ["x".repeat(DesignLimits.maxSourceLength + 1), "yaml"],
+    ["x".repeat(DesignLimits.maxYamlSourceLength + 1), undefined],
+    [`${String.fromCharCode(0xfeff)}${"#".repeat(DesignLimits.maxYamlSourceLength - 1)}`, "yaml"],
+    [`{"version": 0, "pad": "${"x".repeat(DesignLimits.maxYamlSourceLength)}"}`, undefined],
+    [undefined, undefined],
+  ];
+
+  test("equal the sync readers, errors with line and column included", async () => {
+    for (const [source, format] of sources) {
+      const text = source as string;
+      expect(await parseDesignSourceAsync(text, format), String(source).slice(0, 20)).toEqual(
+        parseDesignSource(text, format),
+      );
+      const options = format === undefined ? {} : { format };
+      expect(await parseDesignAsync(text, options)).toEqual(parseDesign(text, options));
+    }
   });
 });
