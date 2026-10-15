@@ -246,6 +246,9 @@ const progression = (
     })),
   );
 
+/** The symbol-check steps `costlyProgressiveJpeg` takes, in Node and in Chromium alike. */
+export const costlyProgressiveSteps = 6_717_566;
+
 /**
  * An accepted progressive 1024x512 grey JPEG of about 10 KB that costs the symbol check about 6.7 million steps: a DC
  * scan, then each AC coefficient alone at point transform 13 and refined 13 times, every scan one end-of-band run over
@@ -273,6 +276,19 @@ export function costlyProgressiveJpeg(): Uint8Array {
     ...bands,
     0xff,
     0xd9,
+  ]);
+}
+
+/**
+ * `costlyProgressiveJpeg` with a comment segment holding `index` after SOI: as costly, but bytes of its own for every
+ * index, so copies of it are different files to the sniff cache and each one is checked.
+ */
+export function costlyProgressiveVariant(index: number): Uint8Array {
+  const costly = costlyProgressiveJpeg();
+  return new Uint8Array([
+    ...costly.subarray(0, 2),
+    ...segment(0xfe, [(index >> 8) & 255, index & 255]),
+    ...costly.subarray(2),
   ]);
 }
 

@@ -5,18 +5,27 @@ import { maxRenderEntropySteps } from "../src/EntropyBudget.js";
 import { renderSvg } from "../src/index.js";
 import { sniffImage } from "../src/sniffImage.js";
 import { toDataUri } from "./exifImages.js";
-import { costlyProgressiveJpeg } from "./jpegEntropyCases.js";
+import { costlyProgressiveJpeg, costlyProgressiveVariant } from "./jpegEntropyCases.js";
 
 const costly = costlyProgressiveJpeg();
 
-/** `count` image assets of the same costly JPEG, each drawn once. */
+/**
+ * `count` image assets of the costly JPEG, each drawn once, each with bytes of its own: different files, so the sniff
+ * cache answers none of them and the budget bounds the work of checking them all.
+ */
 function copies(count: number): Design {
-  const src = toDataUri("image/jpeg", costly);
   const ids = Array.from({ length: count }, (_, index) => `copy${String(index)}`);
   return {
     version: 0,
     canvas: { width: 64, height: 32 },
-    assets: { images: Object.fromEntries(ids.map((id) => [id, { src }])) },
+    assets: {
+      images: Object.fromEntries(
+        ids.map((id, index) => [
+          id,
+          { src: toDataUri("image/jpeg", costlyProgressiveVariant(index)) },
+        ]),
+      ),
+    },
     layers: ids.map((asset) => ({ type: "image", asset, x: 0, y: 0, width: 64, height: 32 })),
   };
 }
