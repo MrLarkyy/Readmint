@@ -7,6 +7,7 @@ import type { OutlineBudget } from "./OutlineBudget.js";
 import { MalformedFont } from "./MalformedFont.js";
 import { readCmap } from "./readCmap.js";
 import { readFamilyName } from "./readFamilyName.js";
+import { readReservedFontName } from "./readReservedFontName.js";
 import { kernPair } from "./layout/kernPair.js";
 import { readTableDirectory, requireTable, type SfntTable } from "./readTableDirectory.js";
 import type { SfntFont } from "./SfntFont.js";
@@ -58,6 +59,7 @@ export function readFont(
     fsType: reader.u16(os2.offset + 8),
     weightClass: reader.u16(os2.offset + 4),
     familyName: readFamilyName(reader, tables.get("name")),
+    reservedFontName: readReservedFontName(reader, tables.get("name")),
     numGlyphs,
     sfntBytes: reader.length,
     glyphFor(codePoint: number): number {

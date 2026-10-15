@@ -15,7 +15,10 @@ export interface LoadedFont {
   readonly weight: number;
   readonly style: "normal" | "italic";
   readonly font: SfntFont;
-  /** `paths` when the asset asks for it or its licence forbids embedding: such a font is never embedded. */
+  /**
+   * `paths` when the asset asks for it, its licence forbids embedding or it has a Reserved Font Name: such a font is
+   * never embedded.
+   */
   readonly drawAs: "font" | "paths";
   readonly kerning: boolean;
 }
@@ -78,9 +81,10 @@ export function matchWeight(desired: number, available: readonly number[]): numb
 }
 
 /**
- * Checks one font asset (size, format, licence, fsType) once per render. A font whose declared licence or OS/2
- * fsType forbids embedding is drawn as paths, with one `font-not-embeddable` warning; nothing is embedded here
- * (the subsets are written once every text is laid out).
+ * Checks one font asset (size, format, licence, fsType, Reserved Font Name) once per render. A font whose declared
+ * licence or OS/2 fsType forbids embedding is drawn as paths, with one `font-not-embeddable` warning; a font with a
+ * Reserved Font Name (declared, or stated in its name table) likewise, with one `font-reserved-name` warning unless
+ * the asset asks for paths anyway. Nothing is embedded here (the subsets are written once every text is laid out).
  */
 export function loadFont(context: RenderContext, assetId: string, asset: FontAsset): LoadedFont {
   const cached = context.fonts.get(assetId);
@@ -202,7 +206,50 @@ function drawAs(
     );
     return "paths";
   }
-  return asset.drawAs === "paths" ? "paths" : "font";
+  if (asset.drawAs === "paths") return "paths";
+  const reserved = reservedFontName(asset, font, assetPath);
+  if (reserved === undefined) return "font";
+  context.warn(
+    reserved.path,
+    "font-reserved-name",
+    `font asset ${name} ${reserved.reason}: its text is drawn as paths, the font is never embedded (a subset is a Modified Version, which may not use a Reserved Font Name)`,
+  );
+  return "paths";
+}
+
+const rfnLicences = new Set(["OFL-1.0-RFN", "OFL-1.1-RFN"]);
+const noRfnLicences = new Set(["OFL-1.0-NO-RFN", "OFL-1.1-NO-RFN"]);
+
+/**
+ * Whether the font has a Reserved Font Name, and what decided it: the asset's `licence.reservedFontName`, else its
+ * SPDX `licence.name` (`OFL-*-RFN`, `OFL-*-no-RFN`), else the font's name table. SPDX identifiers compare without
+ * ASCII case.
+ */
+function reservedFontName(
+  asset: FontAsset,
+  font: SfntFont,
+  assetPath: string,
+): { readonly path: string; readonly reason: string } | undefined {
+  const licencePath = pointer(assetPath, "licence");
+  const declared: unknown = asset.licence.reservedFontName;
+  if (typeof declared === "boolean") {
+    return declared
+      ? { path: pointer(licencePath, "reservedFontName"), reason: "declares a Reserved Font Name" }
+      : undefined;
+  }
+  const licence: unknown = asset.licence.name;
+  const spdx = typeof licence === "string" ? asciiUpper(licence) : "";
+  if (rfnLicences.has(spdx)) {
+    return { path: pointer(licencePath, "name"), reason: `is licensed ${echo(licence)}` };
+  }
+  if (noRfnLicences.has(spdx)) return undefined;
+  return font.reservedFontName
+    ? { path: assetPath, reason: "states a Reserved Font Name in its name table" }
+    : undefined;
+}
+
+function asciiUpper(text: string): string {
+  return text.replace(/[a-z]/gu, (char) => String.fromCharCode(char.charCodeAt(0) - 0x20));
 }
 
 function fontBytes(
