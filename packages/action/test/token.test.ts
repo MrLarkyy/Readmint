@@ -8,6 +8,7 @@ import {
   type ActionTree,
   CANARY,
   makeActionTree,
+  png,
   recordingRunner,
 } from "./actionTree.js";
 
@@ -186,5 +187,96 @@ describe("the token", { timeout: 30_000 }, () => {
     expect(run.code).toBe(1);
     expect(run.log).toContain('::error::input locale "***!"');
     await expectNoCanary(run, []);
+  });
+});
+
+describe("images bound from data (RM-28)", { timeout: 30_000 }, () => {
+  const avatar = "https://avatars.githubusercontent.com/u/1?v=4";
+  const avatarDesign = {
+    version: 0,
+    canvas: { width: 40, height: 24 },
+    assets: { images: { avatar: { src: "{{ github.avatarUrl }}" } } },
+    layers: [{ type: "image", asset: "avatar", x: 4, y: 4, width: 16, height: 16 }],
+  };
+
+  /** GitHub's API from the fixtures, and an image host answering a PNG; every request recorded. */
+  function hosts() {
+    const calls: { url: string; init: RequestInit }[] = [];
+    const fetch = (url: string, init: RequestInit): Promise<Response> => {
+      calls.push({ url, init });
+      if (url.startsWith("https://api.github.com/")) return success(url, init);
+      return Promise.resolve(new Response(new Uint8Array(png), { status: 200 }));
+    };
+    return { calls, fetch };
+  }
+
+  async function svgs(): Promise<string[]> {
+    const written = await readdir(tree.root, { recursive: true });
+    return Promise.all(
+      written
+        .filter((name) => name.endsWith(".svg"))
+        .map((name) => readFile(join(tree.root, name), "utf8")),
+    );
+  }
+
+  beforeEach(async () => {
+    await tree.file("avatar.json", avatarDesign);
+    await tree.file("avatar-2.json", avatarDesign);
+  });
+
+  test("the image request carries no token in any form, and the SVG inlines the image", async () => {
+    const recorder = recordingRunner(fakeGit(false));
+    const { calls, fetch } = hosts();
+    const run = await tree.run(
+      { designs: "avatar.json\navatar-2.json", token: CANARY, login: "readmint-fixture" },
+      { runGit: recorder.runGit, fetch },
+    );
+    expect(run.log).not.toContain("::error::");
+    expect(run.code).toBe(0);
+    const images = calls.filter((call) => !call.url.startsWith("https://api.github.com/"));
+    expect(images.map((call) => call.url)).toEqual([avatar]);
+    for (const { init } of images) {
+      const sent = JSON.stringify({
+        ...init,
+        headers: [...new Headers(init.headers).entries()],
+      });
+      expect(sent.toLowerCase()).not.toContain("authorization");
+      for (const form of forms) expect(sent).not.toContain(form);
+      expect(init.credentials).toBe("omit");
+      expect(init.redirect).toBe("error");
+    }
+    const written = await svgs();
+    expect(written).toHaveLength(2);
+    for (const svg of written) {
+      expect(svg).toContain('href="data:image/png;base64,');
+      expect(svg).not.toContain("https:");
+    }
+    await expectNoCanary(run, recorder.calls);
+  });
+
+  test("data-file mode fetches the bound image too", async () => {
+    await tree.file("data.json", { github: { avatarUrl: avatar } });
+    const { calls, fetch } = hosts();
+    const run = await tree.run(
+      { designs: "avatar.json", "data-file": "data.json", "dry-run": "true" },
+      { fetch },
+    );
+    expect(run.code).toBe(0);
+    expect(calls.map((call) => call.url)).toEqual([avatar]);
+    expect((await svgs())[0]).toContain('href="data:image/png;base64,');
+  });
+
+  test("a host off the allow-list fails the render with an error line naming image-host", async () => {
+    await tree.file("data.json", { github: { avatarUrl: "https://evil.example/a.png" } });
+    const { calls, fetch } = hosts();
+    const run = await tree.run(
+      { designs: "avatar.json", "data-file": "data.json", "dry-run": "true" },
+      { fetch },
+    );
+    expect(run.code).toBe(1);
+    expect(run.log).toContain(
+      "::error::avatar.json: error image-host at /assets/images/avatar/src: ",
+    );
+    expect(calls).toEqual([]);
   });
 });

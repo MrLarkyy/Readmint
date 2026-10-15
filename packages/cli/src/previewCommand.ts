@@ -1,7 +1,6 @@
 import path from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { AssetPathError } from "./AssetPathError.js";
-import { checkAssetPath } from "./checkAssetPath.js";
 import type { CliCommand } from "./CliCommand.js";
 import { CliError } from "./CliError.js";
 import type { CliIo } from "./CliIo.js";
@@ -9,12 +8,14 @@ import { errnoCode } from "./errnoCode.js";
 import { escapeForLog } from "./escapeForLog.js";
 import { ExitCode } from "./ExitCode.js";
 import { formatIssue } from "./formatIssue.js";
+import { imageFetching } from "./imageFetching.js";
 import type { DesignFile } from "./loadDesignFile.js";
 import { loadRenderInput } from "./loadRenderInput.js";
 import { retryWhileChanging } from "./retryWhileChanging.js";
 import { PreviewServer, type PreviewUpdate } from "./PreviewServer.js";
 import { printLines } from "./printLines.js";
 import { renderInput } from "./renderInput.js";
+import { watchedAssetPaths } from "./watchedAssetPaths.js";
 import { watchInputs } from "./watchInputs.js";
 
 type PreviewArgs = Extract<CliCommand, { name: "preview" }>;
@@ -47,7 +48,7 @@ export async function previewCommand(args: PreviewArgs, io: CliIo): Promise<Exit
     let assets: readonly string[] = [];
     const rebuild = async () => {
       const update = await renderUpdate(args, io, (file) => {
-        assets = assetPaths(file);
+        assets = watchedAssetPaths(file);
       });
       if (server.update(update)) await printLines(io.stderr, update.issues);
     };
@@ -77,7 +78,7 @@ async function renderUpdate(
   try {
     // A save racing the read is read again, not shown as an issue.
     const input = await retryWhileChanging(() =>
-      loadRenderInput(args, { cwd: io.cwd, onDesignFile }),
+      loadRenderInput(args, { cwd: io.cwd, onDesignFile, ...imageFetching(args, io) }),
     );
     const name = input.file.name;
     const result = renderInput(input, args);
@@ -92,20 +93,6 @@ async function renderUpdate(
     else lines = [`internal error: ${error instanceof Error ? error.message : String(error)}`];
   }
   return { issues: lines.map(escapeForLog) };
-}
-
-/** Lexical paths of the design's file assets: watched even while missing, so creating one reloads. */
-function assetPaths(file: DesignFile): string[] {
-  const paths: string[] = [];
-  for (const kind of ["fonts", "images"] as const) {
-    const declared: Readonly<Record<string, { readonly src: string }>> =
-      file.design.assets?.[kind] ?? {};
-    for (const asset of Object.values(declared)) {
-      if (asset.src.startsWith("data:") || checkAssetPath(asset.src) !== undefined) continue;
-      paths.push(path.join(file.designDir, ...asset.src.split("/")));
-    }
-  }
-  return paths;
 }
 
 function aborted(signal: AbortSignal | undefined): Promise<void> {

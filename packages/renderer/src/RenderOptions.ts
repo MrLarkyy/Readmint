@@ -1,8 +1,9 @@
 import type { RenderLimits } from "./RenderLimits.js";
 
 /**
- * Bytes of assets whose `src` is a path, keyed by asset id. The renderer never reads files: the CLI, the Action
- * and the editor resolve paths and pass the bytes. An asset given here wins over its `src`.
+ * Bytes of assets whose `src` is a path or (images) a `{{binding}}`, keyed by asset id. The renderer never reads files
+ * or the network: the CLI, the Action and the editor resolve paths, fetch bound images and pass the bytes. An asset
+ * given here wins over its `src`.
  */
 export interface RenderAssets {
   readonly fonts?: Readonly<Record<string, Uint8Array>>;

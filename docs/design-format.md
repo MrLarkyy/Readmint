@@ -180,9 +180,14 @@ render: [renderer.md](renderer.md).
 - a relative path: no scheme, no leading `/`, no `\`, no `..` segment, no `:`, `?`, `#` or `%`, at most 1024 characters,
   ending in `.ttf`, `.otf`, `.woff` or `.woff2` (fonts) or `.png`, `.jpg`, `.jpeg`, `.gif` or `.webp` (images), in any
   letter case; resolved against the design file by the CLI and the Action; or
-- a base64 data URI: `data:font/ttf|otf|woff|woff2;base64,...` or `data:image/png|jpeg|gif|webp;base64,...`.
+- a base64 data URI: `data:font/ttf|otf|woff|woff2;base64,...` or `data:image/png|jpeg|gif|webp;base64,...`; or
+- for an image only, a `{{binding}}` such as `"{{ github.avatarUrl }}"`, evaluated against the root of the render data
+  (never a repeat item, so every copy of a repeated layer shows the same image). It must give an https URL on an
+  allowed host; the CLI (`--fetch-images`) and the Action fetch it before the render and inline the bytes like a file
+  asset's, the renderer never fetches. Without supplied bytes the render fails `missing-asset`. A font `src` binding
+  is invalid. The fetch rules: [asset-loading.md](asset-loading.md#images-bound-from-data).
 
-`http(s):` and `file:` URLs are rejected, because the output must not reference anything outside itself, and so are SVG
+A literal `http(s):` or `file:` URL is rejected, because the output must not reference anything outside itself, and so are SVG
 images, because an inlined SVG can carry scripts or external references. The bytes behind a source are checked (size,
 format sniffing) when they are loaded, not here. A relative path accepted here can still be refused when it is loaded,
 for example for a Windows device name (`CON.png`), a segment ending in a dot or space, or a symlink leaving the design's

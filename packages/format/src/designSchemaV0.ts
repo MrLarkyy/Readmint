@@ -292,6 +292,7 @@ const defs = new Map<string, SchemaNode>([
         maxLength: DesignLimits.maxSourceLength,
         pattern: dataUri("image/(?:png|jpeg|gif|webp)"),
       }),
+      ref(bindingDef),
     ),
   ],
   [

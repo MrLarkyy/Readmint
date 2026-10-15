@@ -29,18 +29,19 @@ loaded, used or not, so a broken reference fails `validate` too.
 
 ## Options
 
-| option             | commands             | meaning                                                                                                                                                                                                                           |
-| ------------------ | -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `--root <dir>`     | all                  | the folder the design file must lie in; default the current folder                                                                                                                                                                |
-| `--data <file>`    | all                  | fixture data (below)                                                                                                                                                                                                              |
-| `--locale <tag>`   | all                  | BCP 47 language tag for the `number`, `compact`, `percent` and `date` filters; default the design's `locale`, else `en`; a tag the expression tables lack (`en`, `de`, `fr`, `es`, `cs`, or a region tag of one) is a usage error |
-| `--time <ms>`      | `render`, `validate` | renders that frame of the animation as a static SVG (or a still raster image), in 0..86400000                                                                                                                                     |
-| `--out <file>`     | `render`             | writes the output to this file (its folder must exist) instead of standard output; written only once the whole output is made, so a failed raster export leaves it as it was                                                      |
-| `--format <name>`  | `render`             | `svg`, `png`, `webp`, `apng` or `gif`; default from the `--out` extension (`.png`, `.apng`, `.webp`, `.gif`), else `svg`; a raster format without `--out` is a usage error                                                        |
-| `--scale <n>`      | `render`             | raster pixels per design pixel, 1..4 (up to three decimals); default 2; raster formats only                                                                                                                                       |
-| `--frame-rate <n>` | `render`             | frames per second sampled from the animation, a whole number in 1..60 (`gif` 1..50); default 30, `gif` 25; raster formats only                                                                                                    |
-| `--quality <n>`    | `render`             | lossy WebP at this quality, a whole number in 1..100; default lossless; `webp` output only (any other format is a usage error)                                                                                                    |
-| `--port <n>`       | `preview`            | port in 0..65535; default 4870, `0` picks a free one                                                                                                                                                                              |
+| option             | commands             | meaning                                                                                                                                                                                                                                                   |
+| ------------------ | -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--root <dir>`     | all                  | the folder the design file must lie in; default the current folder                                                                                                                                                                                        |
+| `--data <file>`    | all                  | fixture data (below)                                                                                                                                                                                                                                      |
+| `--locale <tag>`   | all                  | BCP 47 language tag for the `number`, `compact`, `percent` and `date` filters; default the design's `locale`, else `en`; a tag the expression tables lack (`en`, `de`, `fr`, `es`, `cs`, or a region tag of one) is a usage error                         |
+| `--time <ms>`      | `render`, `validate` | renders that frame of the animation as a static SVG (or a still raster image), in 0..86400000                                                                                                                                                             |
+| `--out <file>`     | `render`             | writes the output to this file (its folder must exist) instead of standard output; written only once the whole output is made, so a failed raster export leaves it as it was                                                                              |
+| `--format <name>`  | `render`             | `svg`, `png`, `webp`, `apng` or `gif`; default from the `--out` extension (`.png`, `.apng`, `.webp`, `.gif`), else `svg`; a raster format without `--out` is a usage error                                                                                |
+| `--scale <n>`      | `render`             | raster pixels per design pixel, 1..4 (up to three decimals); default 2; raster formats only                                                                                                                                                               |
+| `--frame-rate <n>` | `render`             | frames per second sampled from the animation, a whole number in 1..60 (`gif` 1..50); default 30, `gif` 25; raster formats only                                                                                                                            |
+| `--quality <n>`    | `render`             | lossy WebP at this quality, a whole number in 1..100; default lossless; `webp` output only (any other format is a usage error)                                                                                                                            |
+| `--port <n>`       | `preview`            | port in 0..65535; default 4870, `0` picks a free one                                                                                                                                                                                                      |
+| `--fetch-images`   | all                  | fetches the images whose `src` is bound to data (https, allowed hosts only, no credentials; see [asset-loading.md](asset-loading.md#images-bound-from-data)); without it a design with one fails `image-not-fetched` and the CLI makes no network request |
 
 An option a command does not take, an unknown option, a missing or extra argument and a bad value are usage errors
 (exit code 2). There is no host option: the preview listens on 127.0.0.1 only.
@@ -71,6 +72,9 @@ with its own exit code; only `preview` stops on it (exit code 0). A second signa
 Issues go to standard error, one line each: `<design>:<line>:<column>: error <code> at <path>: <message>` (the position
 only for issues found while parsing), or `warning` for a warning of a successful render. `<design>` is the design file
 relative to `--root`, `<path>` a JSON Pointer into the design. `validate` prints `<design>: ok` to standard output.
+An image bound from data that cannot be fetched is one such line at `/assets/images/<id>/src`, its code one of the
+`RemoteImageError` codes (`image-binding`, `image-url`, `image-host`, `image-fetch`, `image-too-large`,
+`image-format`, `image-not-fetched`; see [asset-loading.md](asset-loading.md#images-bound-from-data)), exit code 1.
 
 Every line the CLI prints escapes control characters (C0, C1), format characters (bidi marks, embeddings, overrides and
 isolates, zero-width characters), line and paragraph separators, private-use, unassigned and surrogate code points as
@@ -83,7 +87,8 @@ The design file must lie inside `--root` (default: the current folder), checked 
 [asset-loading.md](asset-loading.md)): a design reached through a link that leaves the root is refused. The design is
 read as UTF-8 (at most 12 MiB, the format's source limit); `.json` is read as JSON, `.yaml` and `.yml` as YAML, any other
 extension by its first character. Its assets resolve against the design file's folder through `readAsset`, with the
-renderer's limits (`maxFontBytes`, `maxImageBytes`); `data:` sources are left to the renderer. Assets that resolve to
+renderer's limits (`maxFontBytes`, `maxImageBytes`); `data:` sources are left to the renderer, and an image `src` bound
+to data is fetched with `--fetch-images` after the fixture data loads. Assets that resolve to
 the same real path (however it is spelled: `a.ttf`, `./a.ttf`, a symlink) are read once and
 share one byte array, so the renderer decodes such a font once and counts it once against `maxTotalFontBytes` (it also
 recognises equal bytes in different arrays). The Action loads assets the same way.
@@ -99,7 +104,8 @@ recognises equal bytes in different arrays). The Action loads assets the same wa
 It must be a JSON object, at most 8 MiB, UTF-8; every key must be a data namespace (a lowercase letter, then up to 31
 lowercase letters or digits, not `true`, `false` or `null`). The `github` shape is in
 [data-github.md](data-github.md). The file is the user's own and may lie anywhere. The CLI reads no token and no
-environment variable, and makes no network request.
+environment variable, and makes no network request except, with `--fetch-images`, the image requests of
+[asset-loading.md](asset-loading.md#images-bound-from-data).
 
 ## Preview
 
@@ -129,8 +135,10 @@ A port in use, or one the system refuses, is exit code 3.
 
 `@readmint/cli` exports `runCli(argv, io)` (returns the exit code, never throws), `ExitCode`, `CliError`, `CliIo`,
 `escapeForLog`, `quoteForLog`, `formatIssue`, `localeProblem(locale)` (why a tag cannot be the `--locale`, `undefined` when it can; the Action's `locale` input uses it too), `outputFormats` and `outputExtension(format)` (the `OutputFormat`s and their file extension, `apng` → `png`), and the loaders the commands share: `loadDesignFile`, `loadDesignAssets`,
-`loadFixtureData` (with `maxFixtureBytes`, its size cap), `loadRenderInput` (design file, assets and fixture data in one call; `RenderInput`,
-`RenderInputOptions`), `renderInput` (`renderSvg` of a loaded input with the renderer's default limits) and `renderOutput(input, formats,
+`loadFixtureData` (with `maxFixtureBytes`, its size cap), `loadRenderInput` (design file, assets, fixture data and the images bound to data in one call; `RenderInput`,
+`RenderInputOptions`, whose `images` fetches them and whose `data` stands in for `--data`), `fetchBoundImages` and its
+`RemoteImageError`, `RemoteImageOptions`, `defaultImageHosts` and `RemoteImageLimits` (see
+[asset-loading.md](asset-loading.md#images-bound-from-data)), `renderInput` (`renderSvg` of a loaded input with the renderer's default limits) and `renderOutput(input, formats,
 options)` (one render, then each format: the SVG, or `exportRaster` of it; a raster failure is a `CliError` with exit code
 1). The GitHub Action ([action.md](action.md)) renders through `loadRenderInput` and `renderOutput`, so it writes the
 bytes `readmint render` writes.

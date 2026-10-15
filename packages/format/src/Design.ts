@@ -252,7 +252,11 @@ export interface FontAsset {
 }
 
 export interface ImageAsset {
-  readonly src: AssetSource;
+  /**
+   * An asset source, or a `{{binding}}` evaluated against the root of the render data (never a repeat item) that
+   * yields an https URL; the CLI (`--fetch-images`) and the Action fetch, check and supply its bytes.
+   */
+  readonly src: Bindable<AssetSource>;
   readonly width?: number;
   readonly height?: number;
 }
