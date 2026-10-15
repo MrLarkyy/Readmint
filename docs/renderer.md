@@ -92,13 +92,15 @@ Drawn in document order, first at the back. Layer `id` and `name` are not emitte
   outside. The box tested surely holds the drawing and is never trimmed: text by its glyphs, not its layout box, each
   within the `head` box of the font its run draws with (a font whose `head` box is empty: 1 em left of the pen to
   2 em right, 2 em above the baseline to 1 em below); a path stroke by the hull of its points grown by half the width
-  plus the miter tip of each join (miter limit 4; twice the width at a join next to an arc or a vanishing segment);
-  a turn by intervals for its cosine and sine from fixed polynomials. All of it is computed with `+ - * / %`,
-  `round`, `min`, `max`, `abs` and a square root (each exactly rounded per IEEE 754) only, so Node and every browser
-  decide alike. A few far layers that draw nothing are still kept: a path whose control points or arc box reach the
-  canvas while its curve lies far, and text in a font whose `head` box overstates its glyphs. Such a layer is written,
-  browsers draw the SVG as usual, and raster export of it beyond twice the canvas refuses with `raster-image`
-  ([raster.md](raster.md)). Layers without an own layer stay wherever they are; resvg draws them anywhere.
+  plus the miter tip of each join (miter limit 4; twice the width at a join next to an arc, a nearly straight curve
+  or a segment under about 1/1000 of the width, which rasterizers may skip when a group scales the path down, and at
+  the far end of the segment after one, so the box holds at any scale); a turn by intervals for its cosine and sine
+  from fixed polynomials. All of it is computed with `+ - * / %`, `round`, `min`, `max`, `abs` and a square root
+  (each exactly rounded per IEEE 754) only, so Node and every browser decide alike. A few far layers that draw
+  nothing are still kept: a path whose control points or arc box reach the canvas while its curve lies far, and text
+  in a font whose `head` box overstates its glyphs. Such a layer is written, browsers draw the SVG as usual, and raster
+  export of it beyond twice the canvas refuses with `raster-image` ([raster.md](raster.md)). Layers without an own
+  layer stay wherever they are; resvg draws them anywhere.
 - **Path data template**: a `d` with `{{...}}` placeholders is evaluated per copy like a text, then checked as the
   format checks a literal `d` (not empty, at most 100000 characters, path data characters only; else `range` at `d`).
   Each copy gets the box and the `draw` length of its own data; a literal `d` is measured once per layer.
