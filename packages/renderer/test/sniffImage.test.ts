@@ -6,6 +6,7 @@ import { loadScale } from "../../../test-support/loadScale.js";
 import { renderSvg, type RenderOptions } from "../src/index.js";
 import { sniffImage } from "../src/sniffImage.js";
 import { jpegWithExif, orientationTiff, pngWithExif, vp8x, webpWithExif } from "./exifImages.js";
+import { jpegFrameFixtures } from "./jpegFrameTypes.js";
 import { acceptedJpegs, refusedJpegs } from "./jpegMarkers.js";
 
 const assets = join(import.meta.dirname, "assets");
@@ -320,6 +321,15 @@ describe("JPEG marker rules", () => {
         ok: true,
         info: { mime: "image/jpeg", width: 32, height: 16 },
       });
+    },
+  );
+
+  test.each(jpegFrameFixtures.map((row) => [row.name, row.bytes, row.message] as const))(
+    "the genuine JPEG %s is refused",
+    (_name, data, message) => {
+      const result = sniffImage(data, 1000);
+      expect(result.ok).toBe(false);
+      expect(result.ok ? "" : result.message).toContain(message);
     },
   );
 
