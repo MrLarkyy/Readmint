@@ -437,7 +437,8 @@ budget?, maxBytes? })`, `encodeWoff`, `decodeWoff`, `glyphClosure`, `OutlineBudg
   pair of 5906 on by that arithmetic; blocks scaled to a given pair were drawn alike up to 5888 and apart from 6008
   on, and genuine encodings reach 3430 (Pillow/libjpeg-turbo, high-contrast and worst-case patterns at quality 1 to
   100, grey, 4:4:4 and 4:2:0, baseline and progressive; a search over 8-bit blocks found 4080 with the standard tables, chroma at quality 1 to
-  10, and an 8-bit block at quality 100 stays within 4096), all
+  10, and an 8-bit block at quality 100 stays within 4096; a custom table with steps near 512, which only 16-bit
+  precision tables allow, can round a genuine block past 4608, and such a block is refused too, fail-closed), all
   measured on x86-64 Chromium (other SIMD paths, ARM NEON among them, are not probed); lossless data has no
   quantization and no such rule; a progressive scan out of
   progression order, as that bound holds only in order: per component and coefficient (DC and AC alike), a first scan
