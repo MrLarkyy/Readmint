@@ -9,8 +9,20 @@ runs:
         node-version: 22
     - run: corepack enable
       shell: bash
+    - name: Download the pinned pnpm
+      run: |
+        for i in 1 2 3; do
+          corepack install && exit 0
+          sleep $((i * 5))
+        done
+        exit 1
+      shell: bash
     - id: store
-      run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+      name: Resolve the pnpm store path
+      run: |
+        store="$(pnpm store path --silent)"
+        test -n "$store"
+        echo "path=$store" >> "$GITHUB_OUTPUT"
       shell: bash
     - uses: actions/cache@v6
       with:
