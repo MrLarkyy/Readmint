@@ -208,6 +208,29 @@ describe.each(cases)("%s %s", (template, section) => {
   });
 });
 
+describe.each(names)("%s repository slots", (template) => {
+  const slots = profileTemplates[template].filter((section) => section.startsWith("repo-"));
+
+  test.each(themes.flatMap((theme) => slots.slice(1).map((slot) => [theme, slot] as const)))(
+    "the %s design of %s is repo-1 with the slot prop changed, nothing else",
+    (theme, slot) => {
+      const file = (section: string) =>
+        theme === "dark" ? `${section}.dark.json` : `${section}.json`;
+      const first = fileJson(template, file("repo-1")) as Design;
+      const other = fileJson(template, file(slot)) as Design;
+      const [root] = first.layers;
+      if (root?.type !== "component") throw new Error("the root layer is not a component");
+      expect(other).toEqual({
+        ...first,
+        layers: [
+          { ...root, props: { ...root.props, slot: Number(slot.slice(5)) - 1 } },
+          ...first.layers.slice(1),
+        ],
+      });
+    },
+  );
+});
+
 describe.each(names)("%s fonts", (template) => {
   const folder = join(folders, template, "fonts");
   const used = new Map<string, string>();
