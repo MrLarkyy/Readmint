@@ -1,4 +1,5 @@
-// gifenc 1.0.3 ships no types; these cover the part raster export uses.
+// gifenc 1.0.3 ships no types; these cover the part raster export uses. Node loads its CommonJS build (the functions
+// on the default export only), Vite and bundlers its ES build (named exports).
 declare module "gifenc" {
   export type GifPalette = number[][];
   export type GifColorFormat = "rgb565" | "rgb444" | "rgba4444";
@@ -25,16 +26,18 @@ declare module "gifenc" {
     initialCapacity?: number;
     auto?: boolean;
   }): GifEncoderStream;
-
   export function quantize(
     rgba: Uint8Array,
     maxColors: number,
     options?: { format?: GifColorFormat; oneBitAlpha?: boolean | number },
   ): GifPalette;
-
   export function applyPalette(
     rgba: Uint8Array,
     palette: GifPalette,
     format?: GifColorFormat,
   ): Uint8Array;
+
+  /** The CommonJS build: an object of the functions; the ES build: `GIFEncoder` alone. */
+  const gifenc: unknown;
+  export default gifenc;
 }

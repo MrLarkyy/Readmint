@@ -1,9 +1,16 @@
 // The declarations travel with this file into every program that compiles it (the CLI and Action typechecks too).
 // eslint-disable-next-line @typescript-eslint/triple-slash-reference
 /// <reference path="./gifenc.d.ts" />
-import { applyPalette, GIFEncoder, type GifPalette, quantize } from "gifenc";
+import * as gifencModule from "gifenc";
+import type { GifPalette } from "gifenc";
 import type { FrameEncoder } from "./FrameEncoder.js";
 import type { OutputBudget } from "./OutputBudget.js";
+
+// Node gets the CommonJS build (every function on the default export), Vite and the Action bundle the ES build
+// (named exports; its default is GIFEncoder alone).
+const loaded: { readonly default?: unknown } = gifencModule;
+const gifenc = ("GIFEncoder" in loaded ? loaded : loaded.default) as typeof gifencModule;
+const { applyPalette, GIFEncoder, quantize } = gifenc;
 
 /** Pixels below this alpha are transparent in a GIF; the rest are drawn opaque (GIF has 1-bit alpha). */
 const alphaThreshold = 128;
