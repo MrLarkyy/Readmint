@@ -13,16 +13,7 @@ export function onPageColour(
       `PNG is ${String(png.byteLength)} bytes, over the ${String(maxBytes)} byte limit`,
     );
   }
-  // IHDR width and height sit at bytes 16-23; check them before pngjs allocates the pixels.
-  const view = new DataView(png.buffer, png.byteOffset, png.byteLength);
-  if (png.byteLength < 24) throw new Error("not a PNG");
-  const width = view.getUint32(16);
-  const height = view.getUint32(20);
-  if (width > maxSide || height > maxSide) {
-    throw new Error(
-      `PNG is ${String(width)}x${String(height)}, over the ${String(maxSide)} px side limit`,
-    );
-  }
+  checkHeader(png);
   const source = PNG.sync.read(Buffer.from(png));
   const out = new PNG({
     width: source.width,
@@ -39,4 +30,34 @@ export function onPageColour(
     out.data[i * 4 + 3] = 255;
   }
   return new Uint8Array(PNG.sync.write(out, { colorType: 2, inputColorType: 6 }));
+}
+
+const signature = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+
+/**
+ * pngjs keeps the last IHDR and decodes interlaced files without its size cap, so the chunk list is walked first:
+ * exactly one IHDR, first, not interlaced, sides within the limit.
+ */
+function checkHeader(png: Uint8Array): void {
+  if (png.byteLength < 33 || signature.some((byte, i) => png[i] !== byte)) {
+    throw new Error("not a PNG");
+  }
+  const view = new DataView(png.buffer, png.byteOffset, png.byteLength);
+  const type = (at: number): string => String.fromCharCode(...png.subarray(at + 4, at + 8));
+  if (view.getUint32(8) !== 13 || type(8) !== "IHDR")
+    throw new Error("PNG does not start with IHDR");
+  const width = view.getUint32(16);
+  const height = view.getUint32(20);
+  if (width > maxSide || height > maxSide) {
+    throw new Error(
+      `PNG is ${String(width)}x${String(height)}, over the ${String(maxSide)} px side limit`,
+    );
+  }
+  if (png[28] !== 0) throw new Error("interlaced PNG is not accepted");
+  for (let at = 8; at + 12 <= png.byteLength;) {
+    const name = type(at);
+    if (at > 8 && name === "IHDR") throw new Error("PNG has more than one IHDR");
+    if (name === "IEND") return;
+    at += 12 + view.getUint32(at);
+  }
 }

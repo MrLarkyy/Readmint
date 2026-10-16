@@ -2,6 +2,7 @@ import {
   existsSync,
   mkdirSync,
   mkdtempSync,
+  rmSync,
   readdirSync,
   readFileSync,
   writeFileSync,
@@ -10,7 +11,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { PNG } from "pngjs";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import {
   buildGallery,
   buildWiki,
@@ -102,6 +103,19 @@ describe("the gallery list", () => {
       const template = galleryTemplates.find((t) => t.name === names(row[0] ?? "")[0]);
       expect(template?.items, row[0]).toEqual(names(row[1] ?? ""));
     }
+  });
+
+  it("equals the profile folders and starter design files on disk", () => {
+    const profiles = readdirSync(`${templatesDir}profiles`, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => entry.name);
+    const starters = readdirSync(templatesDir)
+      .filter((file) => file.endsWith(".design.json") && !file.startsWith("calendar-"))
+      .map((file) => file.slice(0, -".design.json".length));
+    const listed = (kind: string): string[] =>
+      galleryTemplates.filter((t) => t.kind === kind).map((t) => t.name);
+    expect(listed("profile").sort()).toEqual(profiles.sort());
+    expect(listed("starter").sort()).toEqual(starters.sort());
   });
 
   it("equals the sections in the template folders", () => {
@@ -240,6 +254,60 @@ describe("the Gallery page", () => {
     ).toThrow(/gallery image templates\/a-light\.png: .*byte limit/);
   });
 
+  it("refuses a flattened image over the per-file limit when its source is under the input limit", () => {
+    // 8-bit grayscale noise stays under 512 KiB, but flattened to RGB it is three times larger.
+    const gray = new PNG({ width: 700, height: 700 });
+    let state = 12345;
+    for (let i = 0; i < gray.data.length; i += 4) {
+      state = Math.imul(state ^ (state >>> 15), 2246822519) + 374761393;
+      const value = (state >>> 16) & 255;
+      gray.data.set([value, value, value, 255], i);
+    }
+    const source = new Uint8Array(PNG.sync.write(gray, { colorType: 0, inputColorType: 6 }));
+    expect(source.byteLength).toBeLessThan(512 * 1024);
+    const one: GalleryTemplate[] = [
+      { name: "a", title: "A", kind: "starter", description: "a", items: ["a"] },
+    ];
+    expect(() =>
+      buildGallery(
+        new Map([
+          ["templates/a-light.png", source],
+          ["templates/a-dark.png", source],
+        ]),
+        one,
+        links,
+      ),
+    ).toThrow(/gallery image templates\/a-light\.png is \d+ bytes, over the 524288 byte budget/);
+  });
+
+  it("refuses a PNG with a second IHDR or interlacing before decoding it", () => {
+    const real = png(1, 1, [0, 0, 0, 255]);
+    const chunk = (name: string, data: number[]): number[] => {
+      const out = Buffer.alloc(12 + data.length);
+      out.writeUInt32BE(data.length, 0);
+      out.write(name, 4, "ascii");
+      Buffer.from(data).copy(out, 8);
+      return [...out];
+    };
+    const ihdr = (side: number, interlace: number): number[] => {
+      const data = Buffer.alloc(13);
+      data.writeUInt32BE(side, 0);
+      data.writeUInt32BE(side, 4);
+      data.set([8, 6, 0, 0, interlace], 8);
+      return [...data];
+    };
+    const sig = [...real.subarray(0, 8)];
+    const twice = new Uint8Array([
+      ...sig,
+      ...chunk("IHDR", ihdr(1, 0)),
+      ...chunk("IHDR", ihdr(6000, 0)),
+      ...chunk("IEND", []),
+    ]);
+    expect(() => onPageColour(twice, [0, 0, 0])).toThrow("more than one IHDR");
+    const interlaced = new Uint8Array([...sig, ...chunk("IHDR", ihdr(1, 1)), ...chunk("IEND", [])]);
+    expect(() => onPageColour(interlaced, [0, 0, 0])).toThrow("interlaced");
+  });
+
   it("refuses a total over 3 MiB", () => {
     const items = ["a", "b", "c", "d", "e", "f", "g"];
     const many: GalleryTemplate[] = [
@@ -280,8 +348,14 @@ describe("onPageColour", () => {
 });
 
 describe("writeWiki", () => {
+  const temp: string[] = [];
+  afterEach(() => {
+    for (const dir of temp.splice(0)) rmSync(dir, { recursive: true, force: true });
+  });
+
   it("replaces the md files and gallery/ of the output folder and nothing else", () => {
     const out = mkdtempSync(join(tmpdir(), "wiki-"));
+    temp.push(out);
     mkdirSync(join(out, "gallery"));
     writeFileSync(join(out, "gallery", "old.png"), "x");
     writeFileSync(join(out, "x.md"), "x");

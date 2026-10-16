@@ -48,9 +48,10 @@ template in light and dark, with a one-line description and links to the templat
   identical images are written once and an unchanged image keeps its URL. The generator fails, naming the file, when a
   golden is missing or over 512 KiB, or when the images together pass 3 MiB (about 2 MB today).
 - **Safe by construction.** The page is Markdown with relative image links into the wiki repository: no script, no
-  external reference. A PNG is checked for size (512 KiB) and dimensions (4096 px a side) before it is decoded.
-- The PNG bytes come from Node's zlib and may differ between Node versions, so the published files come from CI only;
-  tests check that two builds are equal, not a hash.
+  external reference. A PNG is checked before it is decoded: at most 512 KiB, exactly one IHDR, not interlaced, at most 4096 px a side.
+- The PNG bytes come from Node's zlib, so the hash names depend on the Node build: a newer Node 22 may rename images.
+  That is harmless because `gallery/` is replaced whole; CI publishes, and tests check that two builds are equal, not
+  a hash.
 
 ## Links are checked
 
@@ -64,7 +65,7 @@ renamed heading fails a test rather than a reader.
   runs the generator test, builds the pages and commits them, with `gallery/`, to the wiki repository with the workflow's `GITHUB_TOKEN`
   (`contents: write`; the job checks out `<repository>.wiki`). Nothing is committed when the pages are unchanged.
 - **Manually**: `pnpm wiki` writes the pages and `gallery/` to `.wiki-out/` (not committed). Clone `Readmint.wiki.git`, replace its `*.md`
-  files and its `gallery/` folder with those, commit and push.
+  files and its whole `gallery/` folder with those (delete the old folder first), commit and push.
 
 The first publish is the repository owner's step: the wiki must be enabled and have its initial page (it has), and the
 first run of the workflow is started by hand with _Run workflow_.
