@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 import { loadExampleProfile, renderProfile, type ProfileTheme } from "./profileDesigns.js";
-import { longLocationProfileData } from "./sampleProfileData.js";
+import { longLocationProfileData, worstCaseProfileData } from "./sampleProfileData.js";
 
 const locations = {
   "64 characters": "Llanfairpwllgwyngyllgogerychwyrndrobwllllantysiliogogogoch, Wales",
@@ -11,12 +11,13 @@ const locations = {
 function strip(svg: string): { ys: string[]; lastX: number; text: string } {
   const rule = svg.indexOf('<rect x="0" y="38" width="840"');
   expect(rule).toBeGreaterThan(0);
-  const spans = [...svg.slice(0, rule).matchAll(/<tspan x="([^"]*)" y="([^"]*)"[^>]*>([^<]*)<\/tspan>/g)]
-    .map((match) => ({
-      xs: (match[1] ?? "").split(" ").map(Number),
-      y: match[2] ?? "",
-      text: match[3] ?? "",
-    }));
+  const spans = [
+    ...svg.slice(0, rule).matchAll(/<tspan x="([^"]*)" y="([^"]*)"[^>]*>([^<]*)<\/tspan>/g),
+  ].map((match) => ({
+    xs: (match[1] ?? "").split(" ").map(Number),
+    y: match[2] ?? "",
+    text: match[3] ?? "",
+  }));
   const last = spans[spans.length - 1];
   return {
     ys: spans.map((span) => span.y),
@@ -24,6 +25,39 @@ function strip(svg: string): { ys: string[]; lastX: number; text: string } {
     text: last?.text ?? "",
   };
 }
+
+/** The x of the first and last glyph of the strip's two texts, left (login) then right (location and date). */
+function bounds(svg: string): { ys: string[]; leftEnd: number; rightStart: number } {
+  const rule = svg.indexOf('<rect x="0" y="38" width="840"');
+  const spans = [...svg.slice(0, rule).matchAll(/<tspan x="([^"]*)" y="([^"]*)"/g)].map(
+    (match) => ({
+      xs: (match[1] ?? "").split(" ").map(Number),
+      y: match[2] ?? "",
+    }),
+  );
+  const [left, right] = spans;
+  return {
+    ys: spans.map((span) => span.y),
+    leftEnd: left?.xs[left.xs.length - 1] ?? Number.NaN,
+    rightStart: right?.xs[0] ?? Number.NaN,
+  };
+}
+
+describe("year ring header login", () => {
+  for (const theme of ["light", "dark"] as const) {
+    test(`${theme}: the longest login ends before the widest location`, () => {
+      const data = worstCaseProfileData();
+      const svg = renderProfile({
+        template: "year-ring",
+        design: loadExampleProfile("year-ring", "header", theme),
+        data: { github: { ...data.github, location: "W".repeat(255) } },
+      });
+      const { ys, leftEnd, rightStart } = bounds(svg);
+      expect(ys).toEqual(["22", "22"]);
+      expect(leftEnd + 10).toBeLessThan(rightStart);
+    });
+  }
+});
 
 describe("year ring header location", () => {
   for (const [name, location] of Object.entries(locations)) {
