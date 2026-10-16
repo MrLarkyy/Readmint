@@ -65,11 +65,27 @@
           "type": "array",
           "default": []
         },
+        "logoFills": {
+          "type": "array",
+          "default": []
+        },
+        "logoFillsDark": {
+          "type": "array",
+          "default": []
+        },
         "logoLines": {
           "type": "array",
           "default": []
         },
+        "logoLayers": {
+          "type": "array",
+          "default": []
+        },
         "logoNames": {
+          "type": "array",
+          "default": []
+        },
+        "logoWithName": {
           "type": "array",
           "default": []
         },
@@ -376,10 +392,31 @@
                               },
                               "children": [
                                 {
+                                  "type": "group",
+                                  "if": "{{ props.logoLayers[4 * k] }}",
+                                  "children": [
+                                    {
+                                      "type": "group",
+                                      "repeat": {
+                                        "each": "{{ [4 * k, 4 * k + 1, 4 * k + 2, 4 * k + 3] }}",
+                                        "as": "li"
+                                      },
+                                      "if": "{{ props.logoLayers[li] }}",
+                                      "children": [
+                                        {
+                                          "type": "path",
+                                          "d": "{{ props.logoLayers[li] }}",
+                                          "fill": "{{ props.theme == \"dark\" ? (props.logoFillsDark[li] || props.logoFills[li] || \"#808080\") : (props.logoFills[li] || \"#8C8C8C\") }}"
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                },
+                                {
                                   "type": "path",
                                   "d": "{{ props.logos[k] }}",
                                   "fill": "{{ props.theme == \"dark\" ? \"#808080\" : \"#8C8C8C\" }}",
-                                  "if": "{{ props.logos[k] }}"
+                                  "if": "{{ !props.logoLayers[4 * k] && props.logos[k] }}"
                                 },
                                 {
                                   "type": "text",
@@ -387,7 +424,7 @@
                                   "font": "mono",
                                   "fontSize": 11.5,
                                   "fill": "{{ props.theme == \"dark\" ? \"#808080\" : \"#8C8C8C\" }}",
-                                  "if": "{{ !props.logos[k] }}"
+                                  "if": "{{ !(props.logoLayers[4 * k] || props.logos[k]) || props.logoWithName[k] }}"
                                 }
                               ]
                             }
