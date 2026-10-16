@@ -6,6 +6,7 @@ on:
     paths:
       - docs/**
       - packages/wiki/**
+      - packages/components/test/golden/**
   workflow_dispatch:
 
 permissions:
@@ -37,6 +38,8 @@ jobs:
         run: |
           find wiki-checkout -maxdepth 1 -name '*.md' -delete
           cp .wiki-out/*.md wiki-checkout/
+          rm -rf wiki-checkout/gallery
+          cp -r .wiki-out/gallery wiki-checkout/
           cd wiki-checkout
           git add --all
           if git diff --cached --quiet; then
@@ -45,5 +48,5 @@ jobs:
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -m "Update wiki from docs/ at ${GITHUB_SHA}"
+          git commit -m "Update wiki from docs/ and goldens at ${GITHUB_SHA}"
           git push origin HEAD

@@ -12,6 +12,7 @@ export interface ToolbarActions {
   exportYaml(): void;
   exportPng(): void;
   exportWebp(): void;
+  exportSettings(): void;
   addLayer(type: NewLayerType): void;
   uploadFont(file: File): void;
   uploadImage(file: File): void;
@@ -25,13 +26,14 @@ const layerTypes: readonly NewLayerType[] = ["rect", "ellipse", "text", "group"]
 const zooms = [0.5, 1, 2, 4];
 
 /**
- * New, import, undo, redo, export (JSON, YAML, PNG, WebP), add a layer, upload a font or an image, load fixture data, load a settings file and
+ * New, import, undo, redo, export (JSON, YAML, PNG, WebP, the settings file), add a layer, upload a font or an image, load fixture data, load a settings file and
  * pick its section, zoom.
  */
 export class Toolbar {
   readonly root: HTMLElement;
   private readonly undoButton: HTMLButtonElement;
   private readonly redoButton: HTMLButtonElement;
+  private readonly exportSettingsButton: HTMLButtonElement;
   private readonly sectionSelect: HTMLSelectElement;
   private sectionsKey: string | undefined;
 
@@ -63,6 +65,9 @@ export class Toolbar {
     });
     this.button("Export WebP", "export-webp", () => {
       actions.exportWebp();
+    });
+    this.exportSettingsButton = this.button("Export settings", "export-settings", () => {
+      actions.exportSettings();
     });
     for (const type of layerTypes) {
       this.button(`Add ${type}`, `add-${type}`, () => {
@@ -121,6 +126,7 @@ export class Toolbar {
     }
     select.value = settings?.section ?? "";
     select.disabled = settings === undefined;
+    this.exportSettingsButton.disabled = settings === undefined;
   }
 
   private button(text: string, action: string, run: () => void): HTMLButtonElement {

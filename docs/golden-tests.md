@@ -162,3 +162,6 @@ rasterization differs slightly between platforms (gradient dithering, AA), which
 `assets/readme/year-ring-light.png` and `year-ring-dark.png`, shown at the top of the root `README.md`, are copies of
 `packages/components/test/golden/profiles-year-ring/year-light.png` and `year-dark.png`. When that golden changes
 deliberately, copy the new files over them.
+
+The wiki [Gallery](wiki-publishing.md#gallery) reads these goldens directly, so a deliberate golden update
+republishes it with no copy.

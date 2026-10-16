@@ -10,10 +10,15 @@ import {
   wikiPages,
   type WikiPage,
 } from "../src/index.js";
+import { readGoldenImages } from "./goldenImages.js";
 import { anchors } from "./markdown.js";
 
 const docsDir = fileURLToPath(new URL("../../../docs/", import.meta.url));
-const options = { repository: "https://example.test/o/r", branch: "main" };
+const options = {
+  repository: "https://example.test/o/r",
+  branch: "main",
+  images: readGoldenImages(),
+};
 
 function readDocs(): Map<string, string> {
   return new Map(
@@ -25,18 +30,24 @@ function readDocs(): Map<string, string> {
 
 describe("buildWiki", () => {
   const docs = readDocs();
-  const wiki = buildWiki(docs, options);
+  const built = buildWiki(docs, options);
+  const wiki = new Map<string, string>();
+  for (const [file, content] of built) if (typeof content === "string") wiki.set(file, content);
 
   it("is deterministic", () => {
-    expect([...buildWiki(readDocs(), options)]).toEqual([...wiki]);
+    expect([...buildWiki(readDocs(), options)]).toEqual([...built]);
   });
 
   it("publishes every doc, grouped, with Home, the sidebar and the footer", () => {
-    expect([...wiki.keys()].sort()).toEqual(
+    const images = [...built.keys()].filter((file) => file.startsWith("gallery/"));
+    expect(images.length).toBeGreaterThan(0);
+    expect([...built.keys()].sort()).toEqual(
       [
         "Home.md",
         "_Footer.md",
         "_Sidebar.md",
+        "Gallery.md",
+        ...images,
         ...wikiPages.map((page) => `${page.name}.md`),
       ].sort(),
     );
@@ -104,17 +115,19 @@ describe("buildWiki", () => {
   it("resolves every internal link to a page and an anchor that exist", () => {
     const names = new Map(wikiPages.map((page) => [page.name, wiki.get(`${page.name}.md`) ?? ""]));
     names.set("Home", wiki.get("Home.md") ?? "");
+    names.set("Gallery", wiki.get("Gallery.md") ?? "");
     for (const [file, text] of wiki) {
       const own = anchors(text);
       for (const match of text.matchAll(/\]\(([^)\s]+)\)/g)) {
         const target = match[1] ?? "";
         if (/^https?:/.test(target)) {
-          // The examples repository is the one other repository the docs link to.
+          // The examples repository (its root and a template folder) is the one other repository the docs link to.
           expect(target, `${file} links to a repository file`).toMatch(
-            /^(https:\/\/example\.test\/o\/r\/|https:\/\/github\.com\/MrLarkyy\/readmint-template-test$)/,
+            /^(https:\/\/example\.test\/o\/r\/|https:\/\/github\.com\/MrLarkyy\/readmint-template-test(\/tree\/HEAD\/[a-z-]+)?$)/,
           );
           continue;
         }
+        if (built.has(target)) continue;
         const [name = "", anchor] = target.split("#");
         const page = name === "" ? text : names.get(name);
         expect(page, `${file}: ${target}`).toBeDefined();
@@ -142,11 +155,15 @@ describe("buildWiki", () => {
 
   it("gives Home a reading route through every group and lists every page in the sidebar", () => {
     const home = wiki.get("Home.md") ?? "";
-    const route = home.slice(home.indexOf("## Reading route"), home.indexOf("## Start here"));
+    const route = home.slice(home.indexOf("## Reading route"), home.indexOf("## See it first"));
     wikiGroups.forEach((group, index) => {
       expect(route).toContain(`${String(index + 1)}. **${group.title}**`);
     });
+    expect(route).toContain("1. **See it first**");
+    expect(route).toContain("](Gallery)");
     expect(route).toContain("](Getting-started)");
+    expect(wiki.get("_Sidebar.md")).toContain("](Gallery)");
+    expect(home).toContain("- [Gallery](Gallery): ");
     const sidebar = wiki.get("_Sidebar.md") ?? "";
     for (const page of wikiPages) {
       expect(sidebar).toContain(`](${page.name})`);

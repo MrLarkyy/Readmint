@@ -7,4 +7,6 @@ export interface EditorIssue {
   readonly source: EditorIssueSource;
   readonly message: string;
   readonly path?: string;
+  /** A warning does not block the preview; absent, the issue is an error. */
+  readonly severity?: "warning";
 }

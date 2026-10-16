@@ -18,9 +18,12 @@ export class IssueList {
   update(issues: readonly EditorIssue[]): void {
     clear(this.root);
     for (const issue of issues) {
-      const item = element(this.root, "li", { className: `rm-issue rm-issue-${issue.source}` });
+      const warning = issue.severity === "warning";
+      const item = element(this.root, "li", {
+        className: `rm-issue rm-issue-${issue.source}${warning ? " rm-issue-warning" : ""}`,
+      });
       const layer = issue.path === undefined ? undefined : layerOf(issue.path);
-      const text = `${issue.source}: ${issue.message}${issue.path === undefined || issue.path === "" ? "" : ` (${issue.path})`}`;
+      const text = `${warning ? "warning: " : ""}${issue.source}: ${issue.message}${issue.path === undefined || issue.path === "" ? "" : ` (${issue.path})`}`;
       if (layer === undefined) {
         item.textContent = text;
         continue;

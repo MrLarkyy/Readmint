@@ -2,6 +2,11 @@ import type { WikiGroup, WikiPage } from "./WikiPage.js";
 
 /** The groups of the wiki, in reading order. */
 export const wikiGroups: readonly WikiGroup[] = [
+  {
+    id: "gallery",
+    title: "See it first",
+    summary: "every template rendered, light and dark, before you install anything",
+  },
   { id: "start", title: "Start here", summary: "from nothing to a rendered design in your README" },
   { id: "guides", title: "Guides", summary: "how to do one thing well" },
   { id: "reference", title: "Reference", summary: "the formats and languages, exactly" },
