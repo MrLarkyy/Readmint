@@ -62,7 +62,8 @@ export async function loadRaster(): Promise<Loaded> {
 /**
  * A fresh libwebp instance. wasm-webp never frees a decoded image and does not check a failed decode, so each export
  * gets its own instance (dropped with its memory afterwards), and a decode whose pixels are the instance's memory at
- * address 0 (what a failed `WebPDecodeRGBA` returns, with the header's sizes) counts as failed.
+ * address 0 (what a failed `WebPDecodeRGBA` returns, with the header's sizes) counts as failed. Reported upstream:
+ * https://github.com/nieyuyao/webp-wasm/issues/7 — drop both workarounds once a release fixes it.
  */
 export async function openWebpCodec(): Promise<WebpCodec> {
   const { webp } = await loadRaster();
