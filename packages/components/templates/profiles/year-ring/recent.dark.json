@@ -136,7 +136,7 @@
                                   "type": "text",
                                   "x": 100,
                                   "y": 10.883,
-                                  "content": "{{ push.repository }}",
+                                  "content": "{{ push.repository | truncate(100) | truncateWidth(88, \"bold\", 14) }}",
                                   "font": "bold",
                                   "fontSize": 14,
                                   "fill": "{{ props.theme == \"dark\" ? \"#ECEEF2\" : \"#15171C\" }}"
@@ -162,7 +162,7 @@
                                   "type": "text",
                                   "x": 196,
                                   "y": 10.883,
-                                  "content": "{{ push.message | truncate(80) }}",
+                                  "content": "{{ push.message | truncate(80) | truncateWidth(440, \"reg\", 14) }}",
                                   "font": "reg",
                                   "fontSize": 14,
                                   "fill": "{{ props.theme == \"dark\" ? \"#C3C8CF\" : \"#3B3F47\" }}"
