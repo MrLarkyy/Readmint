@@ -6,7 +6,9 @@ export function galleryImagePath(
   item: string,
   theme: "light" | "dark",
 ): string {
-  return template.kind === "profile"
-    ? `profiles-${template.name}/${item}-${theme}.png`
-    : `templates/${item}-${theme}.png`;
+  if (template.kind === "profile") return `profiles-${template.name}/${item}-${theme}.png`;
+  if (template.kind === "calendar") {
+    return theme === "light" ? `calendar/${item}.png` : `calendar/${item}-dark.png`;
+  }
+  return `templates/${item}-${theme}.png`;
 }

@@ -1,0 +1,26 @@
+[
+  {
+    "path": "/palette/light/name",
+    "code": "pattern"
+  },
+  {
+    "path": "/palette/light/short",
+    "code": "pattern"
+  },
+  {
+    "path": "/palette/light/url",
+    "code": "pattern"
+  },
+  {
+    "path": "/palette/light/bound",
+    "code": "pattern"
+  },
+  {
+    "path": "/palette/light/number",
+    "code": "type"
+  },
+  {
+    "path": "/palette/light/object",
+    "code": "type"
+  }
+]

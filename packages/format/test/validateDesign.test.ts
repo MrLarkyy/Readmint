@@ -716,3 +716,316 @@ describe("local bindings (let, RM-118)", () => {
     ]);
   });
 });
+
+describe("palette (RM-119)", () => {
+  const palette = {
+    light: { bg: "#ffffff", ink: "#1f2328" },
+    dark: { bg: "#0d1117", ink: "#e6edf3" },
+  };
+  const withPalette = (extra: Record<string, unknown>) => ({ ...base(), palette, ...extra });
+  const valid = (value: unknown) => {
+    expect(validateDesign(value)).toEqual({ ok: true, value });
+  };
+  const codes = (value: unknown) =>
+    issuesOf(value).issues.map(({ path, code }) => ({ path, code }));
+  const font = { family: "F", src: "f.ttf", licence: { embedding: "allowed" } };
+  const textOf = (content: string) =>
+    withPalette({ assets: { fonts: { f: font } }, layers: [{ type: "text", font: "f", content }] });
+
+  test("tokens may be read anywhere a binding goes", () => {
+    valid(
+      withPalette({
+        canvas: { width: 10, height: 10, background: "{{ palette.bg }}" },
+        assets: { fonts: { f: font } },
+        animation: { duration: 1000 },
+        components: {
+          c: {
+            props: { tone: { type: "color", default: "#000000" } },
+            layers: [rect({ fill: "{{ props.tone }}" })],
+          },
+        },
+        layers: [
+          rect({
+            let: { line: "{{ palette.ink }}" },
+            fill: {
+              type: "linear",
+              stops: [
+                { offset: 0, color: "{{ palette.bg }}" },
+                { offset: 1, color: '{{ palette["ink"] }}' },
+              ],
+            },
+            stroke: "{{ line }}",
+            animate: {
+              fill: {
+                keyframes: [
+                  { offset: 0, value: "{{ palette.bg }}" },
+                  { offset: 1, value: "{{ palette.ink }}" },
+                ],
+              },
+            },
+          }),
+          { type: "text", content: "on {{ palette.bg }}", font: "f", fill: "{{ palette.ink }}" },
+          { type: "component", ref: "c", props: { tone: "{{ palette.ink }}" } },
+        ],
+      }),
+    );
+  });
+
+  test("a token missing in a mode is located at the mode, naming where it is defined", () => {
+    const design = withPalette({
+      palette: {
+        light: { bg: "#fff", accent: "#0969da" },
+        dark: { bg: "#000", line: "#30363d" },
+        dim: { line: "#444", bg: "#222", accent: "#111" },
+      },
+    });
+    expect(issuesOf(design).issues).toEqual([
+      {
+        path: "/palette/light",
+        code: "missing-property",
+        message: 'missing token "line" (defined in mode "dark")',
+      },
+      {
+        path: "/palette/dark",
+        code: "missing-property",
+        message: 'missing token "accent" (defined in mode "light")',
+      },
+    ]);
+  });
+
+  test("a read of an unknown token is located at the string", () => {
+    const design = withPalette({
+      assets: { fonts: { f: font } },
+      components: { c: { layers: [rect({ fill: "{{ palette.chip }}" })] } },
+      layers: [
+        rect({ fill: "{{ palette.fg }}", stroke: "{{ palette['edge'] }}" }),
+        {
+          type: "text",
+          font: "f",
+          content: '{{ palette.bg }} and {{ palette.nope }}, {{ palette["nope"] }} once',
+        },
+      ],
+    });
+    expect(issuesOf(design).issues).toEqual([
+      { path: "/layers/0/fill", code: "unknown-reference", message: 'unknown palette token "fg"' },
+      {
+        path: "/layers/0/stroke",
+        code: "unknown-reference",
+        message: 'unknown palette token "edge"',
+      },
+      {
+        path: "/layers/1/content",
+        code: "unknown-reference",
+        message: 'unknown palette token "nope"',
+      },
+      {
+        path: "/components/c/layers/0/fill",
+        code: "unknown-reference",
+        message: 'unknown palette token "chip"',
+      },
+    ]);
+  });
+
+  test.each([
+    ["a string literal", "{{ 'palette.nope' }}"],
+    ["a string literal with an escape and }}", '{{ "a\\"}} palette.nope" }}'],
+    ["a property", "{{ x.palette.nope }}"],
+    ["text outside the placeholders", "palette.nope {{ 1 }} palette.nope"],
+    ["a longer name", "{{ my-palette.nope + palette_x.nope }}"],
+    ["a computed key", "{{ palette[name] }}"],
+    ["a key with an escape", '{{ palette["n\\u{6f}pe"] }}'],
+    ["an unclosed placeholder", "{{ palette.bg"],
+  ])("%s is no read of an unknown token", (_case, content) => {
+    valid(textOf(content));
+  });
+
+  test("text the renderer never evaluates is no read", () => {
+    const note = "Set {{ palette.nope }} for links";
+    valid({
+      ...textOf("x"),
+      title: note,
+      description: note,
+      components: {
+        c: {
+          description: note,
+          props: { label: { type: "string", default: "{{ palette.nope }}" } },
+          layers: [rect({})],
+        },
+      },
+    });
+  });
+
+  test.each([
+    [
+      "the canvas",
+      { canvas: { width: 1, height: 1, background: "{{ palette.nope }}" } },
+      "/canvas/background",
+    ],
+    ["a style", { styles: { s: { fill: "{{ palette.nope }}" } } }, "/styles/s/fill"],
+    ["a layer", { layers: [rect({ fill: "{{ palette.nope }}" })] }, "/layers/0/fill"],
+    [
+      "a layer animation",
+      {
+        animation: { duration: 1000 },
+        layers: [
+          rect({
+            animate: {
+              fill: {
+                keyframes: [
+                  { offset: 0, value: "{{ palette.nope }}" },
+                  { offset: 1, value: "#000" },
+                ],
+              },
+            },
+          }),
+        ],
+      },
+      "/layers/0/animate/fill/keyframes/0/value",
+    ],
+    [
+      "a component",
+      { components: { c: { layers: [rect({ fill: "{{ palette.nope }}" })] } } },
+      "/components/c/layers/0/fill",
+    ],
+  ])("an unknown read in %s is reported", (_area, extra, path) => {
+    expect(codes(withPalette(extra))).toEqual([{ path, code: "unknown-reference" }]);
+  });
+
+  test("without a palette, palette.x is a data read", () => {
+    valid({ ...base(), layers: [rect({ fill: "{{ palette.anything }}" })] });
+  });
+
+  test("let and repeat names cannot take the name palette when the design has one", () => {
+    const layers = [
+      rect({ let: { palette: "{{ 1 }}" } }),
+      rect({ repeat: { each: "{{ [1] }}", as: "palette" } }),
+      rect({ repeat: { each: "{{ [1] }}", index: "palette" } }),
+    ];
+    valid({ ...base(), layers });
+    expect(issuesOf(withPalette({ layers })).issues).toEqual([
+      {
+        path: "/layers/0/let/palette",
+        code: "reserved-name",
+        message: `"palette" is reserved by the design's palette and cannot be a let name`,
+      },
+      {
+        path: "/layers/1/repeat/as",
+        code: "reserved-name",
+        message: `"palette" is reserved by the design's palette and cannot be a repeat name`,
+      },
+      {
+        path: "/layers/2/repeat/index",
+        code: "reserved-name",
+        message: `"palette" is reserved by the design's palette and cannot be a repeat name`,
+      },
+    ]);
+  });
+
+  test("the default repeat names stay free and a component's let is checked too", () => {
+    const design = withPalette({
+      components: { c: { layers: [rect({ let: { palette: "{{ 1 }}" } })] } },
+      layers: [rect({ repeat: { each: "{{ [1] }}" }, let: { tone: "{{ palette.bg }}" } })],
+    });
+    expect(codes(design)).toEqual([
+      { path: "/components/c/layers/0/let/palette", code: "reserved-name" },
+    ]);
+  });
+
+  test.each(["true", "false", "null"])("the token %s is reserved in every mode", (token) => {
+    const design = withPalette({
+      palette: { light: { [token]: "#fff" }, dark: { [token]: "#000" } },
+    });
+    expect(issuesOf(design).issues).toEqual(
+      ["light", "dark"].map((mode) => ({
+        path: `/palette/${mode}/${token}`,
+        code: "reserved-name",
+        message: `"${token}" is reserved and cannot be a palette token`,
+      })),
+    );
+  });
+
+  test("16 modes and 256 tokens are valid, one more of either a count issue", () => {
+    const tokens = (count: number) =>
+      Object.fromEntries(Array.from({ length: count }, (_, i) => [`t${String(i)}`, "#000"]));
+    const modes = (count: number, size: number) =>
+      Object.fromEntries(Array.from({ length: count }, (_, i) => [`m${String(i)}`, tokens(size)]));
+    valid(
+      withPalette({ palette: modes(DesignLimits.maxPaletteModes, DesignLimits.maxPaletteTokens) }),
+    );
+    expect(issuesOf(withPalette({ palette: modes(17, 1) })).issues).toEqual([
+      { path: "/palette", code: "count", message: "must have at most 16 entries" },
+    ]);
+    expect(issuesOf(withPalette({ palette: { light: tokens(257) } })).issues).toEqual([
+      { path: "/palette/light", code: "count", message: "must have at most 256 entries" },
+    ]);
+  });
+
+  test("an empty palette is a count issue; an empty mode is not, it holds no token", () => {
+    expect(issuesOf(withPalette({ palette: {} })).issues).toEqual([
+      { path: "/palette", code: "count", message: "must have at least 1 entry" },
+    ]);
+    valid(withPalette({ palette: { light: {} } }));
+    const defs = designJsonSchema["$defs"] as Record<string, Record<string, unknown>>;
+    expect(defs["Palette"]).toMatchObject({ minProperties: 1, maxProperties: 16 });
+    expect(defs["PaletteMode"]).toMatchObject({ maxProperties: 256 });
+  });
+
+  test.each([
+    ["a list", [], "/palette", "type"],
+    ["a mode that is a string", { light: "#fff" }, "/palette/light", "type"],
+    ["a token that is an object", { light: { bg: {} } }, "/palette/light/bg", "type"],
+    ["a token that is a number", { light: { bg: 3 } }, "/palette/light/bg", "type"],
+    ["a token that is a binding", { light: { bg: "{{ 1 }}" } }, "/palette/light/bg", "pattern"],
+    ["a colour name", { light: { bg: "red" } }, "/palette/light/bg", "pattern"],
+    ["five hex digits", { light: { bg: "#12345" } }, "/palette/light/bg", "pattern"],
+    ["a url", { light: { bg: "url(#a)" } }, "/palette/light/bg", "pattern"],
+    ["none", { light: { bg: "none" } }, "/palette/light/bg", "pattern"],
+    ["a mode key with a digit first", { "1a": { bg: "#fff" } }, "/palette/1a", "pattern"],
+    ["a token key a-1", { light: { "a-1": "#fff" } }, "/palette/light/a-1", "pattern"],
+  ])("%s is refused", (_case, value, path, code) => {
+    expect(codes(withPalette({ palette: value }))).toEqual([{ path, code }]);
+  });
+
+  test("a 1 MB flood of token keys is one count issue, found fast", () => {
+    const flood = Object.fromEntries(
+      Array.from({ length: 100_000 }, (_, i) => [`token${String(i)}`, "#000"]),
+    );
+    const started = performance.now();
+    expect(issuesOf(withPalette({ palette: { light: flood } })).issues).toEqual([
+      { path: "/palette/light", code: "count", message: "must have at most 256 entries" },
+    ]);
+    expect(performance.now() - started).toBeLessThan(2000 * loadScale());
+  });
+
+  test("modes sharing one huge token object are refused before validation", () => {
+    const shared = Object.fromEntries(
+      Array.from({ length: 70_000 }, (_, i) => [`t${String(i)}`, "#000"]),
+    );
+    const modes = Object.fromEntries(
+      Array.from({ length: 16 }, (_, i) => [`m${String(i)}`, shared]),
+    );
+    expect(issuesOf(withPalette({ palette: modes })).issues).toMatchObject([
+      { path: "", code: "too-large" },
+    ]);
+  });
+
+  test("scanning hostile text for reads stays fast", () => {
+    const content = `${"{{ palette.bg ".repeat(300)}}} {{ '${"palette.x ".repeat(450)}`;
+    const started = performance.now();
+    valid(textOf(content));
+    expect(performance.now() - started).toBeLessThan(1000 * loadScale());
+  });
+
+  test("__proto__ and constructor are plain tokens and pollute nothing", () => {
+    const design = JSON.parse(
+      '{"version":0,"canvas":{"width":10,"height":10,"background":"{{ palette.constructor }}"},' +
+        '"palette":{"light":{"__proto__":"#fff","constructor":"#000"},' +
+        '"dark":{"constructor":"#111","__proto__":"#eee"}},' +
+        '"layers":[{"type":"rect","width":1,"height":1,"fill":"{{ palette.__proto__ }}"}]}',
+    ) as Record<string, unknown>;
+    valid(design);
+    const reading = { ...design, layers: [rect({ fill: "{{ palette.toString }}" })] };
+    expect(codes(reading)).toEqual([{ path: "/layers/0/fill", code: "unknown-reference" }]);
+    expect(Object.hasOwn(Object.prototype, "#fff")).toBe(false);
+  });
+});
