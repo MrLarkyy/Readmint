@@ -42,6 +42,8 @@ export function loadSettings(
     ...state,
     settings: {
       sections: result.value,
+      source: text,
+      loaded: result.value,
       ...sectionOf(result.value, state.settings?.section, preferredSection),
     },
     issues: [],

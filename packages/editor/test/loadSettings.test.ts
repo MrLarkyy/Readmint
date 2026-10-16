@@ -37,6 +37,28 @@ test.each([
   expect(JSON.stringify(next.issues)).not.toContain("s3cret");
 });
 
+test("keeps the loaded text and sections for the export", () => {
+  const next = loadSettings(empty, text, "header");
+  expect(next.settings?.source).toBe(text);
+  expect(next.settings?.loaded).toBe(next.settings?.sections);
+  expect(loadSettings(next, text).settings?.section).toBe("header");
+});
+
+test("refuses 10,000 levels of nesting with a clear message", () => {
+  const deep = `{"a": {"b": ${"[".repeat(10_000)}${"]".repeat(10_000)}}}`;
+  const next = loadSettings(empty, deep);
+  expect(next.settings).toBeUndefined();
+  expect(next.issues.length).toBeGreaterThan(0);
+  expect(next.issues[0]?.message).toMatch(/^settings file: /u);
+});
+
+test("refuses __proto__ names by their pointer", () => {
+  const section = loadSettings(empty, '{"__proto__": {"a": 1}}');
+  expect(section.issues).toMatchObject([{ path: "/__proto__" }]);
+  const prop = loadSettings(empty, '{"a": {"__proto__": 1}}');
+  expect(prop.issues).toMatchObject([{ path: "/a/__proto__" }]);
+});
+
 test("refuses a file over the size cap", () => {
   const next = loadSettings(empty, " ".repeat(EditorLimits.maxSettingsBytes + 1));
   expect(next.settings).toBeUndefined();
