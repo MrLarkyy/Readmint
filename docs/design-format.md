@@ -526,7 +526,10 @@ binding was already any string, and one naming `props` failed with an `unknown-n
 does not name `props` is evaluated as before. So no design that rendered changes, with one corner case: a design with
 a root instance whose canvas binding read a data key named `props` now reads the instance's props instead.
 Local bindings (`let`, RM-118) were added to v0 as an optional layer property, with the issue codes `reserved-name` and
-`duplicate-name`, so no design needs migrating and every existing design renders as before; a reader older than
-RM-118 rejects `let` as an `unknown-property` instead of drawing the design without it.
+`duplicate-name`, so no design needs migrating and every existing design draws the same SVG; a reader older than
+RM-118 rejects `let` as an `unknown-property` instead of drawing the design without it. Copying scopes is charged to the
+step budget since then, also in designs without `let`: each repeat item costs its scope's locals plus 2 steps instead
+of 1, each component instance its scope's locals plus 1 instead of none, so a design close to `maxExpressionSteps` can
+now fail with a `budget` issue ([renderer.md](renderer.md#limits)).
 The grammar inside bindings is
 the expression language v0 of `@readmint/expr`, described in [docs/expressions.md](expressions.md).

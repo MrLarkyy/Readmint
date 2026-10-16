@@ -793,6 +793,27 @@ describe("hostile lets (RM-118)", () => {
     ],
   ];
 
+  test("a component instance is charged its props scope: one step per local plus one", () => {
+    const design: Design = {
+      version: 0,
+      canvas: { width: 10, height: 10 },
+      components: { c: { layers: [{ type: "rect", width: 1, height: 1 }] } },
+      layers: [{ type: "component", ref: "c" }],
+    };
+    // Nothing else is evaluated: the props scope is the render's only step.
+    expect(renderSvg(design, { limits: { maxExpressionSteps: 1 } }).ok).toBe(true);
+    expect(renderSvg(design, { limits: { maxExpressionSteps: 0 } })).toMatchObject({
+      ok: false,
+      issues: [
+        {
+          path: "/layers/0",
+          code: "binding",
+          message: "component props: evaluation exceeded its budget of 0 steps (budget)",
+        },
+      ],
+    });
+  });
+
   test.each(wideLeaves)(
     "repeat copies of %s under 256 let locals are charged their copies and stop fast",
     (_name, leaf, components) => {
