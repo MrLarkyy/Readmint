@@ -138,7 +138,7 @@ export class TextShaper {
     return resolveLevels(text);
   }
 
-  /** Whether no font of the text has a character, own or as a space / hyphen fallback (it is then not drawn and keeps the .notdef advance). */
+  /** Whether no font of the text has a character, own or as a space / hyphen fallback (it is then not drawn and takes no space). */
   lacks(codePoint: number): boolean {
     return !isDefaultIgnorable(codePoint) && this.fontFor(codePoint) === missing;
   }
@@ -174,14 +174,15 @@ export class TextShaper {
       const codePoint = mapped.codePointAt(0) ?? 0;
       const xOffset = shaped.xOffsets[index] ?? 0;
       const yOffset = shaped.yOffsets[index] ?? 0;
+      const dropped = run.font === missing;
       const single = mapped.length === (codePoint > 0xffff ? 2 : 1);
       glyphs.push({
         font: glyph === 0 ? undefined : drawn,
         glyph,
         codePoint,
         text,
-        x: xOffset === 0 ? x : x + scaled(xOffset),
-        y: yOffset === 0 ? 0 : scaled(yOffset),
+        x: xOffset === 0 || dropped ? x : x + scaled(xOffset),
+        y: yOffset === 0 || dropped ? 0 : scaled(yOffset),
         plain:
           single &&
           !rtl &&
@@ -193,6 +194,8 @@ export class TextShaper {
           glyph === metrics.glyphFor(codePoint),
         rtl,
       });
+      // A cluster no font covers is not drawn and takes no space: no advance, letter spacing or kerning.
+      if (dropped) return;
       // The base advance, letter spacing after the cluster's last glyph, then what GPOS added (kerning) before the
       // next glyph: the order the sums ran in before shaping, so unshaped text keeps its exact positions.
       const base = metrics.advanceOf(glyph);

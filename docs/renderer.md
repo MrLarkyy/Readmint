@@ -192,10 +192,21 @@ Drawn in document order, first at the back. Layer `id` and `name` are not emitte
   pen positions the renderer computed before shaping existed whenever the font applies nothing but pair kerning to
   it.
 - **Missing glyphs**: a code point neither the font nor its fallbacks have is not written, so no engine draws it (no
-  browser fallback font, no `.notdef` box); it keeps the advance of the font's `.notdef` glyph, so the layout does not
-  depend on it (a space variant or U+2011 the font can draw by the fallbacks above is not missing). The render warns `missing-glyph` once per font asset a text names (also when a `fontWeight` picked
+  browser fallback font, no `.notdef` box); it takes no space either (no advance, no letter spacing, no kerning across it), so the line closes
+  over it; the cluster still separates its neighbours, so they are not kerned together (Montserrat Medium at 20 px: AV measures 28.14,
+  A, a dropped cluster and V measure 28.88); the spaces typed around it stay, and a word of dropped clusters only has no width and
+  never starts a wrapped line (the empty word between two spaces has no width either: at a break the first of two
+  spaces stays on the line, so `aaaa`, two spaces, `bbbb` wraps to `aaaa` plus one trailing space, then `bbbb`). A cluster is one user-perceived character, so an emoji sequence
+  (a ZWJ family, a flag, a skin tone, a variation selector) is dropped whole; a keycap keeps its digit when a font has it and
+  drops the enclosing mark U+20E3. An emoji is therefore drawn only when a font of the text has it as an outline glyph:
+  add a monochrome outline emoji font (when its licence allows embedding) as a `fallback` of the text's font. Colour
+  glyph formats are not drawn: a font that holds only bitmaps (`CBDT`, `sbix`) has no outlines and is refused as
+  `asset-format`; a font with `COLR` or SVG glyphs next to its outlines is accepted, and a glyph that has no outline of
+  its own keeps its advance (an empty space) with no warning, because the font does cover the character. No emoji font is bundled or implied. (A space variant or U+2011 the font can draw by the fallbacks above is not missing.) The render warns `missing-glyph` once per font asset a text names (also when a `fontWeight` picked
   another face of its family), naming up to ten such characters. Default ignorables (ZWJ, ZWNJ, bidi controls,
-  variation selectors, ...) take part in shaping and bidi, are never drawn and never count as missing.
+  variation selectors, ...) take part in shaping and bidi, are never drawn and never count as missing, so the warning
+  names the characters that carry a cluster: pictographs, but also the keycap mark U+20E3, regional indicators (a flag)
+  and skin-tone modifiers. A dropped cluster inside a word still separates the letters around it for joining (Arabic) and ligatures.
 - **Remaining limits of shaping**: only Arabic and Devanagari have shapers of their own; every other script (Hebrew,
   Thai, Bengali, Tamil, Khmer, Myanmar, the scripts HarfBuzz's USE shaper handles, ...) gets the font's GSUB and GPOS
   features through the default shaper, without syllable reordering. Only the default language system is used (no
@@ -206,7 +217,7 @@ Drawn in document order, first at the back. Layer `id` and `name` are not emitte
   U+2011 (Text, Space and hyphen fallbacks). No vertical text, no variable-font axes,
   no fallback shaping for fonts without layout tables (Arabic presentation forms). Characters of one word in different
   fonts do not join or attach across the font change.
-- A line break in the content is a hard break. With a `width`, words (split at breakable spaces: U+0020, U+2000-2006, U+2008-200A, U+205F, U+3000; U+00A0, U+2007 and U+202F never break) fill each line greedily; a word
+- A line break in the content is a hard break. With a `width`, words (split at breakable spaces: U+0020, U+1680, U+2000-2006, U+2008-200A, U+205F, U+3000; U+00A0, U+2007 and U+202F never break) fill each line greedily; a word
   wider than the line breaks between clusters, never inside one (a ligature, a letter with its marks, a conjunct). Word widths include kerning inside the word; kerning across a space
   is left out of the wrapping decision (it is in the final positions). The space at a soft break is dropped, every
   other space is kept (`xml:space="preserve"`).
@@ -340,7 +351,8 @@ budget?, maxBytes? })`, `encodeWoff`, `decodeWoff`, `glyphClosure`, `OutlineBudg
   whole, base included, to the first fallback that has all of it (before, only the mark took the fallback and drew
   unattached; a fallback in another family can now draw the base letter too), and letters excluded from composition (Devanagari U+0958-U+095F, Hebrew presentation forms such as
   U+FB2A) are drawn from their base and nukta or point by the font's own features, not from the font's precomposed
-  glyph. Since RM-60, a space variant (U+00A0, U+2000-U+200A, U+202F, U+205F, U+3000) or U+2011 a font lacks is drawn
+  glyph. Since RM-77, a character no font has no longer keeps the advance of `.notdef`: text with emoji or other uncovered characters
+  is narrower than before and lines wrap later. Since RM-60, a space variant (U+00A0, U+2000-U+200A, U+202F, U+205F, U+3000) or U+2011 a font lacks is drawn
   from the font's own space or hyphen glyph, no longer reported as `missing-glyph` or taken from a `fallback` font:
   a primary without U+2009 but with a fallback that has it now draws its own space at 1/5 em. Since RM-59, Arabic text
   with modifier marks (U+0654, U+0655, U+0658, U+06DC, ...) stacks them nearest the base, before the vowel marks
@@ -516,7 +528,7 @@ refused:` and the reason (`a JFIF segment`, `Adobe transform 1`, `component ids 
   raster output (a Display P3 or Adobe RGB profile, a P3 cICP or cHRM, gAMA 1.0 alone: 40 to 73 levels per channel
   apart). Removed, as whole segments or chunks, where decoders read them: JPEG APP2 `ICC_PROFILE\0` segments before
   the first SOS, with the 0xFF fill bytes before the marker, so the copy's walk meets the same markers where stray
-  bytes follow the segment (every part of a split profile; another APP2, such as `MPF`, stays); PNG `iCCP`, `sRGB`, `gAMA`,
+  bytes follow the segment (every part of a split profile; another APP2 stays), and the segments that lead a decoder to an Ultra HDR gain map: APP2 `MPF\0`, APP2 `urn:iso:std:iso:ts:21496:-1\0` and APP1 XMP (`http://ns.adobe.com/xap/1.0/\0`) naming the `http://ns.adobe.com/hdr-gain-map/1.0/` or the `ns.google.com/photos/1.0/container` namespace; when one is found, every byte after the first EOI goes too (the appended gain map image would only count against the size budget), so the pixels drawn are the SDR base image in both Chromium and resvg. The rule rests on how Chromium (Skia) finds a gain map, by the MPF index and the XMP directory; no HDR display was available to probe it, so the browser test compares SDR output only); PNG `iCCP`, `sRGB`, `gAMA`,
   `cHRM`, `cICP`, `mDCV` and `cLLI` before the first `IDAT` (no decoder reads later copies); WebP `ICCP` chunks inside
   the RIFF payload (bytes after it are left alone), with the VP8X ICC flag (0x20) cleared, with or without a chunk,
   and the RIFF size lowered by the bytes removed. Every
@@ -689,7 +701,7 @@ charged alike, the images the render checked found in the cache.
 | `font-reserved-name`   | warning: the font has a Reserved Font Name (declared, or stated in its name table), so no subset may be embedded; its text is drawn as paths (once per asset, at what decided)                                                                            |
 | `too-large`            | the SVG passes `maxOutputBytes`, a text passes `maxTextLength`, the repeats pass `maxRepeatCopies` (at the `repeat` that crossed it), the tracks pass `maxAnimationKeyframes` (at the track that crossed it), components nest deeper than 64 levels       |
 | `font-family-mismatch` | warning: the asset family differs from the family inside the font                                                                                                                                                                                         |
-| `missing-glyph`        | warning: characters neither the font nor its fallbacks have; they are not drawn and keep the `.notdef` advance (once per font asset, up to ten named)                                                                                                     |
+| `missing-glyph`        | warning: characters neither the font nor its fallbacks have; they are not drawn and take no space (once per font asset, up to ten named)                                                                                                                  |
 | `animation-cut`        | warning: a track runs past the end of the timeline and is cut there (once per track, however many copies)                                                                                                                                                 |
 
 ## Report

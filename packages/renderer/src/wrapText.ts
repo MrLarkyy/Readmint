@@ -13,7 +13,7 @@ export interface WrappedParagraph {
   readonly lines: readonly { readonly start: number; readonly end: number }[];
 }
 
-const BREAKABLE_SPACES = /([ \u2000-\u2006\u2008-\u200a\u205f\u3000])/u;
+const BREAKABLE_SPACES = /([ \u1680\u2000-\u2006\u2008-\u200a\u205f\u3000])/u;
 
 const codePoints: SplitWord = (word) => Array.from(word);
 
@@ -31,7 +31,7 @@ export function wrapText(
 
 /**
  * Lines of a text: every line break is a hard break (a new paragraph); with a `width`, words (split at breakable
- * spaces: U+0020, U+2000-2006, U+2008-200A, U+205F, U+3000; the no-break spaces stay inside words) fill each line greedily and a word wider than the width breaks between the pieces `split` gives (clusters,
+ * spaces: U+0020, U+1680, U+2000-2006, U+2008-200A, U+205F, U+3000; the no-break spaces stay inside words) fill each line greedily and a word wider than the width breaks between the pieces `split` gives (clusters,
  * never inside one). The space at a soft break is dropped, every other space is kept.
  */
 export function wrapParagraphs(
@@ -74,7 +74,9 @@ function wrapParagraph(
       space = separator === "" ? 0 : measure(separator);
       spaceWidths.set(separator, space);
     }
-    if (started && lineWidth + space + wordWidth <= width) {
+    // a word with no width never forces a break: dropped glyphs would start an empty or space-led line. The empty
+    // word between two consecutive spaces has no width either, so it stays on the line and the break falls after it
+    if (started && (wordWidth === 0 || lineWidth + space + wordWidth <= width)) {
       end = wordStart + word.length;
       lineWidth += space + wordWidth;
       continue;
