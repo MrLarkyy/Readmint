@@ -1,6 +1,14 @@
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 import { afterEach, beforeEach, expect, test } from "vitest";
 import { runGit } from "../src/runGit.js";
-import { type ActionTree, design, makeActionTree, recordingRunner } from "./actionTree.js";
+import {
+  type ActionTree,
+  design,
+  makeActionTree,
+  recordingRunner,
+  smokeDir,
+} from "./actionTree.js";
 
 let tree: ActionTree;
 
@@ -44,4 +52,51 @@ test("a dry run needs no repository at all", async () => {
     },
   );
   expect(run.code).toBe(0);
+});
+
+test("a dry run of the smoke fixtures binds a data-json file and runs no git", async () => {
+  for (const name of ["card.json", "card.dark.json", "data.json", "counts.json"]) {
+    await tree.file(name, await readFile(join(smokeDir, name)));
+  }
+  const run = await tree.run(
+    {
+      designs: "card.json",
+      "data-file": "data.json",
+      "data-json": "counts=counts.json",
+      "dry-run": "true",
+    },
+    {
+      runGit: () => {
+        throw new Error("git must not run");
+      },
+    },
+  );
+  expect(run.code).toBe(0);
+  expect(await tree.read("readmint/card.svg")).toContain('width="17"');
+  expect(await tree.read("readmint/card.dark.svg")).toContain('width="17"');
+});
+
+test("a data-json source that cannot load fails the run with its line", async () => {
+  const run = await tree.run({
+    designs: "card.json",
+    "data-file": "data.json",
+    "data-json": "counts=missing.json",
+    "dry-run": "true",
+  });
+  expect(run.code).not.toBe(0);
+  expect(run.log).toContain(
+    '::error::JSON data counts (not-found): The JSON file "missing.json" does not exist.',
+  );
+});
+
+test("a data-json namespace the data-file holds fails the run naming it", async () => {
+  await tree.file("stats.json", { v: 3 });
+  const run = await tree.run({
+    designs: "card.json",
+    "data-file": "data.json",
+    "data-json": "stats=stats.json",
+    "dry-run": "true",
+  });
+  expect(run.code).not.toBe(0);
+  expect(run.log).toContain("data namespace stats");
 });

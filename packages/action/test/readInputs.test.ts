@@ -258,3 +258,59 @@ describe("props-file", () => {
     expect(readInputs(env(base))).not.toHaveProperty("propsFile");
   });
 });
+
+describe("data-json", () => {
+  test("one source per line, headers attached by namespace", () => {
+    const config = readInputs(
+      env({
+        ...base,
+        "data-json": " counts=data/counts.json \n\nhttps://api.example/v1?a=b\n",
+        "data-json-headers": "json:X-Api-Key=API_KEY",
+      }),
+    );
+    expect(config.dataJson).toEqual([
+      { namespace: "counts", source: "data/counts.json", headers: {} },
+      {
+        namespace: "json",
+        source: "https://api.example/v1?a=b",
+        headers: { "x-api-key": "API_KEY" },
+      },
+    ]);
+    expect(readInputs(env(base))).not.toHaveProperty("dataJson");
+  });
+
+  test.each([
+    ["counts=../outside.json", "leaves the workspace (..)"],
+    ["counts=/etc/passwd", "is not a relative path"],
+    ["counts=C:\\x.json", "is not a relative path"],
+  ])("a file source %j outside the workspace is a problem", (line, reason) => {
+    expect(problems({ ...base, "data-json": line })).toEqual([
+      `input data-json: the file of namespace counts ${reason}`,
+    ]);
+  });
+
+  test("namespace github clashes with the GitHub data, not with a data-file", () => {
+    expect(problems({ ...base, "data-json": "github=g.json" })).toEqual([
+      expect.stringContaining("namespace github clashes with the GitHub data") as string,
+    ]);
+    expect(
+      readInputs(env({ ...base, "data-file": "d.json", "data-json": "github=g.json" })).dataJson,
+    ).toEqual([{ namespace: "github", source: "g.json", headers: {} }]);
+  });
+
+  test("bad lines are listed with the other problems", () => {
+    expect(
+      problems({
+        ...base,
+        scale: "9",
+        "data-json": "a=x.json\na=y.json",
+        "data-json-headers": "b:X=KEY\nnot a header",
+      }),
+    ).toEqual([
+      'input scale "9" is not a number in 1..4',
+      "input data-json: JSON namespace a is given twice",
+      "input data-json: a JSON header names namespace b, which has no JSON source",
+      "input data-json: a JSON header must be <namespace>:<Header-Name>=<ENV_NAME>",
+    ]);
+  });
+});

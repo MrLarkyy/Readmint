@@ -285,3 +285,43 @@ describe("images bound from data (RM-28)", () => {
     expect(calls).toEqual([]);
   });
 });
+
+describe("a data-json-headers value", () => {
+  const value = "hdr-CANARY-rm106-0123456789";
+
+  test("is masked before the load and absent from every other line, file and output", async () => {
+    await tree.file("api/design.json", {
+      version: 0,
+      canvas: { width: 40, height: 24 },
+      layers: [{ type: "rect", width: 10, height: "{{api.document.h}}", fill: "#000" }],
+    });
+    await tree.file("data.json", { other: { v: 1 } });
+    const sent: (string | null)[] = [];
+    const run = await tree.run(
+      {
+        designs: "api/design.json",
+        "data-file": "data.json",
+        "data-json": "api=https://api.example/stats",
+        "data-json-headers": "api:X-Api-Key=API_KEY",
+        "dry-run": "true",
+      },
+      {
+        env: { API_KEY: ` ${value} ` },
+        fetch: (_url, init) => {
+          sent.push(new Headers(init.headers).get("x-api-key"));
+          return Promise.resolve(
+            new Response(`{"h":"${value}"}`, { headers: { "content-type": "application/json" } }),
+          );
+        },
+      },
+    );
+    expect(sent).toEqual([value]);
+    expect(run.code).toBe(1);
+    const lines = run.log.split("\n");
+    expect(lines[0]).toBe(`::add-mask::${value}`);
+    const rest = lines.slice(1).join("\n");
+    expect(rest).toContain("***");
+    expect(rest).not.toContain(value);
+    expect(run.outputText).not.toContain(value);
+  });
+});

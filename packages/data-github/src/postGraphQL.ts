@@ -1,7 +1,7 @@
+import { readBodyCapped, type ReadBodyFailure } from "@readmint/data";
 import { GitHubDataError } from "./GitHubDataError.js";
 import { GitHubLimits } from "./GitHubSourceOptions.js";
 import { isJsonRecord, ownField, type JsonRecord } from "./jsonRecord.js";
-import { readBodyCapped } from "./readBodyCapped.js";
 import { readRateLimit, type RateLimitHeaders } from "./readRateLimit.js";
 import { redactSecret } from "./redactSecret.js";
 import type { ResolvedSourceOptions } from "./resolveSourceOptions.js";
@@ -151,11 +151,20 @@ function requestSignal(context: GraphQLContext): AbortSignal {
 
 async function readText(response: Response, signal: AbortSignal): Promise<string> {
   try {
-    return await readBodyCapped(response, GitHubLimits.maxBodyBytes);
+    return await readBodyCapped(response, GitHubLimits.maxBodyBytes, bodyFailure);
   } catch (error) {
     if (error instanceof GitHubDataError) throw error;
     throw transportFailure(error, signal);
   }
+}
+
+function bodyFailure(reason: ReadBodyFailure): GitHubDataError {
+  return reason === "too-large"
+    ? new GitHubDataError(
+        "too-large",
+        `The GitHub response is larger than ${String(GitHubLimits.maxBodyBytes)} bytes.`,
+      )
+    : new GitHubDataError("invalid-response", "The GitHub response is not valid UTF-8.");
 }
 
 async function discard(response: Response): Promise<string> {

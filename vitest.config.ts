@@ -21,6 +21,12 @@ export default defineConfig(({ mode }) => ({
         replacement: fileURLToPath(new URL("./packages/data/src/node/index.ts", import.meta.url)),
       },
       {
+        find: new RegExp("^@readmint/data-json/node$"),
+        replacement: fileURLToPath(
+          new URL("./packages/data-json/src/node/index.ts", import.meta.url),
+        ),
+      },
+      {
         find: new RegExp("^@readmint/raster/browser$"),
         replacement: fileURLToPath(new URL("./packages/raster/src/browser.ts", import.meta.url)),
       },
@@ -36,12 +42,20 @@ export default defineConfig(({ mode }) => ({
           new URL("./packages/examples/src/profileLogos.ts", import.meta.url),
         ),
       },
-      ...["cli", "data", "data-github", "expr", "format", "fonts", "raster", "renderer"].map(
-        (name) => ({
-          find: new RegExp(`^@readmint/${name}$`),
-          replacement: source(name),
-        }),
-      ),
+      ...[
+        "cli",
+        "data",
+        "data-github",
+        "data-json",
+        "expr",
+        "format",
+        "fonts",
+        "raster",
+        "renderer",
+      ].map((name) => ({
+        find: new RegExp(`^@readmint/${name}$`),
+        replacement: source(name),
+      })),
     ],
   },
   test: {

@@ -44,6 +44,9 @@ importers:
       '@readmint/data-github':
         specifier: workspace:*
         version: link:../data-github
+      '@readmint/data-json':
+        specifier: workspace:*
+        version: link:../data-json
       '@readmint/raster':
         specifier: workspace:*
         version: link:../raster
@@ -63,6 +66,9 @@ importers:
       '@readmint/data-github':
         specifier: workspace:*
         version: link:../data-github
+      '@readmint/data-json':
+        specifier: workspace:*
+        version: link:../data-json
       '@readmint/expr':
         specifier: workspace:*
         version: link:../expr
@@ -101,6 +107,12 @@ importers:
   packages/data: {}
 
   packages/data-github:
+    dependencies:
+      '@readmint/data':
+        specifier: workspace:*
+        version: link:../data
+
+  packages/data-json:
     dependencies:
       '@readmint/data':
         specifier: workspace:*

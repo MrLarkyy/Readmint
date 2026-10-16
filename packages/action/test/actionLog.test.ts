@@ -79,3 +79,24 @@ describe("ActionLog", () => {
     ).toBe("*** *** Basic *** ab\n");
   });
 });
+
+describe("ActionLog.mask", () => {
+  test("writes one add-mask per line of the value and redacts it from later lines", () => {
+    const text = logged((log) => {
+      log.mask(" first-secret%x \nsecond-secret\n\n");
+      log.info("a first-secret%x b second-secret");
+      log.error("first-secret%x");
+    });
+    expect(text).toBe(
+      "::add-mask::first-secret%25x\n::add-mask::second-secret\na *** b ***\n::error::***\n",
+    );
+  });
+
+  test("a blank value writes nothing", () => {
+    expect(
+      logged((log) => {
+        log.mask("  \n ");
+      }),
+    ).toBe("");
+  });
+});

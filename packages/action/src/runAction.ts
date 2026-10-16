@@ -38,6 +38,11 @@ export async function runAction(env: Env, deps: ActionDeps): Promise<number> {
   const log = new ActionLog(deps.write, secrets);
   try {
     const config = readInputs(env);
+    // Before any load: a header value must be masked before anything could print it.
+    for (const name of new Set(config.dataJson?.flatMap((spec) => Object.values(spec.headers)))) {
+      const value = Object.hasOwn(env, name) ? env[name] : undefined;
+      if (value !== undefined) log.mask(value);
+    }
     const workspace = path.resolve(deps.cwd, nonEmpty(env.GITHUB_WORKSPACE) ?? ".");
     const plan = await planOutputs(config.designs, config.outputDir, config.formats, (design) =>
       entryExists(path.resolve(workspace, design)),
@@ -58,9 +63,15 @@ export async function runAction(env: Env, deps: ActionDeps): Promise<number> {
       push = { repo, branch };
     }
 
-    const data = await loadActionData(config, workspace, deps.fetch, (parts) => {
-      log.warning(partialDataWarning(parts));
-    });
+    const data = await loadActionData(
+      config,
+      workspace,
+      deps.fetch,
+      (parts) => {
+        log.warning(partialDataWarning(parts));
+      },
+      env,
+    );
     if (config.formats.some((format) => format !== "svg")) await loadRaster(deps);
     const rendered = await renderAll(plan, workspace, data, {
       ...(config.locale === undefined ? {} : { locale: config.locale }),

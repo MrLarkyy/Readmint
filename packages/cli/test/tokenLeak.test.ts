@@ -368,3 +368,56 @@ test("--github --open opens a one-time launch address, never the secret one", as
   expect(await exit).toBe(ExitCode.ok);
   expectNoToken({ code: 0, stdout: "", stderr });
 });
+
+test("the preview page and standard error never show a --data-json-header value", async () => {
+  const value = "hdrCANARY-rm106-value";
+  await tree.file("json/design.json", boundDesign("{{ api.document.h }}"));
+  await tree.file("json/logo.png", png);
+  const controller = new AbortController();
+  let stderr = "";
+  const exit = runCli(
+    [
+      "preview",
+      "json/design.json",
+      "--data-json",
+      "api=https://api.example/stats",
+      "--data-json-header",
+      "api:X-Api-Key=API_KEY",
+      "--port",
+      "0",
+    ],
+    {
+      stdout: () => undefined,
+      stderr: (text) => {
+        stderr += text;
+      },
+      cwd: tree.root,
+      signal: controller.signal,
+      pollIntervalMs: 20,
+      env: { API_KEY: value },
+      fetch: () =>
+        Promise.resolve(
+          new Response(`{"h":"${value}"}`, { headers: { "content-type": "application/json" } }),
+        ),
+    },
+  );
+  try {
+    const deadline = Date.now() + 10_000;
+    let printed: RegExpExecArray | null = null;
+    let issues: string[] = [];
+    while (issues.length === 0) {
+      if (Date.now() > deadline) throw new Error("timed out waiting for the preview");
+      printed ??= /preview: http:\/\/127\.0\.0\.1:(\d+)\/([A-Za-z0-9_-]{43})\/\n/.exec(stderr);
+      if (printed !== null)
+        ({ issues } = await previewStatus(Number(printed[1]), printed[2] ?? ""));
+      await sleep(10);
+    }
+    const page = JSON.stringify(issues);
+    expect(page).toContain("***");
+    expect(page).not.toContain(value);
+  } finally {
+    controller.abort();
+  }
+  expect(await exit).toBe(ExitCode.ok);
+  expect(stderr).not.toContain(value);
+});

@@ -8,7 +8,7 @@ import { errnoCode } from "./errnoCode.js";
 import { escapeForLog } from "./escapeForLog.js";
 import { ExitCode } from "./ExitCode.js";
 import { formatIssue } from "./formatIssue.js";
-import { tokenSecrets } from "./githubToken.js";
+import { cliSecrets } from "./cliSecrets.js";
 import { imageFetching } from "./imageFetching.js";
 import { liveData } from "./liveData.js";
 import type { DesignFile } from "./loadDesignFile.js";
@@ -28,8 +28,9 @@ type PreviewArgs = Extract<CliCommand, { name: "preview" }>;
 /**
  * Serves the render on http://127.0.0.1:<port>/ and re-renders when the design, the fixture data or
  * an asset changes; a failing render keeps the last SVG and shows its issues. Ends with exit code 0
- * when `io.signal` aborts. `--github` data is loaded once, before the server starts: a design edit never costs
- * GitHub requests. With that token-scoped data the routes live under a per-session secret path
+ * when `io.signal` aborts. `--github` and `--data-json` data is loaded once, before the server starts: a design edit
+ * never costs a request (the fixture data is read again on each change and merged with it). With that loaded data,
+ * which may be scoped to a token or a header, the routes live under a per-session secret path
  * (http://127.0.0.1:<port>/<secret>/), printed once and kept in memory only. With `open` the browser gets, after the
  * line is printed and without waiting, the printed address, or with a secret a one-time launch address
  * (http://127.0.0.1:<port>/<launch>) that redirects to it, so no command line ever holds the secret; a failure to
@@ -37,9 +38,10 @@ type PreviewArgs = Extract<CliCommand, { name: "preview" }>;
  */
 export async function previewCommand(args: PreviewArgs, io: CliIo): Promise<ExitCode> {
   const { loadData } = liveData(args, io, io.signal);
-  let live: { readonly data?: Record<string, unknown> };
+  let live: { readonly loadData?: () => Promise<Record<string, unknown>> };
   try {
-    live = loadData === undefined ? {} : { data: await loadData() };
+    const loaded = loadData === undefined ? undefined : await loadData();
+    live = loaded === undefined ? {} : { loadData: () => Promise.resolve(loaded) };
   } catch (error) {
     if (io.signal?.aborted === true) return ExitCode.ok;
     throw error;
@@ -74,7 +76,7 @@ export async function previewCommand(args: PreviewArgs, io: CliIo): Promise<Exit
     if (args.props !== undefined) inputs.push(path.resolve(io.cwd, args.props));
     let assets: readonly string[] = [];
     // The page shows the issues too, and it is not standard error: redacted here as well.
-    const secrets = tokenSecrets(io.env ?? {});
+    const secrets = cliSecrets(io.env ?? {}, args.dataJson);
     const rebuild = async () => {
       const rendered = await renderUpdate(args, io, live, (file) => {
         assets = watchedAssetPaths(file);
@@ -110,7 +112,7 @@ export async function previewCommand(args: PreviewArgs, io: CliIo): Promise<Exit
 async function renderUpdate(
   args: PreviewArgs,
   io: CliIo,
-  live: { readonly data?: Record<string, unknown> },
+  live: { readonly loadData?: () => Promise<Record<string, unknown>> },
   onDesignFile: (file: DesignFile) => void,
 ): Promise<PreviewUpdate> {
   let lines: readonly string[];

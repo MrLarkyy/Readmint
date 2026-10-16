@@ -1,15 +1,21 @@
-import { GitHubDataError } from "./GitHubDataError.js";
+/** Why `readBodyCapped` refused a body; the caller turns it into its own error. */
+export type ReadBodyFailure = "too-large" | "not-utf8";
 
 /**
  * Reads a response body as UTF-8 text, refusing it once it exceeds `maxBytes`: first by the
  * declared `content-length`, then by counting the streamed bytes, so a lying or absent header
- * cannot make the loader buffer an unbounded body.
+ * cannot make the loader buffer an unbounded body. `fail` builds the thrown error, so each source
+ * keeps its own error type and wording.
  */
-export async function readBodyCapped(response: Response, maxBytes: number): Promise<string> {
+export async function readBodyCapped(
+  response: Response,
+  maxBytes: number,
+  fail: (reason: ReadBodyFailure) => Error,
+): Promise<string> {
   const declared = response.headers.get("content-length");
   if (declared !== null && /^\d+$/.test(declared) && Number(declared) > maxBytes) {
     await response.body?.cancel().catch(() => undefined);
-    throw tooLarge(maxBytes);
+    throw fail("too-large");
   }
   if (response.body === null) return "";
   const reader = response.body.getReader();
@@ -21,7 +27,7 @@ export async function readBodyCapped(response: Response, maxBytes: number): Prom
     total += value.byteLength;
     if (total > maxBytes) {
       await reader.cancel().catch(() => undefined);
-      throw tooLarge(maxBytes);
+      throw fail("too-large");
     }
     chunks.push(value);
   }
@@ -34,13 +40,6 @@ export async function readBodyCapped(response: Response, maxBytes: number): Prom
   try {
     return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
   } catch {
-    throw new GitHubDataError("invalid-response", "The GitHub response is not valid UTF-8.");
+    throw fail("not-utf8");
   }
-}
-
-function tooLarge(maxBytes: number): GitHubDataError {
-  return new GitHubDataError(
-    "too-large",
-    `The GitHub response is larger than ${String(maxBytes)} bytes.`,
-  );
 }

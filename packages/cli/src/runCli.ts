@@ -3,7 +3,7 @@ import { AssetPathError } from "./AssetPathError.js";
 import { CliError } from "./CliError.js";
 import type { CliIo } from "./CliIo.js";
 import { errnoCode } from "./errnoCode.js";
-import { tokenSecrets } from "./githubToken.js";
+import { cliSecrets } from "./cliSecrets.js";
 import { ExitCode } from "./ExitCode.js";
 import { helpText } from "./helpText.js";
 import { parseCliArgs } from "./parseCliArgs.js";
@@ -15,18 +15,22 @@ import { validateCommand } from "./validateCommand.js";
 
 /**
  * Runs one `readmint` command line (without node and the script) against `io` and returns the
- * exit code; never throws. Every message line is escaped (`escapeForLog`) and has the token variables redacted
- * (`redactSecrets`); the SVG is written as is. A system error writing standard output (EPIPE, a full disk) is exit
+ * exit code; never throws. Every message line is escaped (`escapeForLog`) and has the token variables and the
+ * `--data-json-header` variables redacted (`redactSecrets`); the SVG is written as is. A system error writing standard output (EPIPE, a full disk) is exit
  * code 3 for every command.
  */
 export async function runCli(argv: readonly string[], cliIo: CliIo): Promise<ExitCode> {
+  const env = cliIo.env ?? {};
+  const secrets = cliSecrets(env);
   const io: CliIo = {
     ...cliIo,
     stdout: guardStdout(cliIo.stdout),
-    stderr: redactStderr(cliIo.stderr, tokenSecrets(cliIo.env ?? {})),
+    stderr: redactStderr(cliIo.stderr, secrets),
   };
   try {
     const command = parseCliArgs(argv);
+    if ("dataJson" in command)
+      secrets.splice(0, secrets.length, ...cliSecrets(env, command.dataJson));
     switch (command.name) {
       case "help":
         await io.stdout(helpText);
@@ -62,11 +66,11 @@ function guardStdout(write: CliIo["stdout"]): CliIo["stdout"] {
 
 /**
  * Always on, not only with `--github`: a GitHub answer, a network error or a bug may carry the token into any
- * message. Each write is whole lines (`printLines`), so a secret is never split across two writes.
+ * message. Each write is whole lines (`printLines`), so a secret is never split across two writes. `secrets` is read
+ * at each write: the header variables are known only once the arguments are parsed.
  */
 function redactStderr(write: CliIo["stderr"], secrets: readonly string[]): CliIo["stderr"] {
-  if (secrets.length === 0) return write;
-  return (text) => write(redactSecrets(text, secrets));
+  return (text) => write(secrets.length === 0 ? text : redactSecrets(text, secrets));
 }
 
 async function report(error: unknown, io: CliIo): Promise<ExitCode> {

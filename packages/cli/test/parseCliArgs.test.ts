@@ -1,4 +1,4 @@
-import { expect, test } from "vitest";
+import { describe, expect, test } from "vitest";
 import { CliError, ExitCode } from "../src/index.js";
 import { parseCliArgs } from "../src/parseCliArgs.js";
 
@@ -100,4 +100,108 @@ test.each([["render"], ["validate"], ["preview"]])("%s takes --props", (name) =>
 
 test("--props needs a value", () => {
   expect(usageError(["render", "a.json", "--props"]).exitCode).toBe(ExitCode.usage);
+});
+
+describe("--data-json", () => {
+  test.each([["render"], ["validate"], ["preview"]])("%s takes it, repeated", (name) => {
+    expect(
+      parseCliArgs([
+        name,
+        "a.json",
+        "--data-json",
+        "a.json",
+        "--data-json",
+        "s=https://x.example/s",
+      ]),
+    ).toMatchObject({
+      dataJson: [
+        { namespace: "json", source: "a.json", headers: {} },
+        { namespace: "s", source: "https://x.example/s", headers: {} },
+      ],
+    });
+    expect(parseCliArgs([name, "a.json"])).not.toHaveProperty("dataJson");
+  });
+
+  test("a URL with = in its query stays one source under json", () => {
+    expect(
+      parseCliArgs(["render", "a.json", "--data-json", "https://x.example/q?a=1&b=2"]),
+    ).toMatchObject({ dataJson: [{ namespace: "json", source: "https://x.example/q?a=1&b=2" }] });
+    expect(parseCliArgs(["render", "a.json", "--data-json=Stats=x.json"])).toMatchObject({
+      dataJson: [{ namespace: "json", source: "Stats=x.json" }],
+    });
+  });
+
+  test("headers attach to their namespace, lower-cased", () => {
+    expect(
+      parseCliArgs([
+        "render",
+        "a.json",
+        "--data-json",
+        "api=https://x.example/s",
+        "--data-json-header",
+        "api:X-Api-Key=API_KEY",
+        "--data-json-header",
+        "api:Authorization=AUTH",
+      ]),
+    ).toMatchObject({
+      dataJson: [{ namespace: "api", headers: { "x-api-key": "API_KEY", authorization: "AUTH" } }],
+    });
+  });
+
+  test.each([
+    [["--data-json", "a=x.json", "--data-json", "a=y.json"], "given twice"],
+    [["--data-json", "x.json", "--data-json", "y.json"], "given twice"],
+    [["--data-json-header", "api:X=KEY"], "no JSON source"],
+    [["--data-json", "api=https://x.example", "--data-json-header", "api:X"], "<namespace>:"],
+    [["--data-json", "api=https://x.example", "--data-json-header", "api:X Y=KEY"], "<namespace>:"],
+    [["--data-json", "api=https://x.example", "--data-json-header", "api:X=1KEY"], "<namespace>:"],
+    [
+      [
+        "--data-json",
+        "api=https://x.example",
+        "--data-json-header",
+        "api:X=K",
+        "--data-json-header",
+        "api:x=L",
+      ],
+      "given twice",
+    ],
+    [
+      Array.from({ length: 9 }, (_, i) => ["--data-json", `n${String(i)}=x.json`]).flat(),
+      "at most 8",
+    ],
+  ])("%j is a usage error", (args, message) => {
+    expect(usageError(["render", "a.json", ...args]).message).toContain(message);
+  });
+
+  test("namespace github clashes with --github, not without it", () => {
+    expect(
+      usageError(["render", "a.json", "--github", "--data-json", "github=x.json"]).message,
+    ).toContain("clashes with --github");
+    expect(parseCliArgs(["render", "a.json", "--data-json", "github=x.json"])).toMatchObject({
+      dataJson: [{ namespace: "github" }],
+    });
+  });
+
+  test("combines with --data and with --github", () => {
+    expect(
+      parseCliArgs(["render", "a.json", "--data", "d.json", "--data-json", "x.json"]),
+    ).toMatchObject({ data: "d.json", dataJson: [{ namespace: "json" }] });
+    expect(parseCliArgs(["render", "a.json", "--github", "--data-json", "x.json"])).toMatchObject({
+      github: true,
+      dataJson: [{ namespace: "json" }],
+    });
+  });
+
+  test("a usage error never quotes the source", () => {
+    const message = usageError([
+      "render",
+      "a.json",
+      "--data-json",
+      "https://x.example/?key=SECRETKEY",
+      "--data-json",
+      "https://y.example/?key=SECRETKEY",
+    ]).message;
+    expect(message).not.toContain("SECRETKEY");
+  });
 });
