@@ -71,6 +71,7 @@ export async function previewCommand(args: PreviewArgs, io: CliIo): Promise<Exit
   try {
     const inputs = [path.resolve(io.cwd, args.design)];
     if (args.data !== undefined) inputs.push(path.resolve(io.cwd, args.data));
+    if (args.props !== undefined) inputs.push(path.resolve(io.cwd, args.props));
     let assets: readonly string[] = [];
     // The page shows the issues too, and it is not standard error: redacted here as well.
     const secrets = tokenSecrets(io.env ?? {});

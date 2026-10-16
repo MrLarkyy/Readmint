@@ -10,6 +10,8 @@ import { assertNoLink } from "./assertNoLink.js";
 import { exampleWorkflow } from "./exampleWorkflow.js";
 
 const byCodeUnit = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
+/** The template's shared settings (`--props`): not a design, the examples already have the texts merged in. */
+const settingsFile = "settings.json";
 const sectionOf = (file: string): string => file.replace(/(\.dark)?\.json$/, "");
 const readText = (path: string): string => readFileSync(path, "utf8").replace(/\r\n/g, "\n");
 
@@ -53,7 +55,9 @@ export function buildExamples(templatesDir: string, options: ExamplesOptions): E
   for (const name of discoverTemplates(profilesDir, options.props)) {
     const dir = join(profilesDir, name);
     const all = listFiles(dir);
-    const designFiles = all.filter((file) => !file.includes("/") && file.endsWith(".json"));
+    const designFiles = all.filter(
+      (file) => !file.includes("/") && file.endsWith(".json") && file !== settingsFile,
+    );
     const light = designFiles.filter((file) => !file.endsWith(".dark.json"));
     for (const file of light) {
       const twin = file.replace(/\.json$/, ".dark.json");

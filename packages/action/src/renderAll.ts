@@ -1,5 +1,6 @@
 import {
   CliError,
+  type DesignProps,
   formatIssue,
   loadRenderInput,
   type OutputFormat,
@@ -30,6 +31,8 @@ export interface RenderAllOptions {
   readonly scale?: number;
   readonly frameRate?: number;
   readonly quality?: number;
+  /** The settings file, loaded once: merged into every design by its section. */
+  readonly props?: DesignProps;
   /** Fetches the images designs bind to data; one cache per run, so a dark twin shares the fetch. */
   readonly images?: RemoteImageOptions;
 }
@@ -47,7 +50,7 @@ export async function renderAll(
   data: Record<string, unknown>,
   options: RenderAllOptions = {},
 ): Promise<RenderAllResult> {
-  const { images, ...outputOptions } = options;
+  const { images, props, ...outputOptions } = options;
   const files: RenderedFile[] = [];
   const warnings: string[] = [];
   const problems: string[] = [];
@@ -56,7 +59,12 @@ export async function renderAll(
       try {
         const input = await loadRenderInput(
           { design: planned.design },
-          { cwd: workspace, data, ...(images === undefined ? {} : { images }) },
+          {
+            cwd: workspace,
+            data,
+            ...(props === undefined ? {} : { props }),
+            ...(images === undefined ? {} : { images }),
+          },
         );
         const name = input.file.name;
         const result = await renderOutput(

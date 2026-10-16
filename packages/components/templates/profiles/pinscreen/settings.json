@@ -1,0 +1,21 @@
+{
+  "footer": {
+    "headline": "",
+    "note": "",
+    "contactLabel": "",
+    "contactText": ""
+  },
+  "header": {
+    "role": "",
+    "intro": "",
+    "branch": "main",
+    "statusBarRight": ""
+  },
+  "stack": {
+    "plugin": "",
+    "labels": [],
+    "items": [],
+    "noteLabels": [],
+    "noteItems": []
+  }
+}

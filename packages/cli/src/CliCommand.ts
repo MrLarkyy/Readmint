@@ -8,6 +8,8 @@ export interface DesignArgs {
   readonly root?: string;
   /** Fixture data file (`--data`). */
   readonly data?: string;
+  /** Settings file (`--props`): root component props by section, merged into the design. */
+  readonly props?: string;
   readonly locale?: string;
   /** `--fetch-images`: fetch the images whose `src` is bound to data; without it the CLI never fetches. */
   readonly fetchImages?: boolean;

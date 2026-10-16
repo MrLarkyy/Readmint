@@ -110,6 +110,7 @@ export function readInputs(env: Env): ActionConfig {
     problems.push("input token is empty; pass a token or a data-file");
   }
 
+  const propsFile = value("props-file");
   const locale = value("locale");
   const localeReason = locale === "" ? undefined : localeProblem(locale);
   if (localeReason !== undefined)
@@ -146,6 +147,7 @@ export function readInputs(env: Env): ActionConfig {
     token: dataFile === "" ? token : "",
     login: value("login"),
     ...(dataFile === "" ? {} : { dataFile }),
+    ...(propsFile === "" ? {} : { propsFile }),
     ...(locale === "" ? {} : { locale }),
     commitMessage,
     ...(branch === "" ? {} : { branch }),

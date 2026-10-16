@@ -1,0 +1,16 @@
+{
+  "footer": {
+    "headline": "",
+    "note": "",
+    "contactLabel": "",
+    "contactText": ""
+  },
+  "header": {
+    "intro": ""
+  },
+  "index": {
+    "labels": [],
+    "values": [],
+    "languagesAfter": 2
+  }
+}

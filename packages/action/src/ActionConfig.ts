@@ -20,6 +20,8 @@ export interface ActionConfig {
   readonly login: string;
   /** Fixture data file instead of a GitHub load. */
   readonly dataFile?: string;
+  /** Settings file merged into every design (the CLI `--props`). */
+  readonly propsFile?: string;
   /** Locale override for the expression filters; absent: the design's `locale`, else `en`. */
   readonly locale?: string;
   readonly commitMessage: string;

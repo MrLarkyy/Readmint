@@ -1,6 +1,14 @@
 import { lstat } from "node:fs/promises";
 import path from "node:path";
-import { partialDataWarning, quoteForLog } from "@readmint/cli";
+import {
+  CliError,
+  type DesignProps,
+  loadDesignProps,
+  partialDataWarning,
+  propsSection,
+  quoteForLog,
+} from "@readmint/cli";
+import type { ActionConfig } from "./ActionConfig.js";
 import type { ActionDeps } from "./ActionDeps.js";
 import { ActionError } from "./ActionError.js";
 import { ActionLog } from "./ActionLog.js";
@@ -9,6 +17,7 @@ import { gitEnv } from "./gitEnv.js";
 import { GitRepo } from "./GitRepo.js";
 import { loadActionData } from "./loadActionData.js";
 import { pictureSnippet } from "./pictureSnippet.js";
+import type { PlannedDesign } from "./PlannedDesign.js";
 import { planOutputs } from "./planOutputs.js";
 import { readInputs } from "./readInputs.js";
 import { renderAll } from "./renderAll.js";
@@ -34,6 +43,9 @@ export async function runAction(env: Env, deps: ActionDeps): Promise<number> {
       entryExists(path.resolve(workspace, design)),
     );
 
+    const props = await loadActionProps(config, workspace);
+    if (props !== undefined) warnUnusedSections(props, plan, log);
+
     let push: { repo: GitRepo; branch: string } | undefined;
     if (!config.dryRun) {
       const repo = new GitRepo(deps.runGit, workspace, gitEnv(env, secrets));
@@ -53,6 +65,7 @@ export async function runAction(env: Env, deps: ActionDeps): Promise<number> {
     const rendered = await renderAll(plan, workspace, data, {
       ...(config.locale === undefined ? {} : { locale: config.locale }),
       scale: config.scale,
+      ...(props === undefined ? {} : { props }),
       ...(config.frameRate === undefined ? {} : { frameRate: config.frameRate }),
       ...(config.quality === undefined ? {} : { quality: config.quality }),
       // Its own request init, never the GitHub loader's: the token goes to api.github.com only.
@@ -119,6 +132,33 @@ async function checkPushTarget(repo: GitRepo, branch: string): Promise<void> {
       "git",
       `the checkout (${head.slice(0, 12)}) is not the tip of branch ${name} on origin (${remote.slice(0, 12)}); check out the branch the Action pushes to, at its latest commit`,
     );
+  }
+}
+
+/** The settings file of `props-file`, loaded once; a failure becomes `ActionError` (input) with the loader's lines. */
+async function loadActionProps(
+  config: ActionConfig,
+  workspace: string,
+): Promise<DesignProps | undefined> {
+  if (config.propsFile === undefined) return undefined;
+  try {
+    return await loadDesignProps(config.propsFile, workspace);
+  } catch (error) {
+    if (error instanceof CliError) throw new ActionError("input", error.lines);
+    throw error;
+  }
+}
+
+function warnUnusedSections(
+  props: DesignProps,
+  plan: readonly PlannedDesign[],
+  log: ActionLog,
+): void {
+  const used = new Set(plan.map((entry) => propsSection(entry.light.design)));
+  for (const section of Object.keys(props)) {
+    if (!used.has(section)) {
+      log.warning(`props-file section ${quoteForLog(section)} names no listed design`);
+    }
   }
 }
 
