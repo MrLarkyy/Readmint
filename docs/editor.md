@@ -21,7 +21,9 @@ workspace and no UI framework: the DOM views are small classes that dispatch com
   design is an empty canvas: nothing is predefined.
 - **Properties**: the fields of the selected layer's type, as the design format defines them. A number field takes a
   number or a `{{binding}}`; a paint takes `#rrggbb`, `none`, a binding or a gradient as JSON; a text's `content` may
-  hold placeholders. An invalid value is refused with the format's issue; the design is unchanged.
+  hold placeholders. An invalid value is refused with the format's issue; the design is unchanged. A layer's `orbit`
+  ([design-format.md](design-format.md#orbit)) is listed read-only, as compact JSON: it is edited in the design file,
+  and editing the layer's other properties keeps it as it is.
 - **Fonts**: upload a TTF, OTF, WOFF or WOFF2 file (see below).
 - **Images**: upload a PNG, JPEG, GIF or WebP file; it is embedded in the design with an image layer showing it
   ([below](#images)).
@@ -48,7 +50,8 @@ quality settings for the raster export.
 Dragging writes whole numbers. It never changes a coordinate or size bound to data, nor the place of a layer a stack
 or grid layout positions (its `x`/`y` are offsets in its slot; the property panel says so): such a drag is refused with
 an issue. A path keeps its size (its data is its shape); a text's handles set its wrapping `width`. In a turned group a
-drag is turned back into the group's coordinates, so the layer follows the pointer. Resize handles appear only on a
+drag is turned back into the group's coordinates, so the layer follows the pointer; a layer on an orbit moves its
+`x`/`y` offset from its orbit point the same way (its box is drawn at the orbit's angle at the start of the timeline). Resize handles appear only on a
 layer that neither it nor any group around it turns (whole turns aside): turns that cancel out on the canvas still swap
 what the layer calls width and height.
 

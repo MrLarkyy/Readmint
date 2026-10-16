@@ -99,7 +99,7 @@ Validation runs in this order and stops at the first stage with issues: source l
 
 Every numeric, colour and boolean property of the canvas, layers, styles, layouts and gradients is bindable, and so are
 keyframe values and track timing (`duration`, `delay`, `stagger`); asset and component-definition metadata, the
-timeline (`animation`), keyframe `offset`s and easings take literals only. Numbers must be finite: YAML `.inf` and `.nan` are rejected. Bindings are opaque here; the expression language
+timeline (`animation`), keyframe `offset`s, easings and an orbit's `fade` take literals only. Numbers must be finite: YAML `.inf` and `.nan` are rejected. Bindings are opaque here; the expression language
 (`@readmint/expr`, [docs/expressions.md](expressions.md)) evaluates them, and the renderer checks the evaluated values
 against the same ranges (`ValueRanges` from `@readmint/format`, which the schema is built from). A binding that is exactly
 one `{{ }}` placeholder keeps the type of its value (`"{{ count }}"` is a number); any other string, such as
@@ -153,6 +153,7 @@ Every layer has `type` (required) and these optional properties:
 | `repeat`   | `{ each: binding, as?: id, index?: id }` | one copy per item of `each`, exposed as `as` and `index` |
 | `let`      | local name -> binding                    | named values, see [Local bindings](#local-bindings-let)  |
 | `animate`  | property -> track                        | see [Animation](#animation); needs `animation`           |
+| `orbit`    | an orbit                                 | places the layer on an ellipse, see [Orbit](#orbit)      |
 
 | `type`      | required                                    | optional                                                                                                     |
 | ----------- | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
@@ -181,6 +182,68 @@ Every layer has `type` (required) and these optional properties:
   width with `textWidth` and `truncateWidth` ([expressions](expressions.md#filters)), not to `length`, which counts
   characters a font may not draw.
 - A text needs a font: its own `font` or one from its `style`.
+
+### Orbit
+
+`orbit` places a layer on an ellipse around a centre, and with a `speed` moves it along on the design's timeline: a
+ring of labels, ticks round a dial, a planet. No nesting of turning groups is needed, and the layer stays upright.
+
+```json
+{
+  "animation": { "duration": 60000 },
+  "layers": [
+    {
+      "type": "text",
+      "content": "{{ item }}",
+      "font": "body",
+      "x": -15,
+      "y": -6,
+      "width": 30,
+      "align": "middle",
+      "repeat": { "each": "{{ months }}", "index": "k" },
+      "orbit": {
+        "center": { "x": 420, "y": 200 },
+        "radius": 300,
+        "radiusY": 80,
+        "angle": "{{ k * 30 }}",
+        "speed": -6,
+        "fade": { "from": 0, "to": 0.6 }
+      }
+    }
+  ]
+}
+```
+
+| property  | type                                 | notes                                                                 |
+| --------- | ------------------------------------ | --------------------------------------------------------------------- |
+| `center`  | `{ x: B<position>, y: B<position> }` | required; in the coordinates of the layer's group                     |
+| `radius`  | `B<length>`                          | required; the semi-axis along x                                       |
+| `radiusY` | `B<length>`                          | the semi-axis along y; default `radius` (a circle)                    |
+| `angle`   | `B<-360..360>`, degrees              | required; where the layer is at the start of the timeline             |
+| `speed`   | `B<-3600..3600>`, degrees per second | travel along the ellipse; default 0; needs `animation`                |
+| `upright` | `B<boolean>`                         | default `true`: the layer keeps its own orientation all the way round |
+| `fade`    | `{ from: <-1..1>, to: <-1..1> }`     | literal; opacity by depth, see below                                  |
+
+- The angle t is parametric, in degrees clockwise from the +x axis (y points down): the layer's origin sits at
+  (cx + radius cos t, cy + radiusY sin t). With `speed` s and a timeline of D ms the angle at time T is
+  t + s T / 1000; the travel over the whole timeline is s D / 1000 degrees, and a loop is seamless when that is a whole
+  number of turns (-6 deg/s over 60000 ms is one turn back).
+- The layer's `x` and `y` are an offset from the orbit point in the upright frame there: a label set at
+  `x: -15, y: -6` keeps that offset on the canvas at every angle (the label of a tick that shares its orbit stays the
+  same distance from the tick). Its own `rotation` and `animate` tracks apply inside that frame. With
+  `upright: false` the frame turns by the angle as well, as a spoke does.
+- `fade` multiplies the layer's opacity by its depth: depth is sin t, -1 at the back (the top of the ellipse) to 1 at
+  the front (the bottom). At depth `from` and beyond it the layer is invisible, at `to` and beyond fully drawn,
+  linear in between (`from` above `to` fades the other way). A fade owns the layer's opacity track: a layer with
+  `fade` cannot also `animate` `opacity`. A moving fade follows at most four turns over the timeline (more is a
+  `range` issue at the fade when rendering).
+- An orbit is placed by itself, so a layer with `orbit` is never a direct child of a `stack` or `grid` group (`type`
+  at its `orbit`); in an absolute group it counts for the group's size with its box at the furthest point of its
+  ellipse (centre plus semi-axes, whatever the angle or the time).
+- Orbits work on every layer kind, a group and a component instance included: the whole subtree moves with it.
+
+How an orbit is drawn without trigonometry and how its motion plays: [renderer.md](renderer.md#layers) and
+[renderer.md](renderer.md#animation).
 
 ### Local bindings (let)
 
@@ -437,8 +500,8 @@ A design has at most one timeline; layers animate on it through `animate`.
 
 **animate** (any layer): an object from property to track. Every layer kind takes `opacity`, `x`, `y`, `scale` and
 `rotation`; `rect`, `ellipse` and `path` also `fill` and `stroke`; `text` also `fill`; `path` also `draw`. Any other key
-is `unknown-property`; a key twice is `duplicate-key`. A layer with `animate` in a design without `animation` fails with
-`missing-property` at `/animation`.
+is `unknown-property`; a key twice is `duplicate-key`. A layer with `animate`, or an `orbit` with a `speed`, in a design without `animation` fails
+with `missing-property` at `/animation` (reported once).
 
 | property   | keyframe value          | meaning                                                                    |
 | ---------- | ----------------------- | -------------------------------------------------------------------------- |
@@ -535,29 +598,29 @@ interface DesignIssue {
 - A message quotes at most 64 characters of an input value, JSON-escaped. A property name longer than 64 characters or
   holding control, bidi or line-separator characters is never put into a path: the issue is reported at its parent.
 
-| code                  | meaning                                                                                                               |
-| --------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| `parse`               | invalid JSON or YAML syntax, an unknown YAML tag, several YAML documents                                              |
-| `duplicate-key`       | the same key twice in one object                                                                                      |
-| `too-large`           | source too long, too many values or YAML aliases                                                                      |
-| `too-deep`            | nesting over the limit (also a reference cycle in an editor object)                                                   |
-| `unsupported-version` | `version` newer than this reader, or negative                                                                         |
-| `migration-missing`   | no migration step from the document's version                                                                         |
-| `missing-property`    | a required property is absent (`animation` when a layer has `animate`), a palette token a mode lacks                  |
-| `unknown-property`    | a property the format does not define, or a prop the component does not declare                                       |
-| `type`                | wrong kind of value (string instead of number, not finite, not an integer)                                            |
-| `enum`                | not one of the allowed words, including an unknown layer `type` or a value an enum prop does not list                 |
-| `pattern`             | a string in the wrong shape (colour, id, asset source, path data, arcs in `draw`, a `let` name)                       |
-| `range`               | a number outside its range, or a keyframe offset below the one before it                                              |
-| `length`              | a string too long or empty                                                                                            |
-| `count`               | an array (a prop list too) with too few or too many items, a `let` or palette with too many entries, an empty palette |
-| `duplicate-id`        | a layer id used twice in one scope                                                                                    |
-| `reserved-name`       | a `let` named `props`, `true`, `false` or `null`; `palette` as a local name; a literal as a token                     |
-| `duplicate-name`      | a `let` name its repeat or an enclosing `let`/repeat binds already, or a repeat name hiding a `let`                   |
-| `unknown-reference`   | `style`, `font`, `asset` or `ref` names nothing in the document, or a read of an unknown palette token                |
-| `component-cycle`     | components that contain themselves; reported at the `ref` closing the loop                                            |
-| `missing-font`        | a text with neither `font` nor a style with a font                                                                    |
-| `too-many-layers`     | the document expands to more than 10000 layers                                                                        |
+| code                  | meaning                                                                                                                                        |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `parse`               | invalid JSON or YAML syntax, an unknown YAML tag, several YAML documents                                                                       |
+| `duplicate-key`       | the same key twice in one object                                                                                                               |
+| `too-large`           | source too long, too many values or YAML aliases                                                                                               |
+| `too-deep`            | nesting over the limit (also a reference cycle in an editor object)                                                                            |
+| `unsupported-version` | `version` newer than this reader, or negative                                                                                                  |
+| `migration-missing`   | no migration step from the document's version                                                                                                  |
+| `missing-property`    | a required property is absent (`animation` when a layer has `animate` or an orbit `speed`), a palette token a mode lacks                       |
+| `unknown-property`    | a property the format does not define, or a prop the component does not declare                                                                |
+| `type`                | wrong kind of value (string instead of number, not finite, not an integer); an `orbit` in a stack or grid group, a fade with `animate.opacity` |
+| `enum`                | not one of the allowed words, including an unknown layer `type` or a value an enum prop does not list                                          |
+| `pattern`             | a string in the wrong shape (colour, id, asset source, path data, arcs in `draw`, a `let` name)                                                |
+| `range`               | a number outside its range, a keyframe offset below the one before it, a `fade` whose `from` equals its `to`                                   |
+| `length`              | a string too long or empty                                                                                                                     |
+| `count`               | an array (a prop list too) with too few or too many items, a `let` or palette with too many entries, an empty palette                          |
+| `duplicate-id`        | a layer id used twice in one scope                                                                                                             |
+| `reserved-name`       | a `let` named `props`, `true`, `false` or `null`; `palette` as a local name; a literal as a token                                              |
+| `duplicate-name`      | a `let` name its repeat or an enclosing `let`/repeat binds already, or a repeat name hiding a `let`                                            |
+| `unknown-reference`   | `style`, `font`, `asset` or `ref` names nothing in the document, or a read of an unknown palette token                                         |
+| `component-cycle`     | components that contain themselves; reported at the `ref` closing the loop                                                                     |
+| `missing-font`        | a text with neither `font` nor a style with a font                                                                                             |
+| `too-many-layers`     | the document expands to more than 10000 layers                                                                                                 |
 
 ## YAML
 
@@ -594,7 +657,7 @@ committed file differs from the emitted schema, and the file is excluded from Pr
 - A document newer than the reader fails with `unsupported-version`; it is never partially rendered.
 - Each released version keeps its schema file (`design-v<N>.schema.json`).
 
-The animation section (`animation`, `animate`), the font asset options `drawAs`, `fallback` and `kerning` and the
+The layer property `orbit` (RM-111), the animation section (`animation`, `animate`), the font asset options `drawAs`, `fallback` and `kerning` and the
 font licence option `reservedFontName` were added to v0 as optional properties, so no design needs migrating.
 Rendering an existing design changed with them, though, without a version step (the meaning of the document is the same; the renderer draws it more faithfully):
 glyphs are kerned by default (`kerning: false` restores the unkerned positions), so text without the new options is

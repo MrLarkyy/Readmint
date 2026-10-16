@@ -312,12 +312,16 @@ and `pinscreen` "no pushes yet" and "no commits yet"; the sections that do not r
 - **Tickers by measured width.** A ticker gives each item a slot as wide as its texts as drawn (`textWidth` of the
   repository name and message, fixed widths for the hash, date and gaps), clipped to the slot, so the width of one run
   is known in the design and the band moves by whole runs per timeline.
-- **A 3D ring without trigonometry.** A point of an ellipse with semi-axes `R1 + R2` and `R1 - R2` is the sum of two
-  counter-rotating circles. Each day is three nested groups, each only a rotation (outer `phi`, middle `-2 phi` turning
-  twice as fast the other way, inner `phi` so the line stays upright), so all 365 copies share three animation rules
-  and differ only in their static rotations. The ellipse is the one the prototype's perspective ring draws; the far
-  half fades under a soft ellipse of the page colour, and the month labels, set below the ring's base, fade in and
-  out with a cosine looked up in a table.
+- **A 3D ring on orbits.** Every day of the Year Ring (and of the header's small ring) is one group with an
+  `orbit` ([design-format.md](design-format.md#orbit)): its angle from the day's index, `speed: -6` (one turn back per
+  60 s loop), upright, so the line stands straight all the way round; the renderer draws it as two counter-rotating
+  arms without trigonometry, and all copies share their two turn rules. The ellipse is the one the prototype's
+  perspective ring draws; the far half fades under a soft ellipse of the page colour. The month labels sit on an
+  ellipse of their own below the ring's base (radius 314.99 by 89.87, so each keeps its place under its tick as before)
+  and fade with the orbit's `fade` (opacity 1.7 sin t - 0.15), not with keyframes. The rewrite on orbits (RM-111)
+  took `year.json` from 1397 to 831 lines and 20 to 4 levels of layers, `header.json` from 1074 to 900 lines and 9
+  to 5 levels; ticks and dots stay within 0.02 px of the nested-group version over the loop, the label opacity within
+  0.15 (the old table floored the angle to 5 degrees).
 - **Perspective without a camera.** The Horizon terrain and the Pinscreen pins project each point with the prototype's
   camera as plain arithmetic (`x = cx + f X / z`, `y = cy - f Y / z` after one fixed tilt), per vertex in bindings.
   The terrain is 52 weeks by 12 rows of quads, anchored at the calendar's last day (its column is the last; a day's
@@ -330,8 +334,10 @@ and `pinscreen` "no pushes yet" and "no commits yet"; the sections that do not r
 - **Square root without a filter.** The expression language has no square root: day counts use chords of the root
   through the squares 0, 1, 4, 9, 16, 36, 64, 100, 169, 256, 400, 1024, 4096 and 16384; the terrain's smoothed values
   and its largest count look the root up in a table of sixteenths.
-- **Values computed once.** A one-item `repeat` binds a value for everything below it (`"each": "{{ [expr] }}"`). A
-  binding holds at most 2048 characters, so long work (the weekday sums) is split into a chain of such bindings. The largest
+- **Values computed once.** A `let` binds values for a layer and everything below it, in order, each entry reading the
+  ones before it (the Year Ring's ring and legend); a one-item `repeat` (`"each": "{{ [expr] }}"`) does the same one
+  level at a time. A binding holds at most 2048 characters, so long work (the weekday sums) is split into several
+  entries. The largest
   count of a year needs none: `days | max("count")` is one binding ([expressions.md](expressions.md)).
 - **Text without measuring.** Geist Mono advances 0.6 em, so a token of the Pinscreen code sits at `columns x 6.9`
   pixels; free text is cut with `truncate` and held in a `clip` group. A clip group (or other layer of its own) lying
@@ -349,8 +355,8 @@ the budget below. The repository slots weigh alike; `work` is 5 to 7 KB.
 
 | template    | section | sample | worst case |
 | ----------- | ------- | ------ | ---------- |
-| `year-ring` | header  | 219 KB | 232 KB     |
-| `year-ring` | year    | 241 KB | 259 KB     |
+| `year-ring` | header  | 151 KB | 162 KB     |
+| `year-ring` | year    | 168 KB | 184 KB     |
 | `year-ring` | index   | 10 KB  | 34 KB      |
 | `year-ring` | recent  | 28 KB  | 88 KB      |
 | `year-ring` | repo-1  | 16 KB  | 26 KB      |
@@ -369,8 +375,9 @@ the budget below. The repository slots weigh alike; `work` is 5 to 7 KB.
 | `pinscreen` | stack   | 13 KB  | 13 KB      |
 | `pinscreen` | footer  | 5 KB   | 5 KB       |
 
-The ring of the Year Ring prototype was about 390 KB; sharing the three rotation rules between the days brings it to
-241 KB with a dot for every day without commits, under the 256 KiB the ring is held to on the sample data.
+The ring of the Year Ring prototype was about 390 KB; sharing the turn rules between the days brought it to 241 KB with
+a dot for every day without commits, and drawing each day on an orbit (six groups instead of nine, no keyframes per
+label) to 168 KB, under the 256 KiB the ring is held to on the sample data.
 
 ## Size budget
 

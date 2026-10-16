@@ -138,6 +138,18 @@ Drawn in document order, first at the back. Layer `id` and `name` are not emitte
   glyphs. Such a layer is written, browsers draw the SVG as usual, and raster export of it beyond twice the canvas
   refuses with `raster-image` ([raster.md](raster.md)). Layers without an own layer stay wherever they are; resvg
   draws them anywhere.
+- **Orbit**: a layer with `orbit` ([design-format.md](design-format.md#orbit)) is drawn inside groups that put its
+  coordinates on the ellipse, never at computed coordinates: the renderer does no trigonometry, so Node and every
+  browser draw the same. An ellipse of semi-axes rx and ry is an epicycle of two arms, R1 = (rx + ry) / 2 and
+  R2 = (rx - ry) / 2: `translate(cx cy) rotate(t) translate(R1 0) rotate(-2t) translate(R2 0) rotate(t)` puts the
+  origin at (rx cos t, ry sin t) from the centre and turns it by 0 in all (upright); a circle is
+  `translate(cx cy) rotate(t) translate(r 0) rotate(-t)`. A layer that is not upright ends with `rotate(2t)` (a circle
+  with nothing), a net turn of t. The angle is rounded to 3 decimals before it is doubled, so the printed turns cancel
+  exactly. A static orbit is one `<g transform>` (moves and turns of 0 left out, no group when nothing is left); the
+  layer's own `x`/`y`, rotation and animation are drawn inside it. A static `fade` multiplies the layer's opacity by
+  the fade at its angle; the sine comes from fixed polynomials (`+ - * / %` and `round` only, within 1e-11), never
+  from `Math.sin`. The layer's bounds go through the same steps, so an orbit layer of its own off the canvas is left
+  out; in a group the orbit counts for the content extent with its box at centre plus semi-axes.
 - **Path data template**: a `d` with `{{...}}` placeholders is evaluated per copy like a text, then checked as the
   format checks a literal `d` (not empty, at most 100000 characters, path data characters only; else `range` at `d`).
   Each copy gets the box and the `draw` length of its own data; a literal `d` is measured once per layer.
@@ -634,10 +646,20 @@ Output:
   whose CSS animates only that group's `transform` (the element keeps its own `transform` for its static `rotation`).
   With a rotation or scale the groups sit in `<g transform="translate(cx cy)">` and the element is drawn moved by
   `-cx -cy`, so both turn around the centre of the laid-out box. Layout never sees the animation.
+- An orbit with a `speed` moves as relative turns: after each static turn of its chain comes a `<g>` of its own whose
+  CSS turns it from 0 to k times the travel (the speed times the timeline, in degrees, rounded to 3 decimals) over the
+  whole timeline, linear, k being that turn's multiple of the angle (1, -2, 1 for an upright ellipse). The static
+  turns stay in groups apart, since a CSS transform replaces a `transform` attribute. Every copy of a repeat shares the
+  two or three rules; each turn counts 2 keyframes. A frame writes the sampled turn in that group's `transform`
+  (nothing at 0). A moving `fade` is an opacity track with a keyframe every 15 degrees of travel (25 for one turn,
+  97 for the most a fade follows, four turns; more is `range` at the fade), its values from the same polynomial sine,
+  so the CSS and the frames agree; its keyframes count like any track's. A travel that is not a whole number of turns
+  jumps back at the loop.
 - resvg-js ignores `@keyframes`, `animation` and `@media`, which is why the static attributes carry frame 0.
 - Layers off the canvas ([Layers](#layers)): a frame places every layer by its sampled transforms (and an `opacity`
   track makes a layer one of its own), so it leaves out a layer while its tracks hold it wholly off the canvas. The
-  animated SVG keeps every animated layer and everything inside one, since its CSS may move them onto the canvas; its
+  animated SVG keeps every animated layer, every moving orbit and everything inside one, since its CSS may move them
+  onto the canvas; its
   frame-0 attributes may then hold a layer far off the canvas, which a resvg drawing of the animated SVG itself (not a
   frame) would abort on. Raster export always draws frames.
 
@@ -697,7 +719,7 @@ evaluated, a text its filled-in content, before either is measured), so a huge o
 subsets are written once every text is laid out and count like any markup; text drawn as paths checks its path data
 against the budget glyph by glyph while it is built.
 Animation CSS counts toward `maxOutputBytes` like any markup, and every animated transform reserves its group (a
-`draw` its dash attributes) before the layer is built. Opacity and colour tracks write nothing of their own and the CSS
+`draw` its dash attributes, an orbit its static group and one group per moving turn) before the layer is built. Opacity and colour tracks write nothing of their own and the CSS
 is written only once every track is built, so `maxAnimationKeyframes` bounds that work: each track charges its
 keyframes before any is resolved. Fixed limits: 10000 items per `repeat` (expr, `binding` at
 `repeat/each`) and 64 levels of nested component instances (`too-large`). Shaping is bounded twice by counts (see Fonts, untrusted fonts):
@@ -722,21 +744,21 @@ charged alike, the images the render checked found in the cache.
 
 ## Issues
 
-| code                   | meaning                                                                                                                                                                                                                                                         |
-| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `binding`              | an expression failed to compile or evaluate (also a `let` entry reading itself, a later entry or a data key), the budget or 256 locals ran out, a repeat `each` is not a list or over 10000 items, its `as`/`index` unreadable or equal (names expr's code)     |
-| `type`                 | a value of the wrong kind (also a prop of the wrong type, a list or object written into text)                                                                                                                                                                   |
-| `range`                | a number outside the format's range, a keyframe offset below the one before it, a `time` outside [0, 86400000], a template `d` that gives empty, over-long (100000) or non-path data (at `d`), an arc a template `d` gives under `draw` (at the track)          |
-| `missing-asset`        | an asset path or an image `src` bound to data (`{{binding}}`) without supplied bytes, or a reference to no asset                                                                                                                                                |
-| `asset-format`         | not an accepted image or a malformed font (also one found broken when its glyphs, layout tables or subset are read, one whose layout tables pass a shaping cap, or a table that decompresses past its declared size); a data URI type that does not match       |
-| `asset-too-large`      | over a byte, side or frame limit; a font past its outline budget or whose subset could not fit the output budget; a text or a `textWidth` / `truncateWidth` measurement that brings the render past its shaping bound (at the text's content or the expression) |
-| `unsupported-font`     | a font collection (TTC, or WOFF2 with several fonts), CFF2 outlines or a CFF FontMatrix other than 1/unitsPerEm                                                                                                                                                 |
-| `font-not-embeddable`  | warning: the licence or the fsType forbids embedding; the font's text is drawn as paths (once per asset)                                                                                                                                                        |
-| `font-reserved-name`   | warning: the font has a Reserved Font Name (declared, or stated in its name table), so no subset may be embedded; its text is drawn as paths (once per asset, at what decided)                                                                                  |
-| `too-large`            | the SVG passes `maxOutputBytes`, a text passes `maxTextLength`, the repeats pass `maxRepeatCopies` (at the `repeat` that crossed it), the tracks pass `maxAnimationKeyframes` (at the track that crossed it), components nest deeper than 64 levels             |
-| `font-family-mismatch` | warning: the asset family differs from the family inside the font                                                                                                                                                                                               |
-| `missing-glyph`        | warning: characters neither the font nor its fallbacks have; they are not drawn and take no space (once per font asset, up to ten named)                                                                                                                        |
-| `animation-cut`        | warning: a track runs past the end of the timeline and is cut there (once per track, however many copies)                                                                                                                                                       |
+| code                   | meaning                                                                                                                                                                                                                                                                                                                                     |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `binding`              | an expression failed to compile or evaluate (also a `let` entry reading itself, a later entry or a data key), the budget or 256 locals ran out, a repeat `each` is not a list or over 10000 items, its `as`/`index` unreadable or equal (names expr's code)                                                                                 |
+| `type`                 | a value of the wrong kind (also a prop of the wrong type, a list or object written into text, an orbit in a stack or grid group, a fade with an opacity track)                                                                                                                                                                              |
+| `range`                | a number outside the format's range (an orbit's too, a fade whose depths are equal or that follows more than four turns), a keyframe offset below the one before it, a `time` outside [0, 86400000], a template `d` that gives empty, over-long (100000) or non-path data (at `d`), an arc a template `d` gives under `draw` (at the track) |
+| `missing-asset`        | an asset path or an image `src` bound to data (`{{binding}}`) without supplied bytes, or a reference to no asset                                                                                                                                                                                                                            |
+| `asset-format`         | not an accepted image or a malformed font (also one found broken when its glyphs, layout tables or subset are read, one whose layout tables pass a shaping cap, or a table that decompresses past its declared size); a data URI type that does not match                                                                                   |
+| `asset-too-large`      | over a byte, side or frame limit; a font past its outline budget or whose subset could not fit the output budget; a text or a `textWidth` / `truncateWidth` measurement that brings the render past its shaping bound (at the text's content or the expression)                                                                             |
+| `unsupported-font`     | a font collection (TTC, or WOFF2 with several fonts), CFF2 outlines or a CFF FontMatrix other than 1/unitsPerEm                                                                                                                                                                                                                             |
+| `font-not-embeddable`  | warning: the licence or the fsType forbids embedding; the font's text is drawn as paths (once per asset)                                                                                                                                                                                                                                    |
+| `font-reserved-name`   | warning: the font has a Reserved Font Name (declared, or stated in its name table), so no subset may be embedded; its text is drawn as paths (once per asset, at what decided)                                                                                                                                                              |
+| `too-large`            | the SVG passes `maxOutputBytes`, a text passes `maxTextLength`, the repeats pass `maxRepeatCopies` (at the `repeat` that crossed it), the tracks pass `maxAnimationKeyframes` (at the track that crossed it), components nest deeper than 64 levels                                                                                         |
+| `font-family-mismatch` | warning: the asset family differs from the family inside the font                                                                                                                                                                                                                                                                           |
+| `missing-glyph`        | warning: characters neither the font nor its fallbacks have; they are not drawn and take no space (once per font asset, up to ten named)                                                                                                                                                                                                    |
+| `animation-cut`        | warning: a track runs past the end of the timeline and is cut there (once per track, however many copies)                                                                                                                                                                                                                                   |
 
 ## Report
 
@@ -754,7 +776,9 @@ With the option `layerBoxes: true` a successful render also returns `layerBoxes`
 (later boxes are drawn over earlier ones): `{ layer, x, y, width, height, rotation?, groupTurns? }`. `layer` is the JSON
 Pointer of the design layer under `/layers` that drew it: every repeat copy gives its layer's pointer, the layers of a
 component give their instance's. `x`, `y`, `width`, `height` are the node's box at its layout position before any turn
-(its offsets and those of its groups added; animations do not move it), rounded to 3 decimals. On the canvas the box is
+(its offsets and those of its groups added; animations do not move it), rounded to 3 decimals. An orbit adds its
+moves to the offsets and its turns at the start of the timeline to `groupTurns`, each about the point its chain has
+reached (an upright ellipse: t about the end of both arms, -2t about the end of the first, t about the centre). On the canvas the box is
 turned by `rotation` (its own degrees, clockwise about its centre), then by each of `groupTurns` (`{ degrees, cx, cy }`,
 the turned groups around it, innermost first, each about a centre in the same unturned coordinates); either is absent
 when nothing turns. The renderer does no trigonometry here, as in the SVG: the reader applies the turns. Layers a
