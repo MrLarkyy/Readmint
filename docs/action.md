@@ -219,6 +219,13 @@ not in the main branch. The `Release Action` workflow
 pushes a new tag that points there. It never moves or overwrites a tag, so a tag always runs the same code. The
 Action is version 0: an added input or output is compatible, a renamed or removed one is a new major version.
 
+Once the tag is pushed, the last step creates the GitHub Release for it with the notes GitHub generates
+(`gh release create "$VERSION" --verify-tag --generate-notes --latest --title "$VERSION"`); the workflow token with
+`contents: write` is enough, there is no further secret. A run for a tag that exists stops at the tag check before
+anything is committed, tagged or published, so neither a tag nor a Release is moved or overwritten. If the Release step
+fails after the tag was pushed, the run is red and the tag stays: create the Release by hand with the same command and
+`--repo MrLarkyy/Readmint` rather than running the workflow again.
+
 After a release, bump `defaultActionRef` (`packages/examples/src/defaultActionRef.ts`) to the new tag, the literal
 in [components](components.md#the-examples-repository) ("by default") and the pin in
 `packages/examples/test/buildExamples.test.ts`, add any filter the release introduced to
