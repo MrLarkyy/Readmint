@@ -27,3 +27,16 @@ export function loadScale(): number {
   const slowest = Math.max(...times);
   return Math.min(MAX_SCALE, Math.max(1, slowest / NOMINAL_MS));
 }
+
+/**
+ * Runs `run` and reports its wall-clock time with the load scale to bound it by. The scale is
+ * the larger of a probe before and one after: a spike that ends during the run is missed by
+ * the after-probe, one that starts during it by the before-probe. Only `run` is timed.
+ */
+export function timed<T>(run: () => T): { value: T; ms: number; scale: number } {
+  const before = loadScale();
+  const started = performance.now();
+  const value = run();
+  const ms = performance.now() - started;
+  return { value, ms, scale: Math.max(before, loadScale()) };
+}

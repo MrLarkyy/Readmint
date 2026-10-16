@@ -1,6 +1,6 @@
 import type { Design, FontAsset } from "@readmint/format";
 import { describe, expect, test } from "vitest";
-import { loadScale } from "../../../test-support/loadScale.js";
+import { timed } from "../../../test-support/loadScale.js";
 import { coverage, layoutTable, struct } from "../../fonts/test/buildLayoutTables.js";
 import { buildTestFont } from "../../fonts/test/buildTestFont.js";
 import { renderSvg } from "../src/index.js";
@@ -38,9 +38,12 @@ function render(content: string, fonts: Record<string, FontAsset>, supplied = {}
     assets: { fonts },
     layers: [{ type: "text", content: "{{text}}", width: 380, font: "f" }],
   };
-  const started = performance.now();
-  const result = renderSvg(design, { data: { text: content }, assets: { fonts: supplied } });
-  return { result, ms: performance.now() - started };
+  const {
+    value: result,
+    ms,
+    scale,
+  } = timed(() => renderSvg(design, { data: { text: content }, assets: { fonts: supplied } }));
+  return { result, ms, scale };
 }
 
 describe("one shaping budget per text", () => {
@@ -52,7 +55,7 @@ describe("one shaping budget per text", () => {
         words.push(`a${letters[first % letters.length] ?? "c"}${second}`);
       }
     }
-    const { result, ms } = render(
+    const { result, ms, scale } = render(
       words.join(" "),
       { f: { family: "Hostile", src: "hostile.ttf", licence: { embedding: "allowed" } } },
       { f: hostileFont() },
@@ -61,7 +64,7 @@ describe("one shaping budget per text", () => {
       ok: false,
       issues: [{ code: "asset-format", path: "/assets/fonts/f/src" }],
     });
-    expect(ms).toBeLessThan(1000 * loadScale());
+    expect(ms).toBeLessThan(1000 * scale);
   });
 
   test.each([
@@ -83,9 +86,9 @@ describe("one shaping budget per text", () => {
     ["a Latin letter with 5000 acute accents", fontAssets.medium, `a${chars(0x301).repeat(5000)}`],
   ] as const)("%s renders, as font and as paths, in bounded time", (_name, font, content) => {
     for (const drawAs of ["font", "paths"] as const) {
-      const { result, ms } = render(content, { f: { ...font, drawAs } });
+      const { result, ms, scale } = render(content, { f: { ...font, drawAs } });
       if (!result.ok) throw new Error(JSON.stringify(result.issues));
-      expect(ms).toBeLessThan(1000 * loadScale());
+      expect(ms).toBeLessThan(1000 * scale);
     }
   });
 });
@@ -107,16 +110,18 @@ describe("one shaping bound for the whole render", () => {
       },
       layers: texts.map((content) => ({ type: "text" as const, content, font: "f" })),
     };
-    const started = performance.now();
-    const result = renderSvg(design, { assets: { fonts: { f: hostileFont(7000) } } });
-    const ms = performance.now() - started;
+    const {
+      value: result,
+      ms,
+      scale,
+    } = timed(() => renderSvg(design, { assets: { fonts: { f: hostileFont(7000) } } }));
     expect(result.ok).toBe(false);
     const issue = result.ok ? undefined : result.issues[0];
     expect(issue?.code).toBe("asset-too-large");
     expect(issue?.path).toMatch(/^\/layers\/\d+\/content$/u);
     expect(issue?.message).toContain("shaping operations (all texts together)");
     expect(Number(/\/layers\/(\d+)/u.exec(issue?.path ?? "")?.[1])).toBeGreaterThan(100);
-    expect(ms).toBeLessThan(1000 * loadScale());
+    expect(ms).toBeLessThan(1000 * scale);
   });
 });
 
@@ -144,12 +149,13 @@ describe("measured text shares the render's shaping bound", () => {
         },
       ],
     };
-    const started = performance.now();
-    const result = renderSvg(design, {
-      data: { texts },
-      assets: { fonts: { f: hostileFont(7000) } },
-    });
-    const ms = performance.now() - started;
+    const {
+      value: result,
+      ms,
+      scale,
+    } = timed(() =>
+      renderSvg(design, { data: { texts }, assets: { fonts: { f: hostileFont(7000) } } }),
+    );
     expect(result).toMatchObject({
       ok: false,
       issues: [{ code: "asset-too-large", path: "/layers/0/width" }],
@@ -157,6 +163,6 @@ describe("measured text shares the render's shaping bound", () => {
     expect(result.ok ? "" : result.issues[0]?.message).toContain(
       "shaping operations (all texts together)",
     );
-    expect(ms).toBeLessThan(1000 * loadScale());
+    expect(ms).toBeLessThan(1000 * scale);
   });
 });
