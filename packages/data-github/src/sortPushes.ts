@@ -1,4 +1,4 @@
-import { compareText } from "./collectRepositories.js";
+import { compareText } from "./compareText.js";
 import type { GitHubPush } from "./GitHubPush.js";
 import type { ActivityRecord } from "./GitHubRecords.js";
 import { GitHubLimits } from "./GitHubSourceOptions.js";

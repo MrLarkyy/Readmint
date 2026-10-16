@@ -39,7 +39,7 @@ test("partial GitHub data is one ::warning:: line naming the parts, never the to
   expect(run.code).toBe(0);
   const lines = run.log.split("\n").filter((line) => line.startsWith("::warning::"));
   expect(lines).toEqual([
-    "::warning::GitHub data is incomplete (activity, weeks): github.status, github.pushes and github.pinned[].weeklyCommits may be empty",
+    "::warning::GitHub data is incomplete (activity, weeks): github.status and github.pushes are empty and github.pinned falls back to the top repositories; github.pinned[].weeklyCommits is null",
   ]);
   expect(run.log).not.toContain(CANARY);
 });

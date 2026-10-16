@@ -273,11 +273,17 @@ describe("status", () => {
     expect(data.status).toBeNull();
   });
 
+  test("a status limited to an organization is not on the public profile", async () => {
+    const { data } = await loadData(afterPages(exchange("activity-org-status"), exchange("weeks")));
+    expect(data.status).toBeNull();
+    expect(JSON.stringify(data)).not.toContain("Only for the team");
+  });
+
   test("keeps an emoji without a message", async () => {
     const { data } = await loadData(
       afterPages(
         withActivity((user) => {
-          user.status = { message: null, emoji: ":coffee:" };
+          user.status = { message: null, emoji: ":coffee:", organization: null };
         }),
         exchange("weeks"),
       ),
@@ -289,7 +295,7 @@ describe("status", () => {
     const { data } = await loadData(
       afterPages(
         withActivity((user) => {
-          user.status = { message: null, emoji: null };
+          user.status = { message: null, emoji: null, organization: null };
         }),
         exchange("weeks"),
       ),

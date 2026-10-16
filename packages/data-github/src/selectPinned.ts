@@ -1,4 +1,4 @@
-import { copyRepository } from "./collectRepositories.js";
+import { copyRepository } from "./copyRepository.js";
 import type { GitHubRepository } from "./GitHubData.js";
 import type { ActivityRecord } from "./GitHubRecords.js";
 import { GitHubLimits } from "./GitHubSourceOptions.js";

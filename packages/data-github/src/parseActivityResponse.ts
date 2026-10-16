@@ -29,6 +29,8 @@ export function parseActivityResponse(data: unknown): ActivityRecord {
 function parseStatus(field: ResponseReader): GitHubStatus | null {
   const status = field.nullable();
   if (status === null) return null;
+  // A status limited to an organization is visible to its members only, never on the public profile.
+  if (status.field("organization").nullable() !== null) return null;
   const message = status.field("message").nullableString();
   const emoji = status.field("emoji").nullableString();
   return message === null && emoji === null ? null : { message, emoji };

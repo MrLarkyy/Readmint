@@ -1,6 +1,6 @@
 import { lstat } from "node:fs/promises";
 import path from "node:path";
-import { quoteForLog } from "@readmint/cli";
+import { partialDataWarning, quoteForLog } from "@readmint/cli";
 import type { ActionDeps } from "./ActionDeps.js";
 import { ActionError } from "./ActionError.js";
 import { ActionLog } from "./ActionLog.js";
@@ -47,9 +47,7 @@ export async function runAction(env: Env, deps: ActionDeps): Promise<number> {
     }
 
     const data = await loadActionData(config, workspace, deps.fetch, (parts) => {
-      log.warning(
-        `GitHub data is incomplete (${parts.join(", ")}): github.status, github.pushes and github.pinned[].weeklyCommits may be empty`,
-      );
+      log.warning(partialDataWarning(parts));
     });
     if (config.formats.some((format) => format !== "svg")) await loadRaster(deps);
     const rendered = await renderAll(plan, workspace, data, {

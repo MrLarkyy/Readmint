@@ -7,6 +7,9 @@ export interface GitHubLoadResult {
   readonly meta: GitHubLoadMeta;
 }
 
+/** A part of the data GitHub refused: `activity` (status, pushes, pins) or `weeks` (`weeklyCommits`). */
+export type GitHubPartialPart = "activity" | "weeks";
+
 export interface GitHubLoadMeta extends DataSourceLoadMeta {
   /** GraphQL rate-limit points the queries cost. */
   readonly cost: number;
@@ -17,5 +20,5 @@ export interface GitHubLoadMeta extends DataSourceLoadMeta {
    * Parts GitHub refused or answered unusably, so their fields are empty: `activity` (status,
    * pushes, the pinned repositories) and `weeks` (`weeklyCommits`). Empty after a complete load.
    */
-  readonly partial: readonly ("activity" | "weeks")[];
+  readonly partial: readonly GitHubPartialPart[];
 }

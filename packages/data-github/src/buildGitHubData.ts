@@ -1,4 +1,5 @@
-import { byBytes, collectRepositories } from "./collectRepositories.js";
+import { byBytes } from "./byBytes.js";
+import { collectRepositories } from "./collectRepositories.js";
 import { computeStreaks } from "./computeStreaks.js";
 import {
   GITHUB_DATA_VERSION,

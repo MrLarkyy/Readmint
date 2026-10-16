@@ -54,8 +54,10 @@ ttlSeconds)` stores it.
 A value outside its range fails with `invalid-option` before any request.
 
 Fixed caps (`GitHubLimits`): a response body of at most 8 MiB, strings of at most 1024 characters, at most 54 calendar
-weeks, the first 100 languages of each repository (by size; the rest are not counted), and 3 attempts per request
-under a secondary rate limit.
+weeks, the first 100 languages of each repository (by size; the rest are not counted), 3 attempts per request
+under a secondary rate limit, 6 pinned repositories, 10 pushes (from at most 10 repositories with at most 10 commits
+each, over 7 days), 52 weeks of weekly commits, and a commit message cut at 1024 UTF-16 units on a code point
+boundary instead of failing the load.
 
 ## Data object
 
@@ -199,7 +201,8 @@ profile. A live run with the user's own token loaded and validated a real calend
 
 Private repositories stay out of `pinned` and `pushes` too: their names, commit messages and counts are dropped
 whatever the token can read, so a personal access token with private access exposes nothing more than the Actions
-`GITHUB_TOKEN` does.
+`GITHUB_TOKEN` does. A status limited to an organization is visible to its members only, so it is dropped too
+(`status` is `null`).
 
 Repositories are loaded in pages of `pageSize`, in GitHub's order (stars descending), until there is no next page or
 `maxRepositories` is reached; `repositoriesTruncated` is then `true`. A next page without a cursor, or a cursor GitHub
@@ -225,15 +228,17 @@ calendar's last day), never the clock, so the same GitHub state gives the same o
   repository, newest first, at most 10 in all. A commit appears once. Commits in **private repositories are dropped**
   with any token, as are private pins; `repository` is the name without owner and `message` the first line, cut at 1024
   UTF-16 units on a code point boundary.
-- **`status`** is the profile status (`message`, `emoji` as a shortcode), `null` when none is set.
+- **`status`** is the profile status (`message`, `emoji` as a shortcode), `null` when none is set or when it is
+  limited to an organization.
 
 Both requests are best effort: `graphql`, `forbidden`, `not-found`, `invalid-response`, `http` and `too-large`
 failures of them do not fail the load. The activity request then leaves `status` `null`, `pushes` `[]` and `pinned`
 at its fallback, the weeks request leaves `weeklyCommits` `null`, and `meta.partial` names the part (`"activity"`,
-`"weeks"`). The Actions `GITHUB_TOKEN` and fine-grained tokens that cannot read these fields end up here. Failures that
+`"weeks"`). A token that may not read these fields (the Actions `GITHUB_TOKEN` or a fine-grained token, depending on its
+permissions) ends up here. Failures that
 would fail the profile request just the same still fail the load: `unauthorized`, rate limits, `network` and
-`timeout` (an abort too). A load with a non-empty `meta.partial` is not cached. The CLI prints one warning line to
-standard error naming the parts.
+`timeout` (an abort too). A load with a non-empty `meta.partial` is not cached. The CLI and the Action each print one warning line naming the
+parts and the fields they leave empty.
 
 ## Errors
 
@@ -274,8 +279,9 @@ Strings are otherwise kept as GitHub returns them; the renderer escapes them.
 - A full load sends 1 + ceil(`maxRepositories` / `pageSize`) requests, plus 1 for the viewer (without `login`, or with
   a `cache`), plus the activity request and, when there are repositories to count, the weekly-commit request (2 more, none for the
   weekly commits of an account without repositories), plus retries: 7 with the defaults, 14 at most with `pageSize` 100.
-  The two extra requests cost about 1 point each: the weekly-commit query asks 52 `totalCount` fields per repository, at
-  most 6 repositories.
+  The activity request costs about 1 point. GitHub's estimate for the weekly-commit request is 3 points for 6
+  repositories (52 `history` counts each); it grows with the number of repositories asked for, at most 6, `meta.cost`
+  reports what GitHub charged.
 
 ## Cache
 

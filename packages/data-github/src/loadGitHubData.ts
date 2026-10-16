@@ -6,7 +6,7 @@ import { checkPageChain, nextPageCursor } from "./checkPageChain.js";
 import type { GitHubCache } from "./GitHubCache.js";
 import type { GitHubData } from "./GitHubData.js";
 import { GitHubDataError, type GitHubDataErrorCode } from "./GitHubDataError.js";
-import type { GitHubLoadMeta, GitHubLoadResult } from "./GitHubLoadResult.js";
+import type { GitHubLoadMeta, GitHubLoadResult, GitHubPartialPart } from "./GitHubLoadResult.js";
 import {
   activityQuery,
   profileQuery,
@@ -158,7 +158,7 @@ export async function loadGitHubData(options: GitHubSourceOptions): Promise<GitH
   return { data, meta: loadMeta(stats, rateLimits, false, partial) };
 }
 
-type PartialPart = GitHubLoadMeta["partial"][number];
+type PartialPart = GitHubPartialPart;
 
 // The node ids to ask weekly commits for: the pinned selection, each repository once.
 function weekIds(

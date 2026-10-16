@@ -24,7 +24,8 @@
       "user": {
         "status": {
           "message": "Shipping the GitHub loader",
-          "emoji": ":rocket:"
+          "emoji": ":rocket:",
+          "organization": null
         },
         "pinnedItems": {
           "nodes": [

@@ -140,10 +140,9 @@ as `render --data` with that object.
 - **Requests**: a load sends the requests of [data-github.md](data-github.md#rate-limits) (at most 6 with `--login`
   and 7 without it, plus retries; fewer for a user with fewer repositories), only to `https://api.github.com/graphql`, and takes at most 300 s in all, retries and
   rate-limit waits included. There is no cache and nothing is written to disk.
-- **Incomplete data**: when GitHub refuses the activity or the weekly-commit request (a token that cannot read the
-  profile status or the pinned items, for instance the Actions `GITHUB_TOKEN`), the load still succeeds with those
-  fields empty and the CLI prints one line on standard error, `warning: GitHub data is incomplete (activity, weeks):
-github.status, github.pushes and github.pinned[].weeklyCommits may be empty`, naming the parts
+- **Incomplete data**: when GitHub refuses the activity or the weekly-commit request (a token that may not read the
+  profile status or the pinned items, as the Actions `GITHUB_TOKEN` may not), the load still succeeds with those
+  fields empty and the CLI prints one line on standard error, `warning: GitHub data is incomplete (activity, weeks): ...`, naming the parts and the fields they leave empty
   ([data-github.md](data-github.md#pinned-repositories-pushes-and-status)). Standard output and the exit code are not
   affected.
 - **Errors**: a failed load is one line `GitHub data (<code>): <message>`, its code one of the `GitHubDataError` codes
@@ -215,7 +214,8 @@ A port in use, or one the system refuses, is exit code 3.
 from, `bin` passes `process.env`), `ExitCode`, `CliError`, `CliIo`,
 `escapeForLog`, `quoteForLog`, `formatIssue`, `localeProblem(locale)` (why a tag cannot be the `--locale`, `undefined` when it can; the Action's `locale` input uses it too), `outputFormats` and `outputExtension(format)` (the `OutputFormat`s and their file extension, `apng` → `png`), and the loaders the commands share: `loadDesignFile`, `loadDesignAssets`,
 `loadFixtureData` (with `maxFixtureBytes`, its size cap), `loadLiveData` (the `--github` load: `LiveDataOptions` with
-`token`, `login`, `fetch` and `signal`, at most `liveDataTimeoutMs`; a failure is a `CliError` with exit code 4),
+`token`, `login`, `fetch`, `signal` and `onPartial`, at most `liveDataTimeoutMs`; a failure is a `CliError` with exit code 4),
+`partialDataWarning(parts)` (the one warning line for `meta.partial`, also the Action's),
 `redactSecrets(text, secrets)` (the redaction of standard error, also the Action's log), `loadRenderInput` (design file, assets, fixture data and the images bound to data in one call; `RenderInput`,
 `RenderInputOptions`, whose `images` fetches them, whose `data` stands in for `--data`, and whose `loadData` loads it
 once the design and its assets are valid, as `--github` does), `fetchBoundImages` and its

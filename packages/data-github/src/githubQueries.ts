@@ -72,7 +72,7 @@ export const activityQuery: GraphQLOperation = {
   operationName: "ReadmintActivity",
   query: `query ReadmintActivity($login: String!, $author: ID!, $from: DateTime!, $to: DateTime!, $since: GitTimestamp!, $until: GitTimestamp!) {
   user(login: $login) {
-    status { message emoji }
+    status { message emoji organization { id } }
     pinnedItems(first: ${String(GitHubLimits.maxPinned)}, types: [REPOSITORY]) {
       nodes {
         ... on Repository {

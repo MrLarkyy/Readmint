@@ -2,6 +2,7 @@ import {
   GITHUB_DATA_NAMESPACE,
   GitHubDataError,
   type GitHubFetch,
+  type GitHubPartialPart,
   loadGitHubData,
 } from "@readmint/data-github";
 import { CliError } from "./CliError.js";
@@ -20,7 +21,7 @@ export interface LiveDataOptions {
   /** Ends the load early, besides the `liveDataTimeoutMs` limit. */
   readonly signal?: AbortSignal;
   /** Called with `meta.partial` when GitHub refused a part of the data (status, pushes, weekly commits). */
-  readonly onPartial?: (parts: readonly string[]) => void;
+  readonly onPartial?: (parts: readonly GitHubPartialPart[]) => void;
 }
 
 /**

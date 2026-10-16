@@ -109,7 +109,7 @@ describe("render and validate --github", () => {
     expect(run.code).toBe(ExitCode.ok);
     expect(run.stdout).toMatch(/^<svg /);
     expect(run.stderr).toBe(
-      "warning: GitHub data is incomplete (activity, weeks): github.status, github.pushes and github.pinned[].weeklyCommits may be empty\n",
+      "warning: GitHub data is incomplete (activity, weeks): github.status and github.pushes are empty and github.pinned falls back to the top repositories; github.pinned[].weeklyCommits is null\n",
     );
     expect(run.stderr).not.toContain(CANARY);
   });
