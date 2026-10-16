@@ -115,6 +115,10 @@ export function readInputs(env: Env): ActionConfig {
 
   const token = value("token");
   const dataFile = value("data-file");
+  if (dataFile !== "") {
+    const reason = checkRelativePath(dataFile);
+    if (reason !== undefined) problems.push(`input data-file ${quoteForLog(dataFile)} ${reason}`);
+  }
   if (dataFile === "" && token === "") {
     problems.push("input token is empty; pass a token or a data-file");
   }
