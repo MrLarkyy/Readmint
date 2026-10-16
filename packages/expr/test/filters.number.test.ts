@@ -178,3 +178,81 @@ describe("round, floor, ceil, abs, min, max, clamp", () => {
     expect(errorOf(text).code).toBe(code);
   });
 });
+
+describe("sqrt and array min, max", () => {
+  test.each([
+    [4, 2],
+    [2, 1.4142135623730951],
+    [0, 0],
+  ])("sqrt of %d is %d", (n, expected) => {
+    expect(format("sqrt", n)).toBe(expected);
+  });
+
+  test("sqrt of -0 is -0, written 0", () => {
+    expect(Object.is(format("sqrt", -0), -0)).toBe(true);
+    expect(valueOf("{{ n | sqrt }}!", { n: -0 })).toBe("0!");
+  });
+
+  test("an array gives its largest or smallest item", () => {
+    expect(valueOf("{{ [3, 1, 2] | max }}")).toBe(3);
+    expect(valueOf("{{ [3, 1, 2] | min }}")).toBe(1);
+    expect(valueOf("{{ list | max }}", { list: [-5, 7.5, 7] })).toBe(7.5);
+    expect(valueOf("{{ [4] | min }}")).toBe(4);
+  });
+
+  test("an empty array gives null, a null input passes through", () => {
+    expect(valueOf("{{ list | max }}", { list: [] })).toBeNull();
+    expect(valueOf("{{ list | min | default(0) }}", { list: [] })).toBe(0);
+    expect(valueOf("{{ v | max }}", { v: null })).toBeNull();
+    expect(valueOf("{{ v | min }}", { v: null })).toBeNull();
+  });
+
+  test("-0 is below 0 whatever the order", () => {
+    expect(Object.is(valueOf("{{ list | min }}", { list: [0, -0] }), -0)).toBe(true);
+    expect(Object.is(valueOf("{{ list | min }}", { list: [-0, 0] }), -0)).toBe(true);
+    expect(Object.is(valueOf("{{ list | max }}", { list: [-0, 0] }), 0)).toBe(true);
+    expect(Object.is(valueOf("{{ list | max }}", { list: [0, -0] }), 0)).toBe(true);
+  });
+
+  test("the number form is unchanged", () => {
+    expect(format("max(3)", 5)).toBe(5);
+    expect(format("min(3)", 5)).toBe(3);
+  });
+
+  test.each([
+    ["{{ -1 | sqrt }}", "not-finite"],
+    ["{{ '4' | sqrt }}", "type"],
+    ["{{ [4] | sqrt }}", "type"],
+    ["{{ [1, 'a'] | max }}", "type"],
+    ["{{ [1, null] | min }}", "type"],
+    ["{{ [[1]] | max }}", "type"],
+    ["{{ 'a' | max }}", "type"],
+    ["{{ [1] | max(2) }}", "argument"],
+    ["{{ [] | min(2) }}", "argument"],
+    ["{{ 5 | max }}", "argument"],
+    ["{{ 5 | min }}", "argument"],
+    ["{{ 5 | min() }}", "argument"],
+  ])("%s fails with %s", (text, code) => {
+    expect(errorOf(text).code).toBe(code);
+  });
+
+  test("an object input is a type error", () => {
+    expect(errorOf("{{ o | max }}", { o: { a: 1 } }).code).toBe("type");
+  });
+
+  test("messages name types, never values", () => {
+    expect(errorOf("{{ [1, 'secret'] | max }}").message).toContain(
+      "max: items must be numbers, got string",
+    );
+    expect(errorOf("{{ o | min }}", { o: { a: 1 } }).message).toContain(
+      "min needs a number or an array, got object",
+    );
+    expect(errorOf("{{ 5 | max }}").message).toContain("max: argument 1 is required");
+    expect(errorOf("{{ [1] | max(2) }}").message).toContain("max: an array takes no argument");
+  });
+
+  test("a non-finite item in the host data is invalid-data", () => {
+    expect(errorOf("{{ list | max }}", { list: [1, Number.NaN] }).code).toBe("invalid-data");
+    expect(errorOf("{{ list | min }}", { list: [Infinity] }).code).toBe("invalid-data");
+  });
+});
