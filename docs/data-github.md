@@ -37,19 +37,20 @@ ttlSeconds)` stores it.
 
 ### Options
 
-| option                | default    | range         | meaning                                                                                                          |
-| --------------------- | ---------- | ------------- | ---------------------------------------------------------------------------------------------------------------- |
-| `token`               | (required) | visible ASCII | the user's token; sent only in the `Authorization` header                                                        |
-| `login`               | the viewer | GitHub login  | the user to load; without it the token's owner is loaded. Required with an app or Actions token (`GITHUB_TOKEN`) |
-| `pageSize`            | 100        | 1–100         | repositories per request                                                                                         |
-| `maxRepositories`     | 300        | 1–1000        | repositories loaded at most                                                                                      |
-| `requestTimeoutMs`    | 30000      | 1000–120000   | per request, body included                                                                                       |
-| `maxRetryWaitSeconds` | 60         | 0–900         | the longest secondary rate-limit wait accepted                                                                   |
-| `cacheTtlSeconds`     | 3600       | 1–604800      | lifetime of a cache entry                                                                                        |
-| `cache`               | none       |               | a `GitHubCache`                                                                                                  |
-| `fetch`               | `fetch`    |               | `(url, init) => Promise<Response>`, injectable for tests                                                         |
-| `sleep`               | timer      |               | `(milliseconds) => Promise<void>` for retry waits; the default ends on abort                                     |
-| `signal`              | none       |               | an `AbortSignal` that cancels the load, retry waits included (as `timeout`)                                      |
+| option                | default    | range           | meaning                                                                                                            |
+| --------------------- | ---------- | --------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `token`               | (required) | visible ASCII   | the user's token; sent only in the `Authorization` header                                                          |
+| `login`               | the viewer | GitHub login    | the user to load; without it the token's owner is loaded. Required with an app or Actions token (`GITHUB_TOKEN`)   |
+| `excludeRepositories` | none       | up to 100 names | repositories left out of every aggregate, as `name` or `owner/name`, case-insensitive; see [Languages](#languages) |
+| `pageSize`            | 100        | 1–100           | repositories per request                                                                                           |
+| `maxRepositories`     | 300        | 1–1000          | repositories loaded at most                                                                                        |
+| `requestTimeoutMs`    | 30000      | 1000–120000     | per request, body included                                                                                         |
+| `maxRetryWaitSeconds` | 60         | 0–900           | the longest secondary rate-limit wait accepted                                                                     |
+| `cacheTtlSeconds`     | 3600       | 1–604800        | lifetime of a cache entry                                                                                          |
+| `cache`               | none       |                 | a `GitHubCache`                                                                                                    |
+| `fetch`               | `fetch`    |                 | `(url, init) => Promise<Response>`, injectable for tests                                                           |
+| `sleep`               | timer      |                 | `(milliseconds) => Promise<void>` for retry waits; the default ends on abort                                       |
+| `signal`              | none       |                 | an `AbortSignal` that cancels the load, retry waits included (as `timeout`)                                        |
 
 A value outside its range fails with `invalid-option` before any request.
 
@@ -139,6 +140,15 @@ as GitHub returns them. Array items are written `[]` below.
 | `languages[].name`                     | string            | language name                                                                                                                                                                                                              |
 | `languages[].color`                    | string \| null    | `#rrggbb` or `null`                                                                                                                                                                                                        |
 | `languages[].bytes`                    | number            | bytes of code                                                                                                                                                                                                              |
+| `languagesByRepo`                      | array             | the same languages weighted by repository, see [Languages](#languages)                                                                                                                                                     |
+| `languagesByRepo[].name`               | string            | language name                                                                                                                                                                                                              |
+| `languagesByRepo[].color`              | string \| null    | `#rrggbb` or `null`                                                                                                                                                                                                        |
+| `languagesByRepo[].share`              | number            | mean of the language's share inside each counted repository, 0-1; the shares sum to 1 (all 0 when no repository has language bytes)                                                                                        |
+| `languagesByRepo[].repositories`       | number            | repositories that list the language                                                                                                                                                                                        |
+| `languageRepositories`                 | array             | how many repositories use each language                                                                                                                                                                                    |
+| `languageRepositories[].name`          | string            | language name                                                                                                                                                                                                              |
+| `languageRepositories[].color`         | string \| null    | `#rrggbb` or `null`                                                                                                                                                                                                        |
+| `languageRepositories[].repositories`  | number            | repositories that list the language                                                                                                                                                                                        |
 | `languages[].share`                    | number            | `bytes` over the bytes of all languages, 0–1 (0 when there are none)                                                                                                                                                       |
 | `contributions`                        | object            | the contribution calendar GitHub shows on the profile                                                                                                                                                                      |
 | `contributions.total`                  | number            | contributions in the calendar                                                                                                                                                                                              |
@@ -177,8 +187,29 @@ byte-identical object:
 - `pinned`: in the order the user pinned them; without pins by `stars` descending, then `nameWithOwner`.
 - `pushes`: newest `date` first, then `nameWithOwner`, then the full commit id.
 - `repositories[].languages` and `languages`: by `bytes` descending, then `name`.
+- `languagesByRepo`: by `share` descending, then `repositories` descending, then `name`; `languageRepositories`: by `repositories` descending, then `name`.
 - Names compare by UTF-16 code units, not by locale.
 - A repository GitHub returns on two pages (its stars changed while loading) appears once.
+
+### Languages
+
+`languages` counts bytes, so one large repository can dominate it: a 3.3 MB TypeScript repository next to ten small
+Kotlin ones gives TypeScript most of the share. `languagesByRepo` gives every loaded non-fork repository the same
+weight 1, split over its languages by their bytes, and divides the sum by the number of repositories that have
+language bytes; in that example Kotlin leads with 10 repositories of 11 and TypeScript has 1/11. A repository whose
+languages all have 0 bytes is listed in `repositories` but adds no weight. `languageRepositories` is the plain count
+of repositories per language. All three lists name the same languages. They are arrays, not objects keyed by
+language, because a language name is free text. Forks are ignored, as in `languages`. The first 100 languages of each
+repository are counted, as for `languages`.
+
+`excludeRepositories` removes a repository (matched by `name` or `owner/name`, ignoring case) from
+`repositories`, `counts.stars`, `counts.forks`, `languages`, `languagesByRepo`, `languageRepositories` and the
+most-starred fallback of `pinned`. The repositories the user pinned on the profile stay in `pinned`, and
+`counts.repositories` (the account's public total) is unchanged. The cap of `maxRepositories` applies before the
+exclusion, so `repositoriesTruncated` still describes the load. An entry that is not a repository name, a list of
+more than 100 entries or a value that is not a list fails with `invalid-option`; the message names the position of
+the entry, never its text. A non-empty list is part of the [cache](#cache) key, an empty one is not, so existing
+entries stay valid.
 
 ### Calendar, dates and streaks
 
@@ -294,7 +325,7 @@ An entry belongs to a pair of token owner and login. GitHub answers about contri
 owner (see [Repositories and privacy](#repositories-and-privacy)), so the owner is resolved with the viewer request
 even when `login` is given, and a load with another user's token never reads the owner's entry. The key is the
 SHA-256 hex digest of the namespace (`github`), the data version, a hash of the query text, the viewer and the login (both lowercased),
-`pageSize` and `maxRepositories`. It never covers the token, so two tokens of the same owner share an entry. The key is built by
+`pageSize`, `maxRepositories` and, only when not empty, `excludeRepositories`. It never covers the token, so two tokens of the same owner share an entry. The key is built by
 `dataSourceCacheKey` of `@readmint/data`; since the namespace joined it, entries written by earlier versions miss once
 and are refilled.
 

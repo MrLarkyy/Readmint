@@ -1,3 +1,4 @@
+import { compareText } from "./compareText.js";
 import type { GitHubCache } from "./GitHubCache.js";
 import { GitHubDataError } from "./GitHubDataError.js";
 import { GitHubLimits, type GitHubFetch, type GitHubSourceOptions } from "./GitHubSourceOptions.js";
@@ -8,6 +9,8 @@ export interface ResolvedSourceOptions {
   readonly login: string | null;
   readonly pageSize: number;
   readonly maxRepositories: number;
+  /** Lowercased, sorted, without duplicates. */
+  readonly excludeRepositories: readonly string[];
   readonly requestTimeoutMs: number;
   readonly maxRetryWaitSeconds: number;
   readonly cacheTtlSeconds: number;
@@ -20,6 +23,9 @@ export interface ResolvedSourceOptions {
 
 // Visible ASCII only: a header value with CR/LF or other bytes could inject headers or make
 // fetch throw an error that quotes the value.
+const REPOSITORY_PATTERN =
+  /^(?:[A-Za-z0-9_](?:[A-Za-z0-9_]|-(?=[A-Za-z0-9_])){0,38}\/)?[A-Za-z0-9._-]{1,100}$/;
+
 const TOKEN_PATTERN = /^[\x21-\x7e]+$/;
 
 /** Checks the caller's options; an error never echoes the token. */
@@ -58,6 +64,7 @@ export function resolveSourceOptions(options: GitHubSourceOptions): ResolvedSour
       GitHubLimits.maxRepositories,
       GitHubLimits.defaultMaxRepositories,
     ),
+    excludeRepositories: excludedRepositories(options.excludeRepositories),
     requestTimeoutMs: integerOption(
       "requestTimeoutMs",
       options.requestTimeoutMs,
@@ -84,6 +91,30 @@ export function resolveSourceOptions(options: GitHubSourceOptions): ResolvedSour
     sleep: options.sleep ?? defaultSleep,
     signal: options.signal ?? null,
   };
+}
+
+// Messages name the entry's position, never its value: the list is the user's private choice.
+function excludedRepositories(value: unknown): readonly string[] {
+  if (value === undefined) return [];
+  if (!Array.isArray(value)) {
+    throw new GitHubDataError("invalid-option", "excludeRepositories must be a list of names.");
+  }
+  if (value.length > GitHubLimits.maxExcludedRepositories) {
+    throw new GitHubDataError(
+      "invalid-option",
+      `excludeRepositories takes at most ${String(GitHubLimits.maxExcludedRepositories)} entries.`,
+    );
+  }
+  const names = value.map((entry: unknown, index) => {
+    if (typeof entry !== "string" || !REPOSITORY_PATTERN.test(entry)) {
+      throw new GitHubDataError(
+        "invalid-option",
+        `excludeRepositories entry ${String(index + 1)} is not a repository name.`,
+      );
+    }
+    return entry.toLowerCase();
+  });
+  return [...new Set(names)].sort(compareText);
 }
 
 function integerOption(
