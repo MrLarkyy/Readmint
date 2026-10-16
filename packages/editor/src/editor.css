@@ -48,3 +48,40 @@ body {
   padding: 0 12px 12px;
   color: #d1242f;
 }
+.rm-issue-warning {
+  color: #9a6700;
+}
+.rm-settings .rm-field {
+  grid-template-columns: 100px 1fr auto;
+  align-items: center;
+}
+.rm-settings .rm-field label {
+  display: contents;
+}
+.rm-settings .rm-item {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 4px;
+}
+.rm-settings .rm-default input,
+.rm-settings .rm-default select {
+  color: #59636e;
+}
+.rm-settings .rm-unset input,
+.rm-settings .rm-unset select {
+  background: #f6f8fa;
+}
+@media (max-width: 700px) {
+  .rm-main {
+    grid-template-columns: 1fr;
+  }
+  .rm-settings .rm-field {
+    grid-template-columns: 1fr auto;
+  }
+  .rm-settings .rm-field label {
+    display: grid;
+    grid-column: 1 / -1;
+    gap: 4px;
+  }
+}
