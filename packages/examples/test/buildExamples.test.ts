@@ -55,7 +55,9 @@ describe("buildExamples over the real templates", () => {
   it("has a folder per template with every design and a dark twin of each light design", () => {
     expect(templates.length).toBeGreaterThan(0);
     for (const template of templates) {
-      const designs = readdirSync(join(profilesDir, template)).filter((f) => f.endsWith(".json"));
+      const designs = readdirSync(join(profilesDir, template)).filter(
+        (f) => f.endsWith(".json") && f !== "settings.json",
+      );
       for (const design of designs) {
         expect(
           files.map((f) => f.path),
@@ -96,7 +98,11 @@ describe("buildExamples over the real templates", () => {
     for (const template of templates) {
       expect(workflow).toContain(`output-dir: ${template}/readmint`);
       for (const design of readdirSync(join(profilesDir, template))) {
-        if (design.endsWith(".json") && !design.endsWith(".dark.json")) {
+        if (
+          design.endsWith(".json") &&
+          !design.endsWith(".dark.json") &&
+          design !== "settings.json"
+        ) {
           expect(workflow).toContain(`            ${template}/designs/${design}\n`);
         }
       }
@@ -157,6 +163,15 @@ describe("buildExamples on a broken template folder", () => {
       props: { t: { a: { x: "1" } } },
     });
     expect(files.map((f) => f.path)).toContain("t/designs/a.dark.json");
+  });
+
+  it("builds a folder with a settings.json and leaves it out of the output", () => {
+    const files = buildExamples(fixture(component, { "settings.json": '{"a":{"x":""}}' }), {
+      ...options,
+      props: { t: { a: { x: "1" } } },
+    });
+    expect(files.map((f) => f.path).filter((path) => path.includes("settings"))).toEqual([]);
+    expect(files.map((f) => f.path)).toContain("t/designs/a.json");
   });
 
   it("throws on example props for a section without a design", () => {

@@ -1,4 +1,4 @@
-import { parseDesign, type Design } from "@readmint/format";
+import { applyDesignProps, parseDesign, type Design } from "@readmint/format";
 import { renderSvg, type RenderLimits } from "@readmint/renderer";
 import type { ProfileSection, ProfileTemplate } from "../src/index.js";
 import { profileExampleProps } from "@readmint/examples/props";
@@ -6,11 +6,14 @@ import { profileExampleProps } from "@readmint/examples/props";
 export type ProfileTheme = "light" | "dark";
 
 /** The design files as published, read as text in Node and in the browser alike, by path below `templates/profiles/`. */
-const designSources = import.meta.glob("../templates/profiles/*/*.json", {
-  eager: true,
-  query: "?raw",
-  import: "default",
-});
+const designSources = import.meta.glob(
+  ["../templates/profiles/*/*.json", "!../templates/profiles/*/settings.json"],
+  {
+    eager: true,
+    query: "?raw",
+    import: "default",
+  },
+);
 
 const fontSources = import.meta.glob("../templates/profiles/*/fonts/*.ttf", {
   eager: true,
@@ -67,9 +70,14 @@ export function loadExampleProfile(
 ): Design {
   const design = loadProfile(template, section, theme);
   const props = profileExampleProps[template]?.[section];
-  const [root, ...rest] = design.layers;
-  if (props === undefined || root?.type !== "component") return design;
-  return { ...design, layers: [{ ...root, props: { ...root.props, ...props } }, ...rest] };
+  if (props === undefined) return design;
+  const result = applyDesignProps(design, props);
+  if (!result.ok) {
+    throw new Error(
+      `${template}/${profileFile(section, theme)} takes no example props: ${JSON.stringify(result.issues)}`,
+    );
+  }
+  return result.value;
 }
 
 /** The font files of one template folder, by the relative `src` its designs give them. */
