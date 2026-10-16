@@ -1,8 +1,8 @@
 #!/usr/bin/env node
+import { defaultRepository } from "./defaultRepository.js";
 import { writeWiki } from "./writeWiki.js";
 
-const [docsDir, outDir, repository = "https://github.com/MrLarkyy/Readmint", branch = "main"] =
-  process.argv.slice(2);
+const [docsDir, outDir, repository = defaultRepository, branch = "main"] = process.argv.slice(2);
 if (docsDir === undefined || outDir === undefined) {
   process.stderr.write("usage: readmint-wiki <docs dir> <output dir> [repository url] [branch]\n");
   process.exitCode = 2;
