@@ -116,7 +116,7 @@ recognises equal bytes in different arrays). The Action loads assets the same wa
 
 ## Fixture data
 
-`--data` names a JSON file holding what the data sources would provide, keyed by namespace:
+`--data` names a JSON file holding what the data sources would provide, keyed by namespace. It is a local file of yours and is not confined to a folder; the Action's `data-file` is confined to the workspace:
 
 ```json
 { "github": { "version": 0, "login": "octocat", "followers": 42 } }
