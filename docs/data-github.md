@@ -205,7 +205,8 @@ repository are counted, as for `languages`.
 `excludeRepositories` removes a repository (matched by `name` or `owner/name`, ignoring case) from
 `repositories`, `counts.stars`, `counts.forks`, `languages`, `languagesByRepo`, `languageRepositories` and the
 most-starred fallback of `pinned`. The repositories the user pinned on the profile stay in `pinned`, and
-`counts.repositories` (the account's public total) is unchanged. The cap of `maxRepositories` applies before the
+`counts.repositories` (the account's public total) is unchanged, and `pushes` and the contribution calendar still
+include an excluded repository, as GitHub reports them per user. The cap of `maxRepositories` applies before the
 exclusion, so `repositoriesTruncated` still describes the load. An entry that is not a repository name, a list of
 more than 100 entries or a value that is not a list fails with `invalid-option`; the message names the position of
 the entry, never its text. A non-empty list is part of the [cache](#cache) key, an empty one is not, so existing

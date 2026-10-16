@@ -21,11 +21,12 @@ export interface ResolvedSourceOptions {
   readonly signal: AbortSignal | null;
 }
 
-// Visible ASCII only: a header value with CR/LF or other bytes could inject headers or make
-// fetch throw an error that quotes the value.
+// A repository name, optionally `owner/name`.
 const REPOSITORY_PATTERN =
   /^(?:[A-Za-z0-9_](?:[A-Za-z0-9_]|-(?=[A-Za-z0-9_])){0,38}\/)?[A-Za-z0-9._-]{1,100}$/;
 
+// Visible ASCII only: a header value with CR/LF or other bytes could inject headers or make
+// fetch throw an error that quotes the value.
 const TOKEN_PATTERN = /^[\x21-\x7e]+$/;
 
 /** Checks the caller's options; an error never echoes the token. */
