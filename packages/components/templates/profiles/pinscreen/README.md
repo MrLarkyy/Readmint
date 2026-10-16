@@ -61,24 +61,27 @@ design's own value. A value in `settings.json` wins over the same prop written i
 is ignored by the CLI and warned about by the Action, and a prop a section does not have fails the render. `theme`
 stays in the design (it is what makes the twin dark); `slot` of the repository sections may be set in either.
 
-| section  | prop             | type   | what it shows                              | example                                         |
-| -------- | ---------------- | ------ | ------------------------------------------ | ----------------------------------------------- |
-| `header` | `role`           | string | the line under the name                    | `Developer. Tools and infrastructure.`          |
-| `header` | `intro`          | string | the line under it; empty: the GitHub bio   | `I build developer tools and write about them.` |
-| `header` | `branch`         | string | the branch in the status bar; default main | `main`                                          |
-| `header` | `statusBarRight` | string | the right end of the status bar            | `TypeScript · LF · UTF-8`                       |
-| `stack`  | `plugin`         | string | the plugins block; empty: no block         | `kotlin("jvm")`                                 |
-| `stack`  | `labels`         | array  | a comment per dependency line, up to four  | `["tools", "data"]`                             |
-| `stack`  | `items`          | array  | the dependencies of each line              | `["git, make", "sqlite"]`                       |
-| `stack`  | `noteLabels`     | array  | comment lines at the end, up to three      | `["editor"]`                                    |
-| `stack`  | `noteItems`      | array  | their texts                                | `["Neovim"]`                                    |
-| `footer` | `headline`       | string | the closing line                           | `Open to new projects.`                         |
-| `footer` | `note`           | string | one line under it                          | `Tooling, infrastructure and documentation.`    |
-| `footer` | `contactLabel`   | string | the label over the contact; empty: github  | `email`                                         |
-| `footer` | `contactText`    | string | the contact; empty: your GitHub address    | `hello@example.com`                             |
+| section  | prop             | type   | what it shows                                                   | example                                         |
+| -------- | ---------------- | ------ | --------------------------------------------------------------- | ----------------------------------------------- |
+| `header` | `role`           | string | the line under the name                                         | `Developer. Tools and infrastructure.`          |
+| `header` | `intro`          | string | the line under it; empty: the GitHub bio                        | `I build developer tools and write about them.` |
+| `header` | `branch`         | string | the branch in the status bar; default main                      | `main`                                          |
+| `header` | `statusBarRight` | string | the right end of the status bar                                 | `TypeScript · LF · UTF-8`                       |
+| `stack`  | `plugin`         | string | the plugins block; empty: no block                              | `kotlin("jvm")`                                 |
+| `stack`  | `labels`         | array  | a comment per dependency line, up to four                       | `["tools", "data"]`                             |
+| `stack`  | `items`          | array  | the dependencies of each line                                   | `["git, make", "sqlite"]`                       |
+| `stack`  | `noteLabels`     | array  | comment lines at the end, up to three                           | `["editor"]`                                    |
+| `stack`  | `noteItems`      | array  | their texts                                                     | `["Neovim"]`                                    |
+| `stack`  | `logoNames`      | array  | project names drawn as a logo strip in one note line            | `["Example"]`                                   |
+| `stack`  | `logos`          | array  | the path data of each logo, empty to draw the name as text      | `["M0 0h14v14H0Z"]`                             |
+| `stack`  | `logosRow`       | number | the index of the note line the strip replaces; default -1: none | `1`                                             |
+| `footer` | `headline`       | string | the closing line                                                | `Open to new projects.`                         |
+| `footer` | `note`           | string | one line under it                                               | `Tooling, infrastructure and documentation.`    |
+| `footer` | `contactLabel`   | string | the label over the contact; empty: github                       | `email`                                         |
+| `footer` | `contactText`    | string | the contact; empty: your GitHub address                         | `hello@example.com`                             |
 
 The stack is as tall as its build file, up to fifteen lines, and never shorter than its languages panel, so a short
-file leaves no empty space below it.
+file leaves no empty space below it. The row named by `logosRow` shows a strip instead of its text: each name in `logoNames` is drawn as the path data in the same place of `logos` (one monochrome path with its origin at 0 0, about 14 px tall, in the ink of the row, so one path serves the light and the dark design) or, where that entry is empty, as the name itself. Six or more names take two lines, which adds one code line (16 at most); at most 12 are drawn and a line is cut at its edge. Without `logoNames` or with `logosRow` outside the rows the row shows its text.
 
 For example, `settings.json` for the `header` section:
 

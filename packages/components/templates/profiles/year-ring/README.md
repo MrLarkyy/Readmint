@@ -67,13 +67,16 @@ stays in the design (it is what makes the twin dark); `slot` of the repository s
 | `index`  | `labels`         | array  | the row labels, in order                                                     | `["Focus", "Tools"]`                            |
 | `index`  | `values`         | array  | the row texts, one per label                                                 | `["Developer tooling", "Git, Make, Neovim"]`    |
 | `index`  | `languagesAfter` | number | the Languages row (top three by bytes) comes after this many rows; default 2 | `1`                                             |
+| `index`  | `logoNames`      | array  | project names drawn as a logo strip in one row                               | `["Example"]`                                   |
+| `index`  | `logos`          | array  | the path data of each logo, empty to draw the name as text                   | `["M0 0h14v14H0Z"]`                             |
+| `index`  | `logosRow`       | number | the index of the label whose value the strip replaces; default -1: none      | `5`                                             |
 | `footer` | `headline`       | string | the closing line                                                             | `Open to new projects.`                         |
 | `footer` | `note`           | string | one line under it                                                            | `Tooling, infrastructure and documentation.`    |
 | `footer` | `contactLabel`   | string | the label over the contact; empty: GitHub                                    | `Email`                                         |
 | `footer` | `contactText`    | string | the contact; empty: your GitHub address                                      | `hello@example.com`                             |
 
 The index is as tall as its rows: one per label plus the Languages row, up to eight, so a short list leaves no empty
-space below it.
+space below it. The row named by `logosRow` shows a strip instead of its text: each name in `logoNames` is drawn as the path data in the same place of `logos` (one monochrome path with its origin at 0 0, about 14 px tall, in the ink of the row, so one path serves the light and the dark design) or, where that entry is empty, as the name itself. Six or more names take two lines, which makes the index 22 px taller (349 at most); at most 12 are drawn and a line is cut at its edge. Without `logoNames` or with `logosRow` outside the rows the row shows its text.
 
 For example, `settings.json` for the `header` section:
 
