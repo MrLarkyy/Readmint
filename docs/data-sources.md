@@ -67,7 +67,11 @@ rejects with `timeout`.
 A `DataSourceCache` is `get(key)` (the stored text or `undefined`) and `set(key, value, ttlSeconds)`. Values are JSON
 text and validated again on read. The cache is best effort: a failed read is a miss and a failed write is ignored.
 Keys come from `dataSourceCacheKey(source, input)`, the SHA-256 hex digest (64 lowercase characters, `sha256Hex`) of the
-namespace, the data version and the input fields; the input never holds a secret, and a non-finite number (`NaN`, `Infinity`) throws a `TypeError` naming the field. `MemoryCache` (browser-safe, `{ now?, maxEntries? }`,
+namespace, the data version and the input fields. The digest is one-way: an input may be a URL with a secret query value, and neither the URL nor the
+secret is in the key or in a `FileCache` file name (`<64 hex>.json`). A secret inside an input, including a URL query
+value, must be high-entropy: the rest of the URL is public, so a short one (`?pin=1234`) can be guessed against the digest
+by anyone who can list the cache. The key does not protect the stored value: a cached body is as
+sensitive as the URL it came from (`FileCache` writes entries with mode 0o600 and a directory it creates with 0o700; an existing directory keeps its mode, and Windows ignores modes). A non-finite number (`NaN`, `Infinity`) throws a `TypeError` naming the field. `MemoryCache` (browser-safe, `{ now?, maxEntries? }`,
 32 entries by default) comes from `@readmint/data`, `FileCache` (Node only) from `@readmint/data/node`; both work with any
 source, and `@readmint/data-github` re-exports them unchanged.
 
@@ -144,7 +148,8 @@ export const fakeSource: DataSource<FakeOptions, FakeData> = Object.freeze({
 the CLI `--data-json` ([cli.md](cli.md#json-data)) and the Action `data-json` input ([action.md](action.md#json-data))
 load. Its main entry is browser-safe (global `fetch`, no `node:` module, no `process`); files are read through a reader
 the host passes, and `@readmint/data-json/node` has the Node one, `workspaceFileReader(root)`. It has no dependency but
-`@readmint/data`.
+`@readmint/data`. A namespace the host chooses must not equal a `let` name of the design (a `let` never hides a data
+name, [design-format.md](design-format.md#local-bindings-let)); the CLI checks it before loading.
 
 ```ts
 import { jsonDataSource, loadJsonData } from "@readmint/data-json";
@@ -238,7 +243,8 @@ it leaves the source.
 A URL load without headers uses `cache` when one is given: the key is `dataSourceCacheKey` of the namespace, the data
 version, the URL and `maxBytes` (no header name or value), the value the response text, parsed and checked again on
 read (a bad entry is a miss). A URL load with headers never reads or writes the cache, since its answer depends on a
-credential and a cache may be shared. The CLI and the Action pass no cache: each run loads the documents again.
+credential and a cache may be shared. The key and the entry name never hold the URL or its query; the cached body is as sensitive as
+the URL. The CLI and the Action pass no cache: each run loads the documents again.
 
 ### Editor
 
@@ -351,8 +357,8 @@ from the source itself becomes `invalid-response` "The feed load failed.".
 
 With a `cache` the raw document is stored under `dataSourceCacheKey` of the namespace, the data version, the URL and
 `maxBytes`, never `limit`, and only once it parsed: a cached feed is parsed again on every read, under the same rules
-and with the limit of that load (a bad entry is a miss). The CLI and the Action pass no cache: each run loads the
-feeds again.
+and with the limit of that load (a bad entry is a miss). The key and the entry name never hold the URL or its query; the
+cached feed is as sensitive as the URL. The CLI and the Action pass no cache: each run loads the feeds again.
 
 ### Feeds in the editor
 

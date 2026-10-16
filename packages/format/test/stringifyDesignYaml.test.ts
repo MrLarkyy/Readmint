@@ -158,3 +158,22 @@ test("let entries keep their evaluation order through YAML and back", async () =
   const back = await reread(await yamlOf(design));
   expect(Object.keys((back.layers[0] as { let?: object }).let ?? {})).toEqual(order);
 });
+
+test("palette modes and tokens keep their order through YAML and back", async () => {
+  const modes = ["night", "day", "high-contrast"];
+  const tokens = ["zeta", "alpha", "_m", "b-c", "a1"];
+  const design: Design = {
+    version: 0,
+    canvas: { width: 20, height: 20 },
+    palette: Object.fromEntries(
+      modes.map((mode) => [
+        mode,
+        Object.fromEntries(tokens.map((token) => [token, "#000" as const])),
+      ]),
+    ),
+    layers: [],
+  };
+  const back = await reread(await yamlOf(design));
+  expect(Object.keys(back.palette ?? {})).toEqual(modes);
+  for (const mode of modes) expect(Object.keys(back.palette?.[mode] ?? {})).toEqual(tokens);
+});

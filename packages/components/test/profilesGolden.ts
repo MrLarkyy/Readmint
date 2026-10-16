@@ -10,6 +10,7 @@ import {
 } from "./profileDesigns.js";
 import { profileExampleProps } from "@readmint/examples/props";
 import {
+  longLocationProfileData,
   noPushProfileData,
   noStatusProfileData,
   sampleProfileData,
@@ -36,6 +37,13 @@ const statusHeaders: readonly ProfileTemplate[] = ["horizon", "pinscreen"];
 
 /** The templates whose header reads the pushes. */
 const pushHeaders: readonly ProfileTemplate[] = ["pinscreen", "year-ring"];
+
+/** The templates whose header fits the location by drawn width, pinned with GitHub's longest values. */
+const locationHeaders: readonly ProfileTemplate[] = ["year-ring"];
+
+/** 64 characters of a real place name, and 255 (GitHub's limit) of the widest capital. */
+const longLocation = "Llanfairpwllgwyngyllgogerychwyrndrobwllllantysiliogogogoch, Wales";
+const wideLocation = "W".repeat(255);
 
 /** A frame mid-animation of one section per template, so the motion itself is pinned, not only its end state. */
 const frames: Readonly<Record<ProfileTemplate, readonly [ProfileSection, number]>> = {
@@ -127,6 +135,14 @@ export function profileGoldenSuite(template: ProfileTemplate): GoldenSuite<Profi
       ...(pushHeaders.includes(template) ? themes : []).map((theme) => ({
         name: `header-no-push-${theme}`,
         input: render("header", theme, { data: noPushProfileData() }),
+      })),
+      ...(locationHeaders.includes(template) ? themes : []).map((theme) => ({
+        name: `header-long-location-${theme}`,
+        input: render("header", theme, { data: longLocationProfileData(longLocation) }),
+      })),
+      ...(locationHeaders.includes(template) ? (["light"] as const) : []).map((theme) => ({
+        name: `header-wide-location-${theme}`,
+        input: render("header", theme, { data: longLocationProfileData(wideLocation) }),
       })),
       {
         name: `${frameSection}-t${String(frameTime)}`,

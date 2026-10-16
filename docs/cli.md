@@ -225,6 +225,9 @@ API_KEY=<key> readmint render design.json --data-json api=https://api.example.co
   valid namespace, so a URL with `=` in its query is one source under `json`.
 - **The data object** is `{ version: 0, document: <the parsed JSON> }`, whatever the document is (object, array or
   value): bind `stats.document.stars`. A `version` of the document stays at `document.version`.
+- **The namespace** must not equal a `let` name of the design (its layers and its components' layers): that is checked
+  before any file is read or request made, exit code 1, one line per clash naming the `let` entry and the option; rename
+  the `let` name or give the source another namespace (`--data-json <ns>=<source>`).
 - **A file** is a relative path inside `--root` (default the current folder), at most 1 MiB. Unlike the design, `--data` and `--props` paths, which are relative to the current folder, it is resolved against `--root`, as in the Action: with `--root card`, write `--data-json s=s.json` for `card/s.json`, not `card/s.json` (that looks for `card/card/s.json`). Rules: no `..`, no absolute,
   drive-letter, UNC or device path, and a link or junction that leads outside the root is refused.
 - **A URL** must be `https://` (no user name or password); at most 3 redirects, each to https, a JSON (or
@@ -253,6 +256,8 @@ readmint render design.json --data-feed blog=https://blog.example/feed.xml --dat
 - **The argument** is `<ns>=<url>`, or just `<url>` for the namespace `feed`. `<ns>=` is taken only when it is a valid
   namespace, so a URL with `=` in its query is one feed under `feed`. `--data-feed-limit <ns>=<n>` keeps `n` entries
   (1 to 50, default 5) of that feed.
+- **The namespace** must not equal a `let` name of the design, checked before any request, like `--data-json`
+  ([JSON data](#json-data)).
 - **The data object** is `{ version: 0, title, link, entries }`, each entry `{ title, link, published, summary }` in
   plain text, newest first: bind `blog.entries[0].title`.
 - **A URL** must be `https://` (no user name or password), at most 3 redirects, an XML or `text/plain` content type,

@@ -320,6 +320,13 @@ export interface Canvas {
   readonly background?: Paint;
 }
 
+/**
+ * Colours by mode, then by token: `palette.<mode>.<token>`. Every mode holds the same tokens. Expressions read the
+ * active mode's tokens as `{{ palette.<token> }}`; the active mode is the `theme` prop of the root instance when its
+ * component declares one, else the first mode in document order.
+ */
+export type Palette = Readonly<Record<string, Readonly<Record<string, Colour>>>>;
+
 export interface Design {
   /** Editor hint (the published JSON Schema); ignored by Readmint. */
   readonly $schema?: string;
@@ -339,6 +346,8 @@ export interface Design {
     readonly images?: Readonly<Record<string, ImageAsset>>;
   };
   readonly components?: Readonly<Record<string, ComponentDefinition>>;
+  /** Named colours per mode; when set, `palette` is an expression name and no data key, `let` or repeat may take it. */
+  readonly palette?: Palette;
   /** The timeline every layer's `animate` runs on. */
   readonly animation?: Animation;
 }
