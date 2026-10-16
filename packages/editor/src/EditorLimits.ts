@@ -1,9 +1,11 @@
+import { DesignLimits } from "@readmint/format";
+
 /** Bounds of what the editor accepts from the user before it decodes or renders anything. */
 export const EditorLimits = Object.freeze({
   /** Fixture data file in UTF-8 bytes: the CLI's `maxFixtureBytes`, so a fixture the editor takes renders there too. */
   maxFixtureBytes: 8 * 1024 * 1024,
   /** Settings file in UTF-8 bytes: three per character of the longest source the format takes, as the CLI's `--props` cap. */
-  maxSettingsBytes: 3 * 4_194_304 + 3,
+  maxSettingsBytes: 3 * DesignLimits.maxSourceLength + 3,
   /** One font file: the renderer's `RenderLimits.maxFontBytes`, checked before the file is parsed. */
   maxFontBytes: 4_194_304,
   /**

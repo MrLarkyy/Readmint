@@ -1,3 +1,4 @@
+import { DesignLimits } from "@readmint/format";
 import { expect, test } from "vitest";
 import {
   chooseSection,
@@ -50,4 +51,17 @@ test("chooseSection picks, clears and refuses a section the file lacks", () => {
   expect(refused.settings).toBe(loaded.settings);
   expect(refused.issues).toMatchObject([{ source: "settings" }]);
   expect(chooseSection(empty, "x").issues).toMatchObject([{ source: "settings" }]);
+});
+
+test("loading a file again keeps the current section if the new file has it, else the preferred one, else none", () => {
+  const loaded = chooseSection(loadSettings(empty, text, "header"), "other");
+  expect(loadSettings(loaded, text, "header").settings?.section).toBe("other");
+  expect(loadSettings(loaded, '{"header": {}, "x": {}}', "header").settings?.section).toBe(
+    "header",
+  );
+  expect(loadSettings(loaded, '{"x": {}}', "header").settings?.section).toBeUndefined();
+});
+
+test("the size cap is the CLI's --props cap", () => {
+  expect(EditorLimits.maxSettingsBytes).toBe(3 * DesignLimits.maxSourceLength + 3);
 });

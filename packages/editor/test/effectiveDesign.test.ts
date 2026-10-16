@@ -1,6 +1,10 @@
 import { expect, test } from "vitest";
 import {
   chooseSection,
+  createHistory,
+  recordEdit,
+  redo,
+  undo,
   createEditorState,
   effectiveDesign,
   loadSettings,
@@ -38,4 +42,17 @@ test("a section that does not apply leaves the design and lists issues without t
 test("a design without a component layer reports it", () => {
   const state = loadSettings(createEditorState(newDesign()), settingsText, "header");
   expect(effectiveDesign(state).issues).toMatchObject([{ source: "settings" }]);
+});
+
+test("settings survive undo and redo, and the restored design is re-applied", () => {
+  const state = withSection("header");
+  const edited = { ...state, design: { ...state.design, canvas: { width: 50, height: 50 } } };
+  const history = recordEdit(createHistory(), state, edited);
+  const back = undo(history, edited);
+  expect(back?.state.settings).toBe(state.settings);
+  const again = back === undefined ? undefined : redo(back.history, back.state);
+  expect(again?.state.settings).toBe(state.settings);
+  expect(effectiveDesign(again?.state ?? state).design.layers[0]).toMatchObject({
+    props: { color: "#ff0000" },
+  });
 });

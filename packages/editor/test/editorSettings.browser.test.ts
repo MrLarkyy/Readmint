@@ -1,17 +1,35 @@
 import { afterEach, beforeEach, expect, test } from "vitest";
 import { userEvent } from "vitest/browser";
-import { exportDesign, mountEditor, type EditorHandle, type SavedImage } from "../src/index.js";
+import {
+  exportDesign,
+  mountEditor,
+  type EditorHandle,
+  type RasterRequest,
+  type SavedImage,
+} from "../src/index.js";
 import { settingsDesign, settingsText } from "./settingsDesign.js";
 
 let root: HTMLElement;
 let editor: EditorHandle;
 let images: SavedImage[];
+let requests: RasterRequest[];
 
 beforeEach(async () => {
   root = document.createElement("div");
   document.body.append(root);
   images = [];
-  editor = mountEditor(root, { initial: settingsDesign, saveImage: (file) => images.push(file) });
+  requests = [];
+  editor = mountEditor(root, {
+    initial: settingsDesign,
+    saveImage: (file) => images.push(file),
+    createRasterWorker: () => ({
+      onmessage: null,
+      onerror: null,
+      onmessageerror: null,
+      postMessage: (message) => requests.push(message),
+      terminate: () => undefined,
+    }),
+  });
   await editor.settled();
 });
 
@@ -90,4 +108,27 @@ test("a settings file refused keeps the loaded one", async () => {
   await upload("load-settings", "bad.json", "{nope");
   expect(editor.state.settings).toBe(loaded);
   expect(find('[aria-label="Issues"]').textContent).toContain("settings:");
+});
+
+test("the raster export renders the design with the section applied", async () => {
+  await upload("load-settings", "settings.json", settingsText);
+  await userEvent.selectOptions(section(), "other");
+  await editor.settled();
+  await userEvent.click(find('[data-action="export-png"]'));
+  expect(requests).toHaveLength(1);
+  expect(requests[0]?.input.design.layers[0]).toMatchObject({ props: { color: "#00ff00" } });
+  expect(editor.state.design.layers[0]).not.toHaveProperty("props");
+});
+
+test("New keeps the settings file but no section, so nothing is reported and export is allowed", async () => {
+  await upload("load-settings", "settings.json", settingsText);
+  await userEvent.selectOptions(section(), "other");
+  await editor.settled();
+  await userEvent.click(find('[data-action="new"]'));
+  await editor.settled();
+  expect(editor.state.settings?.section).toBeUndefined();
+  expect(section().value).toBe("");
+  expect(find('[aria-label="Issues"]').textContent).not.toContain("settings");
+  await userEvent.click(find('[data-action="export-png"]'));
+  expect(requests).toHaveLength(1);
 });

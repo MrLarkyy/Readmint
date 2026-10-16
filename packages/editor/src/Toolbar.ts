@@ -33,6 +33,7 @@ export class Toolbar {
   private readonly undoButton: HTMLButtonElement;
   private readonly redoButton: HTMLButtonElement;
   private readonly sectionSelect: HTMLSelectElement;
+  private sectionsKey: string | undefined;
 
   constructor(parent: Element, actions: ToolbarActions) {
     this.root = element(parent, "div", {
@@ -109,10 +110,14 @@ export class Toolbar {
   /** Lists the sections of the loaded settings file and shows the applied one; without a file the list is disabled. */
   setSections(settings: EditorSettings | undefined): void {
     const select = this.sectionSelect;
-    select.replaceChildren();
-    element(select, "option", { text: "No section" }).value = "";
-    for (const name of Object.keys(settings?.sections ?? {})) {
-      element(select, "option", { text: name }).value = name;
+    const names = Object.keys(settings?.sections ?? {});
+    const key = JSON.stringify(names);
+    // Rebuilt only when the list changes, so an open dropdown survives a refresh.
+    if (key !== this.sectionsKey) {
+      this.sectionsKey = key;
+      select.replaceChildren();
+      element(select, "option", { text: "No section" }).value = "";
+      for (const name of names) element(select, "option", { text: name }).value = name;
     }
     select.value = settings?.section ?? "";
     select.disabled = settings === undefined;

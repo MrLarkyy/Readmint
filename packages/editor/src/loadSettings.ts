@@ -5,7 +5,7 @@ import type { EditorState } from "./EditorState.js";
 
 /**
  * A settings file (JSON, props by section, as the CLI's `--props` file) from its text, at most `maxSettingsBytes`
- * of UTF-8. `preferredSection` (the imported design's file stem) is applied when the file has it, else no section.
+ * of UTF-8. The section stays the current one when the new file has it, else `preferredSection` (the imported design's file stem) when it has that, else none.
  * A refused file leaves the state unchanged; an issue names a pointer, never a value.
  */
 export function loadSettings(
@@ -40,14 +40,18 @@ export function loadSettings(
   }
   return {
     ...state,
-    settings: { sections: result.value, ...sectionOf(result.value, preferredSection) },
+    settings: {
+      sections: result.value,
+      ...sectionOf(result.value, state.settings?.section, preferredSection),
+    },
     issues: [],
   };
 }
 
 function sectionOf(
   sections: Readonly<Record<string, unknown>>,
-  name: string | undefined,
+  ...candidates: (string | undefined)[]
 ): { section?: string } {
-  return name !== undefined && Object.hasOwn(sections, name) ? { section: name } : {};
+  const name = candidates.find((one) => one !== undefined && Object.hasOwn(sections, one));
+  return name === undefined ? {} : { section: name };
 }

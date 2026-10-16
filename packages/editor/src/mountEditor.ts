@@ -503,12 +503,14 @@ export function mountEditor(root: HTMLElement, options: MountEditorOptions = {})
   };
 }
 
-/** A fresh state that keeps the session inputs of `previous`: fixture data and settings. */
+/** A fresh state that keeps the session inputs of `previous`: fixture data and the settings file, with no section chosen. */
 function withSession(fresh: EditorState, previous: EditorState): EditorState {
   return {
     ...fresh,
     data: previous.data,
-    ...(previous.settings === undefined ? {} : { settings: previous.settings }),
+    ...(previous.settings === undefined
+      ? {}
+      : { settings: { sections: previous.settings.sections } }),
   };
 }
 
