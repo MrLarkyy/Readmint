@@ -80,13 +80,13 @@ describe("a data namespace equal to a let name", () => {
   });
 
   test("validate fails the same way", async () => {
-    const run = await tree.run([
-      "validate",
-      "clash/design.json",
-      "--data-json",
-      "total=data/doc.json",
-    ]);
+    const run = await tree.run(
+      ["validate", "clash/design.json", "--data-json", "total=https://data.example/a.json"],
+      spy(),
+    );
     expect(run.code).toBe(ExitCode.invalid);
+    expect(run.stderr).toContain('namespace of --data-json "total"');
+    expect(requests).toEqual([]);
   });
 
   test("a different namespace passes", async () => {
@@ -109,6 +109,7 @@ describe("a data namespace equal to a let name", () => {
       "total=data/doc.json",
     ]);
     expect(run.code).toBe(ExitCode.invalid);
+    expect(run.stderr).toContain('namespace of --data-json "total"');
     expect(run.stderr).toContain("/layers/0/children/0/let/total");
   });
 
