@@ -306,3 +306,9 @@ export function noPushProfileData(): ProfileData {
   const data = noStatusProfileData();
   return { github: { ...data.github, pushes: [] } };
 }
+
+/** The sample data with the given location, for headers that fit it by drawn width. */
+export function longLocationProfileData(location: string): ProfileData {
+  const data = sampleProfileData();
+  return { github: { ...data.github, location } };
+}
