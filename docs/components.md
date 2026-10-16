@@ -310,8 +310,8 @@ and `pinscreen` "no pushes yet" and "no commits yet"; the sections that do not r
   through the squares 0, 1, 4, 9, 16, 36, 64, 100, 169, 256, 400, 1024, 4096 and 16384; the terrain's smoothed values
   and its largest count look the root up in a table of sixteenths.
 - **Values computed once.** A one-item `repeat` binds a value for everything below it (`"each": "{{ [expr] }}"`). A
-  binding holds at most 2048 characters, so long work (the largest count of a year, the weekday sums) is split into a
-  chain of such bindings.
+  binding holds at most 2048 characters, so long work (the weekday sums) is split into a chain of such bindings. The largest
+  count of a year needs none: `days | max("count")` is one binding ([expressions.md](expressions.md)).
 - **Text without measuring.** Geist Mono advances 0.6 em, so a token of the Pinscreen code sits at `columns x 6.9`
   pixels; free text is cut with `truncate` and held in a `clip` group. A clip group (or other layer of its own) lying
   wholly off the canvas draws nothing there; the renderer leaves it out ([renderer.md](renderer.md#layers)), so such a
