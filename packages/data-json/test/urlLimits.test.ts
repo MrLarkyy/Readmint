@@ -142,6 +142,16 @@ describe("redirects", () => {
     expect((await failure(load(stub.fetch))).code).toBe("invalid-response");
   });
 
+  test("an opaque redirect response of a browser is invalid-response", async () => {
+    const opaque = Object.defineProperty(new Response(null, { status: 200 }), "type", {
+      value: "opaqueredirect",
+    });
+    const stub = stubFetch(() => opaque);
+    const error = await failure(load(stub.fetch));
+    expect(error.code).toBe("invalid-response");
+    expect(stub.calls).toHaveLength(1);
+  });
+
   test("a cross-origin redirect drops the headers", async () => {
     const stub = stubFetch(
       () => redirect("https://cdn.example/data.json"),

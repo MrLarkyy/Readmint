@@ -11,8 +11,9 @@ const CHUNK_BYTES = 64 * 1024;
 /**
  * A file reader confined to `root`: the relative path is checked, then the root and the target are
  * resolved through every link and junction, and the target must stay inside the root. The file
- * opened must be the regular file that was checked (same device and inode), so a swap between the
- * check and the open is refused. Errors quote the relative path, never the root.
+ * opened must be the regular file that was checked (same device and inode), so swapping the file
+ * itself between the check and the open is refused. A directory on the path swapped for a link in
+ * that window is not detected (no portable way to close it). Errors quote the relative path, never the root.
  */
 export function workspaceFileReader(root: string): JsonFileReader {
   return async (relative, maxBytes) => {

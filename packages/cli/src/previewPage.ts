@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 
 // The page shows issues through textContent only: they quote design and data values. Its URLs are
-// relative, so the same page works at "/" and under the --github secret prefix.
+// relative, so the same page works at "/" and under the secret prefix of a data-loading preview.
 const script = `const image = document.getElementById("render");
 const issues = document.getElementById("issues");
 let shown = -1;

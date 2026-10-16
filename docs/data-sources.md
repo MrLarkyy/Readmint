@@ -173,8 +173,9 @@ A file source is a relative path, `/`- or `\`-separated, without `..` segments, 
 Windows device name (`con`, `nul`, `com1`, ...) or a leading slash or backslash (so no absolute, UNC or device path) and
 without a drive letter; at most 1024 characters. `workspaceFileReader(root)` then resolves the root and the file
 through every link and junction and refuses (`forbidden`) a file whose real path is outside the real root; it opens
-that real path and refuses one that is not the regular file it checked (same device and inode), so a swap between the
-check and the open is caught. A missing file is `not-found`, a folder `invalid-option`, an unreadable one `forbidden`,
+that real path and refuses one that is not the regular file it checked (same device and inode), so swapping the file
+itself between the check and the open is caught. A folder on the path swapped for a link inside that short window is not
+detected: that cannot be closed portably. A missing file is `not-found`, a folder `invalid-option`, an unreadable one `forbidden`,
 one over `maxBytes` `too-large`; messages quote the relative path, never the root. File loads are never cached.
 
 ### URLs
@@ -183,7 +184,8 @@ one over `maxBytes` `too-large`; messages quote the relative path, never the roo
   whitespace or more than 2048 characters are `invalid-option` before any request.
 - Redirects are followed by hand, at most 3, each target checked by the same rule (a redirect to `http:` is
   `invalid-response`, as is a fourth redirect). Headers are sent only while the request goes to the origin of the
-  source URL: a redirect to another origin drops them. Requests send no cookies (`credentials: "omit"`).
+  source URL: a redirect to another origin drops them. Requests send no cookies (`credentials: "omit"`). The browser-safe entry cannot follow a redirect at all: a
+  `fetch` with `redirect: "manual"` returns an opaque response there, so every redirect is `invalid-response`.
 - A 2xx answer must have a JSON content type (`application/json`, `application/*+json`, `text/json`) or `text/plain`
   (as raw.githubusercontent.com serves JSON), with no charset or UTF-8; anything else (an HTML error page, a missing
   type, `latin1`) is `invalid-response` naming the type.

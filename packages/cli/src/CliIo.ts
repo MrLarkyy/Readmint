@@ -18,7 +18,7 @@ export interface CliIo {
    */
   readonly fetch?: ImageFetch;
   /**
-   * Opens the `preview --open` address in a browser (with `--github` the one-time launch address, never the secret
+   * Opens the `preview --open` address in a browser (with a secret path, from `--github` or `--data-json`, the one-time launch address, never the secret
    * one); `openInBrowser` when absent, tests inject one.
    */
   readonly openUrl?: (url: string) => Promise<void>;
