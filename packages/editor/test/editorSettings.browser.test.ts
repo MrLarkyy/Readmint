@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, expect, test } from "vitest";
+import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { userEvent } from "vitest/browser";
 import {
   exportDesign,
@@ -31,6 +31,7 @@ beforeEach(async () => {
     }),
   });
   await editor.settled();
+  await vi.waitFor(() => { expect(editor.svg).toBeDefined(); });
 });
 
 afterEach(() => {
