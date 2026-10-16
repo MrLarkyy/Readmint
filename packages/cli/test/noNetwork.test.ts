@@ -40,3 +40,12 @@ test("render, validate and failures never fetch and never print a token from the
     expect(run.stderr).not.toContain("canary");
   }
 });
+
+test("--data-json with a file source never fetches", async () => {
+  await tree.file("bound/json.json", boundDesign("{{ v.document.v }}"));
+  const fetch = vi.spyOn(globalThis, "fetch");
+  const run = await tree.run(["render", "bound/json.json", "--data-json", "v=data.json"]);
+  expect(run.stderr).toBe("");
+  expect(run.code).toBe(ExitCode.ok);
+  expect(fetch).not.toHaveBeenCalled();
+});

@@ -63,6 +63,9 @@ importers:
       '@readmint/data-github':
         specifier: workspace:*
         version: link:../data-github
+      '@readmint/data-json':
+        specifier: workspace:*
+        version: link:../data-json
       '@readmint/expr':
         specifier: workspace:*
         version: link:../expr

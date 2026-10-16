@@ -1,10 +1,12 @@
 import path from "node:path";
 import { parseArgs } from "node:util";
+import { GITHUB_DATA_NAMESPACE } from "@readmint/data-github";
 import { CliError } from "./CliError.js";
 import type { CliCommand, DesignArgs, RenderArgs } from "./CliCommand.js";
 import { ExitCode } from "./ExitCode.js";
 import { localeProblem } from "./localeProblem.js";
 import { type OutputFormat, outputFormats } from "./OutputFormat.js";
+import { type DataJsonSpec, parseDataJsonArgs } from "./parseDataJsonArgs.js";
 import { quoteForLog } from "./quoteForLog.js";
 
 type DesignCommand = "render" | "validate" | "preview";
@@ -20,7 +22,9 @@ type ValueOption =
   | "scale"
   | "frame-rate"
   | "quality"
-  | "login";
+  | "login"
+  | "data-json"
+  | "data-json-header";
 
 const valueOptions: ReadonlySet<string> = new Set<ValueOption>([
   "root",
@@ -35,6 +39,13 @@ const valueOptions: ReadonlySet<string> = new Set<ValueOption>([
   "frame-rate",
   "quality",
   "login",
+  "data-json",
+  "data-json-header",
+]);
+/** Value options that may be given more than once; each use adds one value. */
+const repeatableOptions: ReadonlySet<string> = new Set<ValueOption>([
+  "data-json",
+  "data-json-header",
 ]);
 const flagOptions: ReadonlySet<string> = new Set([
   "help",
@@ -58,9 +69,29 @@ const allowed: Readonly<Record<DesignCommand, ReadonlySet<ValueOption>>> = {
     "frame-rate",
     "quality",
     "login",
+    "data-json",
+    "data-json-header",
   ]),
-  validate: new Set(["root", "data", "props", "locale", "time", "login"]),
-  preview: new Set(["root", "data", "props", "locale", "port", "login"]),
+  validate: new Set([
+    "root",
+    "data",
+    "props",
+    "locale",
+    "time",
+    "login",
+    "data-json",
+    "data-json-header",
+  ]),
+  preview: new Set([
+    "root",
+    "data",
+    "props",
+    "locale",
+    "port",
+    "login",
+    "data-json",
+    "data-json-header",
+  ]),
 };
 /** Prefixes of GitHub tokens (classic, OAuth, user-to-server, server-to-server, refresh, fine-grained). */
 const tokenShaped = /^(?:-{1,2}[^=]*=)?(?:gh[pousr]_|github_pat_)/;
@@ -95,6 +126,7 @@ export function parseCliArgs(argv: readonly string[]): CliCommand {
     tokens: true,
   });
   const values = new Map<ValueOption, string>();
+  const repeated = new Map<ValueOption, string[]>();
   const flags = new Set<string>();
   const positionals: string[] = [];
   for (const token of tokens) {
@@ -106,6 +138,10 @@ export function parseCliArgs(argv: readonly string[]): CliCommand {
     } else if (valueOptions.has(token.name)) {
       if (token.value === undefined) usage(`option ${token.rawName} needs a value`);
       const name = token.name as ValueOption;
+      if (repeatableOptions.has(name)) {
+        repeated.set(name, [...(repeated.get(name) ?? []), token.value]);
+        continue;
+      }
       if (values.has(name)) usage(`option ${token.rawName} is given twice`);
       values.set(name, token.value);
     } else {
@@ -122,7 +158,7 @@ export function parseCliArgs(argv: readonly string[]): CliCommand {
   const [design, extra] = rest;
   if (design === undefined) usage(`${command} needs a design file`);
   if (extra !== undefined) usage(`unexpected argument ${quoteForLog(extra)}`);
-  for (const name of values.keys()) {
+  for (const name of [...values.keys(), ...repeated.keys()]) {
     if (!allowed[command].has(name)) usage(`option --${name} does not apply to ${command}`);
   }
   if (flags.has("open") && command !== "preview")
@@ -130,6 +166,7 @@ export function parseCliArgs(argv: readonly string[]): CliCommand {
   const github = flags.has("github");
   if (github && values.has("data")) usage("--github and --data exclude each other");
   if (!github && values.has("login")) usage("option --login needs --github");
+  const dataJson = dataJsonArgs(repeated, github);
   const common: DesignArgs = {
     design,
     ...optional("root", values.get("root")),
@@ -139,6 +176,7 @@ export function parseCliArgs(argv: readonly string[]): CliCommand {
     ...(flags.has("fetch-images") ? { fetchImages: true } : {}),
     ...(github ? { github: true } : {}),
     ...optional("login", values.get("login")),
+    ...(dataJson.length === 0 ? {} : { dataJson }),
   };
   const time = values.get("time");
   const timeArgs = time === undefined ? {} : { time: parseTime(time) };
@@ -176,6 +214,24 @@ function refuseTokens(argv: readonly string[]): void {
       "an argument looks like a GitHub token; not printed: the token is read from GH_TOKEN or GITHUB_TOKEN, never from an argument",
     );
   }
+}
+
+function dataJsonArgs(
+  repeated: ReadonlyMap<ValueOption, readonly string[]>,
+  github: boolean,
+): readonly DataJsonSpec[] {
+  const { specs, problems } = parseDataJsonArgs(
+    repeated.get("data-json") ?? [],
+    repeated.get("data-json-header") ?? [],
+  );
+  const [problem] = problems;
+  if (problem !== undefined) usage(`--data-json: ${problem}`);
+  if (github && specs.some((spec) => spec.namespace === GITHUB_DATA_NAMESPACE)) {
+    usage(
+      "--data-json namespace github clashes with --github; name the JSON source another namespace",
+    );
+  }
+  return specs;
 }
 
 function renderArgs(values: ReadonlyMap<ValueOption, string>): Omit<RenderArgs, "time"> {

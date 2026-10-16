@@ -1,4 +1,5 @@
 import type { OutputFormat } from "./OutputFormat.js";
+import type { DataJsonSpec } from "./parseDataJsonArgs.js";
 
 /** Arguments every design command takes. */
 export interface DesignArgs {
@@ -17,6 +18,11 @@ export interface DesignArgs {
   readonly github?: boolean;
   /** `--login`: the GitHub login `--github` loads; the token's owner when absent. */
   readonly login?: string;
+  /**
+   * `--data-json` with its `--data-json-header` headers: JSON documents loaded live, each under its namespace, added
+   * to `--data` or `--github` data.
+   */
+  readonly dataJson?: readonly DataJsonSpec[];
 }
 
 /** `readmint render` beyond the design arguments. */

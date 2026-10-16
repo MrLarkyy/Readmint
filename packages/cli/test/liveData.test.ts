@@ -215,7 +215,7 @@ describe("render and validate --github", () => {
 });
 
 describe("liveData and loadLiveData", () => {
-  test("without --github the environment is never read, with it only once the load starts", () => {
+  test("without --github the environment is never read, with it only once the load starts", async () => {
     const env = new Proxy(
       {},
       {
@@ -229,7 +229,7 @@ describe("liveData and loadLiveData", () => {
     // With --github the environment is read only when the load starts, after the design loaded.
     const { loadData } = liveData({ design: "d.json", github: true }, io);
     expect(loadData).toBeTypeOf("function");
-    expect(() => loadData?.()).toThrow("env read");
+    await expect(loadData?.()).rejects.toThrow("env read");
   });
 
   test("loadLiveData binds the data as { github } and maps a failure to exit code 4 without a cause", async () => {

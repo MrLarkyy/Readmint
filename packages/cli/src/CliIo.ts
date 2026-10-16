@@ -12,7 +12,10 @@ export interface CliIo {
   readonly signal?: AbortSignal;
   /** How often `preview` checks its input files for changes, in milliseconds; default 300. */
   readonly pollIntervalMs?: number;
-  /** `fetch` for `--fetch-images` and `--github`, the only network use of the CLI; the global one when absent. */
+  /**
+   * `fetch` for `--fetch-images`, `--github` and `--data-json` URLs, the only network use of the CLI; the global one
+   * when absent.
+   */
   readonly fetch?: ImageFetch;
   /**
    * Opens the `preview --open` address in a browser (with `--github` the one-time launch address, never the secret
@@ -21,8 +24,9 @@ export interface CliIo {
   readonly openUrl?: (url: string) => Promise<void>;
   /**
    * The environment: `GH_TOKEN`, else `GITHUB_TOKEN`, is the token of `--github`; the GitHub load reads it only with
-   * `--github`. `runCli` reads both in every run only to redact them from standard error and the preview page. `preview --open` on Windows
-   * also reads `SystemRoot` (the path of the opener). No other variable is read.
+   * `--github`. `runCli` reads both in every run only to redact them from standard error and the preview page. The
+   * variables `--data-json-header` names hold header values: read for that load and redacted the same way.
+   * `preview --open` on Windows also reads `SystemRoot` (the path of the opener). No other variable is read.
    */
   readonly env?: Readonly<Record<string, string | undefined>>;
 }

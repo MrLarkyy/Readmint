@@ -27,14 +27,22 @@ Options:
   --github            Load live GitHub data as { github } instead of --data, with the token
                       from GH_TOKEN, else GITHUB_TOKEN
   --login <login>     GitHub login --github loads (default: the token's owner)
+  --data-json [<ns>=]<source>
+                      Load a JSON document as { <ns>: { version: 0, document } } (default ns json):
+                      a file inside --root or an https URL; repeatable, at most 8, added to
+                      --data or --github data
+  --data-json-header <ns>:<Header-Name>=<ENV_NAME>
+                      Send a header to the https URL of <ns>, its value read from the environment
+                      variable ENV_NAME; repeatable
   -h, --help          Show this help
   --version           Show the version
 
 An animated design becomes an animated webp, apng or gif; png is always a still image.
 The token is never an argument: only --github uses GH_TOKEN or GITHUB_TOKEN, and no message
-shows it. The CLI makes network requests only with --github (GitHub API, with the token) and
+shows it, nor a --data-json-header value. The CLI makes network requests only with --github
+(GitHub API, with the token), --data-json with an https URL (its headers only) and
 --fetch-images (image requests, never with credentials).
 
-Exit codes: 0 ok, 1 invalid design or failed render, 2 usage, 3 file or port problem, 4 GitHub data, 70 internal error.
+Exit codes: 0 ok, 1 invalid design or failed render, 2 usage, 3 file or port problem, 4 data source, 70 internal error.
 See docs/cli.md.
 `;

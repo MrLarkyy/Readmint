@@ -3,7 +3,8 @@
 `readmint` renders and checks designs on your own computer, with the same renderer the GitHub Action uses: the same
 design, assets and data give the same SVG bytes, and the same PNG, WebP, APNG or GIF bytes. Data comes from a local JSON file (fixture data), so no token and no
 network are needed; with `--github` it is the live GitHub data instead, loaded with your token from the environment
-exactly as the Action loads it ([Live GitHub data](#live-github-data)).
+exactly as the Action loads it ([Live GitHub data](#live-github-data)). `--data-json` adds any JSON document, a file
+in your repository or an https URL, under a namespace of its own ([JSON data](#json-data)).
 
 ```sh
 readmint render design.json --data fixture.json --out card.svg
@@ -11,6 +12,7 @@ readmint render design.json --data fixture.json --out card.webp --scale 2 --fram
 readmint validate design.json
 readmint preview design.json --data fixture.json
 GH_TOKEN=<token> readmint render design.json --github --login octocat --out card.svg
+readmint render design.json --data-json stats=stats.json --out card.svg
 ```
 
 `render` writes SVG, or a raster image of it: PNG, WebP, APNG or GIF (see [raster.md](raster.md)). An animated design
@@ -33,39 +35,43 @@ data it fails `image-binding`.
 
 ## Options
 
-| option             | commands             | meaning                                                                                                                                                                                                                                                                                                                               |
-| ------------------ | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `--root <dir>`     | all                  | the folder the design file must lie in; default the current folder                                                                                                                                                                                                                                                                    |
-| `--data <file>`    | all                  | fixture data (below)                                                                                                                                                                                                                                                                                                                  |
-| `--props <file>`   | all                  | settings: root component props by section, merged into the design ([Settings file](#settings-file))                                                                                                                                                                                                                                   |
-| `--locale <tag>`   | all                  | BCP 47 language tag for the `number`, `compact`, `percent` and `date` filters; default the design's `locale`, else `en`; a tag the expression tables lack (`en`, `de`, `fr`, `es`, `cs`, or a region tag of one) is a usage error                                                                                                     |
-| `--time <ms>`      | `render`, `validate` | renders that frame of the animation as a static SVG (or a still raster image), in 0..86400000                                                                                                                                                                                                                                         |
-| `--out <file>`     | `render`             | writes the output to this file (its folder must exist) instead of standard output; written only once the whole output is made, so a failed raster export leaves it as it was                                                                                                                                                          |
-| `--format <name>`  | `render`             | `svg`, `png`, `webp`, `apng` or `gif`; default from the `--out` extension (`.png`, `.apng`, `.webp`, `.gif`), else `svg`; a raster format without `--out` is a usage error                                                                                                                                                            |
-| `--scale <n>`      | `render`             | raster pixels per design pixel, 1..4 (up to three decimals); default 2; raster formats only                                                                                                                                                                                                                                           |
-| `--frame-rate <n>` | `render`             | frames per second sampled from the animation, a whole number in 1..60 (`gif` 1..50); default 30, `gif` 25; raster formats only                                                                                                                                                                                                        |
-| `--quality <n>`    | `render`             | lossy WebP at this quality, a whole number in 1..100; default lossless; `webp` output only (any other format is a usage error)                                                                                                                                                                                                        |
-| `--port <n>`       | `preview`            | port in 0..65535; default 4870, `0` picks a free one                                                                                                                                                                                                                                                                                  |
-| `--open`           | `preview`            | opens the printed address (with `--github` a one-time launch address that redirects to the secret one) in the default browser: `rundll32 url.dll` on Windows, `open` on macOS, `xdg-open` elsewhere; if that cannot start, one line says so and the preview keeps serving                                                             |
-| `--fetch-images`   | all                  | fetches the images whose `src` is bound to data (https, allowed hosts only, no credentials; see [asset-loading.md](asset-loading.md#images-bound-from-data)); without it a design with one fails `image-not-fetched` (with `--data` or `--github`) and no image is requested (only `--github` makes requests then, to the GitHub API) |
-| `--github`         | all                  | loads the live GitHub data as `{ github }` with the token from `GH_TOKEN`, else `GITHUB_TOKEN` ([Live GitHub data](#live-github-data)); excludes `--data`                                                                                                                                                                             |
-| `--login <login>`  | all                  | the GitHub login `--github` loads; default the token's owner; only with `--github`                                                                                                                                                                                                                                                    |
+| option                                             | commands             | meaning                                                                                                                                                                                                                                                                                                                               |
+| -------------------------------------------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--root <dir>`                                     | all                  | the folder the design file must lie in; default the current folder                                                                                                                                                                                                                                                                    |
+| `--data <file>`                                    | all                  | fixture data (below)                                                                                                                                                                                                                                                                                                                  |
+| `--props <file>`                                   | all                  | settings: root component props by section, merged into the design ([Settings file](#settings-file))                                                                                                                                                                                                                                   |
+| `--locale <tag>`                                   | all                  | BCP 47 language tag for the `number`, `compact`, `percent` and `date` filters; default the design's `locale`, else `en`; a tag the expression tables lack (`en`, `de`, `fr`, `es`, `cs`, or a region tag of one) is a usage error                                                                                                     |
+| `--time <ms>`                                      | `render`, `validate` | renders that frame of the animation as a static SVG (or a still raster image), in 0..86400000                                                                                                                                                                                                                                         |
+| `--out <file>`                                     | `render`             | writes the output to this file (its folder must exist) instead of standard output; written only once the whole output is made, so a failed raster export leaves it as it was                                                                                                                                                          |
+| `--format <name>`                                  | `render`             | `svg`, `png`, `webp`, `apng` or `gif`; default from the `--out` extension (`.png`, `.apng`, `.webp`, `.gif`), else `svg`; a raster format without `--out` is a usage error                                                                                                                                                            |
+| `--scale <n>`                                      | `render`             | raster pixels per design pixel, 1..4 (up to three decimals); default 2; raster formats only                                                                                                                                                                                                                                           |
+| `--frame-rate <n>`                                 | `render`             | frames per second sampled from the animation, a whole number in 1..60 (`gif` 1..50); default 30, `gif` 25; raster formats only                                                                                                                                                                                                        |
+| `--quality <n>`                                    | `render`             | lossy WebP at this quality, a whole number in 1..100; default lossless; `webp` output only (any other format is a usage error)                                                                                                                                                                                                        |
+| `--port <n>`                                       | `preview`            | port in 0..65535; default 4870, `0` picks a free one                                                                                                                                                                                                                                                                                  |
+| `--open`                                           | `preview`            | opens the printed address (with `--github` a one-time launch address that redirects to the secret one) in the default browser: `rundll32 url.dll` on Windows, `open` on macOS, `xdg-open` elsewhere; if that cannot start, one line says so and the preview keeps serving                                                             |
+| `--fetch-images`                                   | all                  | fetches the images whose `src` is bound to data (https, allowed hosts only, no credentials; see [asset-loading.md](asset-loading.md#images-bound-from-data)); without it a design with one fails `image-not-fetched` (with `--data` or `--github`) and no image is requested (only `--github` makes requests then, to the GitHub API) |
+| `--github`                                         | all                  | loads the live GitHub data as `{ github }` with the token from `GH_TOKEN`, else `GITHUB_TOKEN` ([Live GitHub data](#live-github-data)); excludes `--data`                                                                                                                                                                             |
+| `--login <login>`                                  | all                  | the GitHub login `--github` loads; default the token's owner; only with `--github`                                                                                                                                                                                                                                                    |
+| `--data-json [<ns>=]<source>`                      | all                  | loads a JSON document, a file inside `--root` or an https URL, as `{ <ns>: { version: 0, document } }` (default namespace `json`); repeatable, at most 8, added to `--data` or `--github` data ([JSON data](#json-data))                                                                                                              |
+| `--data-json-header <ns>:<Header-Name>=<ENV_NAME>` | all                  | sends the header to the https URL of `<ns>` with the value of the environment variable `ENV_NAME`, never an argument; repeatable, at most 8 per source ([JSON data](#json-data))                                                                                                                                                      |
 
 An option a command does not take, an unknown option, a missing or extra argument and a bad value are usage errors
-(exit code 2), as are `--github` with `--data` and `--login` without `--github`. There is no `--token` option: `--token`
+(exit code 2), as are `--github` with `--data`, `--login` without `--github`, a `--data-json` namespace given twice or
+named `github` with `--github`, more than 8 JSON sources, and a `--data-json-header` that is not
+`<ns>:<Header-Name>=<ENV_NAME>` or names a namespace without a source. There is no `--token` option: `--token`
 and any argument shaped like a GitHub token (`ghp_`, `gho_`, `ghu_`, `ghs_`, `ghr_`, `github_pat_`) are usage errors
 whose message never shows the value. There is no host option: the preview listens on 127.0.0.1 only.
 
 ## Exit codes
 
-| code | name       | meaning                                                                                                                                                                         |
-| ---- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 0    | `ok`       | done; warnings (such as `animation-cut`) may have been printed                                                                                                                  |
-| 1    | `invalid`  | the design is invalid (parse, schema, references, not UTF-8, too large), an asset was refused, the render failed, or a raster export failed (a limit in [raster.md](raster.md)) |
-| 2    | `usage`    | unknown command or option, missing or extra argument, bad option value                                                                                                          |
-| 3    | `input`    | a file, folder or port cannot be used: design file missing or outside `--root`, fixture data unreadable or invalid, `--out` or standard output not writable, port in use        |
-| 4    | `data`     | `--github` without a token in `GH_TOKEN` or `GITHUB_TOKEN`, or the GitHub data could not be loaded (`GitHub data (<code>): <message>`)                                          |
-| 70   | `internal` | a bug in Readmint                                                                                                                                                               |
+| code | name       | meaning                                                                                                                                                                                                                    |
+| ---- | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 0    | `ok`       | done; warnings (such as `animation-cut`) may have been printed                                                                                                                                                             |
+| 1    | `invalid`  | the design is invalid (parse, schema, references, not UTF-8, too large), an asset was refused, the render failed, or a raster export failed (a limit in [raster.md](raster.md))                                            |
+| 2    | `usage`    | unknown command or option, missing or extra argument, bad option value                                                                                                                                                     |
+| 3    | `input`    | a file, folder or port cannot be used: design file missing or outside `--root`, fixture data unreadable or invalid, a fixture key equal to a `--data-json` namespace, `--out` or standard output not writable, port in use |
+| 4    | `data`     | `--github` without a token in `GH_TOKEN` or `GITHUB_TOKEN`, the GitHub data could not be loaded (`GitHub data (<code>): <message>`), or a `--data-json` source could not be loaded (`JSON data <ns> (<code>): <message>`)  |
+| 70   | `internal` | a bug in Readmint                                                                                                                                                                                                          |
 
 `@readmint/cli` exports the same values as `ExitCode`.
 
@@ -114,10 +120,12 @@ recognises equal bytes in different arrays). The Action loads assets the same wa
 
 It must be a JSON object, at most 8 MiB, UTF-8; every key must be a data namespace (a lowercase letter, then up to 31
 lowercase letters or digits, not `true`, `false` or `null`). The `github` shape is in
-[data-github.md](data-github.md). The file is the user's own and may lie anywhere. Without `--github` the CLI uses
-no token and no environment variable (it only keeps the values of `GH_TOKEN` and `GITHUB_TOKEN` out of its messages,
-see below), and makes no network request except, with `--fetch-images`, the image requests of
-[asset-loading.md](asset-loading.md#images-bound-from-data).
+[data-github.md](data-github.md). The file is the user's own and may lie anywhere. Without `--github` and
+`--data-json-header` the CLI uses no token and no environment variable (it only keeps the values of `GH_TOKEN` and
+`GITHUB_TOKEN` out of its messages, see below), and without `--github` and a `--data-json` URL it makes no network
+request except, with `--fetch-images`, the image requests of
+[asset-loading.md](asset-loading.md#images-bound-from-data). With `--data-json` the loaded namespaces are added to the
+fixture data ([JSON data](#json-data)).
 
 ## Settings file
 
@@ -195,10 +203,41 @@ as `render --data` with that object.
   `x-access-token:` credential), whatever the command and options; this is the only use of the variables without
   `--github`. Standard output (the SVG, `<design>: ok`) is never altered.
 
+## JSON data
+
+`--data-json` binds any JSON document under a namespace of your choice, with the `@readmint/data-json` source of
+[data-sources.md](data-sources.md#the-json-source):
+
+```sh
+readmint render design.json --data-json stats=data/stats.json --out card.svg
+API_KEY=<key> readmint render design.json --data-json api=https://api.example.com/v1/stats \
+  --data-json-header api:X-Api-Key=API_KEY --out card.svg
+```
+
+- **The argument** is `<ns>=<source>`, or just `<source>` for the namespace `json`. `<ns>=` is taken only when it is a
+  valid namespace, so a URL with `=` in its query is one source under `json`.
+- **The data object** is `{ version: 0, document: <the parsed JSON> }`, whatever the document is (object, array or
+  value): bind `stats.document.stars`. A `version` of the document stays at `document.version`.
+- **A file** is a relative path inside `--root` (default the current folder), at most 1 MiB: no `..`, no absolute,
+  drive-letter, UNC or device path, and a link or junction that leads outside the root is refused.
+- **A URL** must be `https://` (no user name or password); at most 3 redirects, each to https, a JSON (or
+  `text/plain`) content type in UTF-8, 1 MiB and 10 s for the whole load. No other scheme is fetched.
+- **Headers** (`--data-json-header`) are read from the environment by name, never from an argument; they are sent only
+  to the origin of the source URL (a redirect to another origin drops them). Their values are redacted to `***` from
+  every line on standard error and on the preview page, like the token.
+- **Order**: sources load one after another in argument order, after the design, its assets and the GitHub data. A
+  failed load is one line `JSON data <ns> (<code>): <message>`, exit code 4, its code one of the common data source
+  codes (`not-found`, `forbidden`, `too-large`, `timeout`, `invalid-response`, ...).
+- **Merging**: with `--data` the fixture file is read first and the JSON namespaces are added to it; a fixture key equal
+  to a JSON namespace is exit code 3. With `--github` the namespace `github` is reserved (exit code 2).
+- **`preview`** loads the JSON data once before it starts serving, like `--github`, and serves under the secret
+  address; restart it for fresh data. The fixture file is still read again on every change.
+- **Determinism**: the same document gives the same data object, so the same SVG bytes, from a file or a URL.
+
 ## Preview
 
 `readmint preview` prints `preview: http://127.0.0.1:<port>/` and serves the render until it is stopped (Ctrl+C
-or SIGTERM, exit code 0). With `--github` it prints `preview: http://127.0.0.1:<port>/<secret>/` instead: open that
+or SIGTERM, exit code 0). With `--github` or `--data-json` it prints `preview: http://127.0.0.1:<port>/<secret>/` instead: open that
 address. The page shows the SVG exactly as `render` writes it and the current issues. Every 300 ms it checks the
 design file, the fixture data and every asset file the design declares (also one that does not exist yet). A change
 counts once it reads the same on two consecutive checks, so the preview renders again up to about 600 ms after a save
@@ -213,7 +252,7 @@ The preview is for this computer only:
 - it answers 403 unless the `Host` header is `127.0.0.1:<port>` or `localhost:<port>` (DNS rebinding), to a request
   a browser marks as coming from another site (`Sec-Fetch-Site`), and to one whose `Origin` header, when sent, is not
   `http://127.0.0.1:<port>` or `http://localhost:<port>` (`null` included);
-- with `--github` the page shows token-scoped data, so every route lives under a per-session secret: 256 random bits
+- with `--github` or `--data-json` the page shows loaded data that may be scoped to a token or a header, so every route lives under a per-session secret: 256 random bits
   (43 characters), new on each run, kept in memory only and never shown on the page, in `/status` or in an error.
   Any path that does not begin with exactly `/<secret>/` is 403, checked before the method and before the limit of
   pages below. The one exception is the one-time launch address of `--open`: `/<launch>`, another 43 random
@@ -251,6 +290,10 @@ from, `bin` passes `process.env`), `ExitCode`, `CliError`, `CliIo`,
 `escapeForLog`, `quoteForLog`, `formatIssue`, `localeProblem(locale)` (why a tag cannot be the `--locale`, `undefined` when it can; the Action's `locale` input uses it too), `outputFormats` and `outputExtension(format)` (the `OutputFormat`s and their file extension, `apng` → `png`), and the loaders the commands share: `loadDesignFile`, `loadDesignAssets`,
 `loadFixtureData` (with `maxFixtureBytes`, its size cap), `loadDesignProps(file, cwd)` (the `--props` settings file, a `DesignProps` of `@readmint/format`; whose `props` in `RenderInputOptions` stands in for `--props`) and `propsSection(fileName)` (the section a design file takes; it lives in `@readmint/format`, which the editor uses too), `loadLiveData` (the `--github` load: `LiveDataOptions` with
 `token`, `login`, `fetch`, `signal` and `onPartial`, at most `liveDataTimeoutMs`; a failure is a `CliError` with exit code 4),
+`parseDataJsonArgs(sources, headers)` (the `--data-json` and `--data-json-header` texts as `DataJsonSpec`s, or the
+problems; at most `maxDataJsonSources`), `loadJsonArgs(specs, options)` (the `--data-json` load, `JsonArgsOptions` with
+`root`, `fetch`, `env` and `signal`; a failure is a `CliError` with exit code 4), `mergeDataNamespaces(fixture, loaded)`
+(adds loaded namespaces to fixture data; a clash is a `CliError` with exit code 3),
 `partialDataWarning(parts)` (the one warning line for `meta.partial`, also the Action's),
 `redactSecrets(text, secrets)` (the redaction of standard error, also the Action's log), `loadRenderInput` (design file, assets, fixture data and the images bound to data in one call; `RenderInput`,
 `RenderInputOptions`, whose `images` fetches them, whose `data` stands in for `--data`, and whose `loadData` loads it

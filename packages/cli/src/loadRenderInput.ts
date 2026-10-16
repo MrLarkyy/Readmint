@@ -10,6 +10,7 @@ import { type DesignFile, loadDesignFile } from "./loadDesignFile.js";
 import { loadDesignProps } from "./loadDesignProps.js";
 import { loadFixtureData } from "./loadFixtureData.js";
 import { formatIssue } from "./formatIssue.js";
+import { mergeDataNamespaces } from "./mergeDataNamespaces.js";
 import { propsSection } from "./propsSection.js";
 import { quoteForLog } from "./quoteForLog.js";
 import { RemoteImageError } from "./RemoteImageError.js";
@@ -34,8 +35,9 @@ export interface RenderInputOptions {
   /** Data the caller already loaded (the Action's); used instead of `args.data`. */
   readonly data?: Record<string, unknown>;
   /**
-   * Loads the data once the design file and its assets are valid (`--github`), used instead of `args.data` when
-   * `data` is absent: a broken design fails before any request.
+   * Loads the data once the design file and its assets are valid (`--github`, `--data-json`), when `data` is absent:
+   * a broken design fails before any request. With `args.data` too, the fixture is read first and the loaded
+   * namespaces are added to it (`mergeDataNamespaces`).
    */
   readonly loadData?: () => Promise<Record<string, unknown>>;
   /**
@@ -46,8 +48,8 @@ export interface RenderInputOptions {
 }
 
 /**
- * Design file, then its assets, then the data (given, loaded by `loadData`, or the fixture file), then the images
- * bound from data; throws `CliError` at the first failure.
+ * Design file, then its assets, then the data (given, or the fixture file and what `loadData` loads), then the
+ * images bound from data; throws `CliError` at the first failure.
  */
 export async function loadRenderInput(
   args: DesignArgs,
@@ -63,13 +65,7 @@ export async function loadRenderInput(
   const { file, mask } = props === undefined ? { file: loaded } : withProps(loaded, props);
   options.onDesignFile?.(file);
   const fileAssets = await loadDesignAssets(file);
-  const data =
-    options.data ??
-    (options.loadData === undefined
-      ? args.data === undefined
-        ? undefined
-        : await loadFixtureData(args.data, options.cwd)
-      : await options.loadData());
+  const data = options.data ?? (await loadData(args, options));
   const assets = await withBoundImages(file, fileAssets, data, options.images);
   return {
     file,
@@ -77,6 +73,17 @@ export async function loadRenderInput(
     ...(data === undefined ? {} : { data }),
     ...(mask === undefined ? {} : { settingsMask: mask }),
   };
+}
+
+async function loadData(
+  args: DesignArgs,
+  options: RenderInputOptions,
+): Promise<Record<string, unknown> | undefined> {
+  const fixture =
+    args.data === undefined ? undefined : await loadFixtureData(args.data, options.cwd);
+  if (options.loadData === undefined) return fixture;
+  const loaded = await options.loadData();
+  return fixture === undefined ? loaded : mergeDataNamespaces(fixture, loaded);
 }
 
 function withProps(
