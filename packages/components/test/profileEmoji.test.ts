@@ -171,7 +171,8 @@ describe("emoji no template font covers", () => {
         design,
         data: withStatus(message),
       });
-      const width = (font: string) => (text: string) => drawnWidth("horizon", design, font, 17, text);
+      const width = (font: string) => (text: string) =>
+        drawnWidth("horizon", design, font, 17, text);
       const cutMessage = longestCut(width("scm"), message, 244);
       const cutNote = longestCut(width("sc"), "n".repeat(200), 260);
       expect(cutMessage.endsWith("…")).toBe(true);

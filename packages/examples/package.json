@@ -15,6 +15,10 @@
     "./props": {
       "types": "./dist/profileExampleProps.d.ts",
       "default": "./dist/profileExampleProps.js"
+    },
+    "./logos": {
+      "types": "./dist/profileLogos.d.ts",
+      "default": "./dist/profileLogos.js"
     }
   },
   "scripts": {
