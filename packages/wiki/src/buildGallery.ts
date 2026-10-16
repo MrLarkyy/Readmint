@@ -57,7 +57,7 @@ export function buildGallery(
     "",
     "> Generated from the golden images of the repository by the wiki generator. Edit the templates there; changes made on the wiki are overwritten.",
     "",
-    "Every profile and starter template rendered from the sample data, in light and dark, each on the page colour of its theme.",
+    "Every profile, starter and calendar template rendered from the sample data, in light and dark, each on the page colour of its theme.",
     "",
   ];
   for (const template of templates) {
@@ -105,5 +105,6 @@ function templateLinks(template: GalleryTemplate, links: GalleryLinks): string {
     return `[Template folder](${examplesRepository}/tree/HEAD/${template.name}) · [Components docs](Components-and-templates#profile-templates)`;
   }
   const design = `${links.repository}/blob/${links.branch}/packages/components/templates/${template.name}.design.json`;
-  return `[Design file](${design}) · [Examples repository](${examplesRepository}) · [Components docs](Components-and-templates#starter-templates)`;
+  const anchor = template.kind === "calendar" ? "contribution-calendar" : "starter-templates";
+  return `[Design file](${design}) · [Examples repository](${examplesRepository}) · [Components docs](Components-and-templates#${anchor})`;
 }
