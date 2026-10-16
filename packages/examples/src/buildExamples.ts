@@ -8,7 +8,7 @@ import { listFiles } from "./listFiles.js";
 import { readmeTitle } from "./readmeTitle.js";
 import { assertNoLink } from "./assertNoLink.js";
 import { exampleWorkflow } from "./exampleWorkflow.js";
-import { assertActionSupportsDesigns } from "./requiredActionVersion.js";
+import { assertActionSupportsDesigns } from "./assertActionSupportsDesigns.js";
 
 const byCodeUnit = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
 /** The template's shared settings (`--props`): not a design, the examples already have the texts merged in. */

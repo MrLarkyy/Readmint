@@ -1,5 +1,5 @@
 /** The Action version that introduced each expression filter the templates may use; add a filter here when a release adds one. */
-export const filterIntroducedIn: Readonly<Record<string, string>> = {
+const filterIntroducedIn: Readonly<Record<string, string>> = {
   textWidth: "0.3.0",
   truncateWidth: "0.3.0",
 };

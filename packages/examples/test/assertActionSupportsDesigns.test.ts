@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
-import { assertActionSupportsDesigns } from "../src/requiredActionVersion.js";
+import { assertActionSupportsDesigns } from "../src/assertActionSupportsDesigns.js";
 import { buildExamples, profileExampleProps, runExamples } from "../src/index.js";
 
 const templatesDir = fileURLToPath(new URL("../../components/templates/", import.meta.url));
