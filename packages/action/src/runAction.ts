@@ -43,6 +43,9 @@ export async function runAction(env: Env, deps: ActionDeps): Promise<number> {
       entryExists(path.resolve(workspace, design)),
     );
 
+    const props = await loadActionProps(config, workspace);
+    if (props !== undefined) warnUnusedSections(props, plan, log);
+
     let push: { repo: GitRepo; branch: string } | undefined;
     if (!config.dryRun) {
       const repo = new GitRepo(deps.runGit, workspace, gitEnv(env, secrets));
@@ -58,8 +61,6 @@ export async function runAction(env: Env, deps: ActionDeps): Promise<number> {
     const data = await loadActionData(config, workspace, deps.fetch, (parts) => {
       log.warning(partialDataWarning(parts));
     });
-    const props = await loadActionProps(config, workspace);
-    if (props !== undefined) warnUnusedSections(props, plan, log);
     if (config.formats.some((format) => format !== "svg")) await loadRaster(deps);
     const rendered = await renderAll(plan, workspace, data, {
       ...(config.locale === undefined ? {} : { locale: config.locale }),

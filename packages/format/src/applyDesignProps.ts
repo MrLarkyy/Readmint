@@ -23,10 +23,8 @@ export function applyDesignProps(
   if (names.length === 0) return { ok: true, value: design };
   const taken = new Set<string>();
   const written = new Map<string, string>();
-  let any = false;
   const layers = design.layers.map((layer, index): Layer => {
     if (layer.type !== "component") return layer;
-    any = true;
     const declared = design.components?.[layer.ref]?.props ?? {};
     const own = names.filter((name) => Object.hasOwn(declared, name));
     if (own.length === 0) return layer;
@@ -38,7 +36,7 @@ export function applyDesignProps(
     }
     return { ...layer, props: merged } satisfies ComponentLayer;
   });
-  if (!any) {
+  if (!design.layers.some((layer) => layer.type === "component")) {
     return fail([
       {
         path: "",

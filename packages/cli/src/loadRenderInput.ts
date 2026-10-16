@@ -11,6 +11,7 @@ import { loadDesignProps } from "./loadDesignProps.js";
 import { loadFixtureData } from "./loadFixtureData.js";
 import { formatIssue } from "./formatIssue.js";
 import { propsSection } from "./propsSection.js";
+import { settingsPointers } from "./settingsPointers.js";
 import { quoteForLog } from "./quoteForLog.js";
 import { RemoteImageError } from "./RemoteImageError.js";
 import type { RemoteImageOptions } from "./RemoteImageOptions.js";
@@ -20,6 +21,8 @@ export interface RenderInput {
   readonly file: DesignFile;
   readonly assets: RenderAssets;
   readonly data?: Record<string, unknown>;
+  /** Pointers of the design props that came from the settings file: their issue messages must not quote them. */
+  readonly settingsPointers?: readonly string[];
 }
 
 export interface RenderInputOptions {
@@ -57,7 +60,8 @@ export async function loadRenderInput(
   const props =
     options.props ??
     (args.props === undefined ? undefined : await loadDesignProps(args.props, options.cwd));
-  const file = props === undefined ? loaded : withProps(loaded, props);
+  const { file, pointers } =
+    props === undefined ? { file: loaded, pointers: [] } : withProps(loaded, props);
   options.onDesignFile?.(file);
   const fileAssets = await loadDesignAssets(file);
   const data =
@@ -68,15 +72,25 @@ export async function loadRenderInput(
         : await loadFixtureData(args.data, options.cwd)
       : await options.loadData());
   const assets = await withBoundImages(file, fileAssets, data, options.images);
-  return data === undefined ? { file, assets } : { file, assets, data };
+  return {
+    file,
+    assets,
+    ...(data === undefined ? {} : { data }),
+    ...(pointers.length === 0 ? {} : { settingsPointers: pointers }),
+  };
 }
 
-function withProps(file: DesignFile, props: DesignProps): DesignFile {
+function withProps(file: DesignFile, props: DesignProps): { file: DesignFile; pointers: string[] } {
   const section = propsSection(file.name);
   const own = Object.hasOwn(props, section) ? props[section] : undefined;
-  if (own === undefined) return file;
+  if (own === undefined) return { file, pointers: [] };
   const result = applyDesignProps(file.design, own);
-  if (result.ok) return { ...file, design: result.value };
+  if (result.ok) {
+    return {
+      file: { ...file, design: result.value },
+      pointers: settingsPointers(result.value, own),
+    };
+  }
   const lines = result.issues.map((issue) =>
     formatIssue(file.name, { ...issue, path: `/${section}${issue.path}` }, "error"),
   );

@@ -72,3 +72,23 @@ test("a wrong value fails the render naming the section and prop, not the value"
   expect(run.log).toContain("error type at /box/w");
   expect(run.log).not.toContain("s3cret-word");
 });
+
+test("a bad or missing props-file fails before any GitHub request or git command", async () => {
+  let requests = 0;
+  const fetch = () => {
+    requests += 1;
+    return Promise.reject(new Error("no request expected"));
+  };
+  const runGit = () => {
+    throw new Error("git must not run");
+  };
+  for (const file of ["gone.json", "bad.json"]) {
+    await tree.file("bad.json", "[1]");
+    const run = await tree.run(
+      { designs: "box.json", "props-file": file, token: "t0ken-value" },
+      { fetch, runGit },
+    );
+    expect(run.code).toBe(1);
+  }
+  expect(requests).toBe(0);
+});

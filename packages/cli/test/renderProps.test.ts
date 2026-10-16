@@ -6,6 +6,7 @@ let tree: CliTree;
 
 beforeEach(async () => {
   tree = await makeCliTree();
+  await tree.file("d.json", { v: 1 });
   await tree.file("box.json", propsDesign());
   await tree.file("box.dark.json", propsDesign());
   await tree.file("other.json", propsDesign());
@@ -66,6 +67,23 @@ describe("--props", () => {
     expect(run.code).toBe(ExitCode.invalid);
     expect(run.stderr).toContain("error enum at /box/kind");
     expect(run.stderr).not.toContain("s3cret");
+  });
+
+  test("a bad binding in a value fails the render without quoting the value", async () => {
+    await tree.file("settings.json", { box: { tone: "{{ 1 + s3cret }}" } });
+    for (const command of ["render", "validate"]) {
+      const run = await tree.run([
+        command,
+        "box.json",
+        "--props",
+        "settings.json",
+        "--data",
+        "d.json",
+      ]);
+      expect(run.code).toBe(ExitCode.invalid);
+      expect(run.stderr).toContain("/layers/0/props/tone");
+      expect(run.stderr).not.toContain("s3cret");
+    }
   });
 
   test("a missing settings file is an input error", async () => {
