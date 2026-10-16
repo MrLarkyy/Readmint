@@ -58,3 +58,10 @@ jobs:
           git commit --quiet --message "Release $VERSION"
           git tag "$VERSION"
           git push origin "refs/tags/$VERSION"
+      - name: Create the GitHub Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          VERSION: ${{ inputs.version }}
+        run: gh release create "$VERSION" --verify-tag --generate-notes --latest --title "$VERSION"
