@@ -40,5 +40,17 @@ export default defineGoldenSuite<CalendarRender>({
         data,
       },
     },
+    {
+      name: "calendar-heatmap-dark",
+      input: { design: withCalendar(loadTemplate("calendar-heatmap"), { theme: "dark" }), data },
+    },
+    {
+      name: "calendar-isometric-dark",
+      input: { design: withCalendar(loadTemplate("calendar-isometric"), { theme: "dark" }), data },
+    },
+    {
+      name: "calendar-dots-dark",
+      input: { design: withCalendar(loadTemplate("calendar-dots"), { theme: "dark" }), data },
+    },
   ],
 });
