@@ -35,7 +35,7 @@ export interface RenderInputOptions {
   /** Data the caller already loaded (the Action's); used instead of `args.data`. */
   readonly data?: Record<string, unknown>;
   /**
-   * Loads the data once the design file and its assets are valid (`--github`, `--data-json`), when `data` is absent:
+   * Loads the data once the design file and its assets are valid (`--github`, `--data-json`, `--data-feed`), when `data` is absent:
    * a broken design fails before any request. With `args.data` too, the fixture is read first and the loaded
    * namespaces are added to it (`mergeDataNamespaces`).
    */

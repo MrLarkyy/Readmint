@@ -45,6 +45,24 @@ describe("a key in the feed URL never appears in an error", () => {
     expectNoSecret(error);
   });
 
+  test("relative links never carry the query of the feed URL into the data", async () => {
+    const { data } = await loadFeedData({
+      url: URL_SOURCE,
+      fetch: stubFetch(() =>
+        xml(
+          '<rss version="2.0"><channel><link>#top</link><item><link>#a</link></item><item><link>?page=2</link></item><item><link>post</link></item></channel></rss>',
+        ),
+      ).fetch,
+    });
+    expect(data.link).toBe("https://feed.example/private.xml#top");
+    expect(data.entries.map((entry) => entry.link)).toEqual([
+      "https://feed.example/private.xml#a",
+      "https://feed.example/private.xml?page=2",
+      "https://feed.example/post",
+    ]);
+    expect(JSON.stringify(data)).not.toContain(SECRET);
+  });
+
   test("a foreign error quoting the URL is replaced by fixed text", async () => {
     const hostile = Object.defineProperty(new Response(""), "type", {
       get(): never {

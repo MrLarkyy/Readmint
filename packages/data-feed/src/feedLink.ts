@@ -1,9 +1,9 @@
 import { FeedLimits } from "./FeedSourceOptions.js";
 
 /**
- * A link resolved against the feed URL as given (not a redirect target, so the same input gives
- * the same data), or `""`: only http and https links without credentials, at most `linkLength`
- * characters. A `javascript:` or `data:` link never reaches a design.
+ * A link resolved against `base`, the feed URL as given (not a redirect target, so the same input
+ * gives the same data) without its query, or `""`: only http and https links without credentials,
+ * at most `linkLength` characters. A `javascript:` or `data:` link never reaches a design.
  */
 export function feedLink(text: string, base: URL): string {
   const trimmed = text.trim();

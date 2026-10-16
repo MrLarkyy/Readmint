@@ -54,24 +54,26 @@ data it fails `image-binding`.
 | `--login <login>`                                  | all                  | the GitHub login `--github` loads; default the token's owner; only with `--github`                                                                                                                                                                                                                                                                       |
 | `--data-json [<ns>=]<source>`                      | all                  | loads a JSON document, a file inside `--root` (its path is relative to `--root`, not to the current folder) or an https URL, as `{ <ns>: { version: 0, document } }` (default namespace `json`); repeatable, at most 8, added to `--data` or `--github` data ([JSON data](#json-data))                                                                   |
 | `--data-json-header <ns>:<Header-Name>=<ENV_NAME>` | all                  | sends the header to the https URL of `<ns>` with the value of the environment variable `ENV_NAME`, never an argument; repeatable, at most 8 per source ([JSON data](#json-data))                                                                                                                                                                         |
+| `--data-feed [<ns>=]<url>`                         | all                  | loads an RSS 2.0 or Atom 1.0 feed from an https URL as `{ <ns>: { version: 0, title, link, entries } }` (default namespace `feed`), entries newest first; repeatable, at most 8, added to `--data` or `--github` data ([Feed data](#feed-data))                                                                                                          |
+| `--data-feed-limit <ns>=<n>`                       | all                  | entries kept from the feed of `<ns>`, 1 to 50 (default 5); repeatable ([Feed data](#feed-data))                                                                                                                                                                                                                                                          |
 
 An option a command does not take, an unknown option, a missing or extra argument and a bad value are usage errors
 (exit code 2), as are `--github` with `--data`, `--login` without `--github`, a `--data-json` namespace given twice or
-named `github` with `--github`, more than 8 JSON sources, and a `--data-json-header` that is not
+named `github` with `--github`, more than 8 JSON sources or feeds, a `--data-feed` namespace given twice or also a `--data-json` namespace, a `--data-feed-limit` that is not `<ns>=<n>` (n from 1 to 50) or names a namespace without a feed, and a `--data-json-header` that is not
 `<ns>:<Header-Name>=<ENV_NAME>` or names a namespace without a source. There is no `--token` option: `--token`
 and any argument shaped like a GitHub token (`ghp_`, `gho_`, `ghu_`, `ghs_`, `ghr_`, `github_pat_`) are usage errors
 whose message never shows the value. There is no host option: the preview listens on 127.0.0.1 only.
 
 ## Exit codes
 
-| code | name       | meaning                                                                                                                                                                                                                    |
-| ---- | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 0    | `ok`       | done; warnings (such as `animation-cut`) may have been printed                                                                                                                                                             |
-| 1    | `invalid`  | the design is invalid (parse, schema, references, not UTF-8, too large), an asset was refused, the render failed, or a raster export failed (a limit in [raster.md](raster.md))                                            |
-| 2    | `usage`    | unknown command or option, missing or extra argument, bad option value                                                                                                                                                     |
-| 3    | `input`    | a file, folder or port cannot be used: design file missing or outside `--root`, fixture data unreadable or invalid, a fixture key equal to a `--data-json` namespace, `--out` or standard output not writable, port in use |
-| 4    | `data`     | `--github` without a token in `GH_TOKEN` or `GITHUB_TOKEN`, the GitHub data could not be loaded (`GitHub data (<code>): <message>`), or a `--data-json` source could not be loaded (`JSON data <ns> (<code>): <message>`)  |
-| 70   | `internal` | a bug in Readmint                                                                                                                                                                                                          |
+| code | name       | meaning                                                                                                                                                                                                                                                                                          |
+| ---- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 0    | `ok`       | done; warnings (such as `animation-cut`) may have been printed                                                                                                                                                                                                                                   |
+| 1    | `invalid`  | the design is invalid (parse, schema, references, not UTF-8, too large), an asset was refused, the render failed, or a raster export failed (a limit in [raster.md](raster.md))                                                                                                                  |
+| 2    | `usage`    | unknown command or option, missing or extra argument, bad option value                                                                                                                                                                                                                           |
+| 3    | `input`    | a file, folder or port cannot be used: design file missing or outside `--root`, fixture data unreadable or invalid, a fixture key equal to a `--data-json` namespace, `--out` or standard output not writable, port in use                                                                       |
+| 4    | `data`     | `--github` without a token in `GH_TOKEN` or `GITHUB_TOKEN`, the GitHub data could not be loaded (`GitHub data (<code>): <message>`), a `--data-json` source could not be loaded (`JSON data <ns> (<code>): <message>`), or a `--data-feed` feed could not (`Feed data <ns> (<code>): <message>`) |
+| 70   | `internal` | a bug in Readmint                                                                                                                                                                                                                                                                                |
 
 `@readmint/cli` exports the same values as `ExitCode`.
 
@@ -234,6 +236,30 @@ API_KEY=<key> readmint render design.json --data-json api=https://api.example.co
   address; restart it for fresh data. The fixture file is still read again on every change.
 - **Determinism**: the same document gives the same data object, so the same SVG bytes, from a file or a URL.
 
+## Feed data
+
+`--data-feed` binds the latest entries of an RSS 2.0 or Atom 1.0 feed (blog posts, release notes) under a namespace of
+your choice, with the `@readmint/data-feed` source of [data-sources.md](data-sources.md#the-feed-source):
+
+```sh
+readmint render design.json --data-feed blog=https://blog.example/feed.xml --data-feed-limit blog=3 --out card.svg
+```
+
+- **The argument** is `<ns>=<url>`, or just `<url>` for the namespace `feed`. `<ns>=` is taken only when it is a valid
+  namespace, so a URL with `=` in its query is one feed under `feed`. `--data-feed-limit <ns>=<n>` keeps `n` entries
+  (1 to 50, default 5) of that feed.
+- **The data object** is `{ version: 0, title, link, entries }`, each entry `{ title, link, published, summary }` in
+  plain text, newest first: bind `blog.entries[0].title`.
+- **A URL** must be `https://` (no user name or password), at most 3 redirects, an XML or `text/plain` content type,
+  1 MiB and 10 s; the request carries no credentials. The URL may hold a key, so no message, line or the preview page
+  ever shows it: problems name the namespace only.
+- **Order**: feeds load one after another in argument order, after the GitHub and JSON data. A failed load is one line
+  `Feed data <ns> (<code>): <message>`, exit code 4.
+- **Merging**: the feed namespaces are added to `--data` or `--github` data; a fixture key equal to a feed namespace is
+  exit code 3; with `--github` the namespace `github` is reserved, and a namespace cannot be both a feed and a
+  `--data-json` source (exit code 2).
+- **`preview`** loads the feeds once before it starts serving, under the secret address, like `--github`.
+
 ## Preview
 
 `readmint preview` prints `preview: http://127.0.0.1:<port>/` and serves the render until it is stopped (Ctrl+C
@@ -292,7 +318,9 @@ from, `bin` passes `process.env`), `ExitCode`, `CliError`, `CliIo`,
 `token`, `login`, `fetch`, `signal` and `onPartial`, at most `liveDataTimeoutMs`; a failure is a `CliError` with exit code 4),
 `parseDataJsonArgs(sources, headers)` (the `--data-json` and `--data-json-header` texts as `DataJsonSpec`s, or the
 problems; at most `maxDataJsonSources`), `loadJsonArgs(specs, options)` (the `--data-json` load, `JsonArgsOptions` with
-`root`, `fetch`, `env` and `signal`; a failure is a `CliError` with exit code 4), `mergeDataNamespaces(fixture, loaded)`
+`root`, `fetch`, `env` and `signal`; a failure is a `CliError` with exit code 4), `parseDataFeedArgs(sources, limits)` (the `--data-feed` and `--data-feed-limit` texts as `DataFeedSpec`s, or the
+problems; at most `maxDataFeedSources`), `loadFeedArgs(specs, options)` (the `--data-feed` load, `FeedArgsOptions` with
+`fetch` and `signal`; a failure is a `CliError` with exit code 4), `mergeDataNamespaces(fixture, loaded)`
 (adds loaded namespaces to fixture data; a clash is a `CliError` with exit code 3),
 `partialDataWarning(parts)` (the one warning line for `meta.partial`, also the Action's),
 `redactSecrets(text, secrets)` (the redaction of standard error, also the Action's log), `loadRenderInput` (design file, assets, fixture data and the images bound to data in one call; `RenderInput`,

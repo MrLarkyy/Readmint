@@ -24,10 +24,11 @@ export function buildFeedData(feed: RawFeed, base: URL, limit: number): FeedData
     order,
   }));
   dated.sort(newestFirst);
+  const linkBase = withoutQuery(base);
   const entries = dated.slice(0, limit).map(({ entry, published }) =>
     Object.freeze<FeedEntry>({
       title: text(entry.title, FeedLimits.titleLength),
-      link: feedLink(entry.link, base),
+      link: feedLink(entry.link, linkBase),
       published,
       summary: text(entry.summary, FeedLimits.summaryLength),
     }),
@@ -35,9 +36,17 @@ export function buildFeedData(feed: RawFeed, base: URL, limit: number): FeedData
   return Object.freeze({
     version: FEED_DATA_VERSION,
     title: text(feed.title, FeedLimits.titleLength),
-    link: feedLink(feed.link, base),
+    link: feedLink(feed.link, linkBase),
     entries: Object.freeze(entries),
   });
+}
+
+// A fragment-only link (`#top`) keeps its base's query, which may hold a key of the feed URL.
+function withoutQuery(url: URL): URL {
+  const base = new URL(url.href);
+  base.search = "";
+  base.hash = "";
+  return base;
 }
 
 // ISO strings of years 1970 to 9999 in one format sort as the instants they name.

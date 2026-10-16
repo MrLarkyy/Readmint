@@ -51,6 +51,8 @@ templates as working workflows ([components.md](components.md#the-examples-repos
 | `data-file`         | none                             | fixture data JSON (the CLI `--data` format) used instead of loading GitHub data: no token, no GitHub API (only images bound to data are fetched)                                                                                                                                                                       |
 | `data-json`         | none                             | JSON documents to bind, one per line as `[<namespace>=]<source>` (the CLI [`--data-json`](cli.md#json-data)): a file inside the workspace or an https URL, each bound as `{ version: 0, document }` under its namespace (default `json`), at most 8, added to the `data-file` or GitHub data ([JSON data](#json-data)) |
 | `data-json-headers` | none                             | headers for the `data-json` URLs, one per line as `<namespace>:<Header-Name>=<ENV_NAME>`: the value is read from the step's environment variable `ENV_NAME`, masked, never printed and sent only to that URL's origin                                                                                                  |
+| `data-feed`         | none                             | RSS 2.0 or Atom 1.0 feeds to bind, one per line as `[<namespace>=]<https URL>` (the CLI [`--data-feed`](cli.md#feed-data)): each is bound as `{ version: 0, title, link, entries }` under its namespace (default `feed`), at most 8, added after the `data-json` documents ([Feed data](#feed-data))                   |
+| `data-feed-limits`  | none                             | entries kept per feed, one per line as `<namespace>=<n>` with n from 1 to 50 (the CLI `--data-feed-limit`); a feed without a line keeps 5                                                                                                                                                                              |
 | `props-file`        | none                             | settings JSON file (the CLI [`--props`](cli.md#settings-file) format: root component props by section) merged into every listed design and its dark twin, so personal texts are set once per template; a section no listed design has is warned about, without its values                                              |
 | `locale`            | none                             | BCP 47 tag for the `number`, `compact`, `percent` and `date` filters, checked as the CLI `--locale` (`en`, `de`, `fr`, `es`, `cs` or a region tag of one); none: the design's `locale`, else `en`                                                                                                                      |
 | `commit-message`    | `Update Readmint graphics`       | message of the commit; at most 4096 characters                                                                                                                                                                                                                                                                         |
@@ -107,7 +109,7 @@ Outputs of designs you remove from the list are not deleted.
    commit on `origin`, before anything is written.
 3. Loads the data once: the `data-file`, else the GitHub data of `login`, bound as `github` (see
    [data-github.md](data-github.md)). The load is given 5 minutes. Then each `data-json` source in the listed order,
-   added under its namespace ([JSON data](#json-data)).
+   added under its namespace ([JSON data](#json-data)), then each `data-feed` feed ([Feed data](#feed-data)).
 4. Loads and renders every design and dark variant, in every listed format (a raster export samples an animated design
    at `frame-rate` and stays within the limits of [raster.md](raster.md)). Design files and their assets are read only inside the workspace,
    also through links ([asset-loading.md](asset-loading.md)). If any design fails, nothing is written and the run
@@ -186,6 +188,30 @@ are inlined in the SVG. The rules and error codes: [asset-loading.md](asset-load
   `data-file` is given, and a `data-file` key equal to a JSON namespace fails the run, naming it.
 - The documents are loaded on every run (no cache); the same documents give the same bytes.
 
+## Feed data
+
+`data-feed` binds the latest entries of an RSS 2.0 or Atom 1.0 feed, a public https URL, with the feed source of
+[data-sources.md](data-sources.md#the-feed-source), the load `readmint --data-feed` uses:
+
+```yaml
+- uses: MrLarkyy/Readmint@vX.Y.Z
+  with:
+    designs: readmint/designs/card.yaml
+    data-feed: |
+      blog=https://blog.example/feed.xml
+    data-feed-limits: |
+      blog=3
+```
+
+- Each feed is bound as `{ version: 0, title, link, entries }` under its namespace, entries as plain text
+  `{ title, link, published, summary }` newest first: bind `blog.entries[0].title`. Without `<namespace>=` the namespace
+  is `feed`; a limit is 1 to 50 and a feed without one keeps 5.
+- A URL must be `https://`; at most 3 redirects (https only), an XML or `text/plain` content type, 1 MiB, 10 s. No
+  credentials are sent. The URL may hold a key: it is never printed, and errors name the namespace only.
+- The feed namespaces are added to the `data-file` data or to `github`, as the JSON ones: `github` cannot be a feed
+  namespace unless `data-file` is given, and a namespace cannot be both a `data-json` and a `data-feed` namespace.
+- The feeds are loaded on every run (no cache).
+
 ## Pushing
 
 The push uses the credentials `actions/checkout` stores in the repository, so:
@@ -236,7 +262,7 @@ A failed run exits with 1 and prints one `::error::` line per problem, each nami
 - inputs: a missing or invalid input (all at once);
 - data: the fixture file's problem, or `GitHub data (<code>): <message>` with the code of
   [data-github.md](data-github.md#errors), or `JSON data <namespace> (<code>): <message>` with a common code of
-  [data-sources.md](data-sources.md#the-json-source), or a namespace both the `data-file` and `data-json` give;
+  [data-sources.md](data-sources.md#the-json-source), `Feed data <namespace> (<code>): <message>` with a common code of [data-sources.md](data-sources.md#the-feed-source), or a namespace both the `data-file` and `data-json` give;
 - render: the design's issues, as `readmint render` prints them (an image bound to data that cannot be fetched as
   `<design>: error image-<reason> at /assets/images/<id>/src: <message>`), or a raster export over a limit (the
   measured value, the limit and a fix);

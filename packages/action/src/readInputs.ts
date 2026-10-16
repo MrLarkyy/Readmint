@@ -1,9 +1,11 @@
 import path from "node:path";
 import {
+  type DataFeedSpec,
   type DataJsonSpec,
   localeProblem,
   type OutputFormat,
   outputFormats,
+  parseDataFeedArgs,
   parseDataJsonArgs,
   quoteForLog,
 } from "@readmint/cli";
@@ -127,6 +129,17 @@ export function readInputs(env: Env): ActionConfig {
       "input data-json: namespace github clashes with the GitHub data; name the JSON source another namespace",
     );
   }
+  const dataFeed = readDataFeed(
+    lines(value("data-feed")),
+    lines(value("data-feed-limits")),
+    dataJson,
+    problems,
+  );
+  if (dataFile === "" && dataFeed.some((spec) => spec.namespace === "github")) {
+    problems.push(
+      "input data-feed: namespace github clashes with the GitHub data; name the feed another namespace",
+    );
+  }
 
   const propsFile = value("props-file");
   const locale = value("locale");
@@ -166,6 +179,7 @@ export function readInputs(env: Env): ActionConfig {
     login: value("login"),
     ...(dataFile === "" ? {} : { dataFile }),
     ...(dataJson.length === 0 ? {} : { dataJson }),
+    ...(dataFeed.length === 0 ? {} : { dataFeed }),
     ...(propsFile === "" ? {} : { propsFile }),
     ...(locale === "" ? {} : { locale }),
     commitMessage,
@@ -187,6 +201,26 @@ function readDataJson(
     const reason = checkRelativePath(spec.source);
     if (reason !== undefined) {
       problems.push(`input data-json: the file of namespace ${spec.namespace} ${reason}`);
+    }
+  }
+  return parsed.specs;
+}
+
+/** The `data-feed` lines as specs; a namespace a `data-json` source has too is a problem. */
+function readDataFeed(
+  sources: readonly string[],
+  limits: readonly string[],
+  dataJson: readonly DataJsonSpec[],
+  problems: string[],
+): readonly DataFeedSpec[] {
+  const parsed = parseDataFeedArgs(sources, limits);
+  for (const problem of parsed.problems) problems.push(`input data-feed: ${problem}`);
+  const json = new Set(dataJson.map((spec) => spec.namespace));
+  for (const spec of parsed.specs) {
+    if (json.has(spec.namespace)) {
+      problems.push(
+        `input data-feed: namespace ${spec.namespace} is also a data-json namespace; name one of them another namespace`,
+      );
     }
   }
   return parsed.specs;
