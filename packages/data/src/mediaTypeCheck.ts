@@ -10,7 +10,7 @@ export function mediaTypeCheck(
   suffix: string,
   kind: string,
 ): (value: string | null) => string | undefined {
-  const suffixType = new RegExp(`^application/[a-z0-9!#$&^_.+-]+\+${suffix}$`);
+  const suffixType = new RegExp(`^application/[a-z0-9!#$&^_.+-]+[+]${suffix}$`);
   return (value) => {
     if (value === null || value.trim() === "") return "has no content type";
     const [essence = "", ...parameters] = value.split(";");
