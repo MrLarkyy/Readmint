@@ -83,23 +83,24 @@ describe("YAML source", () => {
 
   test("a map with 80 000 keys is checked in linear time", () => {
     // A growth ratio instead of a wall-clock bound, so machine load does not decide: linear is
-    // about 4 for 4x the keys, quadratic about 16; the best of five runs filters load spikes.
+    // about 4 for 4x the keys, quadratic about 16. Each round times the two sizes back to back and the
+    // ratio is the smallest of the rounds: a load spike inflates one side of a round, while a
+    // quadratic parse shows in every round.
     const duplicateKeySource = (count: number) =>
       [...Array.from({ length: count }, (_, index) => `k${String(index)}: 0`), "k7: 1"].join("\n");
-    const best = (source: string) => {
-      let fastest = Infinity;
-      for (let run = 0; run < 5; run++) {
-        const started = performance.now();
-        issuesOf(source);
-        fastest = Math.min(fastest, performance.now() - started);
-      }
-      return fastest;
+    const timeOf = (source: string) => {
+      const started = performance.now();
+      issuesOf(source);
+      return performance.now() - started;
     };
+    const small = duplicateKeySource(10_000);
+    const large = duplicateKeySource(40_000);
     // The 80 000-key case stays as the untimed check of the full size; only 10 000 and 40 000 are timed.
     expect(issuesOf(duplicateKeySource(80_000))).toMatchObject([
       { code: "duplicate-key", line: 80_001, column: 1 },
     ]);
-    expect(best(duplicateKeySource(40_000)) / best(duplicateKeySource(10_000))).toBeLessThan(8);
+    const ratios = Array.from({ length: 7 }, () => timeOf(large) / timeOf(small));
+    expect(Math.min(...ratios)).toBeLessThan(8);
   }, 300_000);
 
   test("more than maxAliases aliases fail before any alias is resolved", () => {

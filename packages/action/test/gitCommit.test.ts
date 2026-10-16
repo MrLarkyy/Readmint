@@ -21,7 +21,7 @@ afterEach(async () => {
 
 const inputs = { designs: "designs/card.json", "data-file": "data.json" };
 
-describe("commit and push", { timeout: 30_000 }, () => {
+describe("commit and push", () => {
   test("the first run commits only the outputs and pushes; the commit output is the remote head", async () => {
     const run = await tree.run(inputs);
     expect(run.log).not.toContain("::error::");

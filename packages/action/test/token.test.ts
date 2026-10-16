@@ -131,7 +131,7 @@ async function expectNoCanary(run: ActionRun, calls: ReturnType<typeof recording
   }
 }
 
-describe("the token", { timeout: 30_000 }, () => {
+describe("the token", () => {
   const inputs = { designs: "card.json", token: CANARY, login: "readmint-fixture" };
 
   test("is in no output, file, git argument or environment after a successful run", async () => {
@@ -195,7 +195,7 @@ describe("the token", { timeout: 30_000 }, () => {
   });
 });
 
-describe("images bound from data (RM-28)", { timeout: 30_000 }, () => {
+describe("images bound from data (RM-28)", () => {
   const avatar = "https://avatars.githubusercontent.com/u/1?v=4";
   const avatarDesign = {
     version: 0,
