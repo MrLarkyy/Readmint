@@ -335,7 +335,7 @@ describe("runExamples", () => {
   });
 
   it("writes the pinned default Action reference without --action", () => {
-    expect(defaultActionRef).toMatch(/^MrLarkyy\/Readmint@v\d+\.\d+\.\d+$/);
+    expect(defaultActionRef).toBe("MrLarkyy/Readmint@v0.3.0");
     const out = temp();
     expect(run(templatesDir, out).code).toBe(0);
     const workflow = readFileSync(join(out, ".github", "workflows", "readmint.yml"), "utf8");
