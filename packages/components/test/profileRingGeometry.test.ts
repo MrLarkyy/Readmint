@@ -31,13 +31,17 @@ interface Axes {
 }
 /** Semi-axes of the ellipse a label or dot travels: R1 + R2 and R1 - R2 of its two rotating arms. */
 const yearLabels: Axes = { a: 202.43 + 112.56, b: 202.43 - 112.56 };
+/** The ticks and dots of the year ring: arms of 186.285 and 103.585. */
+const yearDots: Axes = { a: 186.285 + 103.585, b: 186.285 - 103.585 };
 const headerDots: Axes = { a: 36.845 + 20.485, b: 36.845 - 20.485 };
 
 type Frames = ReadonlyMap<number, readonly RingPoint[]>;
 type Mutable = Record<string, unknown>;
 
-function frames(design: Design, read: (svg: string) => readonly RingPoint[]): Frames {
-  const result = new Map<number, readonly RingPoint[]>();
+type Svgs = ReadonlyMap<number, string>;
+
+function renderFrames(design: Design): Svgs {
+  const result = new Map<number, string>();
   for (const time of times) {
     const rendered = renderSvg(design, {
       data: sampleProfileData(),
@@ -46,10 +50,17 @@ function frames(design: Design, read: (svg: string) => readonly RingPoint[]): Fr
     });
     if (!rendered.ok)
       throw new Error(`render at ${String(time)} ms: ${JSON.stringify(rendered.issues)}`);
-    result.set(time, read(rendered.svg));
+    result.set(time, rendered.svg);
   }
   return result;
 }
+
+function readFrames(svgs: Svgs, read: (svg: string) => readonly RingPoint[]): Frames {
+  return new Map([...svgs].map(([time, svg]) => [time, read(svg)]));
+}
+
+const frames = (design: Design, read: (svg: string) => readonly RingPoint[]): Frames =>
+  readFrames(renderFrames(design), read);
 
 const at = (sampled: Frames, time: number): readonly RingPoint[] => {
   const points = sampled.get(time);
@@ -131,47 +142,71 @@ const yearLabelFrames = (design: Design): Frames =>
 
 describe("year ring month labels", () => {
   test.each(themes)("keep a constant radius and stay upright over the loop (%s)", (theme) => {
-    const sampled = yearLabelFrames(loadProfile("year-ring", "year", theme));
+    const svgs = renderFrames(loadProfile("year-ring", "year", theme));
+    const sampled = readFrames(svgs, (svg) => ringLabelGeometry(svg, months));
     for (const time of times) expect(at(sampled, time).map((label) => label.label)).toEqual(months);
     expectConstantRing(drift(sampled, yearLabels));
     // they do travel: half a loop apart a label sits on the other side of the ring
     const first = [at(sampled, 0)[0], at(sampled, 30_000)[0]] as [RingPoint, RingPoint];
     expect(Math.abs(first[0].x - first[1].x)).toBeGreaterThan(100);
+
+    // the ticks and dots of the same renders sit on their own ellipse, upright
+    const dots = readFrames(svgs, ringDotGeometry);
+    expect(at(dots, 0).length).toBeGreaterThan(300);
+    for (const time of times) expect(at(dots, time).length).toBe(at(dots, 0).length);
+    expectConstantRing(drift(dots, yearDots));
   });
 });
 
-/** The rotation tracks with the four keyframes of the counter-rotation, found by walking the design. */
+/** The groups whose rotation track has the four keyframes of the counter-rotation, found by walking the design. */
 function counterRotations(node: unknown, found: Mutable[] = []): readonly Mutable[] {
   if (Array.isArray(node)) for (const child of node) counterRotations(child, found);
   else if (node !== null && typeof node === "object") {
     const record = node as Mutable;
     const track = (record["animate"] as { rotation?: Mutable } | undefined)?.rotation;
-    if ((track?.["keyframes"] as unknown[] | undefined)?.length === 4) found.push(track as Mutable);
+    if ((track?.["keyframes"] as unknown[] | undefined)?.length === 4) found.push(record);
     for (const child of Object.values(record)) counterRotations(child, found);
   }
   return found;
 }
 
+const trackOf = (group: Mutable): Mutable => (group["animate"] as { rotation: Mutable }).rotation;
+
 describe("the geometry check", () => {
-  const mutants: readonly [string, (track: Mutable) => void][] = [
-    ["an eased counter-rotation", (track) => void (track["easing"] = "ease")],
+  const mutants: readonly [string, (group: Mutable) => void][] = [
+    ["an eased counter-rotation", (group) => void (trackOf(group)["easing"] = "ease")],
     [
       "a counter-rotation turning once per loop with no jump",
-      (track) =>
-        void (track["keyframes"] = [
+      (group) =>
+        void (trackOf(group)["keyframes"] = [
           { offset: 0, value: 0 },
           { offset: 1, value: 360 },
         ]),
+    ],
+    [
+      "a counter-rotation pivot moved by 1 px",
+      (group) => {
+        group["width"] = 4;
+        group["height"] = 4;
+      },
+    ],
+    [
+      "a missing inner rotation track",
+      (group) => {
+        const inner = (group["children"] as Mutable[])[0] as Mutable;
+        expect((inner["animate"] as Mutable)["rotation"]).toBeDefined();
+        delete (inner["animate"] as Mutable)["rotation"];
+      },
     ],
   ];
 
   test.each(mutants)("fails on %s", (_name, mutate) => {
     const design = structuredClone(loadProfile("year-ring", "year", "light"));
-    const tracks = counterRotations(design);
-    expect(tracks.length).toBeGreaterThan(0);
-    for (const track of tracks) mutate(track);
+    const groups = counterRotations(design);
+    expect(groups.length).toBeGreaterThan(0);
+    for (const group of groups) mutate(group);
     const measured = drift(yearLabelFrames(design), yearLabels);
-    expect(measured.radialPx > 5 || measured.tilt > 1).toBe(true);
+    expect(measured.radialPx > 0.5 || measured.tilt > 0.1).toBe(true);
   });
 });
 
@@ -184,15 +219,39 @@ describe("year ring header rotating parts", () => {
   });
 });
 
+/** Whether an `animate.rotation` object (a static `rotation` is a number or an expression) is anywhere in `node`. */
+function animatesRotation(node: unknown): boolean {
+  if (Array.isArray(node)) return node.some(animatesRotation);
+  if (node === null || typeof node !== "object") return false;
+  const record = node as Mutable;
+  const track = (record["animate"] as { rotation?: unknown } | undefined)?.rotation;
+  if (track !== null && typeof track === "object") return true;
+  return Object.values(record).some(animatesRotation);
+}
+
 describe("rotation tracks", () => {
+  test("the detector finds a track whatever its key order and ignores a static rotation", () => {
+    const track = {
+      easing: "ease",
+      keyframes: [
+        { offset: 0, value: 0 },
+        { offset: 1, value: 1 },
+      ],
+    };
+    expect(animatesRotation({ children: [{ animate: { rotation: track } }] })).toBe(true);
+    expect(animatesRotation({ children: [{ rotation: "{{ 90 }}", animate: { x: track } }] })).toBe(
+      false,
+    );
+    expect(animatesRotation({ rotation: 90 })).toBe(false);
+  });
+
   test("only the year ring year and header animate rotation", () => {
     const rotating = new Set<string>();
     for (const [template, sections] of Object.entries(profileTemplates))
       for (const section of sections)
         for (const theme of themes) {
           const design = loadProfile(template as ProfileTemplate, section, theme);
-          if (JSON.stringify(design).includes('"rotation":{"keyframes"'))
-            rotating.add(`${template}/${section}`);
+          if (animatesRotation(design)) rotating.add(`${template}/${section}`);
         }
     expect([...rotating].sort()).toEqual(["year-ring/header", "year-ring/year"]);
   });
