@@ -59,6 +59,8 @@ template in light and dark, with a one-line description and links to the templat
 headings that exist, and every link of the generated pages against the generated page set, so a moved page or a
 renamed heading fails a test rather than a reader.
 
+READMEs link the user guide with wiki URLs, not `docs/` paths, because a `docs/` link opens the Markdown source on GitHub. `packages/wiki/test/readmeLinks.test.ts` checks every README against the generated pages and their headings, so a renamed page or heading fails the test.
+
 ## Publishing
 
 - **CI**: the `Publish wiki` workflow runs on a push to `main` that touches `docs/`, `packages/wiki/` or the golden images (`packages/components/test/golden/`), and on demand (a run on any other branch does nothing: the wiki always comes from `main`). It

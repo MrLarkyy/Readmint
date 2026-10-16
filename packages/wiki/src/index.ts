@@ -1,5 +1,6 @@
 export { buildGallery, type Gallery, type GalleryLinks } from "./buildGallery.js";
 export { buildWiki, type WikiOptions } from "./buildWiki.js";
+export { defaultRepository } from "./defaultRepository.js";
 export { examplesRepository } from "./examplesRepository.js";
 export { extractWorkflow } from "./extractWorkflow.js";
 export { galleryImagePath } from "./galleryImagePath.js";
@@ -10,4 +11,5 @@ export { onPageColour } from "./onPageColour.js";
 export { rewriteLinks } from "./rewriteLinks.js";
 export type { WikiEntry, WikiGroup, WikiGroupId, WikiPage } from "./WikiPage.js";
 export { wikiGroups, wikiPages } from "./wikiPages.js";
+export { wikiPageUrl } from "./wikiPageUrl.js";
 export { writeWiki } from "./writeWiki.js";
