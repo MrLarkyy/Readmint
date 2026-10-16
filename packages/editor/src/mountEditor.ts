@@ -380,7 +380,15 @@ export function mountEditor(root: HTMLElement, options: MountEditorOptions = {})
         return;
       }
       track(
-        file.text().then((text) => {
+        file.arrayBuffer().then((buffer) => {
+          let text: string;
+          try {
+            // As the CLI reads it: strict UTF-8, a BOM kept so an unedited export is the file's own bytes.
+            text = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(buffer);
+          } catch {
+            report("settings", "settings file is not valid UTF-8");
+            return;
+          }
           dispatch((current) =>
             loadSettings(
               current,

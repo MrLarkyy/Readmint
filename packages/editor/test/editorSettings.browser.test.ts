@@ -62,10 +62,10 @@ function find(selector: string): HTMLElement {
   return found;
 }
 
-async function upload(action: string, name: string, text: string): Promise<void> {
+async function upload(action: string, name: string, text: string | Uint8Array): Promise<void> {
   await userEvent.upload(
     find(`input[data-action="${action}"]`),
-    new File([text], name, { type: "application/json" }),
+    new File([text as BlobPart], name, { type: "application/json" }),
   );
   await editor.settled();
 }
@@ -232,4 +232,41 @@ test("New keeps the settings file but no section, so nothing is reported and exp
   expect(find('[aria-label="Issues"]').textContent).not.toContain("settings");
   await userEvent.click(find('[data-action="export-png"]'));
   expect(requests).toHaveLength(1);
+});
+
+test("a settings file with a BOM exports unedited to its own bytes", async () => {
+  const bom = String.fromCharCode(0xfeff);
+  const bytes = new TextEncoder().encode(`${bom}${settingsText}`);
+  await upload("load-settings", "settings.json", bytes);
+  expect(editor.state.settings?.source?.startsWith(String.fromCharCode(0xfeff))).toBe(true);
+  await userEvent.click(find('[data-action="export-settings"]'));
+  expect(new TextEncoder().encode(settingsFiles[0]?.text ?? "")).toEqual(bytes);
+});
+
+test("a settings file that is not UTF-8 is refused with a clear message", async () => {
+  await upload("load-settings", "settings.json", settingsText);
+  const loaded = editor.state.settings;
+  await upload("load-settings", "bad.json", new Uint8Array([0x7b, 0xff, 0xfe, 0x7d]));
+  expect(editor.state.settings).toBe(loaded);
+  expect(find('[aria-label="Issues"]').textContent).toContain("settings file is not valid UTF-8");
+});
+
+test("list items carry an accessible name", async () => {
+  const design = {
+    version: 0,
+    canvas: { width: 20, height: 20 },
+    components: {
+      c: { props: { tags: { type: "array" } }, layers: [{ type: "rect", width: 5, height: 5 }] },
+    },
+    layers: [{ type: "component", ref: "c" }],
+  } as const;
+  editor.dispatch((state) => ({ ...state, design }));
+  await upload("load-settings", "settings.json", JSON.stringify({ s: { tags: ["a", "b"] } }));
+  await userEvent.selectOptions(section(), "s");
+  await editor.settled();
+  expect(
+    [...root.querySelectorAll('[data-prop="tags"] input')].map((input) =>
+      input.getAttribute("aria-label"),
+    ),
+  ).toEqual(["Item 1 of tags", "Item 2 of tags"]);
 });

@@ -1,4 +1,7 @@
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { expect, test } from "vitest";
+import { importDesign } from "../src/index.js";
 import {
   chooseSection,
   createHistory,
@@ -37,11 +40,8 @@ test("a prop the design does not declare is a warning, not an error, and the pre
   expect(design).toBe(base.design);
   expect(issues).toEqual([]);
   expect(unknownProps).toEqual(["missing"]);
-  expect(warnings.map((warning) => warning.severity)).toEqual(["warning", "warning"]);
+  expect(warnings.map((warning) => warning.severity)).toEqual(["warning"]);
   expect(warnings[0]?.message).toContain("settings /broken/missing: no top-level component");
-  expect(warnings[1]?.message).toBe(
-    "settings /broken/color: not set in the section; the design's value is used",
-  );
   expect(JSON.stringify(warnings)).not.toContain("s3cret");
 });
 
@@ -90,4 +90,24 @@ test("settings survive undo and redo, and the restored design is re-applied", ()
   expect(effectiveDesign(again?.state ?? state).design.layers[0]).toMatchObject({
     props: { color: "#ff0000" },
   });
+});
+
+const pin = (name: string) =>
+  readFileSync(
+    fileURLToPath(
+      new URL(`../../components/templates/profiles/pinscreen/${name}`, import.meta.url),
+    ),
+    "utf8",
+  );
+
+test("shipped settings that lack a defaulted or layer-set prop (theme) show no warning", async () => {
+  for (const file of ["header.json", "header.dark.json"]) {
+    const imported = await importDesign(pin(file));
+    if (!imported.ok) throw new Error("pinscreen design does not import");
+    const state = loadSettings(createEditorState(imported.value), pin("settings.json"), "header");
+    const { warnings, issues, unknownProps } = effectiveDesign(state);
+    expect(issues).toEqual([]);
+    expect(unknownProps).toEqual([]);
+    expect(warnings).toEqual([]);
+  }
 });

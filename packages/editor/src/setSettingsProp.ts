@@ -1,4 +1,9 @@
-import { parseDesignProps, type ComponentPropValue, type DesignProps } from "@readmint/format";
+import {
+  DesignLimits,
+  parseDesignProps,
+  type ComponentPropValue,
+  type DesignProps,
+} from "@readmint/format";
 import { refuse } from "./commitDesign.js";
 import { EditorLimits } from "./EditorLimits.js";
 import type { EditorState } from "./EditorState.js";
@@ -8,7 +13,7 @@ import { exportSettings } from "./exportSettings.js";
  * Sets one prop of the chosen settings section, or removes it (`undefined`). A new prop goes last, an edited one keeps
  * its place. The value must pass what the CLI's `--props` file passes (`parseDesignProps` on a file of just this prop),
  * a list at most `EditorLimits.maxSettingsListItems` long, and the exported file stays within
- * `EditorLimits.maxSettingsBytes`. A refused edit leaves the state unchanged but for an issue that names the prop and
+ * `DesignLimits.maxSourceLength` characters, as the CLI reads it. A refused edit leaves the state unchanged but for an issue that names the prop and
  * never quotes the value. Not an undo step: settings are a session input.
  */
 export function setSettingsProp(
@@ -48,13 +53,11 @@ export function setSettingsProp(
   }
   const next = { ...settings, sections: sections as DesignProps };
   const text = exportSettings(next);
-  const bytes =
-    text.length * 3 > EditorLimits.maxSettingsBytes
-      ? new TextEncoder().encode(text).length
-      : text.length;
-  if (bytes > EditorLimits.maxSettingsBytes) {
+  // The CLI's reader counts characters, not bytes, and not a BOM.
+  const length = text.startsWith("﻿") ? text.length - 1 : text.length;
+  if (length > DesignLimits.maxSourceLength) {
     return fail(
-      `the settings file would be ${String(bytes)} bytes, more than the ${String(EditorLimits.maxSettingsBytes)} a settings file may have`,
+      `the settings file would be ${String(length)} characters long, more than the ${String(DesignLimits.maxSourceLength)} a settings file may have`,
     );
   }
   return { ...state, settings: next, issues: [] };

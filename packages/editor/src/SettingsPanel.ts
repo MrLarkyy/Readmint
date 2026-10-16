@@ -109,7 +109,7 @@ export class SettingsPanel {
     };
     const mark = (next: SettingsField) => {
       unset.disabled = next.from !== "settings";
-      row.classList.toggle("rm-default", next.from === "default");
+      row.classList.toggle("rm-default", next.from === "default" || next.from === "layer");
       row.classList.toggle("rm-unset", next.from === "none");
     };
     if (definition.type === "array") return this.list(row, field, set, mark);
@@ -184,7 +184,11 @@ export class SettingsPanel {
     items.forEach((_, index) => {
       const line = element(row, "div", { className: "rm-item" });
       const input = element(line, "input", {
-        attributes: { type: "text", name: `${field.name}[${String(index)}]` },
+        attributes: {
+          type: "text",
+          name: `${field.name}[${String(index)}]`,
+          "aria-label": `Item ${String(index + 1)} of ${field.name}`,
+        },
       });
       inputs.push(input);
       input.addEventListener("change", () => {

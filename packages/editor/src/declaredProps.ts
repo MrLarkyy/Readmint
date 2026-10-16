@@ -1,4 +1,9 @@
-import { DesignLimits, type ComponentPropDefinition, type Design } from "@readmint/format";
+import {
+  DesignLimits,
+  type ComponentPropDefinition,
+  type ComponentPropValue,
+  type Design,
+} from "@readmint/format";
 
 /** The props the top-level component layers of `design` declare, by name in declaration order; the first definition wins. */
 export function declaredProps(design: Design): ReadonlyMap<string, ComponentPropDefinition> {
@@ -13,6 +18,17 @@ export function declaredProps(design: Design): ReadonlyMap<string, ComponentProp
     }
   }
   return declared;
+}
+
+/** The value the first top-level component layer that declares and sets `name` gives it; undefined when none does. */
+export function layerValue(design: Design, name: string): ComponentPropValue | undefined {
+  for (const layer of design.layers) {
+    if (layer.type !== "component") continue;
+    const declares = design.components?.[layer.ref]?.props;
+    if (declares === undefined || !Object.hasOwn(declares, name)) continue;
+    if (layer.props !== undefined && Object.hasOwn(layer.props, name)) return layer.props[name];
+  }
+  return undefined;
 }
 
 /**

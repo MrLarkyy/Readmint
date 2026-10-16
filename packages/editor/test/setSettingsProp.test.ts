@@ -97,20 +97,17 @@ test.each<[string, EditorState, string, ComponentPropValue, RegExp]>([
   expect(JSON.stringify(next.issues)).not.toContain("s3cret-value");
 });
 
-test("refuses an edit that makes the file larger than the settings limit, naming both sizes", () => {
-  // Three bytes per character: the loaded file fits, the added prop alone is under the character limit of a value.
+test("refuses an edit that makes the file longer than the CLI reads, naming both sizes", () => {
   const loaded = chooseSection(
-    loadSettings(empty, JSON.stringify({ a: { p: "€".repeat(2_000_000), r: "y" } }), "a"),
+    loadSettings(empty, JSON.stringify({ a: { p: "x".repeat(3_000_000) } }), "a"),
     "a",
   );
   expect(loaded.settings).toBeDefined();
-  const next = setSettingsProp(loaded, "s", "€".repeat(4_100_000));
+  const next = setSettingsProp(loaded, "q", "x".repeat(3_000_000));
   expect(next.settings).toBe(loaded.settings);
+  expect(messages(next)).toHaveLength(1);
   expect(messages(next)[0]).toMatch(
-    new RegExp(
-      `^settings prop "s": the settings file would be \\d+ bytes, more than the ${String(EditorLimits.maxSettingsBytes)} a settings file may have$`,
-      "u",
-    ),
+    /^settings prop "q": the settings file would be 60\d{5} characters long, more than the 4194304 a settings file may have$/u,
   );
 });
 

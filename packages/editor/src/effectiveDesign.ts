@@ -4,7 +4,7 @@ import {
   type ComponentPropValue,
   type Design,
 } from "@readmint/format";
-import { declaredProps, undeclaredProps } from "./declaredProps.js";
+import { declaredProps, layerValue, undeclaredProps } from "./declaredProps.js";
 import type { EditorIssue } from "./EditorIssue.js";
 import type { EditorState } from "./EditorState.js";
 
@@ -39,7 +39,10 @@ export function effectiveDesign(state: EditorState): EffectiveDesign {
   const warnings: string[] = [];
   for (const name of declared.keys()) {
     if (Object.hasOwn(props, name)) applied[name] = props[name] as ComponentPropValue;
-    else
+    else if (
+      declared.get(name)?.default === undefined &&
+      layerValue(state.design, name) === undefined
+    )
       warnings.push(
         `settings /${section}/${name}: not set in the section; the design's value is used`,
       );

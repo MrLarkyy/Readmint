@@ -1,15 +1,15 @@
 import type { ComponentPropDefinition, ComponentPropValue } from "@readmint/format";
-import { declaredProps, undeclaredProps } from "./declaredProps.js";
+import { declaredProps, layerValue, undeclaredProps } from "./declaredProps.js";
 import type { EditorState } from "./EditorState.js";
 
 /** One prop the design declares, as the settings form shows it. */
 export interface SettingsField {
   readonly name: string;
   readonly definition: ComponentPropDefinition;
-  /** The section's value, else the definition's default; none when the prop is in neither. */
+  /** What renders: the section's value, else the layer's own, else the definition's default; none when in none. */
   readonly value?: ComponentPropValue;
-  /** Where `value` comes from: the section, the definition's default, or nowhere. */
-  readonly from: "settings" | "default" | "none";
+  /** Where `value` comes from: the section, the top-level component layer's own props, the definition's default, or nowhere. */
+  readonly from: "settings" | "layer" | "default" | "none";
 }
 
 /**
@@ -28,6 +28,7 @@ export function settingsFields(state: EditorState): {
   const declared = declaredProps(state.design);
   const fields: SettingsField[] = [];
   for (const [name, definition] of declared) {
+    const own = layerValue(state.design, name);
     if (Object.hasOwn(section, name)) {
       fields.push({
         name,
@@ -35,6 +36,8 @@ export function settingsFields(state: EditorState): {
         value: section[name] as ComponentPropValue,
         from: "settings",
       });
+    } else if (own !== undefined) {
+      fields.push({ name, definition, value: own, from: "layer" });
     } else if (definition.default !== undefined) {
       fields.push({ name, definition, value: definition.default, from: "default" });
     } else fields.push({ name, definition, from: "none" });

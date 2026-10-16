@@ -61,3 +61,24 @@ test("a section of 100,000 props lists at most 100 unknown ones, fast", () => {
   expect(truncated).toBe(true);
   expect(performance.now() - started).toBeLessThan(1000);
 });
+
+test("a layer's own value shows before the default, and the section's before both", () => {
+  const withLayer: Design = {
+    ...design,
+    layers: [
+      { type: "component", ref: "a", props: { title: "Own", size: 4 } },
+      ...design.layers.slice(1),
+    ],
+  };
+  const state = chooseSection(
+    loadSettings(createEditorState(withLayer), '{"s": {"size": 9}}'),
+    "s",
+  );
+  const { fields } = settingsFields(state);
+  expect(fields.map((field) => [field.name, field.from, field.value])).toEqual([
+    ["title", "layer", "Own"],
+    ["size", "settings", 9],
+    ["tags", "none", undefined],
+    ["mode", "none", undefined],
+  ]);
+});
