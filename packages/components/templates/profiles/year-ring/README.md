@@ -72,6 +72,9 @@ stays in the design (it is what makes the twin dark); `slot` of the repository s
 | `footer` | `contactLabel`   | string | the label over the contact; empty: GitHub                                    | `Email`                                         |
 | `footer` | `contactText`    | string | the contact; empty: your GitHub address                                      | `hello@example.com`                             |
 
+The index is as tall as its rows: one per label plus the Languages row, up to eight, so a short list leaves no empty
+space below it.
+
 For example, `settings.json` for the `header` section:
 
 ```json

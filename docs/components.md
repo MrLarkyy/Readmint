@@ -43,10 +43,14 @@ Props of the `calendar` instance:
 `orientation` and `projection` are enum props: any other value is a validation issue (`enum`), or a `type` render issue
 when it comes from data.
 
-**Canvas.** The canvas cannot read the instance props, so each template states its size from the same numbers:
-`min(weeks, 53) * 14 - 3 + 16` by `111` for the flat ones, `(min(weeks, 53) + 5) * 14 + 38` by
-`(min(weeks, 53) + 5) * 7 + 51` for the isometric one (`14` is the pitch, `16` twice the margin of 8). Changing
-`cellSize`, `gap`, `weeks`, `maxHeight` or `orientation` means changing the canvas binding with them.
+**Canvas.** The calendar instance is the root instance, so the canvas bindings read its props
+([design format](design-format.md#components)) and the size follows them. With the pitch `p = cellSize + gap` and
+`w = min(github.contributions.weeks, weeks)` columns, a flat template is `w * p - gap + 16` wide and `7 * p - gap + 16`
+high (swapped when `orientation` is `"vertical"`), the isometric one `(w + 5) * p + 2 * cellSize + 16` by
+`(w + 5) * p / 2 + cellSize + maxHeight + 16` (`16` is twice the margin of 8). At the defaults that is
+`min(weeks, 53) * 14 + 13` by `111` and `(min(weeks, 53) + 5) * 14 + 38` by `(min(weeks, 53) + 5) * 7 + 51`. Setting
+`cellSize`, `gap`, `weeks`, `maxHeight` or `orientation` on the instance resizes the canvas with it; a fractional size
+is rounded up to whole pixels (`| ceil`) and kept within the canvas range 1 to 4096 (`| clamp(1, 4096)`).
 
 **Projections.** Flat: a cell sits at `column * pitch`, `weekday * pitch` (swapped when vertical); `height` is 0.
 Isometric: a cell sits at `x = (column - weekday + 6) * pitch`, `y = (column + weekday) * pitch / 2 + maxHeight`, and
@@ -127,7 +131,8 @@ Five complete designs that show what the format can do; each is an ordinary desi
   inside the components, in GitHub's palettes: light panel `#ffffff` with border `#d0d7de`, text `#1f2328`, muted
   `#59636e`; dark panel `#0d1117` with border `#30363d`, text `#e6edf3`, muted `#9198a1`; the calendar levels
   follow the theme too. Set `"props": { "theme": "dark" }` on the root instance to switch; any other value is an
-  `enum` issue. A canvas cannot read props, which is why the theme is not a `background`.
+  `enum` issue. The theme sets no canvas `background` (a canvas binding could read it), so the card's rounded panel
+  keeps the page around its corners.
 - **The calendar.** `isometric-card` and `profile-card` carry the `calendar` and `cell` components of the
   calendar templates above unchanged (a test compares them); only the instance's props differ.
 - **Fonts.** Text needs a font asset. The templates use Montserrat Medium and ExtraBold from `templates/fonts/`
@@ -189,9 +194,12 @@ A folder holds, per section, `<section>.json` and its dark twin `<section>.dark.
   default (empty for the texts); an empty prop hides its block (an empty introduction falls back to `github.bio`, an empty contact to
   the GitHub address). They are set once per template in its `settings.json` (below), which covers the light design and its twin alike. Array props hold strings only, so a
   table is two arrays of the same length (`labels`, `values`), and a multi-line item is one string with line breaks.
-  Each template's `README.md` lists its props with neutral examples. The canvas height cannot read a prop, so the
-  sections whose rows come from props have a fixed height (the `year-ring` index takes up to 8 rows, the `pinscreen`
-  build file up to 15 lines); the sections whose rows come from data (recent work, the git log) grow with them.
+  Each template's `README.md` lists its props with neutral examples. The canvas height binds to the root props, so
+  the sections whose rows come from props grow with them: the `year-ring` index is `39 + 36` per row (the labels plus
+  the Languages row, up to 8 rows, 327), the `pinscreen` build file `96 + 20` per code line (up to 15 lines, 396) or
+  the height its languages panel needs (`132 + 36` per language, up to 4), whichever is more. The `horizon` stack keeps
+  its height: its groups are columns side by side, each item clipped to a fixed box. The sections whose rows come from
+  data (recent work, the git log) grow with them too.
 - **No user in a design.** No design contains a login, name, address or personal text; every other text comes from
   `github.*`, so another account's data needs no edit. The render date is `github.contributions.to`: a render reads no
   clock, so times are days ("today", "yesterday", "3 days ago", read from the calendar's own dates), never hours.

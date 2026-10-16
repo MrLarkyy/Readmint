@@ -155,6 +155,21 @@ describe("--props", () => {
     }
   });
 
+  test("a value that breaks a canvas binding is not echoed at the canvas", async () => {
+    const design = childDesign() as { canvas: Record<string, unknown> };
+    await tree.file("canvas.json", {
+      ...design,
+      canvas: { ...design.canvas, background: "{{ props.paint }}" },
+    });
+    await tree.file("settings.json", { canvas: { paint: "not-a-s3cret-colour" } });
+    const run = await tree.run(["render", "canvas.json", "--props", "settings.json"]);
+    expect(run).toMatchObject({ code: ExitCode.invalid, stdout: "" });
+    expect(run.stderr).toContain(
+      'canvas.json: error type at /canvas/background: a value of settings section "canvas" (prop "paint")',
+    );
+    expect(run.stderr).not.toContain("s3cret");
+  });
+
   test("a missing settings file is an input error", async () => {
     const run = await tree.run(["render", "box.json", "--props", "none.json"]);
     expect(run).toMatchObject({ code: ExitCode.input, stdout: "" });
@@ -172,6 +187,23 @@ describe("--props with a shipped template", () => {
     "profiles",
     "year-ring",
   );
+
+  test("the index canvas grows with the rows a settings file gives it", async () => {
+    const dataFile = await tree.file("profile.json", sampleProfileData());
+    const settings = await tree.file("index-settings.json", {
+      index: { labels: ["Focus", "Tools"], values: ["Backend", "Gradle"] },
+    });
+    const io = { cwd: yearRing };
+    const args = ["render", "index.json", "--data", dataFile];
+    const height = (svg: string) => /^<svg [^>]*\bheight="(\d+)"/.exec(svg)?.[1];
+    const plain = await tree.run(args, io);
+    const merged = await tree.run([...args, "--props", settings], io);
+    expect(plain).toMatchObject({ code: ExitCode.ok, stderr: "" });
+    expect(merged).toMatchObject({ code: ExitCode.ok, stderr: "" });
+    // 39 + 36 per row: the languages row alone, then two labels with it; 8 rows (327) is the most.
+    expect(height(plain.stdout)).toBe("75");
+    expect(height(merged.stdout)).toBe("147");
+  });
 
   test("a data error in year-ring index prints as without the file (languagesAfter 2, repeat item 2)", async () => {
     const sample = sampleProfileData();

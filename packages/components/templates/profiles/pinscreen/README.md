@@ -77,6 +77,9 @@ stays in the design (it is what makes the twin dark); `slot` of the repository s
 | `footer` | `contactLabel`   | string | the label over the contact; empty: github  | `email`                                         |
 | `footer` | `contactText`    | string | the contact; empty: your GitHub address    | `hello@example.com`                             |
 
+The stack is as tall as its build file, up to fifteen lines, and never shorter than its languages panel, so a short
+file leaves no empty space below it.
+
 For example, `settings.json` for the `header` section:
 
 ```json

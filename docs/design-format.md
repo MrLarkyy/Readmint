@@ -123,7 +123,10 @@ one placeholder.
 | `animation`   |          | `{ duration, loop? }`                          | the timeline, see [Animation](#animation)                                    |
 
 **canvas**: `width`, `height` (required, `B<integer 1..4096>`; 4096 is the PNG cap of the raster path),
-`background` (paint).
+`background` (paint). Canvas bindings are evaluated at the data root and also see `props`, the props of the root
+instance ([Components](#components)), so a section can size itself to rows set as props:
+`"height": "{{ 40 + 36 * (props.rows | length | min(8)) }}"`. Without a root instance, `props` is an unknown name there
+(a `binding` issue at the canvas property).
 
 **style**: `fill`, `stroke` (paint), `strokeWidth` (`B<0..1000>`), `opacity` (`B<unit>`), `font` (id of a font asset),
 `fontSize` (`B<(0, 1000]>`), `fontWeight` (`B<integer 1..1000>`), `lineHeight` (`B<(0, 10]>`), `letterSpacing`
@@ -227,6 +230,15 @@ A component definition is `{ description?, width?, height?, props?, layers }` (`
 `props` maps a prop name to `{ type: "string" | "number" | "boolean" | "color", required?: boolean, default? }`, to
 `{ type: "enum", values, required?, default? }` or to `{ type: "array", required?, default? }`.
 Component layers read their props as bindings (`{{props.label}}`). The props of a root instance can also come from a settings file passed to the CLI or the Action, which is not part of the format ([cli.md](cli.md#settings-file)).
+
+The **root instance** is the document's only top-level `component` layer, when it has no `repeat` (other top-level
+layer kinds beside it do not matter). A design with no top-level component layer, with several, or whose one repeats
+has none. Its props (defaults overlaid by the instance's values, bindings evaluated at the data root, types checked)
+are in scope as `props` in every canvas binding, exactly as inside the component. When a canvas binding names
+`props`, they are resolved once before the canvas, so an issue in them comes before any canvas or layer issue, and
+they are resolved even when the instance's `visible` or `if` then drops it; a canvas that does not name `props`
+resolves nothing early. A data object with a top-level key `props` is shadowed in canvas bindings by the root
+instance's props, as it is inside every component.
 
 An `enum` prop takes a string that is one of `values` (1 to 64 strings of 1 to 128 characters); a `default` not listed
 is an `enum` issue at `.../default`. An `array` prop takes a list: a literal list of at most 1000 strings, numbers or
@@ -447,5 +459,9 @@ right-to-left paragraph), and font-mode text may hold private-use characters wit
 The Reserved Font Name policy (RM-45) changed rendering without a version step too: a font with a Reserved Font Name
 (declared, or stated in its name table) that used to be embedded as a subset is drawn as paths with the warning
 `font-reserved-name`; `licence.reservedFontName: false` embeds it as before.
+Canvas bindings that read the root instance's `props` (RM-83) were added to v0 without a schema change: a canvas
+binding was already any string, and one naming `props` failed with an `unknown-name` issue before, while a canvas that
+does not name `props` is evaluated as before. So no design that rendered changes, with one corner case: a design with
+a root instance whose canvas binding read a data key named `props` now reads the instance's props instead.
 The grammar inside bindings is
 the expression language v0 of `@readmint/expr`, described in [docs/expressions.md](expressions.md).

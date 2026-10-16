@@ -5,7 +5,7 @@
   "description": "The stack behind the work as a build file, with the languages of the public repositories as bars beside it.",
   "canvas": {
     "width": 840,
-    "height": 396
+    "height": "{{ 96 + 20 * (1 + (props.plugin ? 4 : 0) + ((props.labels | length | min(4)) > 0 ? (props.labels | length | min(4)) + 3 : 0) + (props.noteLabels | length | min(3))) | max(132 + 36 * (github.languages | length | default(0) | min(4))) }}"
   },
   "assets": {
     "fonts": {
@@ -97,7 +97,7 @@
           "x": 0.5,
           "y": 40.5,
           "width": 839,
-          "height": 355,
+          "height": "{{ (96 + 20 * (1 + (props.plugin ? 4 : 0) + ((props.labels | length | min(4)) > 0 ? (props.labels | length | min(4)) + 3 : 0) + (props.noteLabels | length | min(3))) | max(132 + 36 * (github.languages | length | default(0) | min(4)))) - 41 }}",
           "fill": "{{ props.theme == \"dark\" ? \"#12161d\" : \"#FAFAFA\" }}",
           "radius": 10,
           "stroke": "{{ props.theme == \"dark\" ? \"#26272B\" : \"#E4E4E7\" }}",
@@ -304,7 +304,7 @@
           "x": 620,
           "y": 92,
           "width": 1,
-          "height": 284,
+          "height": "{{ (96 + 20 * (1 + (props.plugin ? 4 : 0) + ((props.labels | length | min(4)) > 0 ? (props.labels | length | min(4)) + 3 : 0) + (props.noteLabels | length | min(3))) | max(132 + 36 * (github.languages | length | default(0) | min(4)))) - 112 }}",
           "fill": "{{ props.theme == \"dark\" ? \"#26272B\" : \"#E4E4E7\" }}"
         },
         {

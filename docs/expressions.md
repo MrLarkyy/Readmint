@@ -43,7 +43,8 @@ The hyphen rule keeps ids usable as names: `props.my-label` and `repo-index` are
 
 ## Semantics
 
-- **Names.** A name is looked up in the locals first (the `repeat` item and index, component `props`), then among the
+- **Names.** A name is looked up in the locals first (the `repeat` item and index, component `props`, which canvas
+  bindings see as the props of the root instance, see [design-format.md](design-format.md#components)), then among the
   own top-level keys of the data. An unknown name is an `unknown-name` error.
 - **Missing data is `null`.** A missing property, an index out of range and any property of `null` read as `null`, so
   `{{ github.repo.owner.name }}` on partial data is `null`, not an error. Arrays have only integer indices (`list[0]`;

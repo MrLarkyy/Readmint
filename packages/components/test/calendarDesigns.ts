@@ -19,11 +19,11 @@ export function loadTemplate(name: CalendarTemplate): Design {
   return result.value;
 }
 
-/** The calendar instance's props replaced and the canvas sized to match (the canvas cannot read the props). */
+/** The calendar instance's props replaced; a literal `canvas` replaces the template's size, which follows the props. */
 export function withCalendar(
   design: Design,
   props: Readonly<Record<string, string | number | boolean>>,
-  canvas: { readonly width: number; readonly height: number },
+  canvas?: { readonly width: number; readonly height: number },
 ): Design {
   const [calendar, ...rest] = design.layers;
   if (calendar?.type !== "component") throw new Error("the template has no calendar instance");

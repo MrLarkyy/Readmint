@@ -1,4 +1,4 @@
-import { createBudget, createScope } from "@readmint/expr";
+import { createBudget, createScope, type Scope } from "@readmint/expr";
 import { ValueRanges, type Design } from "@readmint/format";
 import { collectLayerBoxes } from "./collectLayerBoxes.js";
 import { countImageUses } from "./countImageUses.js";
@@ -8,6 +8,7 @@ import { escapeText } from "./escapeXml.js";
 import { expandLayers } from "./expandLayers.js";
 import { formatNumber } from "./formatNumber.js";
 import { paintAttributes, resolvePaint } from "./paint.js";
+import { pointer } from "./pointer.js";
 import { RenderContext } from "./RenderContext.js";
 import { RenderFailure } from "./RenderFailure.js";
 import { renderLayer } from "./renderLayer.js";
@@ -15,7 +16,9 @@ import type { RenderNode } from "./RenderNode.js";
 import type { RenderOptions } from "./RenderOptions.js";
 import type { RenderReport } from "./RenderReport.js";
 import type { RenderResult } from "./RenderResult.js";
-import { echo, resolveNumber } from "./resolveValue.js";
+import { resolveProps } from "./resolveProps.js";
+import { echo, isBinding, resolveNumber } from "./resolveValue.js";
+import { rootInstance } from "./rootInstance.js";
 
 /**
  * A validated v0 design plus data becomes a self-contained SVG: no scripts, no external references (fonts and
@@ -56,22 +59,23 @@ function render(context: RenderContext, options: RenderOptions): RenderResult {
     ...(locale === undefined ? {} : { locale }),
   });
   const canvas = design.canvas;
+  const canvasScope = canvasScopeOf(context, scope);
   const width = resolveNumber(
     context,
     canvas.width,
     "/canvas/width",
     ValueRanges.canvasSide,
-    scope,
+    canvasScope,
   );
   const height = resolveNumber(
     context,
     canvas.height,
     "/canvas/height",
     ValueRanges.canvasSide,
-    scope,
+    canvasScope,
   );
   context.placement.setCanvas(width, height);
-  const background = resolvePaint(context, canvas.background, "/canvas/background", scope);
+  const background = resolvePaint(context, canvas.background, "/canvas/background", canvasScope);
   const nodes = expandLayers(context, design.layers, "/layers", scope);
   countImageUses(context, nodes);
   // Every text is laid out now, so each font's subset holds exactly the characters drawn with it.
@@ -113,6 +117,40 @@ function render(context: RenderContext, options: RenderOptions): RenderResult {
   const warnings = [...context.warnings];
   if (options.layerBoxes !== true) return { ok: true, svg, report, warnings };
   return { ok: true, svg, report, warnings, layerBoxes: collectLayerBoxes(nodes) };
+}
+
+/**
+ * The scope of the canvas bindings: the data root, plus `props` of the root instance when there is one. The props are
+ * resolved only when a canvas binding names `props`, so any other canvas evaluates nothing early: its issues keep their
+ * order, and an instance an `if` drops never has its props checked.
+ */
+function canvasScopeOf(context: RenderContext, scope: Scope): Scope {
+  const { canvas } = context.design;
+  if (![canvas.width, canvas.height, canvas.background].some((value) => namesProps(value, 0))) {
+    return scope;
+  }
+  const root = rootInstance(context.design);
+  if (root === undefined) return scope;
+  const path = pointer("/layers", root.index);
+  const props = resolveProps(context, root.layer, root.definition.props ?? {}, path, scope);
+  context.rootProps = { path, props };
+  return scope.with({ props });
+}
+
+/** Deepest canvas value with bindings: a gradient's stop colour (background, stops, stop, colour). */
+const maxCanvasDepth = 3;
+
+/**
+ * `props` written as a name: not part of a longer name (`xprops`, `props_2`, `props-x`) or a property (`x.props`).
+ * Read from the source, it errs only towards a hit (`my-props`, a `props` in a string literal; a `-` before it may be
+ * a minus, `10-props.n`), and a false hit only resolves the props early, never wrongly.
+ */
+const propsName = /(?<![A-Za-z0-9_.])props(?![A-Za-z0-9_]|-[A-Za-z_])/;
+
+function namesProps(value: unknown, depth: number): boolean {
+  if (isBinding(value)) return propsName.test(value);
+  if (depth >= maxCanvasDepth || typeof value !== "object" || value === null) return false;
+  return Object.values(value).some((item) => namesProps(item, depth + 1));
 }
 
 /** Registers every animation in drawing order and writes their CSS; returns the document prefix, if any animates. */
