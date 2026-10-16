@@ -115,6 +115,12 @@ describe("TextShaper", () => {
     }
   });
 
+  test("a cluster no font covers adds no width", () => {
+    const instance = shaper();
+    expect(instance.measure("a\u{1f377}b")).toBe(instance.measure("ab"));
+    expect(shaper("m", 3).measure("a\u{1f377}b")).toBe(shaper("m", 3).measure("ab"));
+  });
+
   test("a word breaks between clusters only: never inside a ligature or a conjunct", () => {
     expect(shaper().clusters("office")).toEqual(["o", "f", "fi", "c", "e"]);
     expect(shaper("d").clusters("\u0915\u094d\u0937\u093f\u0915")).toEqual([

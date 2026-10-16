@@ -38,6 +38,11 @@ function xs(attributes: string): number[] {
   return (/ x="([^"]*)"/u.exec(attributes)?.[1] ?? "").split(" ").map(Number);
 }
 
+/** The SVG without its accessible name, which keeps the text as written (emoji included). */
+function unlabelled(svg: string): string {
+  return svg.replace(/ aria-label="[^"]*"/gu, "");
+}
+
 interface Expectation {
   readonly spacing?: number;
   readonly kern?: boolean;
@@ -141,16 +146,14 @@ describe("renderText", () => {
     for (const span of found) expect(xs(span.attributes)).toHaveLength(1);
   });
 
-  test("a character no font has is not written, keeps its advance and warns once per font", () => {
+  test("a character no font has is not written, takes no space and warns once per font", () => {
     const result = render([
       { type: "text", content: "a\u6f22b", font: "m", fontSize: 10 },
       { type: "text", y: 20, content: "\u6f22\u6f23", font: "m" },
     ]);
     const [first] = spans(result.svg);
     expect(first?.text).toBe("ab");
-    const notdef = (medium.advanceOf(0) * 10) / medium.unitsPerEm;
-    const a = (medium.advanceOf(medium.glyphFor(0x61)) * 10) / medium.unitsPerEm;
-    expect(xs(first?.attributes ?? "")).toEqual([0, Math.round((a + notdef) * 1000) / 1000]);
+    expect(xs(first?.attributes ?? "")).toEqual(expected("ab", 10));
     expect(result.svg).not.toContain("\u6f22");
     expect(result.warnings).toEqual([
       {
@@ -159,6 +162,84 @@ describe("renderText", () => {
         message: expect.stringContaining("U+6F22, U+6F23") as string,
       },
     ]);
+  });
+
+  describe("emoji no font has", () => {
+    const emoji = [
+      "\u{1f377}",
+      "\u{1f469}\u200d\u{1f4bb}",
+      "\u{1f1e8}\u{1f1ff}",
+      "\u{1f44d}\u{1f3fd}",
+      "\u2764\ufe0f",
+    ];
+
+    test.each(emoji)("%s between letters takes no space", (cluster) => {
+      const { svg } = render([
+        { type: "text", content: "a" + cluster + "b", font: "m", fontSize: 20 },
+      ]);
+      const positions = spans(svg).map((span) => xs(span.attributes));
+      expect(positions.flat().slice(-1)).toEqual(expected("ab", 20).slice(-1));
+    });
+
+    test("a keycap keeps its digit and drops the enclosing mark", () => {
+      const keycap = render([
+        { type: "text", content: "a1\ufe0f\u20e3b", font: "m", fontSize: 20 },
+      ]);
+      const plain = render([{ type: "text", content: "a1b", font: "m", fontSize: 20 }]);
+      expect(spans(keycap.svg).flatMap((span) => xs(span.attributes))).toEqual(
+        spans(plain.svg).flatMap((span) => xs(span.attributes)),
+      );
+    });
+
+    test("letter spacing does not count a dropped cluster", () => {
+      const { svg } = render([
+        { type: "text", content: "a\u{1f377}b", font: "m", fontSize: 20, letterSpacing: 2 },
+      ]);
+      const found = spans(svg).flatMap((span) => xs(span.attributes));
+      expect(found.slice(-1)).toEqual(expected("ab", 20, { spacing: 2 }).slice(-1));
+    });
+
+    test("the same in paths mode", () => {
+      const content = "a\u{1f377}b \u{1f469}\u200d\u{1f4bb}c";
+      const fonts = { m: { ...fontAssets.medium, drawAs: "paths" as const } };
+      const paths = render([{ type: "text", content, font: "m" }], fonts);
+      const clean = render([{ type: "text", content: "ab c", font: "m" }], fonts);
+      expect(unlabelled(paths.svg)).toBe(unlabelled(clean.svg));
+      expect(paths.warnings.map((warning) => warning.code)).toEqual(["missing-glyph"]);
+    });
+
+    test("the warning names pictographic characters only, not joiners or selectors", () => {
+      const { warnings } = render([
+        { type: "text", content: "\u{1f469}\u200d\u{1f4bb} \u2764\ufe0f", font: "m" },
+      ]);
+      const message = warnings[0]?.message ?? "";
+      expect(message).toContain("U+1F469, U+1F4BB, U+2764");
+      expect(message).not.toMatch(/U\+(200D|FE0F)/u);
+    });
+
+    test("a word of emoji only measures nothing and wraps without failing", () => {
+      const result = render([
+        { type: "text", width: 40, content: "\u{1f377}\u{1f377}\u{1f377} ab", font: "m" },
+      ]);
+      expect(
+        spans(result.svg)
+          .map((span) => span.text)
+          .join(""),
+      ).toContain("ab");
+    });
+
+    test("an Arabic text followed by an emoji lays out as without", () => {
+      const fonts = { m: { ...fontAssets.medium, fallback: ["n"] }, n: fontAssets.naskh };
+      const text = "\u0627\u0644\u0639\u0631\u0628\u064a\u0629 ";
+      const withEmoji = render([{ type: "text", content: text + "\u{1f377}", font: "m" }], fonts);
+      const without = render([{ type: "text", content: text, font: "m" }], fonts);
+      expect(unlabelled(withEmoji.svg)).toBe(unlabelled(without.svg));
+    });
+
+    test("renders the same bytes twice", () => {
+      const layers: Layer[] = [{ type: "text", content: "a\u{1f377}b".repeat(50), font: "m" }];
+      expect(render(layers).svg).toBe(render(layers).svg);
+    });
   });
 
   test("the embedded subset maps exactly the characters drawn with it", () => {

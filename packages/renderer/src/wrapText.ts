@@ -74,7 +74,9 @@ function wrapParagraph(
       space = separator === "" ? 0 : measure(separator);
       spaceWidths.set(separator, space);
     }
-    if (started && lineWidth + space + wordWidth <= width) {
+    // a word with no width never forces a break: dropped glyphs would start an empty or space-led line. The empty
+    // word between two consecutive spaces has no width either, so it stays on the line and the break falls after it
+    if (started && (wordWidth === 0 || lineWidth + space + wordWidth <= width)) {
       end = wordStart + word.length;
       lineWidth += space + wordWidth;
       continue;

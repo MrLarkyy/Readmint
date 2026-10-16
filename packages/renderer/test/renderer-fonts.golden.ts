@@ -44,6 +44,16 @@ export const fontPairs: readonly FontPair[] = [
     layers: [text("a漢b ★c", 14)],
   },
   {
+    name: "emoji-dropped",
+    fonts: { medium: withSymbols, symbols: fontAssets.symbols },
+    layers: [
+      text(
+        "Fun \u{1f377} \u{1f469}\u200d\u{1f4bb} \u{1f1e8}\u{1f1ff} \u{1f44d}\u{1f3fd} \u2764\ufe0f end",
+        14,
+      ),
+    ],
+  },
+  {
     name: "restricted-fstype",
     fonts: { medium: { ...fontAssets.medium, src: withFsType(fontAssets.medium.src, 0x0002) } },
     layers: [text("Restricted", 14)],
