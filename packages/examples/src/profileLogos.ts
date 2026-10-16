@@ -16,11 +16,14 @@ export interface ProfileLogo {
   readonly source: string;
   /** ISO date of the check. */
   readonly retrieved: string;
-  /** SHA-256 (64 hex digits) of the downloaded file, or `n/a: ...` where nothing was downloaded (empty `d`). */
+  /**
+   * SHA-256 (64 hex digits) of the file that was traced (for we.builders the `<svg>` element cut out of the page,
+   * not a downloaded file), or `n/a: ...` where nothing was downloaded (empty `d`).
+   */
   readonly sha256: string;
   /** What the source says about reusing the logo (none found, restricted), or why none is committed. */
   readonly licence: string;
-  /** The owner of the mark as the source names it, or `unknown`. */
+  /** The owner of the mark as the source names it, or `unknown` with the reason. */
   readonly owner: string;
   /** Who answers for showing the mark. */
   readonly note: string;
@@ -42,7 +45,7 @@ export const profileLogos: readonly ProfileLogo[] = [
     retrieved,
     sha256: "c21e75b244147808b7a3d10f3797347f602f1873f707251fdadd3cb632b3d27c",
     licence: "None found: the site publishes no brand kit and no permission to reuse the logo.",
-    owner: "unknown: the site names none",
+    owner: "we.builders s.r.o. (company number 07232284, named in the footer of the traced page)",
     note,
   },
   {
@@ -55,7 +58,7 @@ export const profileLogos: readonly ProfileLogo[] = [
     retrieved,
     sha256: notDownloaded,
     licence: "Not committed: no readable source of the logo.",
-    owner: "SWN Moravia s.r.o.",
+    owner: "unknown: the site could not be read, so the company (number 63493845) is unverified",
     note,
   },
   {

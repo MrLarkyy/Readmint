@@ -367,7 +367,7 @@
                                 "as": "name",
                                 "index": "k"
                               },
-                              "if": "{{ k < 12 && (props.logoLines[k] | default(\"0\")) == (g | padStart(1)) }}",
+                              "if": "{{ k < 12 && ((props.logoLines[k] | default(\"0\")) | padStart(1)) == (g | padStart(1)) }}",
                               "layout": {
                                 "type": "stack",
                                 "direction": "row",
@@ -386,7 +386,8 @@
                                   "content": "{{ name | truncate(24) }}",
                                   "font": "mono",
                                   "fontSize": 11.5,
-                                  "fill": "{{ props.theme == \"dark\" ? \"#808080\" : \"#8C8C8C\" }}"
+                                  "fill": "{{ props.theme == \"dark\" ? \"#808080\" : \"#8C8C8C\" }}",
+                                  "if": "{{ !props.logos[k] }}"
                                 }
                               ]
                             }

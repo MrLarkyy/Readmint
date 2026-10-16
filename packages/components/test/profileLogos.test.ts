@@ -125,12 +125,14 @@ const onLine = (strip: Strip, boxes: readonly LayerBox[], g: number) =>
   squares(boxes).filter((box) => Math.abs(centre(box) - lineCentre(strip, g)) < 1);
 
 describe.each(cases)("the card of %o (%s)", (strip, theme) => {
-  test("draws one path in the row ink per logo and every name as text", () => {
+  test("draws one path in the row ink per logo and the name as text only where there is none", () => {
     const logos = [square, "", square, "", square, square, ""];
     const { svg } = render(strip, theme, withLogos(strip, logos));
     const paths = svg.match(new RegExp(`<path [^>]*fill="${strip.ink[theme]}"[^>]*>`, "giu")) ?? [];
     expect(paths.filter((path) => path.includes(` d="${square}"`))).toHaveLength(4);
-    for (const name of names) expect(svg.includes(`>${name}<`), name).toBe(true);
+    names.forEach((name, index) => {
+      expect(svg.includes(`>${name}<`), name).toBe(logos[index] === "");
+    });
     expect(svg).not.toContain("Joined names");
   });
 
@@ -138,6 +140,15 @@ describe.each(cases)("the card of %o (%s)", (strip, theme) => {
     const { boxes } = render(strip, theme, withLogos(strip, allSquares));
     expect([0, 1, 2, 3].map((g) => onLine(strip, boxes, g).length)).toEqual([1, 2, 2, 2]);
     expect(squares(boxes)).toHaveLength(7);
+  });
+
+  test("reads logoLines as a number or its text", () => {
+    const text = render(strip, theme, withLogos(strip, allSquares));
+    const numbers = render(strip, theme, {
+      ...withLogos(strip, allSquares),
+      logoLines: lineOfName.map(Number),
+    });
+    expect(numbers.svg).toBe(text.svg);
   });
 
   test("puts an item without an entry in logoLines on the first line", () => {
@@ -320,7 +331,9 @@ describe.each(cases)("the example card of %o (%s)", (strip, theme) => {
     for (const logo of profileLogos.filter((entry) => entry.d !== "")) {
       expect(svg).toContain(` d="${logo.d}"`);
     }
-    for (const logo of profileLogos) expect(svg.includes(`>${logo.name}<`), logo.name).toBe(true);
+    for (const logo of profileLogos) {
+      expect(svg.includes(`>${logo.name}<`), logo.name).toBe(logo.d === "");
+    }
     for (const box of boxes) expect(bottom(box)).toBeLessThanOrEqual(height);
     for (let g = 0; g < 4; g++) {
       const line = boxes.filter(
