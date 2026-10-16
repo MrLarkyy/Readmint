@@ -165,5 +165,64 @@ describe("the root props are resolved once", () => {
       { path: "/layers/0/width" },
     ]);
     expect(issuesOf(rowsDesign(layers))).toMatchObject([{ path: "/layers/1/props/size" }]);
+    // A bound canvas that does not name props resolves nothing early either.
+    const fromData = rowsDesign(layers, { width: 100, height: "{{ 10 * rows }}" });
+    expect(issuesOf(fromData, { data: { rows: 2 } })).toMatchObject([{ path: "/layers/0/width" }]);
   });
+});
+
+describe("the root props are resolved early only for a canvas that names props", () => {
+  /** A root instance an `if` drops when there is no user, whose `login` prop reads the user. */
+  function guarded(canvas: Design["canvas"]): Design {
+    return {
+      version: 0,
+      canvas,
+      components: {
+        card: {
+          props: { login: { type: "string", default: "" }, size: { type: "number", default: 3 } },
+          layers: [{ type: "rect", width: "{{ (props.login | length) + 1 }}", height: 1 }],
+        },
+      },
+      layers: [
+        {
+          type: "component",
+          ref: "card",
+          if: "{{ user != null }}",
+          props: { login: "{{ user.login }}" },
+        },
+      ],
+    };
+  }
+  const noUser = { data: { user: null, rows: 2, x: { props: 4 }, props_n: 2, "props-x": 3 } };
+
+  test.each([
+    "{{ 10 * rows }}",
+    "{{ x.props * 10 }}",
+    "{{ x.props-1 }}",
+    "{{ props_n * 10 }}",
+    "{{ props-x * 10 }}",
+  ])("%s over a dropped instance renders without checking its props", (height) => {
+    expect(renderSvg(guarded({ width: 100, height }), noUser).ok).toBe(true);
+  });
+
+  test("a canvas naming props over a dropped instance still resolves and checks them", () => {
+    expect(
+      issuesOf(guarded({ width: 100, height: "{{ props.size * 10 }}" }), noUser),
+    ).toMatchObject([{ path: "/layers/0/props/login", code: "type" }]);
+    const svg = svgOf(guarded({ width: 100, height: "{{ props.size * 10 }}" }), {
+      data: { user: { login: "octo" } },
+    });
+    expect(heightOf(svg)).toBe("30");
+  });
+
+  test.each(["{{ 50-props.size * 10 }}", "{{ (props.size) * 10 }}", "{{1+props.size*10}}"])(
+    "%s names props",
+    (height) => {
+      const design = rowsDesign([{ type: "component", ref: "card", props: { size: 2 } }], {
+        width: 100,
+        height,
+      });
+      expect(renderSvg(design).ok).toBe(true);
+    },
+  );
 });

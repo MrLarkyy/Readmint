@@ -56,7 +56,10 @@ apply unchanged:
   defaults overlaid by the instance's props (a prop given as a binding is evaluated in the instance's scope, then
   checked against the declared type, an `enum` prop against its `values`, an `array` prop for being an array; a
   mismatch is a `type` issue at the instance prop). A repeat in the component can iterate an array prop. Defaults and literal list items are used as written, never
-  evaluated.
+  evaluated. Canvas bindings see `props` too, the props of the root instance
+  ([design format](design-format.md#components)): when a canvas binding names `props`, they are resolved once at the
+  data root before the canvas, and the instance's expansion reuses them, so they are charged to
+  `maxExpressionSteps` once.
 - The scope carries the renderer's text measurer, so `textWidth` and `truncateWidth`
   ([expressions](expressions.md#filters)) measure with the shaping a text layer is drawn with: the same code lays
   out a drawn text and a measured one (each paragraph on one line, the widest counts), so a measured width is the box

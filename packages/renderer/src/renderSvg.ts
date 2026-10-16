@@ -121,12 +121,12 @@ function render(context: RenderContext, options: RenderOptions): RenderResult {
 
 /**
  * The scope of the canvas bindings: the data root, plus `props` of the root instance when there is one. The props are
- * resolved only when the canvas holds a binding, so a literal canvas evaluates nothing early and its issues keep their
- * order.
+ * resolved only when a canvas binding names `props`, so any other canvas evaluates nothing early: its issues keep their
+ * order, and an instance an `if` drops never has its props checked.
  */
 function canvasScopeOf(context: RenderContext, scope: Scope): Scope {
   const { canvas } = context.design;
-  if (![canvas.width, canvas.height, canvas.background].some((value) => holdsBinding(value, 0))) {
+  if (![canvas.width, canvas.height, canvas.background].some((value) => namesProps(value, 0))) {
     return scope;
   }
   const root = rootInstance(context.design);
@@ -140,10 +140,17 @@ function canvasScopeOf(context: RenderContext, scope: Scope): Scope {
 /** Deepest canvas value with bindings: a gradient's stop colour (background, stops, stop, colour). */
 const maxCanvasDepth = 3;
 
-function holdsBinding(value: unknown, depth: number): boolean {
-  if (isBinding(value)) return true;
+/**
+ * `props` written as a name: not part of a longer name (`xprops`, `props_2`, `props-x`) or a property (`x.props`).
+ * Read from the source, it errs only towards a hit (`my-props`, a `props` in a string literal; a `-` before it may be
+ * a minus, `10-props.n`), and a false hit only resolves the props early, never wrongly.
+ */
+const propsName = /(?<![A-Za-z0-9_.])props(?![A-Za-z0-9_]|-[A-Za-z_])/;
+
+function namesProps(value: unknown, depth: number): boolean {
+  if (isBinding(value)) return propsName.test(value);
   if (depth >= maxCanvasDepth || typeof value !== "object" || value === null) return false;
-  return Object.values(value).some((item) => holdsBinding(item, depth + 1));
+  return Object.values(value).some((item) => namesProps(item, depth + 1));
 }
 
 /** Registers every animation in drawing order and writes their CSS; returns the document prefix, if any animates. */
