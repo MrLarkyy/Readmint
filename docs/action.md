@@ -218,3 +218,6 @@ not in the main branch. The `Release Action` workflow
 (`workflow_dispatch` with a `version` such as `v0.1.0`) builds it on `main`, commits it on a detached commit and
 pushes a new tag that points there. It never moves or overwrites a tag, so a tag always runs the same code. The
 Action is version 0: an added input or output is compatible, a renamed or removed one is a new major version.
+
+After a release, bump `defaultActionRef` (`packages/examples/src/defaultActionRef.ts`) to the new tag, run
+`pnpm examples <clone>` and push the clone: the generated example workflows pin that tag.

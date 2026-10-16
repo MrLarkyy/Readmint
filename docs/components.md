@@ -262,7 +262,7 @@ pnpm examples <path to a clone of the examples repository> --check
 The first writes the files (and removes the generated ones that are no longer produced, never `<template>/readmint/`);
 `--check` writes nothing, lists each missing, differing or stale file and exits 1 when the clone is not in sync. Run it
 after changing a template or `profileExampleProps`, then commit and push the clone. `--login` and `--action` set the
-account and the Action reference (`MrLarkyy` and `MrLarkyy/Readmint@v0.1.0` by default).
+account and the Action reference (`MrLarkyy` and `MrLarkyy/Readmint@v0.3.0` by default).
 
 ### Data the templates read
 
