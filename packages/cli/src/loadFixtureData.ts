@@ -38,9 +38,10 @@ async function readConfined(dataPath: string, root: string): Promise<Uint8Array>
     return await workspaceFileReader(path.resolve(root))(dataPath, maxFixtureBytes);
   } catch (error) {
     if (!(error instanceof DataSourceError)) throw error;
-    const reason = error.message.replace(/^The JSON file ".*?" /s, "").replace(/\.$/, "");
-    const text = reason === error.message.replace(/\.$/, "") ? error.message : reason;
-    throw new CliError(ExitCode.input, `fixture data ${quoteForLog(dataPath)} ${text}`);
+    const prefix = `The JSON file ${JSON.stringify(dataPath)} `;
+    const message = error.message.endsWith(".") ? error.message.slice(0, -1) : error.message;
+    const reason = message.startsWith(prefix) ? message.slice(prefix.length) : message;
+    throw new CliError(ExitCode.input, `fixture data ${quoteForLog(dataPath)} ${reason}`);
   }
 }
 

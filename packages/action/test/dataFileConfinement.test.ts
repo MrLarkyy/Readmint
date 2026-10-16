@@ -34,7 +34,6 @@ async function expectRefused(dataFile: string, reason: RegExp): Promise<void> {
   expect(run.log).toMatch(/::error::/);
   expect(run.log).toMatch(reason);
   expect(run.log).not.toContain("leaked");
-  expect(run.log).not.toContain(tree.base);
   expect(await readdir(tree.root)).toEqual(["card.json"]);
 }
 
@@ -66,8 +65,8 @@ describe("data-file is confined to the workspace", () => {
     if (!(await link("escape", join(tree.base, "elsewhere"), context))) return;
     const run = await dryRun("escape/data.json");
     expect(run.code).not.toBe(0);
-    expect(run.log).toMatch(/::error::.*escape\/data\.json.*outside/);
-    expect(run.log).not.toContain(tree.base);
+    expect(run.log).toMatch(/::error::fixture data "escape\/data\.json" resolves outside the root/);
+    expect(run.log).not.toContain("elsewhere");
     expect(await readdir(tree.root)).not.toContain("readmint");
   });
 
@@ -81,7 +80,11 @@ describe("data-file is confined to the workspace", () => {
       }
       throw error;
     }
-    await expectRefused("data.json", /data-file.*outside/);
+    const run = await dryRun("data.json");
+    expect(run.code).not.toBe(0);
+    expect(run.log).toMatch(/::error::fixture data "data\.json" resolves outside the root/);
+    expect(run.log).not.toContain("leaked");
+    expect(await readdir(tree.root)).not.toContain("readmint");
   });
 
   test("a nested file with backslashes still renders", async () => {

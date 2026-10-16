@@ -33,7 +33,7 @@ export function workspaceFileReader(root: string): JsonFileReader {
         `The root for JSON files cannot be resolved (${errnoCode(error) ?? "error"}).`,
       );
     }
-    const target = await settle(realpath(path.resolve(realRoot, relative)), fail);
+    const target = await settle(realpath(path.resolve(realRoot, ...relative.split(/[\\/]/))), fail);
     const inside = path.relative(realRoot, target);
     if (
       inside === "" ||

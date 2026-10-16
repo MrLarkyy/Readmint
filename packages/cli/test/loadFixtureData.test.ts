@@ -66,7 +66,17 @@ describe("loadFixtureData", () => {
     expect(error.message).not.toContain("secret");
   });
 
-  test("confined refuses a link to the outside and a directory", async (context) => {
+  test("confined refuses a directory", async () => {
+    const error = await failure(loadFixtureData("fixtures", root, { confinedTo: root }));
+    expect(error.message).toBe('fixture data "fixtures" is not a regular file');
+  });
+
+  test("confined keeps a quote in the name out of the reason", async () => {
+    const error = await failure(loadFixtureData('a"b.json', root, { confinedTo: root }));
+    expect(error.message).toBe('fixture data "a\\"b.json" does not exist');
+  });
+
+  test("confined refuses a link to the outside", async (context) => {
     try {
       await symlink(base, join(root, "escape"), process.platform === "win32" ? "junction" : "dir");
     } catch (error) {
@@ -77,10 +87,7 @@ describe("loadFixtureData", () => {
       throw error;
     }
     const link = await failure(loadFixtureData("escape/outside.json", root, { confinedTo: root }));
-    expect(link.message).toContain("outside");
-    expect(link.message).not.toContain("secret");
-    const directory = await failure(loadFixtureData("fixtures", root, { confinedTo: root }));
-    expect(directory.message).toContain("not a regular file");
+    expect(link.message).toBe('fixture data "escape/outside.json" resolves outside the root');
   });
 
   test("confined keeps the namespace check", async () => {
