@@ -819,8 +819,7 @@ describe("profile example props", () => {
       design: loadExampleProfile("horizon", "worked"),
       data: sampleProfileData(),
     });
-    for (const text of [">SWN MORAVIA<", ">WE.BUILDERS<", ">PARTNERS<"])
-      expect(svg).toContain(text);
+    for (const item of items as readonly string[]) expect(svg).toContain(`>${item.toUpperCase()}<`);
   });
 
   test("every template and section they name exists", () => {
