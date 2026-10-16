@@ -810,6 +810,19 @@ describe.each(names)("%s personal texts", (template) => {
 });
 
 describe("profile example props", () => {
+  test("the horizon worked-with line lists the delivery partners and every item is drawn", () => {
+    const items = profileExampleProps["horizon"]?.["worked"]?.["items"];
+    expect(items).toEqual(expect.arrayContaining(["SWN Moravia", "we.builders", "Partners"]));
+    expect(items).toHaveLength(10);
+    const svg = renderProfile({
+      template: "horizon",
+      design: loadExampleProfile("horizon", "worked"),
+      data: sampleProfileData(),
+    });
+    for (const text of [">SWN MORAVIA<", ">WE.BUILDERS<", ">PARTNERS<"])
+      expect(svg).toContain(text);
+  });
+
   test("every template and section they name exists", () => {
     for (const [template, sections] of Object.entries(profileExampleProps)) {
       expect(Object.keys(profileTemplates), template).toContain(template);
