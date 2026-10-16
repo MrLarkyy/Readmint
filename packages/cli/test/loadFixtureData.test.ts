@@ -72,8 +72,8 @@ describe("loadFixtureData", () => {
   });
 
   test("confined keeps a quote in the name out of the reason", async () => {
-    const error = await failure(loadFixtureData('a"b.json', root, { confinedTo: root }));
-    expect(error.message).toBe('fixture data "a\\"b.json" does not exist');
+    const error = await failure(loadFixtureData('a" b.json', root, { confinedTo: root }));
+    expect(error.message).toBe('fixture data "a\\" b.json" does not exist');
   });
 
   test("confined refuses a link to the outside", async (context) => {
