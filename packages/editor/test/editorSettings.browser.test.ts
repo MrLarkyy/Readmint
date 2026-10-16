@@ -14,6 +14,9 @@ let editor: EditorHandle;
 let images: SavedImage[];
 let requests: RasterRequest[];
 
+/** Only a hang detector, under the hook timeout: under the full parallel suite the first real-worker render takes seconds. */
+const renderWaitMs = 45_000;
+
 beforeEach(async () => {
   root = document.createElement("div");
   document.body.append(root);
@@ -21,6 +24,7 @@ beforeEach(async () => {
   requests = [];
   editor = mountEditor(root, {
     initial: settingsDesign,
+    renderTimeoutMs: renderWaitMs,
     saveImage: (file) => images.push(file),
     createRasterWorker: () => ({
       onmessage: null,
@@ -31,9 +35,12 @@ beforeEach(async () => {
     }),
   });
   await editor.settled();
-  await vi.waitFor(() => {
-    expect(editor.svg).toBeDefined();
-  });
+  await vi.waitFor(
+    () => {
+      expect(editor.svg).toBeDefined();
+    },
+    { timeout: renderWaitMs },
+  );
 });
 
 afterEach(() => {
