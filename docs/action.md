@@ -121,12 +121,13 @@ Renderer warnings are printed as `::warning::` lines and do not fail the run.
 
 ## Settings file
 
-`props-file` names a JSON file, a path relative to the workspace that (like `data-file`) is not restricted to it, `{ "<section>": { "<prop>": value } }`, read once before the first
-render. The section of a design is its file name without the extension and without `.dark`, so a light design and its
+`props-file` names a JSON file, a path relative to the workspace that (like `data-file`) is not restricted to it, `{ "<section>": { "<prop>": value } }`, read once before any git
+command or GitHub request. The section of a design is its file name without the extension and without `.dark`, so a light design and its
 dark twin share the entry, and the output is the same as the CLI `readmint render <design> --props <file>` gives
 ([cli.md](cli.md#settings-file)). A section no listed design has is a `::warning::` line naming the section only; a
 file that cannot be read or is invalid, or a prop a design does not declare or a wrongly typed value, fails the run
-before anything is written, with the section and prop in the message, never the value.
+before anything is written, with the section and prop in the message, never the value; a render error a value causes,
+also at a component's inner layer, keeps its path but its message names only the section and the props.
 
 ## Data and the token
 

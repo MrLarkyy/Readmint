@@ -4,6 +4,26 @@ import { type CliTree, makeCliTree, propsDesign } from "./cliTree.js";
 
 let tree: CliTree;
 
+/** A component whose string prop is a child rect's fill and whose number prop its width: the props' own types accept any. */
+function childDesign(): object {
+  return {
+    version: 0,
+    canvas: { width: 40, height: 24 },
+    components: {
+      box: {
+        props: {
+          paint: { type: "string", default: "#0969da" },
+          size: { type: "number", default: 5 },
+        },
+        layers: [
+          { type: "rect", width: "{{ props.size }}", height: 10, fill: "{{ props.paint }}" },
+        ],
+      },
+    },
+    layers: [{ type: "component", ref: "box" }],
+  };
+}
+
 beforeEach(async () => {
   tree = await makeCliTree();
   await tree.file("d.json", { v: 1 });
@@ -46,12 +66,14 @@ describe("--props", () => {
     expect(merged.stdout).toBe((await tree.run(["render", "written.json"])).stdout);
   });
 
-  test("validate names the section and prop of a wrong value, never the value", async () => {
+  test("render and validate name the section and prop of a wrong value, never the value", async () => {
     await tree.file("settings.json", { box: { w: "s3cret-word" } });
-    const run = await tree.run(["validate", "box.json", "--props", "settings.json"]);
-    expect(run.code).toBe(ExitCode.invalid);
-    expect(run.stderr).toContain("box.json: error type at /box/w:");
-    expect(run.stderr).not.toContain("s3cret-word");
+    for (const command of ["render", "validate"]) {
+      const run = await tree.run([command, "box.json", "--props", "settings.json"]);
+      expect(run).toMatchObject({ code: ExitCode.invalid, stdout: "" });
+      expect(run.stderr).toContain("box.json: error type at /box/w:");
+      expect(run.stderr).not.toContain("s3cret-word");
+    }
   });
 
   test("an undeclared prop fails with its section and prop", async () => {
@@ -81,8 +103,53 @@ describe("--props", () => {
         "d.json",
       ]);
       expect(run.code).toBe(ExitCode.invalid);
-      expect(run.stderr).toContain("/layers/0/props/tone");
+      expect(run.stderr).toContain(
+        'box.json: error binding at /layers/0/props/tone: a value of settings section "box" (prop "tone")',
+      );
       expect(run.stderr).not.toContain("s3cret");
+      expect(run.stderr).not.toContain("1 +");
+    }
+  });
+
+  test("an unfinished binding as a value is never printed", async () => {
+    await tree.file("settings.json", { box: { tone: "{{ 1 + }}" } });
+    for (const command of ["render", "validate"]) {
+      const run = await tree.run([
+        command,
+        "box.json",
+        "--props",
+        "settings.json",
+        "--data",
+        "d.json",
+      ]);
+      expect(run.code).toBe(ExitCode.invalid);
+      expect(run.stderr).toContain('settings section "box" (prop "tone")');
+      expect(run.stderr).not.toContain("{{ 1 +");
+    }
+  });
+
+  test("a value valid for its prop that breaks a child layer is not echoed at the child's path", async () => {
+    await tree.file("child.json", childDesign());
+    for (const [settings, secret] of [
+      [{ child: { paint: "not-a-s3cret-colour" } }, "s3cret"],
+      [{ child: { size: -98765 } }, "98765"],
+    ] as const) {
+      await tree.file("settings.json", settings);
+      for (const command of ["render", "validate"]) {
+        const run = await tree.run([
+          command,
+          "child.json",
+          "--props",
+          "settings.json",
+          "--data",
+          "d.json",
+        ]);
+        expect(run).toMatchObject({ code: ExitCode.invalid, stdout: "" });
+        expect(run.stderr).toMatch(
+          /^child\.json: error \w+ at \/components\/box\/layers\/0\/\w+: a value of settings section "child" \(prop "(paint|size)"\)/,
+        );
+        expect(run.stderr).not.toContain(secret);
+      }
     }
   });
 

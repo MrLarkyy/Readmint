@@ -11,18 +11,18 @@ import { loadDesignProps } from "./loadDesignProps.js";
 import { loadFixtureData } from "./loadFixtureData.js";
 import { formatIssue } from "./formatIssue.js";
 import { propsSection } from "./propsSection.js";
-import { settingsPointers } from "./settingsPointers.js";
 import { quoteForLog } from "./quoteForLog.js";
 import { RemoteImageError } from "./RemoteImageError.js";
 import type { RemoteImageOptions } from "./RemoteImageOptions.js";
+import { SettingsMask } from "./SettingsMask.js";
 
 /** Everything one render needs, loaded the one way render, validate and preview share. */
 export interface RenderInput {
   readonly file: DesignFile;
   readonly assets: RenderAssets;
   readonly data?: Record<string, unknown>;
-  /** Pointers of the design props that came from the settings file: their issue messages must not quote them. */
-  readonly settingsPointers?: readonly string[];
+  /** Present when the settings file set props of the design: every issue of its render passes through it. */
+  readonly settingsMask?: SettingsMask;
 }
 
 export interface RenderInputOptions {
@@ -60,8 +60,7 @@ export async function loadRenderInput(
   const props =
     options.props ??
     (args.props === undefined ? undefined : await loadDesignProps(args.props, options.cwd));
-  const { file, pointers } =
-    props === undefined ? { file: loaded, pointers: [] } : withProps(loaded, props);
+  const { file, mask } = props === undefined ? { file: loaded } : withProps(loaded, props);
   options.onDesignFile?.(file);
   const fileAssets = await loadDesignAssets(file);
   const data =
@@ -76,23 +75,28 @@ export async function loadRenderInput(
     file,
     assets,
     ...(data === undefined ? {} : { data }),
-    ...(pointers.length === 0 ? {} : { settingsPointers: pointers }),
+    ...(mask === undefined ? {} : { settingsMask: mask }),
   };
 }
 
-function withProps(file: DesignFile, props: DesignProps): { file: DesignFile; pointers: string[] } {
+function withProps(
+  file: DesignFile,
+  props: DesignProps,
+): { file: DesignFile; mask?: SettingsMask } {
   const section = propsSection(file.name);
   const own = Object.hasOwn(props, section) ? props[section] : undefined;
-  if (own === undefined) return { file, pointers: [] };
+  if (own === undefined || Object.keys(own).length === 0) return { file };
   const result = applyDesignProps(file.design, own);
   if (result.ok) {
     return {
       file: { ...file, design: result.value },
-      pointers: settingsPointers(result.value, own),
+      mask: new SettingsMask(section, own, result.value),
     };
   }
+  // Issues outside the section's props (a merged value another check rejected) still must not quote a value.
+  const mask = new SettingsMask(section, own, file.design);
   const lines = result.issues.map((issue) =>
-    formatIssue(file.name, { ...issue, path: `/${section}${issue.path}` }, "error"),
+    formatIssue(file.name, mask.mask({ ...issue, path: `/${section}${issue.path}` }), "error"),
   );
   if (result.truncated) lines.push(`${file.name}: more issues not shown`);
   throw new CliError(ExitCode.invalid, lines);
