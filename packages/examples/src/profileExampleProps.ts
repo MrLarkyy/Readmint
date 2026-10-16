@@ -1,3 +1,5 @@
+import { profileLogos } from "./profileLogos.js";
+
 /** One root prop value of a design: a text, a number, a flag or a list of them. */
 export type ExampleProp = string | number | boolean | readonly (string | number | boolean)[];
 
@@ -23,10 +25,13 @@ export const profileExampleProps: Readonly<
         "Ktor, Spring",
         "PostgreSQL, MySQL, MariaDB, SQLite, Protocol Buffers",
         "IntelliJ IDEA, Rider, WebStorm, Gradle",
-        "Hoplite, Minebox, Cobblemon Islands, Mineclub",
+        "Hoplite, Minebox, Cobblemon Islands, Mineclub, SWN Moravia, we.builders, Partners",
         "MrBeast, SpeedSilver, DiamondXR",
       ],
       languagesAfter: 2,
+      logoNames: profileLogos.map((logo) => logo.name),
+      logos: profileLogos.map((logo) => logo.d),
+      logosRow: 5,
     },
     footer: {
       headline: "Open to long-term collaborations.",
@@ -89,9 +94,12 @@ export const profileExampleProps: Readonly<
       noteLabels: ["tools", "shipped for", "creators"],
       noteItems: [
         "IntelliJ IDEA, Rider, WebStorm, Gradle",
-        "Hoplite, Minebox, Cobblemon Islands, Mineclub",
+        "Hoplite, Minebox, Cobblemon Islands, Mineclub, SWN Moravia, we.builders, Partners",
         "MrBeast, SpeedSilver, DiamondXR",
       ],
+      logoNames: profileLogos.map((logo) => logo.name),
+      logos: profileLogos.map((logo) => logo.d),
+      logosRow: 1,
     },
     footer: {
       headline: "Open to long-term collaborations.",

@@ -26,6 +26,8 @@ interface RowCase {
   readonly barHeight?: number;
   /** The section as published, without the example's personal texts. */
   readonly plain?: boolean;
+  /** Example props left unset: the wrapped logo strip makes its row taller than the others on purpose. */
+  readonly omit?: readonly string[];
   readonly data?: (data: ProfileData) => ProfileData;
 }
 
@@ -44,6 +46,7 @@ const cases: readonly RowCase[] = [
     ruleWidth: 840,
     bands: 8,
     barHeight: 5,
+    omit: ["logosRow"],
   },
   {
     template: "year-ring",
@@ -185,8 +188,14 @@ function measure(
 
 test.each(cases.flatMap((row) => themes.map((theme) => [row, theme] as const)))(
   "the rows of %j in %s have equal heights, one baseline and centred text and bars",
-  ({ template, section, start, ruleWidth, bands, closing, barHeight, plain, data }, theme) => {
-    const design = (plain === true ? loadProfile : loadExampleProfile)(template, section, theme);
+  (
+    { template, section, start, ruleWidth, bands, closing, barHeight, plain, omit, data },
+    theme,
+  ) => {
+    const design =
+      plain === true
+        ? loadProfile(template, section, theme)
+        : loadExampleProfile(template, section, theme, omit);
     const svg = renderProfile({
       template,
       design,

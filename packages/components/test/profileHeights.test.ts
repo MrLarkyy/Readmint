@@ -95,6 +95,67 @@ describe("year-ring index: the canvas follows its rows", () => {
   });
 });
 
+const logoNames = words(7, "logo");
+const logos = logoNames.map(() => "M0 0h14v14H0Z");
+
+describe("year-ring index: a wrapping logo strip", () => {
+  const rows = { labels: words(8, "label"), values: words(8, "value"), logosRow: 3 };
+
+  test("8 rows with 7 logos make the tallest index, 349, every box inside", () => {
+    const { height, boxes } = renderTwins("year-ring", "index", { ...rows, logoNames, logos }, 3);
+    expect(height).toBe(349);
+    for (const box of boxes) expect(bottom(box)).toBeLessThanOrEqual(height);
+  });
+
+  test("5 logos stay on one line and add nothing", () => {
+    const five = { ...rows, logoNames: logoNames.slice(0, 5), logos: logos.slice(0, 5) };
+    expect(renderTwins("year-ring", "index", five, 3).height).toBe(327);
+  });
+
+  test("a row the 8-row cap hides draws no strip and adds no height", () => {
+    const hidden = { ...rows, logosRow: 7, logoNames, logos };
+    expect(renderTwins("year-ring", "index", hidden, 3).height).toBe(327);
+  });
+
+  test("a fractional row draws no strip and adds no height", () => {
+    const { height, boxes } = renderTwins(
+      "year-ring",
+      "index",
+      { ...rows, logosRow: 2.5, logoNames, logos },
+      3,
+    );
+    expect(height).toBe(327);
+    expect(boxes.filter((box) => box.width === 14 && box.height === 14)).toHaveLength(0);
+  });
+});
+
+describe("pinscreen stack: a wrapping logo strip", () => {
+  const notes = {
+    plugin: 'kotlin("jvm")',
+    labels: words(4, "group"),
+    items: words(4, "item"),
+    noteLabels: words(3, "note"),
+    noteItems: words(3, "text"),
+    logosRow: 1,
+  };
+
+  test("15 lines with 7 logos make the tallest stack, 416, every box inside", () => {
+    const { height, boxes } = renderTwins("pinscreen", "stack", { ...notes, logoNames, logos }, 4);
+    expect(height).toBe(416);
+    for (const box of boxes) expect(bottom(box)).toBeLessThanOrEqual(height);
+  });
+
+  test("5 logos add no line", () => {
+    const five = { ...notes, logoNames: logoNames.slice(0, 5), logos: logos.slice(0, 5) };
+    expect(renderTwins("pinscreen", "stack", five, 4).height).toBe(396);
+  });
+
+  test("a fractional row draws no strip and adds no line", () => {
+    const fractional = { ...notes, logosRow: 1.5, logoNames, logos };
+    expect(renderTwins("pinscreen", "stack", fractional, 4).height).toBe(396);
+  });
+});
+
 describe("pinscreen stack: the canvas follows its code lines and languages", () => {
   const fifteen = {
     plugin: 'kotlin("jvm")',

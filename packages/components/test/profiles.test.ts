@@ -58,7 +58,7 @@ const loops: Readonly<Record<ProfileTemplate, readonly ProfileSection[]>> = {
 
 /** The personal texts of the example (test/profileExampleProps.ts): no template file may hold one. */
 const exampleValues =
-  /MrLarkyy|Tade[aá][sš]|Ganzwohl|aquatic|Hoplite|Minebox|Cobblemon|Mineclub|MrBeast|SpeedSilver|DiamondXR|Minecraft|KRepo|KEvent|KLocale|KRegistry/iu;
+  /MrLarkyy|Tade[aá][sš]|Ganzwohl|aquatic|Hoplite|Minebox|Cobblemon|Mineclub|SWN|Moravia|we\.builders|\bPartners\b|MrBeast|SpeedSilver|DiamondXR|Minecraft|KRepo|KEvent|KLocale|KRegistry/iu;
 
 /** The text a section shows where the data it reads is missing (no status, pushes or repositories). */
 const fallbackText: Readonly<Record<ProfileTemplate, Partial<Record<ProfileSection, string>>>> = {
@@ -792,7 +792,14 @@ describe.each(names)("%s personal texts", (template) => {
       const declared = design.components?.[root.ref]?.props ?? {};
       for (const [name, prop] of Object.entries(declared)) {
         if (name === "theme" || name === "slot") continue;
-        const fallback = name === "branch" ? "main" : name === "languagesAfter" ? 2 : undefined;
+        const fallback =
+          name === "branch"
+            ? "main"
+            : name === "languagesAfter"
+              ? 2
+              : name === "logosRow"
+                ? -1
+                : undefined;
         if (fallback !== undefined) expect(prop.default, name).toBe(fallback);
         else expect(prop.default, `${section} ${name}`).toEqual(prop.type === "array" ? [] : "");
       }

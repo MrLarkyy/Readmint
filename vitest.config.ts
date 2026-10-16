@@ -30,6 +30,12 @@ export default defineConfig(({ mode }) => ({
           new URL("./packages/examples/src/profileExampleProps.ts", import.meta.url),
         ),
       },
+      {
+        find: new RegExp("^@readmint/examples/logos$"),
+        replacement: fileURLToPath(
+          new URL("./packages/examples/src/profileLogos.ts", import.meta.url),
+        ),
+      },
       ...["cli", "data", "data-github", "expr", "format", "fonts", "raster", "renderer"].map(
         (name) => ({
           find: new RegExp(`^@readmint/${name}$`),

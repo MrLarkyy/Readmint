@@ -67,11 +67,13 @@ export function loadExampleProfile(
   template: ProfileTemplate,
   section: ProfileSection,
   theme: ProfileTheme = "light",
+  omit: readonly string[] = [],
 ): Design {
   const design = loadProfile(template, section, theme);
   const props = profileExampleProps[template]?.[section];
   if (props === undefined) return design;
-  const result = applyDesignProps(design, props);
+  const kept = Object.fromEntries(Object.entries(props).filter(([name]) => !omit.includes(name)));
+  const result = applyDesignProps(design, kept);
   if (!result.ok) {
     throw new Error(
       `${template}/${profileFile(section, theme)} takes no example props: ${JSON.stringify(result.issues)}`,
