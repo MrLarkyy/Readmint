@@ -44,7 +44,7 @@ jobs:
           work="$RUNNER_TEMP/readmint-smoke"
           cp -r packages/action/test/fixtures/smoke "$work"
           env "INPUT_DESIGNS=card.json" "INPUT_DATA-FILE=data.json" "INPUT_DRY-RUN=true" \
-            "INPUT_FORMATS=svg,png,webp,gif" \
+            "INPUT_DATA-JSON=counts=counts.json" "INPUT_FORMATS=svg,png,webp,gif" \
             "GITHUB_WORKSPACE=$work" "GITHUB_OUTPUT=$work/output.txt" \
             node packages/action/dist/action.js
           test -f "$work/readmint/card.svg"
@@ -52,6 +52,8 @@ jobs:
           test -f "$work/readmint/card.png"
           test -f "$work/readmint/card.webp"
           test -f "$work/readmint/card.gif"
+          grep -q 'width="17"' "$work/readmint/card.svg"
+          grep -q 'width="17"' "$work/readmint/card.dark.svg"
           grep -q "^changed<<" "$work/output.txt"
 
   test:

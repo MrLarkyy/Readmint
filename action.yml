@@ -38,6 +38,12 @@ inputs:
   data-file:
     description: Fixture data JSON file (the CLI `--data` format) used instead of loading GitHub data.
     required: false
+  data-json:
+    description: JSON documents to bind, one per line as `[<namespace>=]<source>` (the CLI `--data-json`; default namespace json, at most 8) - a file inside the workspace or an https URL; each is bound as `{ version, document }` under its namespace, added to the data-file or GitHub data.
+    required: false
+  data-json-headers:
+    description: Headers for the data-json URLs, one per line as `<namespace>:<Header-Name>=<ENV_NAME>` - the value is read from the step's environment variable ENV_NAME (set it from a secret with `env:`), masked and never printed, and sent only to that URL's origin.
+    required: false
   props-file:
     description: Settings JSON file (the CLI `--props` format, root component props by section) merged into every listed design and its dark twin, for texts set once per template.
     required: false

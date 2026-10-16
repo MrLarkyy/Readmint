@@ -38,22 +38,24 @@ templates as working workflows ([components.md](components.md#the-examples-repos
 
 ## Inputs
 
-| input            | default                          | meaning                                                                                                                                                                                                                                                                   |
-| ---------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `designs`        | (required)                       | design files, one per line, relative to the workspace; blank lines are ignored; 1 to 64                                                                                                                                                                                   |
-| `output-dir`     | `readmint`                       | folder inside the workspace the output files go to; created when missing                                                                                                                                                                                                  |
-| `formats`        | `svg`                            | output formats, comma or newline separated: `svg`, `png`, `webp`, `apng`, `gif` (see [raster.md](raster.md)); each design is written once per format; the first one is what the snippet shows; `png` and `apng` together are an input error (both write `.png`)           |
-| `scale`          | `2`                              | raster pixels per design pixel, 1..4 (up to three decimals), as the CLI `--scale`                                                                                                                                                                                         |
-| `frame-rate`     | none                             | frames per second of an animated raster output, a whole number in 1..60 (1..50 when `gif` is listed), as the CLI `--frame-rate`; none: 30, `gif` 25                                                                                                                       |
-| `quality`        | none                             | lossy WebP at this quality, a whole number in 1..100, as the CLI `--quality`; `webp` must be listed in `formats`; none: lossless                                                                                                                                          |
-| `token`          | `${{ github.token }}`            | token for the GitHub data; not used with `data-file`; never printed and never given to git                                                                                                                                                                                |
-| `login`          | `${{ github.repository_owner }}` | the GitHub user whose data is loaded; needed with `GITHUB_TOKEN`, which belongs to no user                                                                                                                                                                                |
-| `data-file`      | none                             | fixture data JSON (the CLI `--data` format) used instead of loading GitHub data: no token, no GitHub API (only images bound to data are fetched)                                                                                                                          |
-| `props-file`     | none                             | settings JSON file (the CLI [`--props`](cli.md#settings-file) format: root component props by section) merged into every listed design and its dark twin, so personal texts are set once per template; a section no listed design has is warned about, without its values |
-| `locale`         | none                             | BCP 47 tag for the `number`, `compact`, `percent` and `date` filters, checked as the CLI `--locale` (`en`, `de`, `fr`, `es`, `cs` or a region tag of one); none: the design's `locale`, else `en`                                                                         |
-| `commit-message` | `Update Readmint graphics`       | message of the commit; at most 4096 characters                                                                                                                                                                                                                            |
-| `branch`         | the checked-out branch           | branch the commit is pushed to, without `refs/`; the checkout must be this branch at its latest commit on `origin` (see [Pushing](#pushing))                                                                                                                              |
-| `dry-run`        | `false`                          | `true` renders and writes the files but runs no git command                                                                                                                                                                                                               |
+| input               | default                          | meaning                                                                                                                                                                                                                                                                                                                |
+| ------------------- | -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `designs`           | (required)                       | design files, one per line, relative to the workspace; blank lines are ignored; 1 to 64                                                                                                                                                                                                                                |
+| `output-dir`        | `readmint`                       | folder inside the workspace the output files go to; created when missing                                                                                                                                                                                                                                               |
+| `formats`           | `svg`                            | output formats, comma or newline separated: `svg`, `png`, `webp`, `apng`, `gif` (see [raster.md](raster.md)); each design is written once per format; the first one is what the snippet shows; `png` and `apng` together are an input error (both write `.png`)                                                        |
+| `scale`             | `2`                              | raster pixels per design pixel, 1..4 (up to three decimals), as the CLI `--scale`                                                                                                                                                                                                                                      |
+| `frame-rate`        | none                             | frames per second of an animated raster output, a whole number in 1..60 (1..50 when `gif` is listed), as the CLI `--frame-rate`; none: 30, `gif` 25                                                                                                                                                                    |
+| `quality`           | none                             | lossy WebP at this quality, a whole number in 1..100, as the CLI `--quality`; `webp` must be listed in `formats`; none: lossless                                                                                                                                                                                       |
+| `token`             | `${{ github.token }}`            | token for the GitHub data; not used with `data-file`; never printed and never given to git                                                                                                                                                                                                                             |
+| `login`             | `${{ github.repository_owner }}` | the GitHub user whose data is loaded; needed with `GITHUB_TOKEN`, which belongs to no user                                                                                                                                                                                                                             |
+| `data-file`         | none                             | fixture data JSON (the CLI `--data` format) used instead of loading GitHub data: no token, no GitHub API (only images bound to data are fetched)                                                                                                                                                                       |
+| `data-json`         | none                             | JSON documents to bind, one per line as `[<namespace>=]<source>` (the CLI [`--data-json`](cli.md#json-data)): a file inside the workspace or an https URL, each bound as `{ version: 0, document }` under its namespace (default `json`), at most 8, added to the `data-file` or GitHub data ([JSON data](#json-data)) |
+| `data-json-headers` | none                             | headers for the `data-json` URLs, one per line as `<namespace>:<Header-Name>=<ENV_NAME>`: the value is read from the step's environment variable `ENV_NAME`, masked, never printed and sent only to that URL's origin                                                                                                  |
+| `props-file`        | none                             | settings JSON file (the CLI [`--props`](cli.md#settings-file) format: root component props by section) merged into every listed design and its dark twin, so personal texts are set once per template; a section no listed design has is warned about, without its values                                              |
+| `locale`            | none                             | BCP 47 tag for the `number`, `compact`, `percent` and `date` filters, checked as the CLI `--locale` (`en`, `de`, `fr`, `es`, `cs` or a region tag of one); none: the design's `locale`, else `en`                                                                                                                      |
+| `commit-message`    | `Update Readmint graphics`       | message of the commit; at most 4096 characters                                                                                                                                                                                                                                                                         |
+| `branch`            | the checked-out branch           | branch the commit is pushed to, without `refs/`; the checkout must be this branch at its latest commit on `origin` (see [Pushing](#pushing))                                                                                                                                                                           |
+| `dry-run`           | `false`                          | `true` renders and writes the files but runs no git command                                                                                                                                                                                                                                                            |
 
 Booleans are YAML core booleans: `true`, `True`, `TRUE`, `false`, `False`, `FALSE`. A blank input takes its default.
 Every problem with the inputs is reported at once, before anything is rendered.
@@ -104,7 +106,8 @@ Outputs of designs you remove from the list are not deleted.
 2. Unless it is a dry run: finds the branch to push to, checks its name and that the checkout is that branch's latest
    commit on `origin`, before anything is written.
 3. Loads the data once: the `data-file`, else the GitHub data of `login`, bound as `github` (see
-   [data-github.md](data-github.md)). The load is given 5 minutes.
+   [data-github.md](data-github.md)). The load is given 5 minutes. Then each `data-json` source in the listed order,
+   added under its namespace ([JSON data](#json-data)).
 4. Loads and renders every design and dark variant, in every listed format (a raster export samples an animated design
    at `frame-rate` and stays within the limits of [raster.md](raster.md)). Design files and their assets are read only inside the workspace,
    also through links ([asset-loading.md](asset-loading.md)). If any design fails, nothing is written and the run
@@ -151,6 +154,37 @@ A design whose image `src` is bound to data (`"{{ github.avatarUrl }}"`) has tha
 in both data modes, with its own request: no token, cookie or other credential, no redirect, https on an allowed host
 only (`avatars.githubusercontent.com`), each URL once per run (so a dark twin shares the fetch), at most 32. The bytes
 are inlined in the SVG. The rules and error codes: [asset-loading.md](asset-loading.md#images-bound-from-data).
+
+## JSON data
+
+`data-json` binds any JSON document, a file in the repository or a public https URL, with the JSON source of
+[data-sources.md](data-sources.md#the-json-source), the load `readmint --data-json` uses:
+
+```yaml
+- uses: MrLarkyy/Readmint@vX.Y.Z
+  env:
+    STATS_API_KEY: ${{ secrets.STATS_API_KEY }}
+  with:
+    designs: readmint/designs/card.yaml
+    data-json: |
+      counts=readmint/counts.json
+      api=https://api.example.com/v1/stats
+    data-json-headers: |
+      api:X-Api-Key=STATS_API_KEY
+```
+
+- Each document is bound as `{ version: 0, document: <the parsed JSON> }` under its namespace: bind
+  `counts.document.stars`. Without `<namespace>=` the namespace is `json`.
+- A file source is a path relative to the workspace, checked like `designs` (no `..`, no absolute or drive path) and
+  then by real path: a link or junction that leads outside the workspace is refused. Unlike `data-file` it is confined
+  to the workspace. At most 1 MiB.
+- A URL must be `https://`; at most 3 redirects (https only), a JSON or `text/plain` content type in UTF-8, 1 MiB, 10 s.
+- A header value comes only from the step's environment, by the variable name in `data-json-headers` (set it from a
+  secret with `env:`, never in `with:`). The Action registers each value with `::add-mask::` before any load, redacts
+  it from every line it prints, and sends it only to the origin of its URL (a redirect to another origin drops it).
+- The JSON namespaces are added to the `data-file` data or to `github`: `github` cannot be a JSON namespace unless
+  `data-file` is given, and a `data-file` key equal to a JSON namespace fails the run, naming it.
+- The documents are loaded on every run (no cache); the same documents give the same bytes.
 
 ## Pushing
 
@@ -201,7 +235,8 @@ A failed run exits with 1 and prints one `::error::` line per problem, each nami
 
 - inputs: a missing or invalid input (all at once);
 - data: the fixture file's problem, or `GitHub data (<code>): <message>` with the code of
-  [data-github.md](data-github.md#errors);
+  [data-github.md](data-github.md#errors), or `JSON data <namespace> (<code>): <message>` with a common code of
+  [data-sources.md](data-sources.md#the-json-source), or a namespace both the `data-file` and `data-json` give;
 - render: the design's issues, as `readmint render` prints them (an image bound to data that cannot be fetched as
   `<design>: error image-<reason> at /assets/images/<id>/src: <message>`), or a raster export over a limit (the
   measured value, the limit and a fix);

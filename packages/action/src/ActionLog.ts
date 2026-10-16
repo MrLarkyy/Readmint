@@ -9,11 +9,11 @@ import { escapeForLog, redactSecrets } from "@readmint/cli";
  */
 export class ActionLog {
   readonly #write: (text: string) => void;
-  readonly #secrets: readonly string[];
+  readonly #secrets: string[];
 
   constructor(write: (text: string) => void, secrets: readonly string[]) {
     this.#write = write;
-    this.#secrets = secrets;
+    this.#secrets = [...secrets];
   }
 
   info(line: string): void {
@@ -31,6 +31,20 @@ export class ActionLog {
   group(title: string, lines: readonly string[]): void {
     const body = lines.map((line) => `${inert(this.#clean(line))}\n`).join("");
     this.#write(`::group::${encodeMessage(this.#clean(title))}\n${body}::endgroup::\n`);
+  }
+
+  /**
+   * Asks the runner to mask `secret` in every later log line, its own steps' too, and adds it to
+   * this log's redaction. Each line of a multi-line value is masked on its own, as the runner
+   * matches line by line.
+   */
+  mask(secret: string): void {
+    for (const line of secret.split(/\r?\n|\r/)) {
+      const value = line.trim();
+      if (value === "") continue;
+      this.#write(`::add-mask::${encodeMessage(value)}\n`);
+      if (!this.#secrets.includes(value)) this.#secrets.push(value);
+    }
   }
 
   /** `text` without the secrets, as it may be written anywhere outside the log. */

@@ -1,5 +1,12 @@
 import path from "node:path";
-import { localeProblem, type OutputFormat, outputFormats, quoteForLog } from "@readmint/cli";
+import {
+  type DataJsonSpec,
+  localeProblem,
+  type OutputFormat,
+  outputFormats,
+  parseDataJsonArgs,
+  quoteForLog,
+} from "@readmint/cli";
 import type { ActionConfig } from "./ActionConfig.js";
 import { ActionError } from "./ActionError.js";
 import {
@@ -110,6 +117,17 @@ export function readInputs(env: Env): ActionConfig {
     problems.push("input token is empty; pass a token or a data-file");
   }
 
+  const dataJson = readDataJson(
+    lines(value("data-json")),
+    lines(value("data-json-headers")),
+    problems,
+  );
+  if (dataFile === "" && dataJson.some((spec) => spec.namespace === "github")) {
+    problems.push(
+      "input data-json: namespace github clashes with the GitHub data; name the JSON source another namespace",
+    );
+  }
+
   const propsFile = value("props-file");
   const locale = value("locale");
   const localeReason = locale === "" ? undefined : localeProblem(locale);
@@ -147,12 +165,31 @@ export function readInputs(env: Env): ActionConfig {
     token: dataFile === "" ? token : "",
     login: value("login"),
     ...(dataFile === "" ? {} : { dataFile }),
+    ...(dataJson.length === 0 ? {} : { dataJson }),
     ...(propsFile === "" ? {} : { propsFile }),
     ...(locale === "" ? {} : { locale }),
     commitMessage,
     ...(branch === "" ? {} : { branch }),
     dryRun: dryRun ?? false,
   };
+}
+
+/** The `data-json` lines as specs; a file source must name a place inside the workspace. */
+function readDataJson(
+  sources: readonly string[],
+  headers: readonly string[],
+  problems: string[],
+): readonly DataJsonSpec[] {
+  const parsed = parseDataJsonArgs(sources, headers);
+  for (const problem of parsed.problems) problems.push(`input data-json: ${problem}`);
+  for (const spec of parsed.specs) {
+    if (/^https:\/\//i.test(spec.source)) continue;
+    const reason = checkRelativePath(spec.source);
+    if (reason !== undefined) {
+      problems.push(`input data-json: the file of namespace ${spec.namespace} ${reason}`);
+    }
+  }
+  return parsed.specs;
 }
 
 function lines(text: string): string[] {
