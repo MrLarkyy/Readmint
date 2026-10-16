@@ -1,9 +1,7 @@
+import { examplesRepository } from "./examplesRepository.js";
 import { rewriteLinks } from "./rewriteLinks.js";
 import type { WikiGroup, WikiPage } from "./WikiPage.js";
 import { wikiGroups, wikiPages } from "./wikiPages.js";
-
-/** The repository of ready-to-copy workflows; linked from Home, the footer and the getting-started page. */
-export const examplesRepository = "https://github.com/MrLarkyy/readmint-template-test";
 
 export interface WikiOptions {
   /** Repository URL without a trailing slash, e.g. https://github.com/MrLarkyy/Readmint */
