@@ -201,7 +201,7 @@ describe("the root props are resolved early only for a canvas that names props",
     "{{ x.props-1 }}",
     "{{ props_n * 10 }}",
     "{{ props-x * 10 }}",
-  ])("%s over a dropped instance renders without checking its props", (height) => {
+  ] as const)("%s over a dropped instance renders without checking its props", (height) => {
     expect(renderSvg(guarded({ width: 100, height }), noUser).ok).toBe(true);
   });
 
@@ -215,14 +215,15 @@ describe("the root props are resolved early only for a canvas that names props",
     expect(heightOf(svg)).toBe("30");
   });
 
-  test.each(["{{ 50-props.size * 10 }}", "{{ (props.size) * 10 }}", "{{1+props.size*10}}"])(
-    "%s names props",
-    (height) => {
-      const design = rowsDesign([{ type: "component", ref: "card", props: { size: 2 } }], {
-        width: 100,
-        height,
-      });
-      expect(renderSvg(design).ok).toBe(true);
-    },
-  );
+  test.each([
+    "{{ 50-props.size * 10 }}",
+    "{{ (props.size) * 10 }}",
+    "{{1+props.size*10}}",
+  ] as const)("%s names props", (height) => {
+    const design = rowsDesign([{ type: "component", ref: "card", props: { size: 2 } }], {
+      width: 100,
+      height,
+    });
+    expect(renderSvg(design).ok).toBe(true);
+  });
 });
