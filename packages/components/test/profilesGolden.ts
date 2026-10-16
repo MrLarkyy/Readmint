@@ -32,6 +32,22 @@ const frames: Readonly<Record<ProfileTemplate, readonly [ProfileSection, number]
   pinscreen: ["year", 3000],
 };
 
+/** The sample data with emoji in the bio and the status: no template font covers them, so they are dropped. */
+function emojiProfileData(): ReturnType<typeof sampleProfileData> {
+  const data = sampleProfileData();
+  return {
+    github: {
+      ...data.github,
+      bio: "Having fun \u{1F377}",
+      status: {
+        emoji: data.github.status.emoji,
+        message:
+          "Shipping \u{1F469}\u200D\u{1F4BB} \u{1F1E8}\u{1F1FF} \u{1F44D}\u{1F3FD} 1\uFE0F\u20E3 \u2764\uFE0F",
+      },
+    },
+  };
+}
+
 /**
  * The golden suite of one profile template: every section in both themes with the example's personal texts, the
  * long ones on worst-case data, the year on a sparse, spiky calendar, the sections with personal texts left empty,
@@ -50,6 +66,7 @@ export function profileGoldenSuite(template: ProfileTemplate): GoldenSuite<Profi
     time: 0,
     ...extra,
   });
+  const emojiData = emojiProfileData();
   const [frameSection, frameTime] = frames[template];
   const personal = profileTemplates[template].filter(
     (section) => profileExampleProps[template]?.[section] !== undefined,
@@ -76,6 +93,14 @@ export function profileGoldenSuite(template: ProfileTemplate): GoldenSuite<Profi
       ...personal.map((section) => ({
         name: `${section}-empty`,
         input: render(section, "light", { design: loadProfile(template, section) }),
+      })),
+      ...themes.map((theme) => ({
+        name: `header-emoji-${theme}`,
+        input: render("header", theme, {
+          design: loadProfile(template, "header", theme),
+          data: emojiData,
+          expectWarnings: ["missing-glyph"],
+        }),
       })),
       {
         name: `${frameSection}-t${String(frameTime)}`,

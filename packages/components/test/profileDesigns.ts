@@ -1,5 +1,5 @@
 import { parseDesign, type Design } from "@readmint/format";
-import { renderSvg, type RenderLimits } from "@readmint/renderer";
+import { renderSvg, type RenderIssueCode, type RenderLimits } from "@readmint/renderer";
 import type { ProfileSection, ProfileTemplate } from "../src/index.js";
 import { profileExampleProps } from "@readmint/examples/props";
 
@@ -105,10 +105,19 @@ export interface ProfileRender {
   readonly limits?: Partial<RenderLimits>;
   /** A frame at this many milliseconds instead of the animated SVG. */
   readonly time?: number;
+  /** The warning codes the render is expected to give: any other code fails it, and so does a missing one. */
+  readonly expectWarnings?: readonly RenderIssueCode[];
 }
 
-/** Renders a section; a failed render or a warning throws naming the issues. */
-export function renderProfile({ template, design, data, limits, time }: ProfileRender): string {
+/** Renders a section; a failed render, a warning not in `expectWarnings` or an expected one that is absent throws. */
+export function renderProfile({
+  template,
+  design,
+  data,
+  limits,
+  time,
+  expectWarnings = [],
+}: ProfileRender): string {
   const result = renderSvg(design, {
     data,
     assets: { fonts: profileFontAssets(template, design) },
@@ -116,7 +125,10 @@ export function renderProfile({ template, design, data, limits, time }: ProfileR
     ...(time === undefined ? {} : { time }),
   });
   if (!result.ok) throw new Error(`render failed: ${JSON.stringify(result.issues)}`);
-  if (result.warnings.length > 0)
-    throw new Error(`render warned: ${JSON.stringify(result.warnings)}`);
+  const codes = new Set(result.warnings.map((warning) => warning.code));
+  const unexpected = result.warnings.filter((warning) => !expectWarnings.includes(warning.code));
+  if (unexpected.length > 0) throw new Error(`render warned: ${JSON.stringify(unexpected)}`);
+  const absent = expectWarnings.filter((code) => !codes.has(code));
+  if (absent.length > 0) throw new Error(`render did not warn: ${absent.join(", ")}`);
   return result.svg;
 }

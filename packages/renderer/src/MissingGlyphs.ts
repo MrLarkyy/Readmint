@@ -33,7 +33,7 @@ export class MissingGlyphs {
       return {
         path: pointer("/assets/fonts", asset),
         code: "missing-glyph",
-        message: `font asset ${echo(asset)} and its fallbacks have no glyph for ${names}${more} (first at ${path}); these characters are not drawn and keep the width of .notdef`,
+        message: `font asset ${echo(asset)} and its fallbacks have no glyph for ${names}${more} (first at ${path}); these characters are not drawn and take no space`,
       };
     });
   }

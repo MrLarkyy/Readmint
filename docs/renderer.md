@@ -192,10 +192,15 @@ Drawn in document order, first at the back. Layer `id` and `name` are not emitte
   pen positions the renderer computed before shaping existed whenever the font applies nothing but pair kerning to
   it.
 - **Missing glyphs**: a code point neither the font nor its fallbacks have is not written, so no engine draws it (no
-  browser fallback font, no `.notdef` box); it keeps the advance of the font's `.notdef` glyph, so the layout does not
-  depend on it (a space variant or U+2011 the font can draw by the fallbacks above is not missing). The render warns `missing-glyph` once per font asset a text names (also when a `fontWeight` picked
+  browser fallback font, no `.notdef` box); it takes no space either (no advance, no letter spacing, no kerning across it), so the line closes
+  over it as if the cluster were not in the text; the spaces typed around it stay. A cluster is one user-perceived character, so an emoji sequence
+  (a ZWJ family, a flag, a skin tone, a variation selector) is dropped whole; a keycap keeps its digit when a font has it and
+  drops the enclosing mark U+20E3. An emoji is therefore drawn only when a font of the text has it as an outline glyph:
+  add a monochrome outline emoji font (when its licence allows embedding) as a `fallback` of the text's font. Colour
+  glyph formats (`COLR`, `CBDT`, `sbix`, SVG) are not drawn. No emoji font is bundled or implied. (A space variant or U+2011 the font can draw by the fallbacks above is not missing.) The render warns `missing-glyph` once per font asset a text names (also when a `fontWeight` picked
   another face of its family), naming up to ten such characters. Default ignorables (ZWJ, ZWNJ, bidi controls,
-  variation selectors, ...) take part in shaping and bidi, are never drawn and never count as missing.
+  variation selectors, ...) take part in shaping and bidi, are never drawn and never count as missing, so the warning
+  names the pictographic characters only. A dropped cluster inside a word still separates the letters around it for joining (Arabic) and ligatures.
 - **Remaining limits of shaping**: only Arabic and Devanagari have shapers of their own; every other script (Hebrew,
   Thai, Bengali, Tamil, Khmer, Myanmar, the scripts HarfBuzz's USE shaper handles, ...) gets the font's GSUB and GPOS
   features through the default shaper, without syllable reordering. Only the default language system is used (no
@@ -340,7 +345,8 @@ budget?, maxBytes? })`, `encodeWoff`, `decodeWoff`, `glyphClosure`, `OutlineBudg
   whole, base included, to the first fallback that has all of it (before, only the mark took the fallback and drew
   unattached; a fallback in another family can now draw the base letter too), and letters excluded from composition (Devanagari U+0958-U+095F, Hebrew presentation forms such as
   U+FB2A) are drawn from their base and nukta or point by the font's own features, not from the font's precomposed
-  glyph. Since RM-60, a space variant (U+00A0, U+2000-U+200A, U+202F, U+205F, U+3000) or U+2011 a font lacks is drawn
+  glyph. Since RM-77, a character no font has no longer keeps the advance of `.notdef`: text with emoji or other uncovered characters
+  is narrower than before and lines wrap later. Since RM-60, a space variant (U+00A0, U+2000-U+200A, U+202F, U+205F, U+3000) or U+2011 a font lacks is drawn
   from the font's own space or hyphen glyph, no longer reported as `missing-glyph` or taken from a `fallback` font:
   a primary without U+2009 but with a fallback that has it now draws its own space at 1/5 em. Since RM-59, Arabic text
   with modifier marks (U+0654, U+0655, U+0658, U+06DC, ...) stacks them nearest the base, before the vowel marks
@@ -689,7 +695,7 @@ charged alike, the images the render checked found in the cache.
 | `font-reserved-name`   | warning: the font has a Reserved Font Name (declared, or stated in its name table), so no subset may be embedded; its text is drawn as paths (once per asset, at what decided)                                                                            |
 | `too-large`            | the SVG passes `maxOutputBytes`, a text passes `maxTextLength`, the repeats pass `maxRepeatCopies` (at the `repeat` that crossed it), the tracks pass `maxAnimationKeyframes` (at the track that crossed it), components nest deeper than 64 levels       |
 | `font-family-mismatch` | warning: the asset family differs from the family inside the font                                                                                                                                                                                         |
-| `missing-glyph`        | warning: characters neither the font nor its fallbacks have; they are not drawn and keep the `.notdef` advance (once per font asset, up to ten named)                                                                                                     |
+| `missing-glyph`        | warning: characters neither the font nor its fallbacks have; they are not drawn and take no space (once per font asset, up to ten named)                                                                                                                  |
 | `animation-cut`        | warning: a track runs past the end of the timeline and is cut there (once per track, however many copies)                                                                                                                                                 |
 
 ## Report
