@@ -1,5 +1,6 @@
 import { buildExamples } from "./buildExamples.js";
 import { compareExamples } from "./compareExamples.js";
+import { defaultActionRef } from "./defaultActionRef.js";
 import { profileExampleProps } from "./profileExampleProps.js";
 import { writeExamples } from "./writeExamples.js";
 
@@ -8,8 +9,7 @@ export interface ExamplesIo {
   readonly stderr: (text: string) => void;
 }
 
-const usage =
-  "usage: readmint-examples <templates dir> <examples repository dir> [--check] [--login MrLarkyy] [--action MrLarkyy/Readmint@v0.1.0]\n";
+const usage = `usage: readmint-examples <templates dir> <examples repository dir> [--check] [--login MrLarkyy] [--action ${defaultActionRef}]\n`;
 
 /** The command line of `readmint-examples` without process wiring; returns the exit code (0, 1 out of sync or failed, 2 usage). */
 export function runExamples(argv: readonly string[], io: ExamplesIo): number {
@@ -20,7 +20,7 @@ export function runExamples(argv: readonly string[], io: ExamplesIo): number {
   const positional: string[] = [];
   let check = false;
   let login = "MrLarkyy";
-  let actionRef = "MrLarkyy/Readmint@v0.1.0";
+  let actionRef = defaultActionRef;
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i] ?? "";
     if (arg === "--check") check = true;

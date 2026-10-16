@@ -8,6 +8,7 @@ import { listFiles } from "./listFiles.js";
 import { readmeTitle } from "./readmeTitle.js";
 import { assertNoLink } from "./assertNoLink.js";
 import { exampleWorkflow } from "./exampleWorkflow.js";
+import { assertActionSupportsDesigns } from "./assertActionSupportsDesigns.js";
 
 const byCodeUnit = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
 /** The template's shared settings (`--props`): not a design, the examples already have the texts merged in. */
@@ -72,6 +73,9 @@ export function buildExamples(templatesDir: string, options: ExamplesOptions): E
     for (const file of designFiles) {
       const texts = templateProps[sectionOf(file)];
       const raw = readFileSync(join(dir, file));
+      assertActionSupportsDesigns(options.actionRef, [
+        { file: `${name}/${file}`, text: raw.toString("utf8") },
+      ]);
       const content =
         texts === undefined ? raw : mergedDesign(raw.toString("utf8"), `${name}/${file}`, texts);
       files.push({ path: `${name}/designs/${file}`, content });
