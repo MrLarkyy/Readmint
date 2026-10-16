@@ -31,7 +31,9 @@ beforeEach(async () => {
     }),
   });
   await editor.settled();
-  await vi.waitFor(() => { expect(editor.svg).toBeDefined(); });
+  await vi.waitFor(() => {
+    expect(editor.svg).toBeDefined();
+  });
 });
 
 afterEach(() => {
