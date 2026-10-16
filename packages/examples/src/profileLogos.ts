@@ -159,7 +159,7 @@ export const profileLogos: readonly ProfileLogo[] = [
       },
     ],
     trace:
-      "PNG, background removed by flood fill from the border (seal 1); crop none; 4 colours (#040202 #d28c6f #facca0 #801715, largest area at the bottom, cumulative masks); potrace turdSize 2, optTolerance 0.2, 14 px tall; lightness shifted (same hue and chroma) to reach 2:1 against the card where the brand colour failed; several neutral colours, so each keeps its colour (lightness-shifted per theme) instead of taking the ink; no fallback",
+      "PNG, background removed by flood fill from the border (seal 1); crop none; 4 colours (#040202 #d28c6f #facca0 #801715, largest area at the bottom, cumulative masks); potrace turdSize 2, optTolerance 0.2, 14 px tall; lightness shifted (same hue and chroma) to reach 2:1 against the card where the brand colour failed; the dark outline keeps its colour, lightness-shifted per theme, because ink would turn it light on the dark card and invert the mark; no fallback",
     page: "https://hoplite.gg/",
     source:
       "https://aquatic.gg/hoplite.png (the author's own earlier profile README, https://aquatic.gg/hoplite.png)",
@@ -230,7 +230,7 @@ export const profileLogos: readonly ProfileLogo[] = [
       },
     ],
     trace:
-      "PNG, background removed by flood fill from the border (seal 1); crop none; 4 colours (#273f41 #d2c076 #7a9a3c #33d8e2, largest area at the bottom, cumulative masks); potrace turdSize 4, optTolerance 1.5, 14 px tall; lightness shifted (same hue and chroma) to reach 2:1 against the card where the brand colour failed; traced at 64 px; palette fixed by hand (sand, palm green, dark teal, cyan; the brown outline folds into dark teal); turdSize 4 and optTolerance 1.5 instead of 2 and 0.2, the first step of the coarsening ladder whose paths together stay within 6000 characters; several neutral colours, so each keeps its colour (lightness-shifted per theme) instead of taking the ink; no fallback",
+      "PNG, background removed by flood fill from the border (seal 1); crop none; 4 colours (#273f41 #d2c076 #7a9a3c #33d8e2, largest area at the bottom, cumulative masks); potrace turdSize 4, optTolerance 1.5, 14 px tall; lightness shifted (same hue and chroma) to reach 2:1 against the card where the brand colour failed; traced at 64 px; palette fixed by hand (sand, palm green, dark teal, cyan; the brown outline folds into dark teal); turdSize 4 and optTolerance 1.5 instead of 2 and 0.2, the first step of the coarsening ladder whose paths together stay within 6000 characters; the dark outline keeps its colour, lightness-shifted per theme, because ink would turn it light on the dark card and invert the mark; no fallback",
     page: "https://cobblemonislands.com/",
     source:
       "https://aquatic.gg/cobblemonislands.png (the author's own earlier profile README, https://aquatic.gg/cobblemonislands.png)",
@@ -267,7 +267,7 @@ export const profileLogos: readonly ProfileLogo[] = [
       },
     ],
     trace:
-      "PNG, background removed by flood fill from the border (seal 1); crop none; 4 colours (#070708 #bd2ef9 #85a3fd #4d07a4, largest area at the bottom, cumulative masks); potrace turdSize 2, optTolerance 0.2, 14 px tall; lightness shifted (same hue and chroma) to reach 2:1 against the card where the brand colour failed; several neutral colours, so each keeps its colour (lightness-shifted per theme) instead of taking the ink; no fallback",
+      "PNG, background removed by flood fill from the border (seal 1); crop none; 4 colours (#070708 #bd2ef9 #85a3fd #4d07a4, largest area at the bottom, cumulative masks); potrace turdSize 2, optTolerance 0.2, 14 px tall; lightness shifted (same hue and chroma) to reach 2:1 against the card where the brand colour failed; the dark outline keeps its colour, lightness-shifted per theme, because ink would turn it light on the dark card and invert the mark; no fallback",
     page: "https://mineclub.net/",
     source:
       "https://aquatic.gg/mineclub.png (the author's own earlier profile README, https://aquatic.gg/mineclub.png)",
