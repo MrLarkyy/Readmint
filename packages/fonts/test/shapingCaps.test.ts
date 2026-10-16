@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { loadScale } from "../../../test-support/loadScale.js";
+import { timed } from "../../../test-support/loadScale.js";
 import { ByteWriter } from "../src/ByteWriter.js";
 import { MalformedFont, shapeText, type SfntFont } from "../src/index.js";
 import {
@@ -17,18 +17,21 @@ const { a, b, x } = glyph;
 /** The criterion's bound for a hostile table to fail. */
 const ceilingMs = 50;
 
-/** The bound for the run: the load is probed before and after, as a spike can end before the probe runs. */
+/** The failure and its time, with the ceiling scaled by the load seen around the run (see `timed`). */
 function failure(font: SfntFont, text: string): { error: unknown; ms: number; limitMs: number } {
-  const scaleBefore = loadScale();
-  const started = performance.now();
-  let error: unknown;
-  try {
-    shapeText(font, text);
-  } catch (caught) {
-    error = caught;
-  }
-  const ms = performance.now() - started;
-  return { error, ms, limitMs: ceilingMs * Math.max(scaleBefore, loadScale()) };
+  const {
+    value: error,
+    ms,
+    scale,
+  } = timed(() => {
+    try {
+      shapeText(font, text);
+      return undefined;
+    } catch (caught) {
+      return caught;
+    }
+  });
+  return { error, ms, limitMs: ceilingMs * scale };
 }
 
 function expectMalformed(font: SfntFont, text: string, message: RegExp): void {
