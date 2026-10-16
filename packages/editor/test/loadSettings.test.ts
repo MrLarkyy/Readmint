@@ -4,6 +4,7 @@ import {
   chooseSection,
   createEditorState,
   EditorLimits,
+  exportSettings,
   loadSettings,
   newDesign,
 } from "../src/index.js";
@@ -86,4 +87,18 @@ test("loading a file again keeps the current section if the new file has it, els
 
 test("the size cap is the CLI's --props cap", () => {
   expect(EditorLimits.maxSettingsBytes).toBe(3 * DesignLimits.maxSourceLength + 3);
+});
+
+test("a BOM is not counted against the character limit and stays in the source", () => {
+  const bom = String.fromCharCode(0xfeff);
+  const head = '{"a":{"x":"';
+  const tail = '"}}';
+  const fill = "y".repeat(DesignLimits.maxSourceLength - head.length - tail.length);
+  const body = head + fill + tail;
+  expect(body.length).toBe(DesignLimits.maxSourceLength);
+  const state = loadSettings(empty, bom + body, "a");
+  expect(state.issues).toEqual([]);
+  expect(state.settings?.source).toBe(bom + body);
+  expect(exportSettings(state.settings ?? { sections: {} })).toBe(bom + body);
+  expect(loadSettings(empty, body + " ").issues).not.toEqual([]);
 });

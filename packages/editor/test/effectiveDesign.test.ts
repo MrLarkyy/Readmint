@@ -111,3 +111,21 @@ test("shipped settings that lack a defaulted or layer-set prop (theme) show no w
     expect(warnings).toEqual([]);
   }
 });
+
+test("a declared prop with no section value, layer value or default is a warning", () => {
+  const design = {
+    ...base.design,
+    components: {
+      card: {
+        props: { title: { type: "string" } },
+        layers: [{ type: "rect", width: 5, height: 5 }],
+      },
+    },
+  } as const;
+  const state = loadSettings(createEditorState(design), '{"s": {}}', "s");
+  const { warnings, issues } = effectiveDesign(state);
+  expect(issues).toEqual([]);
+  expect(warnings.map((warning) => warning.message)).toEqual([
+    "settings /s/title: not set in the section, by a layer or by a default; nothing is rendered for it",
+  ]);
+});

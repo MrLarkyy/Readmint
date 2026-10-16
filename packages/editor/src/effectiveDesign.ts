@@ -44,7 +44,7 @@ export function effectiveDesign(state: EditorState): EffectiveDesign {
       layerValue(state.design, name) === undefined
     )
       warnings.push(
-        `settings /${section}/${name}: not set in the section; the design's value is used`,
+        `settings /${section}/${name}: not set in the section, by a layer or by a default; nothing is rendered for it`,
       );
   }
   const unknown = undeclaredProps(props, declared);

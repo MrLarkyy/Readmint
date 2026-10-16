@@ -22,7 +22,8 @@ export function loadSettings(
       return fail(`is larger than ${String(EditorLimits.maxSettingsBytes)} bytes`);
     }
   }
-  const result = parseDesignProps(text);
+  // The CLI strips a BOM before it counts characters; `source` keeps it.
+  const result = parseDesignProps(text.startsWith("﻿") ? text.slice(1) : text);
   if (!result.ok) {
     const issues = result.issues.map((issue) => ({
       source: "settings" as const,
