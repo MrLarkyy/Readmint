@@ -26,6 +26,7 @@ workspace and no UI framework: the DOM views are small classes that dispatch com
 - **Images**: upload a PNG, JPEG, GIF or WebP file; it is embedded in the design with an image layer showing it
   ([below](#images)).
 - **Fixture data**: load a JSON file of data namespaces, as the CLI's `--data` file; bindings render against it.
+- **Settings**: "Load settings" takes a settings file (the CLI's `--props` and the Action's `props-file`: JSON, `{ "<section>": { "<prop>": value } }`) and the "Settings section" list applies one of its sections to the root component layers, as `applyDesignProps` of `@readmint/format` does. Importing a design file picks the section named like it (`propsSection`: `header.json` and `header.dark.json` take `header`) when the file has one; loading a settings file again keeps the current section if the new file still has it, else takes that one. New keeps the settings file but chooses no section, and "No section" renders the design as it is. The chosen section's props win over the layer's own values in the preview and the raster export, so editing such a prop in the property panel shows no change until "No section". The settings are an input of the session, like fixture data: never part of the design, its history or its export. A section that does not apply (an unknown prop, a wrong type, a design without a root component layer) is listed as a `settings` issue by its pointer, never with a value; the preview then shows the design without it and the raster export is refused with an `export` issue, as the CLI would exit with 1.
 - **Import and export**: import a JSON or YAML design file (validated with the format's limits); export the design as
   `design.json` (two-space JSON, a final line feed, the same bytes for the same design), as `design.yaml` (YAML 1.2,
   keys in the design's own order, no anchors; refused with an `export` issue naming both lengths when it would pass the
@@ -55,7 +56,7 @@ adds its asset and layer as one); a refused command, an edit that changes nothin
 value set to what it is), a selection, loading fixture data, attaching a file for a path-sourced asset and reading
 font licences are not entries. When the design changes during a drag (an undo, a redo, an upload finishing), the drag
 is dropped: releasing the pointer changes nothing. Undo and redo restore the design and the layer selected
-with it, and clear the issue list; fixture data, attached files and font checks are inputs of the session and stay as
+with it, and clear the issue list; fixture data, settings, attached files and font checks are inputs of the session and stay as
 they are. A new edit after an undo drops what could have been redone. The history holds the last
 `EditorLimits.maxHistory` (100) edits, the oldest dropped first; entries share the unchanged parts of the design, so
 they cost little. New and Import start an empty history.
@@ -63,7 +64,7 @@ they cost little. New and Import start an empty history.
 ## Preview
 
 Every change re-renders with `renderPreview`, which is `renderSvg(design, { data, assets, layerBoxes: true })` and
-nothing more. It runs in a module Web Worker: a hostile design can keep only the worker busy, and a render running
+nothing more; `design` is `effectiveDesign(state)`: the design with the chosen settings section applied. It runs in a module Web Worker: a hostile design can keep only the worker busy, and a render running
 longer than `EditorLimits.renderTimeoutMs` (10 s) is stopped (the worker is replaced) and reported. A worker that fails
 (an error, a result it cannot send) is reported at once and replaced for the next render. A newer edit's render always
 wins: an older result arriving later is dropped.
@@ -75,12 +76,12 @@ warnings are listed under the editor with their design pointer; one inside a lay
 render fails, the image keeps showing the last good render, but clicking the canvas selects nothing until a render
 succeeds (the layer tree still does): the old boxes may no longer match the design.
 
-Exporting the design and rendering it with `readmint render design.json --data <fixture>` gives the preview's bytes;
+Exporting the design and rendering it with `readmint render design.json --data <fixture>` (and `--props <settings>` when a section is chosen; the design file's name picks the section) gives the preview's bytes;
 a golden suite (`packages/editor/test/editor-session.golden.ts`, Node and Chromium) and a CLI test pin it.
 
 ## Raster export
 
-The toolbar's "Export PNG" and "Export WebP" make the image the CLI makes for the same design and fixture data:
+The toolbar's "Export PNG" and "Export WebP" make the image the CLI makes for the same design, fixture data and settings section:
 `readmint render design.json --data data.json --format png|webp` with its defaults (scale 2, lossless WebP). The export
 is `renderSvg(design, { data, assets, time })` for each frame, as the CLI renders it, passed to `exportRaster` of
 `@readmint/raster/browser` ([raster.md](raster.md#in-the-browser)): a still design gives a still image, a design with a
@@ -172,7 +173,7 @@ for those and the preview would otherwise draw bytes the CLI does not.
 
 ## Limits
 
-`EditorLimits`: `maxFixtureBytes` 8 MiB (the CLI's), `maxFontBytes` and `maxImageBytes` 4 MiB and
+`EditorLimits`: `maxFixtureBytes` 8 MiB (the CLI's), `maxSettingsBytes` (three bytes per character of `DesignLimits.maxSourceLength`, as the CLI's `--props` cap), `maxFontBytes` and `maxImageBytes` 4 MiB and
 `maxTotalFontBytes` 16 MiB (the renderer's), `maxHistory` 100 edits, `renderTimeoutMs` 10 000, `rasterTimeoutMs`
 120 000. Every file the user picks is size-checked before it is read. Design files are bounded by `DesignLimits` on import and on every edit: an edit that would make the exported
 file longer than `maxSourceLength` is refused.
@@ -223,9 +224,9 @@ editor.dispatch((state) => uploadImage(state, { name: "logo.png", bytes })); // 
 editor.undo(); // as Ctrl+Z; editor.redo() as Ctrl+Shift+Z
 ```
 
-The state (`EditorState`: design, selection, fixture data, session assets, font checks, issues) is immutable; every
+The state (`EditorState`: design, selection, fixture data, settings, session assets, font checks, issues) is immutable; every
 command (`addLayer`, `moveLayer`, `resizeLayer`, `setLayerProperty`, `reorderLayer`, `removeLayer`, `selectLayer`,
-`uploadFont`, `uploadImage`, `setFontAsset`, `attachAsset`, `loadFixture`) is a pure function returning a new state
+`uploadFont`, `uploadImage`, `setFontAsset`, `attachAsset`, `loadFixture`, `loadSettings`, `chooseSection`) is a pure function returning a new state
 whose design passes `validateDesign`, or the same design with the issues saying why not. `readImageFile(bytes)` is
 the check an upload runs. The history (`EditorHistory`) is an immutable value of its own, kept by `mountEditor` beside
 the state: `recordEdit(history, before, after)` records a design change, `undo(history, state)` and `redo(...)` return

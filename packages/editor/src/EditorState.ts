@@ -1,5 +1,6 @@
 import type { Design } from "@readmint/format";
 import type { RenderAssets } from "@readmint/renderer";
+import type { EditorSettings } from "./EditorSettings.js";
 import type { EditorIssue } from "./EditorIssue.js";
 import type { FontCheck } from "./FontCheck.js";
 
@@ -13,6 +14,8 @@ export interface EditorState {
   readonly selection?: string;
   /** Fixture data the preview renders with, keyed by data namespace (as the CLI's `--data` file). */
   readonly data: Readonly<Record<string, unknown>>;
+  /** A settings file and its applied section; rendered with, never part of the design. */
+  readonly settings?: EditorSettings;
   /** Bytes the user attached for path-sourced assets in this session; never exported. */
   readonly sessionAssets: RenderAssets;
   /** The fsType of fonts the editor has read, by asset id. */
