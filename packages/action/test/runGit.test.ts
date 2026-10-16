@@ -51,7 +51,7 @@ async function plantGit(): Promise<void> {
   await chmod(file, 0o755);
 }
 
-describe("runGit", { timeout: 30_000 }, () => {
+describe("runGit", () => {
   test("a git planted in the workspace, on PATH as itself and as '.', never runs", async () => {
     await plantGit();
     // process.env reads case-insensitively on Windows.

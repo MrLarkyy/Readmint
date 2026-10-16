@@ -15,7 +15,7 @@ afterEach(async () => {
   await tree.remove();
 });
 
-test("a dry run writes the files but runs no git command", { timeout: 30_000 }, async () => {
+test("a dry run writes the files but runs no git command", async () => {
   const head = tree.git("rev-parse", "HEAD");
   const remote = tree.originGit("rev-parse", "main");
   const recorder = recordingRunner(runGit);
