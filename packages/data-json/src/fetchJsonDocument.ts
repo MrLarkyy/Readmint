@@ -41,6 +41,8 @@ export async function fetchJsonDocument(url: URL, context: FetchJsonContext): Pr
   const signal = context.signal ? AbortSignal.any([timeout, context.signal]) : timeout;
   const fail = (code: DataSourceCommonErrorCode, message: string) =>
     new DataSourceError(context.namespace, code, message);
+  // Called unbound: a browser's fetch throws when called as a method of another object.
+  const fetch = context.fetch;
   let current = url;
   let requests = 0;
   for (;;) {
@@ -51,7 +53,7 @@ export async function fetchJsonDocument(url: URL, context: FetchJsonContext): Pr
     let response: Response;
     try {
       response = await untilAborted(
-        context.fetch(current.href, {
+        fetch(current.href, {
           method: "GET",
           redirect: "manual",
           credentials: "omit",

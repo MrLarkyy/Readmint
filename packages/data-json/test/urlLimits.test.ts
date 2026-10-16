@@ -246,3 +246,13 @@ describe("header names", () => {
     expect(new Headers(stub.calls[0]?.init.headers).get("__proto__")).toBe("value");
   });
 });
+
+test("fetch is called unbound, as a browser's fetch requires", async () => {
+  const receivers: unknown[] = [];
+  const fetch: JsonFetch = function (this: unknown) {
+    receivers.push(this);
+    return Promise.resolve(json("{}"));
+  };
+  await load(fetch);
+  expect(receivers).toEqual([undefined]);
+});
