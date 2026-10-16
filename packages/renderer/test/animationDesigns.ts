@@ -176,6 +176,58 @@ const calendar = design(120, 80, { duration: 1500 }, [
 
 const cells = Array.from({ length: 28 }, (_, index) => greens[(index * 3 + (index >> 2)) % 4]);
 
+/**
+ * Eight letters travelling once round an ellipse, upright, dimmed at the back by a fade; a pulsing dot on the same
+ * ellipse; a bar on a circle the other way round, turning with it (not upright).
+ */
+const orbit = design(240, 140, { duration: 2000 }, [
+  {
+    type: "ellipse",
+    x: 30,
+    y: 30,
+    width: 180,
+    height: 80,
+    fill: "none",
+    stroke: "#d0d7de",
+    strokeWidth: 1,
+  },
+  {
+    type: "text",
+    x: -10,
+    y: -8,
+    width: 20,
+    align: "middle",
+    content: "{{ item }}",
+    font: "medium",
+    fontSize: 12,
+    fill: "#0969da",
+    repeat: { each: '{{ ["A", "B", "C", "D", "E", "F", "G", "H"] }}', index: "k" },
+    orbit: {
+      center: { x: 120, y: 70 },
+      radius: 90,
+      radiusY: 40,
+      angle: "{{ k * 45 }}",
+      speed: 180,
+      fade: { from: -0.6, to: 0.4 },
+    },
+  },
+  {
+    type: "ellipse",
+    x: -3,
+    y: -3,
+    width: 6,
+    height: 6,
+    fill: "#cf222e",
+    orbit: { center: { x: 120, y: 70 }, radius: 90, radiusY: 40, angle: 22.5, speed: 180 },
+    animate: { scale: track(1, 2) },
+  },
+  {
+    type: "group",
+    orbit: { center: { x: 120, y: 70 }, radius: 24, angle: 0, speed: -180, upright: false },
+    children: [{ type: "rect", x: -8, y: -3, width: 16, height: 6, fill: "#8250df" }],
+  },
+]);
+
 /** The animated designs of the golden frames, with the frame times each is pinned at. */
 export const animationDesigns: readonly {
   readonly name: string;
@@ -187,4 +239,5 @@ export const animationDesigns: readonly {
   { name: "draw-multi", input: { design: drawMulti }, times: [500] },
   { name: "easing", input: { design: easing }, times: [300] },
   { name: "calendar", input: { design: calendar, data: { cells } }, times: [0, 300, 600, 1200] },
+  { name: "orbit-speed", input: { design: orbit }, times: [0, 500, 1000] },
 ];

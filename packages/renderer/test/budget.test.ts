@@ -4,6 +4,7 @@ import { loadScale } from "../../../test-support/loadScale.js";
 import { RenderLimits, renderSvg } from "../src/index.js";
 import { minimumNodeBytes } from "../src/expandLayers.js";
 import type { AnimatedProperty } from "../src/NodeAnimation.js";
+import { minimumOrbitBytes } from "../src/NodeOrbit.js";
 import { minimumTrackBytes } from "../src/resolveAnimation.js";
 import { utf8Length } from "../src/utf8Length.js";
 import { fontAssets, imageAssets } from "./testAssets.js";
@@ -640,6 +641,93 @@ test.each([
   expect(elapsed).toBeLessThan(1000 * loadScale());
 });
 
+describe("orbits (RM-111)", () => {
+  const orbit = {
+    center: { x: 50, y: 50 },
+    radius: 40,
+    radiusY: 10,
+    angle: "{{ item % 360 }}",
+    speed: -6,
+    fade: { from: -0.5, to: 0.5 },
+  };
+  const design: Design = {
+    version: 0,
+    canvas: { width: 100, height: 100 },
+    animation: { duration: 60_000 },
+    layers: [
+      {
+        type: "group",
+        repeat: { each: "{{ rows }}" },
+        children: [{ type: "rect", width: 1, height: 1, repeat: { each: "{{ items }}" }, orbit }],
+      },
+    ],
+  };
+  // 10 x 10000 copies, 31 keyframes each: the keyframe limit stops the 3226th copy
+  const huge = {
+    rows: Array.from({ length: 10 }, (_, index) => index),
+    items: Array.from({ length: 10_000 }, (_, index) => index),
+  };
+
+  test.each([
+    ["the animated SVG", undefined],
+    ["a frame", 500],
+  ] as const)("100000 moving, fading copies stop %s at a limit fast", (_name, time) => {
+    const started = performance.now();
+    const result = renderSvg(design, {
+      data: huge,
+      ...(time === undefined ? {} : { time }),
+    });
+    expect(result).toMatchObject({
+      ok: false,
+      issues: [{ path: "/layers/0/children/0/orbit/fade", code: "too-large" }],
+    });
+    expect(performance.now() - started).toBeLessThan(2000 * loadScale());
+  });
+
+  test("each copy counts 2 keyframes per moving turn and its fade's keyframes", () => {
+    // three turns of the ellipse move: 6, the fade over 360 degrees: 25
+    const limits = { maxAnimationKeyframes: 2 * 31 };
+    expect(renderSvg(design, { data: { rows: [0], items: [1, 2] }, limits }).ok).toBe(true);
+    expect(renderSvg(design, { data: { rows: [0], items: [1, 2, 3] }, limits })).toMatchObject({
+      ok: false,
+      issues: [{ path: "/layers/0/children/0/orbit/speed", code: "too-large" }],
+    });
+  });
+
+  test("the bytes an orbit reserves never exceed what it adds, static or moving", () => {
+    const render = (layer: Layer, time?: number) => {
+      const result = renderSvg(
+        {
+          version: 0,
+          canvas: { width: 1, height: 1 },
+          animation: { duration: 1000 },
+          layers: [layer],
+        },
+        time === undefined ? {} : { time },
+      );
+      if (!result.ok) throw new Error(JSON.stringify(result.issues));
+      return result.svg.replace(/<defs>.*<\/defs>/u, "").length;
+    };
+    const plain = render({ type: "rect", width: 1, height: 1 });
+    const placed = (extra: Record<string, unknown>) =>
+      ({
+        type: "rect",
+        width: 1,
+        height: 1,
+        orbit: { center: { x: 0, y: 0 }, radius: 1, angle: 0, ...extra },
+      }) as Layer;
+    // one static group; a circle that moves adds two spin groups
+    expect(render(placed({})) - plain).toBeGreaterThanOrEqual(minimumOrbitBytes.chain);
+    for (const time of [undefined, 0, 250]) {
+      expect(render(placed({ speed: 90 }), time) - plain).toBeGreaterThanOrEqual(
+        minimumOrbitBytes.chain + 2 * minimumOrbitBytes.spin,
+      );
+    }
+    // nothing to write, nothing reserved: an orbit of 0 at its centre writes no group
+    expect(render(placed({ radius: 0 })) - plain).toBe(0);
+  });
+});
+
 test("maxAnimationKeyframes defaults to 100000 and can be overridden", () => {
   expect(RenderLimits.maxAnimationKeyframes).toBe(100_000);
   const design: Design = {
@@ -711,6 +799,7 @@ test.each(["font", "paths"] as const)(
     expect(elapsed).toBeLessThan(2000 * loadScale());
     if (drawAs === "paths") {
       // Some 12000 outlines of path data pass the output budget: it stops the render, not the shaping work.
+      console.log(JSON.stringify(result.ok ? 0 : result.issues));
       expect(result).toMatchObject({ ok: false, issues: [{ code: "too-large" }] });
       return;
     }
