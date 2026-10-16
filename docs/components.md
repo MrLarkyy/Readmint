@@ -149,8 +149,11 @@ Five complete designs that show what the format can do; each is an ordinary desi
   you may embed) to set the banner in your own font. Montserrat has no CJK, Arabic, Devanagari or emoji glyphs: a name or bio in those is not drawn and the render warns `missing-glyph`. Add a font asset that has them and list it in the `fallback` of `body`, `bold` and `display` ([design format](design-format.md#assets)), and mind the size budget below.
 - **Long and missing data.** Names are cut with `truncate`, counts shortened with `compact`, the language list shows
   six rows (`repeat` with `if: {{ i < 6 }}`; a dropped copy takes no slot) or a "No language data yet." line, and a
-  streak of 0 days shows "No streak". Golden images pin the light and dark look of every template and the
-  worst-case data (1024-character strings, 10^15 counts).
+  streak of 0 days shows "No streak". In `year-ring`, the repository names and push messages of recent work and the
+  repository cards' names are cut to their box by drawn width (`truncateWidth`), and a card's description is capped
+  at the two lines its box shows (`maxLines`), so a long one ends with `…` inside its box. Golden images pin the light
+  and dark look of every template, the worst-case data (1024-character strings, 10^15 counts) and, for `year-ring`,
+  realistic long names, messages and descriptions in both themes.
 - **The sample data** the goldens render is synthetic (an invented account, `readmint-sample`), shaped like the
   data-github object.
 
@@ -270,7 +273,10 @@ The first writes the files (and removes the generated ones that are no longer pr
 `--check` writes nothing, lists each missing, differing or stale file and exits 1 when the clone is not in sync. Run it
 after changing a template or `profileExampleProps`, then commit and push the clone. `--login` and `--action` set the
 account and the Action reference (`MrLarkyy` and `MrLarkyy/Readmint@v0.3.0` by default). The generator refuses an Action reference pinned to a release older than the filters the templates use
-(`textWidth`, `truncateWidth`) or than `props-file` (v0.3.0), which the generated `settings.json` needs, for the write and for `--check`.
+(`textWidth`, `truncateWidth`), than the design properties they use (`maxLines` of the `year-ring` repository cards,
+v0.4.0) or than `props-file` (v0.3.0), which the generated `settings.json` needs, for the write and for `--check`.
+Until v0.4.0 is released the default reference is refused over the current templates: pass `--action` with a newer
+reference, or bump the default after the release.
 
 ### Data the templates read
 
