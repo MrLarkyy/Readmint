@@ -10,6 +10,8 @@ Commands:
 Options:
   --root <dir>        Folder the design file must lie in (default: the current folder)
   --data <file>       Fixture data: a JSON object of data namespaces, at most 8 MiB
+  --props <file>      Settings: a JSON object of root component props by section (the design file name
+                      without .dark), merged into the design (render, validate, preview)
   --locale <tag>      Language tag for number and date filters (default: the design locale, else en)
   --time <ms>         Render one frame of the animation as a still image (render, validate)
   --out <file>        Write the output to this file instead of standard output (render)

@@ -89,3 +89,15 @@ test("preview takes --open; render and validate refuse it", () => {
   }
   expect(() => parseCliArgs(["preview", "d.json", "--open=1"])).toThrow("takes no value");
 });
+
+test.each([["render"], ["validate"], ["preview"]])("%s takes --props", (name) => {
+  expect(parseCliArgs([name, "a.json", "--props", "s.json"])).toMatchObject({
+    name,
+    props: "s.json",
+  });
+  expect(parseCliArgs([name, "a.json"])).not.toHaveProperty("props");
+});
+
+test("--props needs a value", () => {
+  expect(usageError(["render", "a.json", "--props"]).exitCode).toBe(ExitCode.usage);
+});

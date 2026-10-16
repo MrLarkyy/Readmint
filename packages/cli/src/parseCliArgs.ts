@@ -11,6 +11,7 @@ type DesignCommand = "render" | "validate" | "preview";
 type ValueOption =
   | "root"
   | "data"
+  | "props"
   | "locale"
   | "time"
   | "out"
@@ -24,6 +25,7 @@ type ValueOption =
 const valueOptions: ReadonlySet<string> = new Set<ValueOption>([
   "root",
   "data",
+  "props",
   "locale",
   "time",
   "out",
@@ -47,6 +49,7 @@ const allowed: Readonly<Record<DesignCommand, ReadonlySet<ValueOption>>> = {
   render: new Set([
     "root",
     "data",
+    "props",
     "locale",
     "time",
     "out",
@@ -56,8 +59,8 @@ const allowed: Readonly<Record<DesignCommand, ReadonlySet<ValueOption>>> = {
     "quality",
     "login",
   ]),
-  validate: new Set(["root", "data", "locale", "time", "login"]),
-  preview: new Set(["root", "data", "locale", "port", "login"]),
+  validate: new Set(["root", "data", "props", "locale", "time", "login"]),
+  preview: new Set(["root", "data", "props", "locale", "port", "login"]),
 };
 /** Prefixes of GitHub tokens (classic, OAuth, user-to-server, server-to-server, refresh, fine-grained). */
 const tokenShaped = /^(?:-{1,2}[^=]*=)?(?:gh[pousr]_|github_pat_)/;
@@ -131,6 +134,7 @@ export function parseCliArgs(argv: readonly string[]): CliCommand {
     design,
     ...optional("root", values.get("root")),
     ...optional("data", values.get("data")),
+    ...optional("props", values.get("props")),
     ...optional("locale", checkLocale(values.get("locale"))),
     ...(flags.has("fetch-images") ? { fetchImages: true } : {}),
     ...(github ? { github: true } : {}),

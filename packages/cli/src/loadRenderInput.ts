@@ -1,3 +1,4 @@
+import { applyDesignProps, type DesignProps } from "@readmint/format";
 import type { RenderAssets } from "@readmint/renderer";
 import type { DesignArgs } from "./CliCommand.js";
 import { CliError } from "./CliError.js";
@@ -6,7 +7,10 @@ import { fetchBoundImages } from "./fetchBoundImages.js";
 import { isBoundSource } from "./isBoundSource.js";
 import { loadDesignAssets } from "./loadDesignAssets.js";
 import { type DesignFile, loadDesignFile } from "./loadDesignFile.js";
+import { loadDesignProps } from "./loadDesignProps.js";
 import { loadFixtureData } from "./loadFixtureData.js";
+import { formatIssue } from "./formatIssue.js";
+import { propsSection } from "./propsSection.js";
 import { quoteForLog } from "./quoteForLog.js";
 import { RemoteImageError } from "./RemoteImageError.js";
 import type { RemoteImageOptions } from "./RemoteImageOptions.js";
@@ -22,6 +26,8 @@ export interface RenderInputOptions {
   readonly cwd: string;
   /** Called once the design file is valid, before its assets load (the preview watches them). */
   readonly onDesignFile?: (file: DesignFile) => void;
+  /** Settings the caller already loaded (the Action's); used instead of `args.props`. */
+  readonly props?: DesignProps;
   /** Data the caller already loaded (the Action's); used instead of `args.data`. */
   readonly data?: Record<string, unknown>;
   /**
@@ -44,10 +50,14 @@ export async function loadRenderInput(
   args: DesignArgs,
   options: RenderInputOptions,
 ): Promise<RenderInput> {
-  const file = await loadDesignFile(args.design, {
+  const loaded = await loadDesignFile(args.design, {
     cwd: options.cwd,
     ...(args.root === undefined ? {} : { root: args.root }),
   });
+  const props =
+    options.props ??
+    (args.props === undefined ? undefined : await loadDesignProps(args.props, options.cwd));
+  const file = props === undefined ? loaded : withProps(loaded, props);
   options.onDesignFile?.(file);
   const fileAssets = await loadDesignAssets(file);
   const data =
@@ -59,6 +69,19 @@ export async function loadRenderInput(
       : await options.loadData());
   const assets = await withBoundImages(file, fileAssets, data, options.images);
   return data === undefined ? { file, assets } : { file, assets, data };
+}
+
+function withProps(file: DesignFile, props: DesignProps): DesignFile {
+  const section = propsSection(file.name);
+  const own = Object.hasOwn(props, section) ? props[section] : undefined;
+  if (own === undefined) return file;
+  const result = applyDesignProps(file.design, own);
+  if (result.ok) return { ...file, design: result.value };
+  const lines = result.issues.map((issue) =>
+    formatIssue(file.name, { ...issue, path: `/${section}${issue.path}` }, "error"),
+  );
+  if (result.truncated) lines.push(`${file.name}: more issues not shown`);
+  throw new CliError(ExitCode.invalid, lines);
 }
 
 async function withBoundImages(

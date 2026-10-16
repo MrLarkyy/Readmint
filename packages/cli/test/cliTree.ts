@@ -106,3 +106,33 @@ export async function makeCliTree(): Promise<CliTree> {
     remove: () => rm(root, { recursive: true, force: true }),
   };
 }
+
+/** A valid design whose only layer is a component instance: the rect's width and fill are the component's props. */
+export function propsDesign(layerProps?: Record<string, string | number>): object {
+  return {
+    version: 0,
+    canvas: { width: 40, height: 24, background: "#ffffff" },
+    components: {
+      box: {
+        props: {
+          w: { type: "number", default: 5 },
+          tone: { type: "color", default: "#0969da" },
+          kind: { type: "enum", values: ["a", "b"], default: "a" },
+        },
+        layers: [
+          {
+            type: "rect",
+            x: 0,
+            y: 0,
+            width: "{{ props.w }}",
+            height: 10,
+            fill: "{{ props.tone }}",
+          },
+        ],
+      },
+    },
+    layers: [
+      { type: "component", ref: "box", ...(layerProps === undefined ? {} : { props: layerProps }) },
+    ],
+  };
+}
