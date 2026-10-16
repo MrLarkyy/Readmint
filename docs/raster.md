@@ -1,4 +1,4 @@
-# Raster export
+# Output formats
 
 `@readmint/raster` turns the renderer's SVG into PNG, WebP, APNG or GIF. It draws the SVG with resvg, the rasterizer
 of the golden tests, so a raster image looks like the SVG the renderer wrote; the SVG output itself never changes.

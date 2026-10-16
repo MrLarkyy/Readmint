@@ -1,4 +1,4 @@
-# GitHub data source
+# GitHub data
 
 `@readmint/data-github` loads one GitHub user's profile, public repositories, languages, contribution calendar, pinned
 repositories with their weekly commits, recent pushes and status through the GraphQL API with the user's own token, and returns a plain-JSON data object that designs bind to as

@@ -1,4 +1,4 @@
-# Expression language v0
+# Expressions
 
 Design strings bind to data with `{{ … }}` placeholders: `"Hello, {{ github.name }}"`,
 `"{{ stats.commits | compact }}"`, a layer's `if` and `repeat.each`. `@readmint/expr` compiles such a string once and

@@ -1,4 +1,4 @@
-# Design format v0
+# Design format
 
 A design is a JSON or YAML document describing a canvas and its layers. It is the public contract between the editor,
 the renderer, the Action and the templates: built-in visuals are designs in this format too. `@readmint/format` reads,
