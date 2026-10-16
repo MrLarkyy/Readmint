@@ -7,10 +7,12 @@ import {
   type GitHubCache,
   type GitHubFetch,
 } from "../src/index.js";
+import { answering, FALLBACK_IDS, weeksFor, weeksNode } from "./activityBodies.js";
 import {
   exchange,
   fakeSleep,
   FIXTURE_LOGIN,
+  pageExchanges,
   replayFetch,
   successExchanges,
   type Exchange,
@@ -48,7 +50,43 @@ const echoingError = (message: string): Exchange =>
     body.errors = [{ type: "INTERNAL", message }];
   });
 
+const activityAnswer = (source: Exchange) =>
+  answering(source, "ReadmintActivity", exchange("activity").request.variables);
+const weeksAnswer = (source: Exchange) =>
+  answering(source, "ReadmintWeeks", exchange("weeks").request.variables);
+
 const scenarios: Scenario[] = [
+  {
+    name: "activity error echoing the token",
+    exchanges: [
+      ...pageExchanges(),
+      activityAnswer(echoingError(`bad token ${CANARY}`)),
+      weeksFor(
+        FALLBACK_IDS,
+        FALLBACK_IDS.map((id) => weeksNode(id, 1)),
+      ),
+    ],
+  },
+  {
+    name: "weeks error echoing the token",
+    exchanges: [
+      ...pageExchanges(),
+      exchange("activity"),
+      weeksAnswer(echoingError(`bad token ${CANARY}`)),
+    ],
+  },
+  {
+    name: "invalid weeks value",
+    exchanges: [
+      ...pageExchanges(),
+      exchange("activity"),
+      weeksFor(["R_site", "R_readmint"], [CANARY, CANARY]),
+    ],
+  },
+  {
+    name: "unauthorized on the activity request",
+    exchanges: [...pageExchanges(), activityAnswer(exchange("unauthorized"))],
+  },
   { name: "success", exchanges: successExchanges() },
   {
     name: "success in viewer mode",

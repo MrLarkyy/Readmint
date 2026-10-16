@@ -27,6 +27,7 @@
           },
           "nodes": [
             {
+              "id": "R_site",
               "name": "site",
               "nameWithOwner": "readmint-fixture/site",
               "description": "Personal site",

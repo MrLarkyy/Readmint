@@ -33,8 +33,18 @@ export function exchange(name: string): Exchange {
 }
 
 /** The profile and the three repository pages of the fixture user, at page size 2. */
-export function successExchanges(): Exchange[] {
+export function pageExchanges(): Exchange[] {
   return ["profile", "repositories-1", "repositories-2", "repositories-3"].map(exchange);
+}
+
+/** The activity and the weekly commits of the fixture user, asked for after the pages. */
+export function activityExchanges(): Exchange[] {
+  return ["activity", "weeks"].map(exchange);
+}
+
+/** A complete load of the fixture user: the profile, the pages, the activity and the weeks. */
+export function successExchanges(): Exchange[] {
+  return [...pageExchanges(), ...activityExchanges()];
 }
 
 /** A fetch that answers requests from `exchanges` in order and records what was sent. */

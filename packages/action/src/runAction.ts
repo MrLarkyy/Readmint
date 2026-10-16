@@ -1,6 +1,6 @@
 import { lstat } from "node:fs/promises";
 import path from "node:path";
-import { quoteForLog } from "@readmint/cli";
+import { partialDataWarning, quoteForLog } from "@readmint/cli";
 import type { ActionDeps } from "./ActionDeps.js";
 import { ActionError } from "./ActionError.js";
 import { ActionLog } from "./ActionLog.js";
@@ -46,7 +46,9 @@ export async function runAction(env: Env, deps: ActionDeps): Promise<number> {
       push = { repo, branch };
     }
 
-    const data = await loadActionData(config, workspace, deps.fetch);
+    const data = await loadActionData(config, workspace, deps.fetch, (parts) => {
+      log.warning(partialDataWarning(parts));
+    });
     if (config.formats.some((format) => format !== "svg")) await loadRaster(deps);
     const rendered = await renderAll(plan, workspace, data, {
       ...(config.locale === undefined ? {} : { locale: config.locale }),

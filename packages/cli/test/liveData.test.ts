@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { CliError, ExitCode, loadLiveData, runCli } from "../src/index.js";
 import { liveData } from "../src/liveData.js";
 import { boundDesign, type CliTree, makeCliTree, png } from "./cliTree.js";
-import { CANARY, echoing, githubReplay } from "./githubFetch.js";
+import { CANARY, echoing, fixtureBody, githubReplay } from "./githubFetch.js";
 
 let tree: CliTree;
 
@@ -37,6 +37,8 @@ describe("render and validate --github", () => {
       "ReadmintViewer",
       "ReadmintProfile",
       "ReadmintRepositories",
+      "ReadmintActivity",
+      "ReadmintWeeks",
     ]);
   });
 
@@ -76,8 +78,48 @@ describe("render and validate --github", () => {
     expect(sent.map((request) => request.operation)).toEqual([
       "ReadmintProfile",
       "ReadmintRepositories",
+      "ReadmintActivity",
+      "ReadmintWeeks",
     ]);
-    for (const request of sent) expect(request.variables?.["login"]).toBe("readmint-fixture");
+    for (const request of sent.slice(0, 3)) {
+      expect(request.variables?.["login"]).toBe("readmint-fixture");
+    }
+  });
+
+  test("a refused part is one stderr warning line and the render still succeeds", async () => {
+    const names: Record<string, string> = {
+      ReadmintViewer: "viewer",
+      ReadmintProfile: "profile",
+      ReadmintRepositories: "repositories-3",
+      ReadmintActivity: "activity-forbidden",
+      ReadmintWeeks: "weeks-graphql-error",
+    };
+    const replay = githubReplay((_url, init) => {
+      const sent = JSON.parse(typeof init.body === "string" ? init.body : "{}") as {
+        operationName?: string;
+      };
+      return Promise.resolve(
+        Response.json(fixtureBody(names[sent.operationName ?? ""] ?? "viewer")),
+      );
+    });
+    const run = await tree.run(["render", "bound/design.json", "--github"], {
+      env: { GH_TOKEN: CANARY },
+      fetch: replay.fetch,
+    });
+    expect(run.code).toBe(ExitCode.ok);
+    expect(run.stdout).toMatch(/^<svg /);
+    expect(run.stderr).toBe(
+      "warning: GitHub data is incomplete (activity, weeks): github.status and github.pushes are empty and github.pinned falls back to the top repositories; github.pinned[].weeklyCommits is null\n",
+    );
+    expect(run.stderr).not.toContain(CANARY);
+  });
+
+  test("a complete load prints no warning", async () => {
+    const run = await tree.run(["render", "bound/design.json", "--github"], {
+      env: { GH_TOKEN: CANARY },
+      fetch: githubReplay().fetch,
+    });
+    expect(run.stderr).toBe("");
   });
 
   test("validate --github renders with the live data", async () => {

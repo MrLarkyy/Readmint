@@ -13,7 +13,7 @@ export interface GraphQLOperation {
   readonly query: string;
 }
 
-export type GraphQLVariables = Readonly<Record<string, string | number | null>>;
+export type GraphQLVariables = Readonly<Record<string, string | number | readonly string[] | null>>;
 
 export type GraphQLContext = Pick<
   ResolvedSourceOptions,

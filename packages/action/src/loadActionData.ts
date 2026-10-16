@@ -1,5 +1,5 @@
 import { CliError, loadFixtureData, loadLiveData } from "@readmint/cli";
-import type { GitHubFetch } from "@readmint/data-github";
+import type { GitHubFetch, GitHubPartialPart } from "@readmint/data-github";
 import type { ActionConfig } from "./ActionConfig.js";
 import { ActionError } from "./ActionError.js";
 
@@ -13,6 +13,7 @@ export async function loadActionData(
   config: ActionConfig,
   workspace: string,
   fetch?: GitHubFetch,
+  onPartial?: (parts: readonly GitHubPartialPart[]) => void,
 ): Promise<Record<string, unknown>> {
   try {
     if (config.dataFile !== undefined) return await loadFixtureData(config.dataFile, workspace);
@@ -20,6 +21,7 @@ export async function loadActionData(
       token: config.token,
       ...(config.login === "" ? {} : { login: config.login }),
       ...(fetch === undefined ? {} : { fetch }),
+      ...(onPartial === undefined ? {} : { onPartial }),
     });
   } catch (error) {
     if (error instanceof CliError) throw new ActionError("data", error.lines);

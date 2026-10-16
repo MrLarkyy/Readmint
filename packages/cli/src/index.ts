@@ -12,6 +12,7 @@ export { formatIssue } from "./formatIssue.js";
 export { loadDesignAssets } from "./loadDesignAssets.js";
 export { loadDesignFile, type DesignFile, type DesignFileOptions } from "./loadDesignFile.js";
 export { loadFixtureData, maxFixtureBytes } from "./loadFixtureData.js";
+export { partialDataWarning } from "./partialDataWarning.js";
 export { loadLiveData, type LiveDataOptions, liveDataTimeoutMs } from "./loadLiveData.js";
 export { loadRenderInput, type RenderInput, type RenderInputOptions } from "./loadRenderInput.js";
 export { localeProblem } from "./localeProblem.js";

@@ -24,6 +24,7 @@ export function parseProfileResponse(data: unknown): ProfileRecord {
   const loginText = login.string();
   if (!isGitHubLogin(loginText)) login.fail("a GitHub login");
   return {
+    id: user.field("id").string(),
     login: loginText,
     name: user.field("name").nullableString(),
     bio: user.field("bio").nullableString(),

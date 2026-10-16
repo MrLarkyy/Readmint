@@ -27,6 +27,7 @@
           },
           "nodes": [
             {
+              "id": "R_readmint",
               "name": "readmint",
               "nameWithOwner": "readmint-fixture/readmint",
               "description": "Designs for READMEs",
@@ -62,6 +63,7 @@
               }
             },
             {
+              "id": "R_dotfiles",
               "name": "dotfiles",
               "nameWithOwner": "readmint-fixture/dotfiles",
               "description": "Shell setup",

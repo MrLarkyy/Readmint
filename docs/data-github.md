@@ -1,7 +1,7 @@
 # GitHub data source
 
-`@readmint/data-github` loads one GitHub user's profile, public repositories, languages and contribution calendar
-through the GraphQL API with the user's own token, and returns a plain-JSON data object that designs bind to as
+`@readmint/data-github` loads one GitHub user's profile, public repositories, languages, contribution calendar, pinned
+repositories with their weekly commits, recent pushes and status through the GraphQL API with the user's own token, and returns a plain-JSON data object that designs bind to as
 `github.*`. It is a [data source](data-sources.md) (`githubDataSource`, namespace `github`). It runs in Node 22 and in the browser (native `fetch` and `crypto.subtle`; its only dependency is `@readmint/data`).
 
 ```ts
@@ -24,7 +24,8 @@ The main entry imports no `node:` module; `FileCache` lives in the `./node` subp
 - `loadGitHubData(options): Promise<GitHubLoadResult>` — resolves to `{ data, meta }`. `data` is the data object below.
   `meta` describes the load and is kept out of `data`, so the same GitHub state gives the same object:
   `requests` (HTTP requests including retries), `cost` (GraphQL rate-limit points), `rateLimitRemaining` and
-  `resetAt` (from the last response, `null` when unknown) and `fromCache`.
+  `resetAt` (from the last response, `null` when unknown), `fromCache` and `partial` (the parts GitHub refused,
+  see [Pinned repositories, pushes and status](#pinned-repositories-pushes-and-status)).
 - `GitHubDataError` — every failure; it extends `DataSourceError` with `source` `"github"`; `code` is a `GitHubDataErrorCode` (see [Errors](#errors)), with `status`,
   `resetAt`, `retryAfterSeconds` or `causeCode` when they apply.
 - `GitHubCache` — the `DataSourceCache` interface: `get(key)` resolves to the stored text or `undefined`, `set(key, value,
@@ -53,8 +54,10 @@ ttlSeconds)` stores it.
 A value outside its range fails with `invalid-option` before any request.
 
 Fixed caps (`GitHubLimits`): a response body of at most 8 MiB, strings of at most 1024 characters, at most 54 calendar
-weeks, the first 100 languages of each repository (by size; the rest are not counted), and 3 attempts per request
-under a secondary rate limit.
+weeks, the first 100 languages of each repository (by size; the rest are not counted), 3 attempts per request
+under a secondary rate limit, 6 pinned repositories, 10 pushes (from at most 10 repositories with at most 10 commits
+each, over 7 days), 52 weeks of weekly commits, and a commit message cut at 1024 UTF-16 units on a code point
+boundary instead of failing the load.
 
 ## Data object
 
@@ -101,6 +104,36 @@ as GitHub returns them. Array items are written `[]` below.
 | `repositories[].languages[].name`      | string            | language name                                                                                                                                                                                                              |
 | `repositories[].languages[].color`     | string \| null    | `#rrggbb` or `null`                                                                                                                                                                                                        |
 | `repositories[].languages[].bytes`     | number            | bytes of code                                                                                                                                                                                                              |
+| `pinned`                               | array             | the profile's pinned repositories, else the most starred own ones; see [Pinned repositories, pushes and status](#pinned-repositories-pushes-and-status)                                                                    |
+| `pinned[].name`                        | string            | repository name                                                                                                                                                                                                            |
+| `pinned[].nameWithOwner`               | string            | `owner/name`                                                                                                                                                                                                               |
+| `pinned[].description`                 | string \| null    | description                                                                                                                                                                                                                |
+| `pinned[].url`                         | string            | repository URL                                                                                                                                                                                                             |
+| `pinned[].homepageUrl`                 | string \| null    | homepage; `null` unless it is an absolute `https://` URL                                                                                                                                                                   |
+| `pinned[].stars`                       | number            | stargazers                                                                                                                                                                                                                 |
+| `pinned[].forks`                       | number            | forks of this repository                                                                                                                                                                                                   |
+| `pinned[].isFork`                      | boolean           | the repository is a fork                                                                                                                                                                                                   |
+| `pinned[].isArchived`                  | boolean           | the repository is archived                                                                                                                                                                                                 |
+| `pinned[].createdAt`                   | timestamp         | creation                                                                                                                                                                                                                   |
+| `pinned[].pushedAt`                    | timestamp \| null | last push; `null` for an empty repository                                                                                                                                                                                  |
+| `pinned[].primaryLanguage`             | object \| null    | the main language                                                                                                                                                                                                          |
+| `pinned[].primaryLanguage.name`        | string            | language name                                                                                                                                                                                                              |
+| `pinned[].primaryLanguage.color`       | string \| null    | `#rrggbb`, or `null` when GitHub has none (or sent anything else)                                                                                                                                                          |
+| `pinned[].languages`                   | array             | languages of the repository                                                                                                                                                                                                |
+| `pinned[].languages[].name`            | string            | language name                                                                                                                                                                                                              |
+| `pinned[].languages[].color`           | string \| null    | `#rrggbb` or `null`                                                                                                                                                                                                        |
+| `pinned[].languages[].bytes`           | number            | bytes of code                                                                                                                                                                                                              |
+| `pinned[].weeklyCommits`               | array \| null     | your commits to the default branch in each of the last 52 weeks, oldest first; `null` when GitHub could not be asked                                                                                                       |
+| `pushes`                               | array             | your commits of the last 7 days, newest first, at most 10; empty when unavailable                                                                                                                                          |
+| `pushes[].repository`                  | string            | repository name without the owner                                                                                                                                                                                          |
+| `pushes[].hash`                        | string            | the first 7 characters of the commit id                                                                                                                                                                                    |
+| `pushes[].message`                     | string            | first line of the commit message, at most 1024 characters                                                                                                                                                                  |
+| `pushes[].additions`                   | number            | lines added                                                                                                                                                                                                                |
+| `pushes[].deletions`                   | number            | lines deleted                                                                                                                                                                                                              |
+| `pushes[].date`                        | timestamp         | when the commit was made                                                                                                                                                                                                   |
+| `status`                               | object \| null    | the profile status; `null` when none is set or GitHub did not return it                                                                                                                                                    |
+| `status.message`                       | string \| null    | status text                                                                                                                                                                                                                |
+| `status.emoji`                         | string \| null    | status emoji as a GitHub shortcode such as `:rocket:`                                                                                                                                                                      |
 | `repositoriesTruncated`                | boolean           | the user owns more public repositories than were loaded                                                                                                                                                                    |
 | `languages`                            | array             | languages over the loaded repositories that are not forks                                                                                                                                                                  |
 | `languages[].name`                     | string            | language name                                                                                                                                                                                                              |
@@ -141,6 +174,8 @@ The order never depends on the response order, the locale or the clock, so the s
 byte-identical object:
 
 - `repositories`: by `stars` descending, then `nameWithOwner`.
+- `pinned`: in the order the user pinned them; without pins by `stars` descending, then `nameWithOwner`.
+- `pushes`: newest `date` first, then `nameWithOwner`, then the full commit id.
 - `repositories[].languages` and `languages`: by `bytes` descending, then `name`.
 - Names compare by UTF-16 code units, not by locale.
 - A repository GitHub returns on two pages (its stars changed while loading) appears once.
@@ -164,10 +199,46 @@ contributions to their private repositories are counted in the calendar and the 
 `contributions.private` and in the calendar counts, and only when the user shows private contributions on their
 profile. A live run with the user's own token loaded and validated a real calendar.
 
+Private repositories stay out of `pinned` and `pushes` too: their names, commit messages and counts are dropped
+whatever the token can read, so a personal access token with private access exposes nothing more than the Actions
+`GITHUB_TOKEN` does. A status limited to an organization is visible to its members only, so it is dropped too
+(`status` is `null`).
+
 Repositories are loaded in pages of `pageSize`, in GitHub's order (stars descending), until there is no next page or
 `maxRepositories` is reached; `repositoriesTruncated` is then `true`. A next page without a cursor, or a cursor GitHub
 returns twice, fails with `invalid-response` instead of looping. Requests run one after another: the viewer (without
-`login`, or with a `cache`), the profile with the calendar, then the repository pages.
+`login`, or with a `cache`), the profile with the calendar, then the repository pages, the activity and the weekly commits.
+
+### Pinned repositories, pushes and status
+
+These three come from two extra requests that run after the repository pages and use `contributions.to` (the
+calendar's last day), never the clock, so the same GitHub state gives the same object.
+
+- **`pinned`** are the user's pinned **public** repositories, at most 6, in pin order. A private pin is dropped. With no
+  public pin, or when the activity request failed, `pinned` is the first 6 loaded repositories that are not forks
+  (stars descending, then `nameWithOwner`); with none of those it is `[]`. Each has the repository fields of
+  `repositories[]` and `weeklyCommits`.
+- **`weeklyCommits`** has 52 numbers, oldest week first. The weeks are 7-day UTC blocks counted back from the day after
+  `contributions.to`; the last one covers `contributions.to` and the 6 days before it. A number counts the commits **of
+  the user** (author filter by the user's id) on the repository's default branch in that week. A repository without a
+  default branch (empty) has 52 zeros. When the weeks request failed, or GitHub did not return the repository, it is
+  `null`.
+- **`pushes`** are the user's commits of the last 7 days (`contributions.to` and the 6 days before it, UTC) to the
+  default branch of up to 10 repositories GitHub lists in the contributions collection, at most 10 commits per
+  repository, newest first, at most 10 in all. A commit appears once. Commits in **private repositories are dropped**
+  with any token, as are private pins; `repository` is the name without owner and `message` the first line, cut at 1024
+  UTF-16 units on a code point boundary.
+- **`status`** is the profile status (`message`, `emoji` as a shortcode), `null` when none is set or when it is
+  limited to an organization.
+
+Both requests are best effort: `graphql`, `forbidden`, `not-found`, `invalid-response`, `http` and `too-large`
+failures of them do not fail the load. The activity request then leaves `status` `null`, `pushes` `[]` and `pinned`
+at its fallback, the weeks request leaves `weeklyCommits` `null`, and `meta.partial` names the part (`"activity"`,
+`"weeks"`). A token that may not read these fields (the Actions `GITHUB_TOKEN` or a fine-grained token, depending on its
+permissions) ends up here. Failures that
+would fail the profile request just the same still fail the load: `unauthorized`, rate limits, `network` and
+`timeout` (an abort too). A load with a non-empty `meta.partial` is not cached. The CLI and the Action each print one warning line naming the
+parts and the fields they leave empty.
 
 ## Errors
 
@@ -206,11 +277,15 @@ Strings are otherwise kept as GitHub returns them; the renderer escapes them.
   `secondary-rate-limited` and `retryAfterSeconds`.
 - 502, 503 and 504 are retried once after one second.
 - A full load sends 1 + ceil(`maxRepositories` / `pageSize`) requests, plus 1 for the viewer (without `login`, or with
-  a `cache`), plus retries: 5 with the defaults, 12 at most with `pageSize` 100.
+  a `cache`), plus the activity request and, when there are repositories to count, the weekly-commit request (2 more, none for the
+  weekly commits of an account without repositories), plus retries: 7 with the defaults, 14 at most with `pageSize` 100.
+  The activity request costs about 1 point. GitHub's estimate for the weekly-commit request is 3 points for 6
+  repositories (52 `history` counts each); it grows with the number of repositories asked for, at most 6, `meta.cost`
+  reports what GitHub charged.
 
 ## Cache
 
-With a `cache`, the validated GitHub responses of a load are stored as one entry and a later load within
+With a `cache`, the validated GitHub responses of a load (profile, pages, activity and weeks) are stored as one entry and a later load within
 `cacheTtlSeconds` sends only the viewer request. A hit is
 validated again and rebuilt by the current code, so a changed loader needs no invalidation, and an entry that fails
 validation, or belongs to another login, is a miss and is replaced.
@@ -235,6 +310,9 @@ and a failed write is ignored, so a read-only or full cache directory never fail
 `FileCache` writes one `<key>.json` file per entry, `{ storedAt, ttlSeconds, value }`: the directory with mode
 `0o700` when it creates it, files with mode `0o600`, through a temporary file and a rename. A file over 16 MiB, a
 corrupt file or an expired entry is a miss.
+
+A load with a non-empty `meta.partial` is not written, so a retry asks GitHub again instead of serving the gap until the
+entry expires. The key covers the query text, so entries of the format before the activity and weekly commits miss.
 
 ## Token
 
