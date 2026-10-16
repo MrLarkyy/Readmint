@@ -71,7 +71,7 @@ stays in the design (it is what makes the twin dark); `slot` of the repository s
 | `index`  | `logoLines`      | array  | the line (0 to 3) of each name, a number or its text; none: the first             | `["0", "1"]`                                    |
 | `index`  | `logoNames`      | array  | project names, each drawn as its logo or as text, in one card                     | `["Example"]`                                   |
 | `index`  | `logos`          | array  | the path data of each logo; empty: the name is drawn as text instead              | `["M0 0h14v14H0Z"]`                             |
-| `index`  | `logosRow`       | number | the index of the label whose value the strip replaces; default -1: none           | `5`                                             |
+| `index`  | `logosRow`       | number | the index of the label whose value the card replaces; default -1: none           | `5`                                             |
 | `footer` | `headline`       | string | the closing line                                                                  | `Open to new projects.`                         |
 | `footer` | `note`           | string | one line under it                                                                 | `Tooling, infrastructure and documentation.`    |
 | `footer` | `contactLabel`   | string | the label over the contact; empty: GitHub                                         | `Email`                                         |
