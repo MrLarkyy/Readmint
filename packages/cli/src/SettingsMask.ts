@@ -23,7 +23,8 @@ const where =
 /**
  * Hides the message of an issue that could show a value of a design's settings section. An issue inside a prop the
  * settings wrote (a bad binding) is always hidden. One inside a component the written instances use, nested ones
- * included (where the renderer reports a child layer the value broke), is hidden when its message, without the
+ * included (where the renderer reports a child layer the value broke), or on the canvas (whose bindings read the root
+ * instance's props), is hidden when its message, without the
  * renderer's trailing note of instances and repeat items, holds a string value of the section quoted as the renderer
  * echoes it (`"` and the JSON-escaped start, clipped echoes included) or one of its numbers where the renderer echoes a
  * number (`got 7`, `gives 7`, `7 is outside ...`). A `binding` issue there is not searched: expression messages name
@@ -54,6 +55,8 @@ export class SettingsMask {
         }
       }
     });
+    // Canvas bindings read the props of the root instance, so a written value can break the canvas too.
+    if (refs.length > 0) this.scopes.add("/canvas/");
     const seen = new Set<string>();
     while (refs.length > 0) {
       const ref = refs.pop() as string;

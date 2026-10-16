@@ -78,6 +78,15 @@ describe("SettingsMask", () => {
     }
   });
 
+  test("looks into the canvas, whose bindings read the root instance's props", () => {
+    const issue = { path: "/canvas/background", code: "type", message: 'got "s3cret"' };
+    expect(mask({ label: "s3cret" }).mask(issue).message).toMatch(hidden);
+    const range = { path: "/canvas/height", code: "range", message: "-98765 is outside 1..4096" };
+    expect(mask({ size: -98765 }).mask(range).message).toMatch(hidden);
+    const unrelated = { ...issue, message: 'got "other"' };
+    expect(mask({ label: "s3cret" }).mask(unrelated)).toBe(unrelated);
+  });
+
   test("matches a string only in its quoted form", () => {
     const issue = { ...child, message: "2 remaining, domain main" };
     expect(mask({ label: "main" }).mask(issue)).toBe(issue);
