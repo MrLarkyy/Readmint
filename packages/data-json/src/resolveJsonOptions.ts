@@ -1,5 +1,9 @@
-import { DataSourceError, isDataNamespace, type DataSourceCache } from "@readmint/data";
-import { checkHttpsUrl } from "./checkHttpsUrl.js";
+import {
+  checkHttpsUrl,
+  DataSourceError,
+  isDataNamespace,
+  type DataSourceCache,
+} from "@readmint/data";
 import { checkRelativeSource } from "./checkRelativeSource.js";
 import { JSON_DATA_DEFAULT_NAMESPACE } from "./JsonData.js";
 import {

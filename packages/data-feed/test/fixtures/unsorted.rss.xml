@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<rss version="2.0">
+  <channel>
+    <title>Unsorted</title>
+    <link>https://unsorted.example/</link>
+    <item><title>A</title><pubDate>Mon, 05 Oct 2026 10:00:00 GMT</pubDate></item>
+    <item><title>B</title></item>
+    <item><title>C</title><pubDate>Wed, 07 Oct 2026 10:00:00 GMT</pubDate></item>
+    <item><title>D</title><pubDate>Mon, 05 Oct 2026 12:00:00 +0200</pubDate></item>
+    <item><title>E</title><pubDate>yesterday</pubDate></item>
+    <item><title>F</title><pubDate>Thu, 08 Oct 26 10:00:00 +0000</pubDate></item>
+    <item><title>G</title><pubDate>Tue, 06 Oct 2026 10:00:00 UT</pubDate></item>
+  </channel>
+</rss>

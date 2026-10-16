@@ -2,7 +2,13 @@ import type { ComponentPropValue, Design } from "@readmint/format";
 import { renderSvg } from "@readmint/renderer";
 import { describe, expect, test } from "vitest";
 import type { ProfileTemplate } from "../src/index.js";
-import { loadProfile, profileFontAssets, renderProfile } from "./profileDesigns.js";
+import { profileExampleProps } from "@readmint/examples/props";
+import {
+  loadExampleProfile,
+  loadProfile,
+  profileFontAssets,
+  renderProfile,
+} from "./profileDesigns.js";
 import { sampleProfileData } from "./sampleProfileData.js";
 
 const rocket = "\u{1F680}";
@@ -124,14 +130,56 @@ describe("emoji no template font covers", () => {
     expect(dropped).toEqual(plain);
   });
 
-  test("the pinscreen status row keeps its place without a status", () => {
-    const svg = renderProfile({
-      template: "pinscreen",
-      design: loadProfile("pinscreen", "header"),
-      data: withStatus(""),
-    });
-    expect(slotStarts(svg)).toContain(118);
-  });
+  test.each(["light", "dark"] as const)(
+    "the pinscreen status bar closes up without a status (%s)",
+    (theme) => {
+      const render = (data: ReturnType<typeof withGitHub>) =>
+        renderProfile({
+          template: "pinscreen",
+          design: loadProfile("pinscreen", "header", theme),
+          data,
+        });
+      const dividers = (svg: string) => (svg.match(/width="1" height="16"/gu) ?? []).length;
+      for (const message of ["", null] as const) {
+        const data = message === null ? withGitHub({ status: null }) : withStatus(message);
+        const svg = render(data);
+        expect(slotStarts(svg)).toContain(80);
+        expect(slotStarts(svg)).not.toContain(118);
+        expect(dividers(svg)).toBe(1);
+      }
+      expect(dividers(render(withStatus("busy")))).toBe(2);
+    },
+  );
+
+  test.each(["light", "dark"] as const)(
+    "the horizon status dot follows the status, not the note (%s)",
+    (theme) => {
+      const accent = theme === "dark" ? "#ff8a3d" : "#e8590c";
+      const accented = (svg: string) =>
+        [...svg.matchAll(/<ellipse[^>]*>/gu)].filter((tag) => tag[0].includes(accent)).length;
+      const design = loadExampleProfile("horizon", "header", theme);
+      const without = renderProfile({
+        template: "horizon",
+        design,
+        data: withGitHub({ status: null }),
+      });
+      const note = String(profileExampleProps.horizon?.header?.["statusNote"] ?? "");
+      expect(note).not.toBe("");
+      expect(accented(without)).toBe(0);
+      expect(without).toContain(">status<");
+      const withMessage = renderProfile({ template: "horizon", design, data: withStatus("busy") });
+      expect(accented(withMessage)).toBe(3);
+      const baseline = (svg: string) => {
+        const match =
+          /translate\(580 ([\d.]+)\)" clip-path="[^"]*"><g transform="translate\(-580 -226\)">.*?<tspan x="580 [^"]*" y="([\d.]+)">Open to/u.exec(
+            svg,
+          );
+        return Number(match?.[1]) - 226 + Number(match?.[2]);
+      };
+      expect(baseline(without)).toBe(220);
+      expect(baseline(withMessage)).toBe(243);
+    },
+  );
 
   test("the horizon name fills the 840 px line as drawn, emoji and all, and never passes it", () => {
     for (const name of [
@@ -246,6 +294,75 @@ describe("emoji no template font covers", () => {
     expectTranslation(svg, -travel);
     expectTranslation(svg, travel - 900);
     expectTranslation(svg, 900 - travel);
+  });
+
+  test.each(["light", "dark"] as const)(
+    "the pinscreen status bar follows the branch as drawn (%s)",
+    (theme) => {
+      const divider = (svg: string) =>
+        [...svg.matchAll(/<rect x="([\d.]+)" y="234" width="1" height="16"/gu)].map((match) =>
+          Number(match[1]),
+        );
+      for (const branch of ["main", "production", "development", "release/1.2.3"]) {
+        const design = withProps(loadProfile("pinscreen", "header", theme), {
+          branch,
+          statusBarRight: "v2",
+        });
+        const drawn = drawnWidth("pinscreen", design, "mono", 11.5, branch.slice(0, 12));
+        const end = 32 + drawn;
+        const start = Math.max(80, end + 12);
+        for (const status of [null, { emoji: null, message: "busy" }]) {
+          const svg = renderProfile({
+            template: "pinscreen",
+            design,
+            data: withGitHub({ status }),
+          });
+          const dividers = divider(svg);
+          expect(dividers.filter((x) => x > 0)).toHaveLength(status === null ? 0 : 1);
+          const slots = slotStarts(svg);
+          const has = (x: number) => slots.some((slot) => Math.abs(slot - x) < 0.01);
+          if (status === null) {
+            expect(has(start)).toBe(true);
+          } else {
+            expect(dividers.find((x) => x > 0)).toBeCloseTo(start, 2);
+            expect(has(start - 80) || start === 80).toBe(true);
+          }
+          const text = drawnWidth("pinscreen", design, "mono", 11.5, "busy");
+          const base = status === null ? start : start + 24 + text + 14;
+          const slot = 826 - (base + 85) - drawnWidth("pinscreen", design, "mono", 11.5, "v2") - 24;
+          const push = `${sampleProfileData().github.pushes[0]?.repository ?? ""}: ${sampleProfileData().github.pushes[0]?.message ?? ""}`;
+          const ticker = longestCut(
+            (text) => drawnWidth("pinscreen", design, "mono", 11.5, text),
+            push,
+            Math.max(slot, 27.6),
+          );
+          expectTranslation(svg, -drawnWidth("pinscreen", design, "mono", 11.5, ticker));
+        }
+      }
+    },
+  );
+
+  test("the pinscreen ticker uses the closed-up slot without a status", () => {
+    const right = `${party} v2.0`;
+    const push =
+      "a very long push message that cannot fit beside the branch and the right-hand note at all, really";
+    const design = withProps(loadProfile("pinscreen", "header"), { statusBarRight: right });
+    const data = withGitHub({
+      status: null,
+      pushes: [{ ...sampleProfileData().github.pushes[0], repository: "tinydb", message: push }],
+    });
+    const svg = renderProfile({
+      template: "pinscreen",
+      design,
+      data,
+      expectWarnings: ["missing-glyph"],
+    });
+    const width = (text: string) => drawnWidth("pinscreen", design, "mono", 11.5, text);
+    const slot = 826 - (80 + 85) - width(right) - 24;
+    const ticker = longestCut(width, `tinydb: ${push}`, Math.max(slot, 27.6));
+    const travel = width(ticker);
+    expect(travel).toBeLessThanOrEqual(slot);
+    expectTranslation(svg, -travel);
   });
 
   test("the year-ring ticker travels the push's drawn width", () => {

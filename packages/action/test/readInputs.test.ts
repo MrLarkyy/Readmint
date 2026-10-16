@@ -314,3 +314,54 @@ describe("data-json", () => {
     ]);
   });
 });
+
+describe("data-feed", () => {
+  test("one feed per line, limits attached by namespace", () => {
+    const config = readInputs(
+      env({
+        ...base,
+        "data-feed": " blog=https://blog.example/feed.xml \n\nhttps://videos.example/feed?id=1\n",
+        "data-feed-limits": "feed=10",
+      }),
+    );
+    expect(config.dataFeed).toEqual([
+      { namespace: "blog", url: "https://blog.example/feed.xml" },
+      { namespace: "feed", url: "https://videos.example/feed?id=1", limit: 10 },
+    ]);
+    expect(readInputs(env(base))).not.toHaveProperty("dataFeed");
+  });
+
+  test("namespace github clashes with the GitHub data, not with a data-file", () => {
+    expect(problems({ ...base, "data-feed": "github=https://x.example/f" })).toEqual([
+      expect.stringContaining("input data-feed: namespace github clashes") as string,
+    ]);
+    expect(
+      readInputs(env({ ...base, "data-file": "d.json", "data-feed": "github=https://x.example/f" }))
+        .dataFeed,
+    ).toEqual([{ namespace: "github", url: "https://x.example/f" }]);
+  });
+
+  test("a namespace a data-json source has too is a problem naming it", () => {
+    expect(
+      problems({ ...base, "data-json": "posts=p.json", "data-feed": "posts=https://x.example/f" }),
+    ).toEqual([
+      "input data-feed: namespace posts is also a data-json namespace; name one of them another namespace",
+    ]);
+  });
+
+  test("bad lines are listed with the other problems, never quoting a URL", () => {
+    const listed = problems({
+      ...base,
+      "data-feed": "a=http://x.example/?key=SECRETKEY\na=https://y.example/",
+      "data-feed-limits": "a=99\nb=2\nnot a limit",
+    });
+    expect(listed).toEqual([
+      "input data-feed: the URL of feed a is not an https URL",
+      "input data-feed: feed namespace a is given twice",
+      "input data-feed: the limit of feed a must be a whole number from 1 to 50",
+      "input data-feed: a feed limit names namespace b, which has no feed",
+      "input data-feed: a feed limit must be <namespace>=<n>",
+    ]);
+    expect(listed.join("\n")).not.toContain("SECRETKEY");
+  });
+});

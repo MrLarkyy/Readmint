@@ -309,6 +309,7 @@
               "type": "ellipse",
               "x": 580.5,
               "y": 211.5,
+              "if": "{{ github.status.message }}",
               "width": 7,
               "height": 7,
               "fill": "{{ props.theme == \"dark\" ? \"#FF8A3D\" : \"#E8590C\" }}"
@@ -317,6 +318,7 @@
               "type": "ellipse",
               "x": 580.5,
               "y": 211.5,
+              "if": "{{ github.status.message }}",
               "width": 7,
               "height": 7,
               "fill": "none",
@@ -628,7 +630,7 @@
             {
               "type": "group",
               "x": 580,
-              "y": 226,
+              "y": "{{ github.status.message ? 226 : 203 }}",
               "width": 270,
               "height": 24,
               "clip": true,

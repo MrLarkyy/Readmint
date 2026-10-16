@@ -8,6 +8,7 @@
     "paths": {
       "@readmint/cli": ["../cli/src/index.ts"],
       "@readmint/data": ["../data/src/index.ts"],
+      "@readmint/data-feed": ["../data-feed/src/index.ts"],
       "@readmint/data-github": ["../data-github/src/index.ts"],
       "@readmint/data-json": ["../data-json/src/index.ts"],
       "@readmint/data-json/node": ["../data-json/src/node/index.ts"],

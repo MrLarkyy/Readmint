@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?xml-stylesheet type="text/xsl" href="/rss.xsl"?>
+<!-- A blog feed: CDATA HTML, content:encoded, dc:date, RFC 822 dates with an offset and a zone name. -->
+<rss version="2.0"
+  xmlns:content="http://purl.org/rss/1.0/modules/content/"
+  xmlns:dc="http://purl.org/dc/elements/1.1/"
+  xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Mint &amp; Notes</title>
+    <link>https://blog.example/</link>
+    <atom:link href="https://blog.example/feed.xml" rel="self" type="application/rss+xml"/>
+    <description>Writing about README graphics</description>
+    <item>
+      <title>Shipping the &lt;em&gt;feed&lt;/em&gt; source</title>
+      <link>https://blog.example/posts/feed-source</link>
+      <guid isPermaLink="true">https://blog.example/posts/feed-source</guid>
+      <pubDate>Fri, 16 Oct 2026 14:30:00 +0200</pubDate>
+      <description><![CDATA[<p>RSS and <b>Atom</b> feeds &amp; more.</p><script>alert("x")</script><p>Second&nbsp;paragraph.</p>]]></description>
+    </item>
+    <item>
+      <title>Colour management</title>
+      <guid>https://blog.example/posts/colour</guid>
+      <pubDate>Tue, 13 Oct 2026 08:00:00 EST</pubDate>
+      <content:encoded><![CDATA[<h2>Why</h2><p>Chromium and resvg disagree.</p>]]></content:encoded>
+    </item>
+    <item>
+      <title>A relative link</title>
+      <link>/posts/relative</link>
+      <guid isPermaLink="false">post-3</guid>
+      <dc:date>2026-10-14T09:15:00Z</dc:date>
+      <description>Plain text, no markup.</description>
+    </item>
+  </channel>
+</rss>
