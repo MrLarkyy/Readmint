@@ -120,3 +120,13 @@ describe("wrapText zero-width words", () => {
     ]);
   });
 });
+
+describe("wrapText consecutive spaces", () => {
+  test("the empty word between two spaces has no width: the break falls after the first space", () => {
+    expect(wrapText("aaaa  bbbb", 4, count)).toEqual(["aaaa ", "bbbb"]);
+  });
+
+  test("three spaces keep two on the first line", () => {
+    expect(wrapText("aaaa   bbbb", 4, count)).toEqual(["aaaa  ", "bbbb"]);
+  });
+});

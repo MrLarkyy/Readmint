@@ -193,9 +193,10 @@ Drawn in document order, first at the back. Layer `id` and `name` are not emitte
   it.
 - **Missing glyphs**: a code point neither the font nor its fallbacks have is not written, so no engine draws it (no
   browser fallback font, no `.notdef` box); it takes no space either (no advance, no letter spacing, no kerning across it), so the line closes
-  over it; the cluster still separates its neighbours, so they are not kerned together (AV measures 28.14, A, a dropped
-  cluster and V measure 28.88); the spaces typed around it stay, and a word of dropped clusters only has no width and
-  never starts a wrapped line. A cluster is one user-perceived character, so an emoji sequence
+  over it; the cluster still separates its neighbours, so they are not kerned together (Montserrat Medium at 20 px: AV measures 28.14,
+  A, a dropped cluster and V measure 28.88); the spaces typed around it stay, and a word of dropped clusters only has no width and
+  never starts a wrapped line (the empty word between two spaces has no width either: at a break the first of two
+  spaces stays on the line, so "aaaa  bbbb" wraps to "aaaa " and "bbbb"). A cluster is one user-perceived character, so an emoji sequence
   (a ZWJ family, a flag, a skin tone, a variation selector) is dropped whole; a keycap keeps its digit when a font has it and
   drops the enclosing mark U+20E3. An emoji is therefore drawn only when a font of the text has it as an outline glyph:
   add a monochrome outline emoji font (when its licence allows embedding) as a `fallback` of the text's font. Colour
