@@ -193,14 +193,19 @@ Drawn in document order, first at the back. Layer `id` and `name` are not emitte
   it.
 - **Missing glyphs**: a code point neither the font nor its fallbacks have is not written, so no engine draws it (no
   browser fallback font, no `.notdef` box); it takes no space either (no advance, no letter spacing, no kerning across it), so the line closes
-  over it as if the cluster were not in the text; the spaces typed around it stay. A cluster is one user-perceived character, so an emoji sequence
+  over it; the cluster still separates its neighbours, so they are not kerned together (AV measures 28.14, A, a dropped
+  cluster and V measure 28.88); the spaces typed around it stay, and a word of dropped clusters only has no width and
+  never starts a wrapped line. A cluster is one user-perceived character, so an emoji sequence
   (a ZWJ family, a flag, a skin tone, a variation selector) is dropped whole; a keycap keeps its digit when a font has it and
   drops the enclosing mark U+20E3. An emoji is therefore drawn only when a font of the text has it as an outline glyph:
   add a monochrome outline emoji font (when its licence allows embedding) as a `fallback` of the text's font. Colour
-  glyph formats (`COLR`, `CBDT`, `sbix`, SVG) are not drawn. No emoji font is bundled or implied. (A space variant or U+2011 the font can draw by the fallbacks above is not missing.) The render warns `missing-glyph` once per font asset a text names (also when a `fontWeight` picked
+  glyph formats are not drawn: a font that holds only bitmaps (`CBDT`, `sbix`) has no outlines and is refused as
+  `asset-format`; a font with `COLR` or SVG glyphs next to its outlines is accepted, and a glyph that has no outline of
+  its own keeps its advance (an empty space) with no warning, because the font does cover the character. No emoji font is bundled or implied. (A space variant or U+2011 the font can draw by the fallbacks above is not missing.) The render warns `missing-glyph` once per font asset a text names (also when a `fontWeight` picked
   another face of its family), naming up to ten such characters. Default ignorables (ZWJ, ZWNJ, bidi controls,
   variation selectors, ...) take part in shaping and bidi, are never drawn and never count as missing, so the warning
-  names the pictographic characters only. A dropped cluster inside a word still separates the letters around it for joining (Arabic) and ligatures.
+  names the characters that carry a cluster: pictographs, but also the keycap mark U+20E3, regional indicators (a flag)
+  and skin-tone modifiers. A dropped cluster inside a word still separates the letters around it for joining (Arabic) and ligatures.
 - **Remaining limits of shaping**: only Arabic and Devanagari have shapers of their own; every other script (Hebrew,
   Thai, Bengali, Tamil, Khmer, Myanmar, the scripts HarfBuzz's USE shaper handles, ...) gets the font's GSUB and GPOS
   features through the default shaper, without syllable reordering. Only the default language system is used (no

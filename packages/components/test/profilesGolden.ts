@@ -32,15 +32,19 @@ const frames: Readonly<Record<ProfileTemplate, readonly [ProfileSection, number]
   pinscreen: ["year", 3000],
 };
 
-/** The sample data with emoji in the bio and the status: no template font covers them, so they are dropped. */
+/** The sample data with emoji in the name, bio, status and latest push: no template font covers them, so they are dropped. */
 function emojiProfileData(): ReturnType<typeof sampleProfileData> {
   const data = sampleProfileData();
   return {
     github: {
       ...data.github,
+      name: `${data.github.name ?? data.github.login} \u{1F680}`,
       bio: "Having fun \u{1F377}",
+      pushes: data.github.pushes.map((push, index) =>
+        index === 0 ? { ...push, message: "Fix \u{1F41B} in the parser \u{1F680}" } : push,
+      ),
       status: {
-        emoji: data.github.status.emoji,
+        emoji: "\u{1F680}",
         message:
           "Shipping \u{1F469}\u200D\u{1F4BB} \u{1F1E8}\u{1F1FF} \u{1F44D}\u{1F3FD} 1\uFE0F\u20E3 \u2764\uFE0F",
       },
@@ -51,6 +55,7 @@ function emojiProfileData(): ReturnType<typeof sampleProfileData> {
 /**
  * The golden suite of one profile template: every section in both themes with the example's personal texts, the
  * long ones on worst-case data, the year on a sparse, spiky calendar, the sections with personal texts left empty,
+ * the header with emoji no template font covers (dropped without a gap, in the name, bio, status and latest push),
  * and a mid frame.
  */
 export function profileGoldenSuite(template: ProfileTemplate): GoldenSuite<ProfileRender> {

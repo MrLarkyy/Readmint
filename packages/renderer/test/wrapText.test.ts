@@ -90,3 +90,33 @@ describe("wrapText", () => {
     expect(performance.now() - started).toBeLessThan(500 * loadScale());
   });
 });
+
+describe("wrapText zero-width words", () => {
+  /** An emoji with no glyph is dropped by the shaper: it measures 0. */
+  const dropped = (text: string) => Array.from(text).filter((c) => c !== "\u{1F680}").length;
+
+  test("a dropped word last never starts a line of its own", () => {
+    expect(wrapText("Building tools \u{1F680}", 14, dropped)).toEqual(["Building tools \u{1F680}"]);
+  });
+
+  test("a dropped word in the middle stays on the line, the next word breaks without a leading space", () => {
+    expect(wrapText("Building tools \u{1F680} and more", 14, dropped)).toEqual([
+      "Building tools \u{1F680}",
+      "and more",
+    ]);
+  });
+
+  test("a text of dropped words alone is one line", () => {
+    expect(wrapText("\u{1F680}", 5, dropped)).toEqual(["\u{1F680}"]);
+    expect(wrapText("\u{1F680} \u{1F680} \u{1F680}", 1, dropped)).toEqual([
+      "\u{1F680} \u{1F680} \u{1F680}",
+    ]);
+  });
+
+  test("a dropped word at the start of a wrapped line stays with the word before it", () => {
+    expect(wrapText("aaaa \u{1F680}\u{1F680} bbbb", 4, dropped)).toEqual([
+      "aaaa \u{1F680}\u{1F680}",
+      "bbbb",
+    ]);
+  });
+});
