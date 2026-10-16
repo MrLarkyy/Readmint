@@ -217,7 +217,7 @@ folder: see [asset-loading.md](asset-loading.md).
 A component definition is `{ description?, width?, height?, props?, layers }` (`width`/`height` are literal sizes).
 `props` maps a prop name to `{ type: "string" | "number" | "boolean" | "color", required?: boolean, default? }`, to
 `{ type: "enum", values, required?, default? }` or to `{ type: "array", required?, default? }`.
-Component layers read their props as bindings (`{{props.label}}`).
+Component layers read their props as bindings (`{{props.label}}`). The props of a root instance can also come from a settings file passed to the CLI or the Action, which is not part of the format ([cli.md](cli.md#settings-file)).
 
 An `enum` prop takes a string that is one of `values` (1 to 64 strings of 1 to 128 characters); a `default` not listed
 is an `enum` issue at `.../default`. An `array` prop takes a list: a literal list of at most 1000 strings, numbers or

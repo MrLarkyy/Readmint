@@ -187,7 +187,7 @@ A folder holds, per section, `<section>.json` and its dark twin `<section>.dark.
 - **Personal texts are root props.** What only a person can say (an introduction, a role, index rows, stack groups,
   the people worked with, the footer and the contact) is a prop of the root instance, declared per section with an
   empty default; an empty prop hides its block (an empty introduction falls back to `github.bio`, an empty contact to
-  the GitHub address). A prop is set in the light design and the same in its twin. Array props hold strings only, so a
+  the GitHub address). They are set once per template in its `settings.json` (below), which covers the light design and its twin alike. Array props hold strings only, so a
   table is two arrays of the same length (`labels`, `values`), and a multi-line item is one string with line breaks.
   Each template's `README.md` lists its props with neutral examples. The canvas height cannot read a prop, so the
   sections whose rows come from props have a fixed height (the `year-ring` index takes up to 8 rows, the `pinscreen`
@@ -205,6 +205,26 @@ A folder holds, per section, `<section>.json` and its dark twin `<section>.dark.
   font asset that has them and list it in the `fallback` of the design's fonts
   ([design format](design-format.md#assets)), and mind the size budget below. Archivo has no arrow or star glyph
   either: the contact arrow and the worked-with stars are paths.
+
+### Settings file
+
+Each template folder ships a `settings.json`: the personal texts of every section by name, at the empty defaults, for
+you to fill in once.
+
+```json
+{
+  "header": { "intro": "I build developer tools." },
+  "footer": { "headline": "Open to new projects." }
+}
+```
+
+Pass it as the Action input `props-file` (`props-file: readmint/designs/year-ring/settings.json`) or the CLI option
+`--props`. Each entry is merged into the root component of the section's light design and its `.dark` twin, wins over
+the same prop in the design, and is checked like any prop: an undeclared prop or a wrong type fails, naming the section
+and the prop ([cli.md](cli.md#settings-file), [action.md](action.md#settings-file)). `theme` and `slot` are not in the
+file; they stay in the designs (a test pins that the file covers every other root prop at its component default). The
+design format is unchanged: a merged design is an ordinary design, and the preview and a render of a design with the
+props written into it are byte-identical.
 
 ### The examples repository
 

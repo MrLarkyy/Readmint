@@ -37,6 +37,7 @@ data it fails `image-binding`.
 | ------------------ | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `--root <dir>`     | all                  | the folder the design file must lie in; default the current folder                                                                                                                                                                                                                                                                    |
 | `--data <file>`    | all                  | fixture data (below)                                                                                                                                                                                                                                                                                                                  |
+| `--props <file>`   | all                  | settings: root component props by section, merged into the design ([Settings file](#settings-file))                                                                                                                                                                                                                                   |
 | `--locale <tag>`   | all                  | BCP 47 language tag for the `number`, `compact`, `percent` and `date` filters; default the design's `locale`, else `en`; a tag the expression tables lack (`en`, `de`, `fr`, `es`, `cs`, or a region tag of one) is a usage error                                                                                                     |
 | `--time <ms>`      | `render`, `validate` | renders that frame of the animation as a static SVG (or a still raster image), in 0..86400000                                                                                                                                                                                                                                         |
 | `--out <file>`     | `render`             | writes the output to this file (its folder must exist) instead of standard output; written only once the whole output is made, so a failed raster export leaves it as it was                                                                                                                                                          |
@@ -117,6 +118,35 @@ lowercase letters or digits, not `true`, `false` or `null`). The `github` shape 
 no token and no environment variable (it only keeps the values of `GH_TOKEN` and `GITHUB_TOKEN` out of its messages,
 see below), and makes no network request except, with `--fetch-images`, the image requests of
 [asset-loading.md](asset-loading.md#images-bound-from-data).
+
+## Settings file
+
+`--props` names a JSON file with the personal texts of a template, set once for all its sections, light and dark: an
+object of sections, each an object of root props.
+
+```json
+{
+  "header": { "intro": "I build developer tools." },
+  "stack": { "labels": ["Tools"], "items": ["Git"] }
+}
+```
+
+The section of a design is its file name without the extension (`.json`, `.yaml`, `.yml`) and without a trailing
+`.dark`: `header.json` and `header.dark.json` both take the `header` entry. For each top-level `component` layer of
+that design, every prop of the section is set on it and wins over the same prop written on the layer; the merged design
+is then validated like any design, so a value takes the same types and limits, and a `{{ }}` string is a binding of the
+same safe expression language. A prop the design's top-level components do not declare, a value of the wrong type or an
+enum value the prop does not list is an error (exit code 1) naming the design, the section and the prop
+(`header.json: error unknown-property at /header/colour: ...`), never the value. A design whose section the file lacks is
+rendered as it is, and a section no design names is ignored. The output is the same as rendering the design with the
+props written into its root layer; the design format is not involved (no `$schema`, no version).
+
+The file is JSON, UTF-8, at most 4 MiB of text; section and prop names are ids (a letter, then letters, digits, `_` or
+`-`, at most 64); a value is a string, a number, a boolean or an array of those. Like `--data` it is the user's own
+file and may lie anywhere. A file that cannot be read exits with code 3, one whose content is invalid with code 1; the
+message names the file and the pointer, not the content. `preview` watches the file and re-renders when it changes.
+The Action takes the same file as [`props-file`](action.md#inputs). The profile templates ship one, see
+[components.md](components.md#profile-templates).
 
 ## Live GitHub data
 
