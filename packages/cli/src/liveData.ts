@@ -60,6 +60,9 @@ function loadGitHub(
   return loadLiveData({
     token,
     ...(args.login === undefined ? {} : { login: args.login }),
+    ...(args.excludeRepositories === undefined
+      ? {}
+      : { excludeRepositories: args.excludeRepositories }),
     fetch: io.fetch ?? globalThis.fetch,
     onPartial: (parts) => {
       void io.stderr(`warning: ${partialDataWarning(parts)}\n`);

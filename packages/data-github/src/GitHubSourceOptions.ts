@@ -17,6 +17,8 @@ export const GitHubLimits = Object.freeze({
   minCacheTtlSeconds: 1,
   maxCacheTtlSeconds: 604_800,
   defaultCacheTtlSeconds: 3600,
+  /** Entries of `excludeRepositories`. */
+  maxExcludedRepositories: 100,
   /** Attempts per request while GitHub answers with a secondary rate limit. */
   maxAttempts: 3,
   /** Wait for a secondary rate limit that names no `retry-after`. */
@@ -57,6 +59,11 @@ export interface GitHubSourceOptions extends DataSourceLoadOptions {
   readonly pageSize?: number;
   /** Repositories loaded at most, 1 to 1000 (default 300). */
   readonly maxRepositories?: number;
+  /**
+   * Repositories left out of every aggregate, as `name` or `owner/name` (case-insensitive), at
+   * most 100. Explicit profile pins are not affected.
+   */
+  readonly excludeRepositories?: readonly string[];
   /** Per request, 1000 to 120000 ms (default 30000). */
   readonly requestTimeoutMs?: number;
   /** Longest secondary rate-limit wait accepted, 0 to 900 s (default 60). */

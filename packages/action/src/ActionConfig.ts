@@ -18,6 +18,8 @@ export interface ActionConfig {
   readonly token: string;
   /** GitHub login to load; empty: the token's owner. */
   readonly login: string;
+  /** Repositories `github` data leaves out of every aggregate; absent: none. */
+  readonly excludeRepositories?: readonly string[];
   /** Fixture data file instead of a GitHub load. */
   readonly dataFile?: string;
   /** JSON sources of `data-json` with the headers of `data-json-headers`, added to the fixture or GitHub data. */

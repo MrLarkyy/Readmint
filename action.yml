@@ -35,6 +35,9 @@ inputs:
     description: GitHub login whose data is loaded; required with the workflow's GITHUB_TOKEN.
     required: false
     default: ${{ github.repository_owner }}
+  exclude-repositories:
+    description: Repositories (name or owner/name; comma or line separated) left out of every GitHub aggregate such as the languages; not with data-file.
+    required: false
   data-file:
     description: Fixture data JSON file (the CLI `--data` format) used instead of loading GitHub data; a file inside the workspace.
     required: false
