@@ -143,12 +143,17 @@ describe("redirects", () => {
   });
 
   test("an opaque redirect response of a browser is invalid-response", async () => {
-    const opaque = Object.defineProperty(new Response(null, { status: 200 }), "type", {
-      value: "opaqueredirect",
-    });
+    const opaque = Object.defineProperty(
+      new Response("{}", { status: 200, headers: { "content-type": "application/json" } }),
+      "type",
+      {
+        value: "opaqueredirect",
+      },
+    );
     const stub = stubFetch(() => opaque);
     const error = await failure(load(stub.fetch));
     expect(error.code).toBe("invalid-response");
+    expect(error.message).toContain("redirected without a usable Location");
     expect(stub.calls).toHaveLength(1);
   });
 
