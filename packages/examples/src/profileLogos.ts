@@ -93,14 +93,14 @@ export const profileLogos: readonly ProfileLogo[] = [
       },
     ],
     trace:
-      "SVG, its own fills; crop 0,0,0.875,1; 2 colours (#f57233 #606060, largest area at the bottom, cumulative masks); potrace turdSize 2, optTolerance 0.2, 14 px tall; no fallback",
+      "SVG, its own fills; crop 0,0,0.875,1; 2 colours (#f57233 #606060, largest area at the bottom, cumulative masks); potrace turdSize 2, optTolerance 0.2, 14 px tall; the mark is stacked letters, so only the (R) is cropped off and no symbol is cut out; neutral grey takes the ink; no fallback",
     page: "https://www.swn-schody.cz/",
     source: "https://www.swn-schody.cz/img/logo.svg",
     retrieved,
     sha256: "49cb8c1c9877b74d08290a13c6673991541c2d2844552e451ca70f1670b3de04",
     licence: "None found: the site publishes no brand kit and no permission to reuse the logo.",
     owner:
-      'SWN Moravia (company number 63493845, as swn-schody.cz shows it next to the logo with the alt text "Logo SWN Moravia")',
+      'SWN Moravia (company number 63493845, shown as IČ 63493845 on https://www.swn-schody.cz/ next to the logo with the alt text "Logo SWN Moravia")',
     note,
   },
   {
@@ -129,7 +129,7 @@ export const profileLogos: readonly ProfileLogo[] = [
     licence:
       "None found: the logo is published by a news site that gives no permission to reuse it.",
     owner:
-      "Partners Financial Services, a.s. (partners.cz; company number 27699781 as established for this task: the partners.cz pages read name the company but not the number)",
+      "Partners Financial Services, a.s. (company number 27699781, shown as IČ 276 99 781 in the footer of https://www.partners.cz/)",
     note,
   },
   {
@@ -159,7 +159,7 @@ export const profileLogos: readonly ProfileLogo[] = [
       },
     ],
     trace:
-      "PNG, background removed by flood fill from the border (seal 1); crop none; 4 colours (#040202 #d28c6f #facca0 #801715, largest area at the bottom, cumulative masks); potrace turdSize 2, optTolerance 0.2, 14 px tall; lightness shifted (same hue and chroma) to reach 2:1 against the card where the brand colour failed; no fallback",
+      "PNG, background removed by flood fill from the border (seal 1); crop none; 4 colours (#040202 #d28c6f #facca0 #801715, largest area at the bottom, cumulative masks); potrace turdSize 2, optTolerance 0.2, 14 px tall; lightness shifted (same hue and chroma) to reach 2:1 against the card where the brand colour failed; several neutral colours, so each keeps its colour (lightness-shifted per theme) instead of taking the ink; no fallback",
     page: "https://hoplite.gg/",
     source:
       "https://aquatic.gg/hoplite.png (the author's own earlier profile README, https://aquatic.gg/hoplite.png)",
@@ -192,7 +192,7 @@ export const profileLogos: readonly ProfileLogo[] = [
       },
     ],
     trace:
-      "PNG, background removed by flood fill from the border (seal 1); crop none; 3 colours (#2f2221 #fbfbe5 #d0cab0, largest area at the bottom, cumulative masks); potrace turdSize 2, optTolerance 0.2, 14 px tall; lightness shifted (same hue and chroma) to reach 2:1 against the card where the brand colour failed; no fallback",
+      "PNG, background removed by flood fill from the border (seal 1); crop none; 3 colours (#2f2221 #fbfbe5 #d0cab0, largest area at the bottom, cumulative masks); potrace turdSize 2, optTolerance 0.2, 14 px tall; lightness shifted (same hue and chroma) to reach 2:1 against the card where the brand colour failed; several neutral colours, so each keeps its colour (lightness-shifted per theme) instead of taking the ink; no fallback",
     page: "https://minebox.co/",
     source:
       "https://aquatic.gg/minebox.png (the author's own earlier profile README, https://aquatic.gg/minebox.png)",
@@ -210,18 +210,18 @@ export const profileLogos: readonly ProfileLogo[] = [
     layers: [
       {
         d: "M5.4 0.6C6 0 6.2 -0.1 6.9 0.1C7.3 0.1 8.5 0.2 9.4 0.2C11.2 0.2 13.3 1.4 12.4 1.9C12.3 2 12.2 2.4 12.1 2.7C11.9 3.5 11.3 4.2 11.3 3.6C11.3 3.5 11.1 3.1 11 2.9C10.6 2.5 10.6 2.5 10.8 3C10.9 3.4 10.8 3.5 10.6 3.4C9.6 3 9.3 3 9.3 3.3C9.3 3.7 8.5 4.4 8 4.6C7.3 4.9 7.5 5.5 8.2 5.3C9 5.2 9.5 5.8 9.5 6.9C9.5 7.5 9.6 7.6 9.9 7.6C10 7.5 10.2 7.6 10.3 7.8C10.3 8.1 10.7 8.3 11.1 8.4C11.4 8.4 11.7 8.6 11.7 8.8C11.7 9 11.9 9.1 12.3 9L12.8 8.9L12.5 9.6C12.1 10.2 12.1 10.2 12.5 10.6C13 11.3 12.9 11.5 11.8 11.9C11.3 12.1 10.3 12.6 9.6 13.1L8.3 14L4.9 13.8C0.6 13.6 -0.5 13.1 0.3 11.8C0.5 11.6 0.4 11.4 0.2 11.1C-0.1 10.8 -0.1 10.7 0.2 10.6C0.5 10.5 0.5 10.3 0.5 10.1C0.4 9.8 0.5 9.5 0.8 9.3C1.1 9.1 1.2 8.9 1.1 8.7C1 8.6 1.1 8.5 1.2 8.5C1.3 8.5 1.5 8.2 1.6 7.8C1.9 7.2 2 7.2 2 7.5C2.1 7.8 2.2 7.7 2.6 7C3.2 5.6 4.3 4.9 5.6 4.9C6.6 4.9 7.1 4.5 6.5 4.3C6.1 4.2 6 2.3 6.3 1.9C6.7 1.5 6.8 1.3 6.5 1.3C6.4 1.3 6.1 1.6 6 2C5.5 3 5.2 3.2 4.9 2.5C4.6 1.6 4.7 1.3 5.4 0.6Z",
+        fill: "#273f41",
+        fillDark: "#3b5355",
+      },
+      {
+        d: "M6.4 0.2C6.9 -0.1 7 -0.1 7.5 0.3C7.7 0.4 8.1 0.5 8.3 0.5C8.7 0.4 8.8 0.9 8.5 1.2C8.3 1.2 8.2 1.1 8.2 0.9C8.2 0.5 8.2 0.5 8 0.9C7.9 1.1 7.5 1.3 7.2 1.3C6.7 1.2 6.6 1.2 7 1.1C7.5 0.9 7.5 0.9 7 0.8C6.5 0.8 6 1.3 5.6 2.2C5.4 2.8 5 3 4.9 2.5C4.9 2.4 4.9 2 4.9 1.8C4.8 1.5 5 1.1 5.4 0.7C5.8 0.4 6 0.2 6 0.3C6 0.3 6.2 0.3 6.4 0.2ZM10.2 0.3C10.2 0.2 10.5 0.2 10.7 0.3C11.3 0.5 12.5 1.8 12.2 1.9C12 1.9 12 2.2 12 2.4C11.9 3.1 11.5 3.7 11.4 3.3C11.3 3.1 11.1 2.9 11 2.7C10.8 2.6 10.7 2.3 10.8 2.2C10.9 2.2 10.8 2.1 10.7 2.2C10.5 2.4 10.5 2.5 10.7 2.8C10.9 3.2 10.8 3.3 10.5 3.1C9.7 2.9 9 2.8 9.2 2.9C9.4 3.2 8.7 4.4 8.4 4.3C8.2 4.2 8 4.3 7.9 4.5C7.6 4.8 7.6 4.8 7.7 4.3C7.9 3.5 8.3 2.8 8.5 2.9C8.6 3 8.7 2.8 8.7 2.5C8.7 2.2 8.7 1.9 8.8 2C9.5 2.1 9.7 1.8 9.1 1.7L8.3 1.6L8.9 1.3C9.2 1.2 9.3 1.1 9.1 1.1C8.7 1 9 0.6 9.5 0.5C9.8 0.4 10.1 0.3 10.2 0.3ZM11 1.5C11.4 2 11.5 2 11.4 1.6C11.3 1.4 11.1 1.2 10.9 1.2C10.6 1.1 10.6 1.1 11 1.5ZM6.3 2C6.6 1.5 7.2 1.7 6.9 2.2C6.8 2.4 6.7 2.7 6.8 2.9C6.8 3 6.9 3 6.9 2.8C6.9 2.6 7 2.3 7.1 2.3C7.3 2.1 7.2 3.2 7 3.5C6.8 3.6 6.8 3.9 6.9 4.1C7 4.4 7 4.4 6.6 4.1C6.3 3.7 6.1 2.4 6.3 2ZM4.4 5.4C5.2 4.9 6 4.9 6.7 5.4L7.2 5.9L6.6 6.4C6.1 6.8 5.9 6.9 5.5 6.7C5.2 6.6 5 6.6 4.6 6.8C3.3 7.7 3.9 10.2 5.2 9.4C5.7 9.1 6.8 9.7 6.5 10.2C6.2 10.7 5.2 11.1 4.5 11.2C3.8 11.2 3.8 11.2 5 11.6C5.8 11.8 6.5 11.9 6.8 11.9C7 11.8 7.6 11.7 8.1 11.8C9.1 11.8 9.3 11.6 9.3 10.6C9.3 10.1 9.4 10.1 9.7 10.2C10.2 10.5 11 10.4 11.4 10.1C11.7 9.7 12 9.8 11.9 10.1C11.8 10.3 12 10.5 12.2 10.7C12.9 11.1 12.7 11.5 11.7 11.8C11.2 11.9 10.2 12.4 9.5 12.9C8.3 13.8 8.3 13.8 6.9 13.6C6.1 13.6 4.6 13.5 3.5 13.4C0.7 13.3 -0.4 12.8 0.5 11.9C0.8 11.7 0.9 11.4 0.8 11.1C0.8 10.7 0.8 10.7 0.9 10.9C1.2 11.2 2 11.1 2.5 10.8C2.7 10.7 2.9 10.7 3 10.9C3.2 11 3.4 11.1 3.4 11.1C3.5 11.1 3.3 10.8 2.9 10.5C1.7 9.2 2.4 6.6 4.4 5.4ZM8 5.4C8.9 5.2 8.9 5.4 8.8 7.4C8.6 9.8 8.3 11.1 8 11.4C7.8 11.6 7.8 11.6 7.9 11.3C8 11 7.9 10.9 7.6 10.9C6.9 10.9 7.3 5.5 8 5.4ZM9.6 8C9.6 7.8 9.7 7.6 9.8 7.6C9.9 7.6 10 7.8 10 8C10 8.1 9.9 8.3 9.8 8.3C9.7 8.3 9.6 8.1 9.6 8ZM1.7 8.4L1.7 7.7L1.9 8.5C2.2 9.3 2 9.8 1.6 9.8C1.2 9.8 1.1 9.5 1.4 9.3C1.6 9.2 1.7 8.8 1.7 8.4ZM9.9 8.5C10.3 8.4 11.3 8.5 11.3 8.6C11.3 8.8 10.2 9.1 9.9 9C9.4 8.8 9.5 8.6 9.9 8.5ZM11 9.6C11.1 9.3 11.2 9.3 11.3 9.6C11.4 9.9 11.1 10.2 10.9 10C10.9 9.9 10.9 9.7 11 9.6ZM1.1 10.6C1.1 10.4 1.1 10.3 1.3 10.3C1.6 10.4 1.8 10.9 1.5 10.9C1.4 10.9 1.2 10.8 1.1 10.6Z",
         fill: "#c0ae65",
         fillDark: "#d2c076",
       },
       {
-        d: "M5.4 0.6C6 0 6.2 -0.1 6.9 0.1C7.3 0.1 8.5 0.2 9.4 0.2C11.1 0.2 13.1 1.3 12.6 1.8C12.5 1.9 12.2 1.7 12 1.4C11.7 1.1 11.3 0.8 11.1 0.8C10.7 0.8 10.7 0.9 11.2 1.4C11.5 1.7 11.7 2.2 11.8 2.5C11.8 2.9 11.8 2.9 12 2.4C12.1 1.9 12.2 1.9 12.1 2.6C11.9 3.4 11.3 4.3 11.3 3.7C11.3 3.5 11.1 3.1 11 2.9C10.6 2.5 10.6 2.5 10.8 3C10.9 3.4 10.8 3.5 10.6 3.4C9.6 3 9.3 3 9.3 3.3C9.3 3.6 8.5 4.4 8 4.6C7.7 4.7 7.6 5 7.6 5.6C7.6 6 7.5 7.3 7.4 8.4C7.1 11 7 10.9 7.8 10.9C8.4 10.9 8.4 10.9 8.5 9.2C8.6 8.3 8.7 7.1 8.8 6.5C8.9 5.6 8.9 5.5 8.5 5.4C8.2 5.3 8.2 5.3 8.5 5.2C9 5.2 9.5 6.1 9.5 6.9C9.5 7.5 9.6 7.6 9.9 7.6C10 7.5 10.2 7.6 10.3 7.8C10.3 8.1 10.7 8.3 11.1 8.4C11.4 8.4 11.7 8.6 11.7 8.8C11.7 9 11.9 9.1 12.3 9L12.8 8.9L12.5 9.6C12.1 10.2 12.1 10.2 12.5 10.6C13 11.3 12.9 11.5 11.8 11.9C11.3 12.1 10.3 12.6 9.6 13.1L8.3 14L5.4 13.9C2.2 13.7 1.1 13.5 0.4 13C0 12.7 0 12.7 0.6 12.9C0.9 13.1 2.2 13.3 3.5 13.4C4.8 13.4 6.4 13.6 7.1 13.7C8 13.8 8.3 13.7 8.9 13.3C9.7 12.8 9.6 12.5 8.9 12.9C8.4 13.1 8.4 13.1 8.8 12.8C9 12.6 9.3 12.5 9.5 12.6C9.7 12.6 10.1 12.5 10.4 12.3C10.7 12 11.3 11.8 11.7 11.7C12.6 11.5 12.7 11.3 12.2 10.7C11.6 10.2 10.3 10.2 10.1 10.7C10 11.1 10.1 11.1 10.5 11C10.9 10.9 10.9 10.9 10.6 11.1C10.1 11.4 9.8 11.2 9.9 10.7C10 10.5 9.9 10.3 9.7 10.2C9.4 10.1 9.4 10.2 9.4 10.8C9.4 11.3 9.3 11.7 9.2 11.7C8.9 12.1 5.8 12 4.6 11.6C3.3 11.1 3.3 11.1 2.9 11.6C2.3 12.1 2.1 12.1 2.2 11.7C2.3 11.5 2.4 11.4 2.5 11.4C2.7 11.6 3.2 11.1 3.1 10.9C3 10.8 2.8 10.8 2.6 10.9C2.4 11 1.9 11.1 1.5 11C0.6 11 0.6 11.2 1.4 11.6L2 11.8L1.4 11.7C1 11.6 0.7 11.7 0.5 12.1C0.1 12.6 0 12.3 0.3 11.8C0.5 11.6 0.4 11.4 0.2 11.1C-0.1 10.8 -0.1 10.7 0.2 10.6C0.5 10.5 0.5 10.3 0.5 10.1C0.4 9.8 0.5 9.5 0.8 9.3C1.1 9.1 1.2 8.9 1.1 8.7C1 8.6 1.1 8.5 1.2 8.5C1.3 8.5 1.5 8.2 1.6 7.8C1.9 7.2 2 7.2 2 7.5C2.1 7.8 2.2 7.7 2.6 7C3.2 5.6 4.3 4.9 5.6 4.9C6.6 4.9 7.1 4.5 6.5 4.3C6 4.2 6 2.3 6.4 1.8C6.6 1.6 6.7 1.4 6.6 1.3C6.5 1.2 6.3 1.4 5.7 2.5C5.5 2.9 5.1 3 5 2.5C4.9 2.3 5 2.4 5.1 2.6C5.3 2.9 5.8 2.1 5.8 1.5C5.8 1.2 6.9 0.8 7.5 0.9C8.2 1 8.1 0.6 7.3 0.3C6.9 0.2 6.6 0.2 6.1 0.5C5.8 0.7 5.4 0.9 5.3 0.9C5.2 0.9 5.1 1.2 5 1.5C4.8 2.1 4.8 2.2 4.7 1.7C4.7 1.5 5 1 5.4 0.6ZM10.1 1.2C10.1 1.3 10.3 1.7 10.6 2.1C11 2.5 11.3 2.9 11.3 3C11.3 3.1 11.4 3.2 11.5 3.2C11.9 3.2 11.4 1.9 10.8 1.5C10.3 1 10.3 1 10.1 1.2ZM9.4 2C8.8 2.3 9 2.6 9.8 2.9C10.3 3 10.7 2.3 10.4 2C10.1 1.7 10 1.7 9.4 2ZM9.6 2.1C10 1.9 10.2 1.9 10.3 2.1C10.4 2.3 10.3 2.3 10.1 2.2C9.7 2.1 9.7 2.1 10 2.5C10.3 2.9 10.3 2.9 9.8 2.6C9.5 2.4 9.4 2.2 9.6 2.1ZM6.4 2.5C6.1 3.3 6.4 4 6.8 3.7C7 3.5 7.1 3.2 7.1 2.9C7.1 2.5 7.1 2.5 6.9 3C6.8 3.5 6.8 3.5 6.7 2.8C6.6 2.1 6.6 2.1 6.4 2.5ZM8.5 3.1C8.5 3.3 8.5 3.5 8.6 3.7C8.6 3.8 8.6 3.9 8.5 3.9C8.3 3.9 8.2 4 8.2 4.2C8.2 4.3 8.4 4.2 8.7 4C9.1 3.6 9.3 2.8 8.9 2.8C8.8 2.8 8.6 2.9 8.5 3.1ZM1.1 10.6C1.2 10.8 1.4 10.9 1.5 10.9C1.6 10.9 1.6 10.8 1.5 10.6C1.4 10.4 1.3 10.3 1.2 10.3C1.1 10.3 1.1 10.4 1.1 10.6Z",
-        fill: "#716649",
+        d: "M6.6 0.1C6.8 -0.1 7 -0.1 7.5 0.3C7.7 0.4 8.1 0.5 8.3 0.5C8.7 0.4 8.8 0.9 8.5 1.2C8.3 1.2 8.2 1.1 8.2 0.9C8.2 0.5 8.2 0.5 8 0.9C7.9 1.1 7.5 1.3 7.2 1.3C6.7 1.2 6.6 1.2 7 1.1C7.5 0.9 7.5 0.9 7 0.8C6.5 0.8 6 1.3 5.6 2.2C5.5 2.5 5.3 2.8 5.2 2.8C4.9 2.8 4.7 2 5 1.8C5.2 1.8 5.2 1.7 5 1.5C4.7 1.3 5.6 0.3 6.2 0.3C6.4 0.2 6.6 0.2 6.6 0.1ZM10.2 0.3C10.2 0.2 10.4 0.2 10.6 0.3C10.8 0.3 11 0.4 11.1 0.4C11.2 0.4 11.5 0.8 11.9 1.2C12.3 1.8 12.4 1.9 12 1.7C11.8 1.6 11.5 1.6 11.4 1.6C11.4 1.7 11.3 1.7 11.3 1.6C11.3 1.4 11.1 1.3 10.9 1.2C10.7 1.1 10.7 1.2 11.1 1.6C11.4 1.8 11.6 2.2 11.6 2.3C11.5 2.5 11.6 2.7 11.7 2.8C11.9 2.9 11.9 3 11.7 3.2C11.5 3.5 11.5 3.5 11.4 3.3C11.3 3.1 11.1 2.9 10.9 2.7C10.8 2.5 10.7 2.4 10.8 2.4C11.3 2.4 9.9 1.7 9.2 1.7C8.4 1.6 8.4 1.6 8.9 1.3C9.2 1.2 9.3 1.1 9.1 1.1C8.7 1 9 0.6 9.5 0.5C9.8 0.4 10.1 0.3 10.2 0.3ZM6.3 2.1C6.4 1.9 6.6 1.7 6.8 1.7C7.1 1.7 7.1 1.8 6.9 2.1C6.8 2.3 6.8 2.9 6.8 3.4C6.9 4.3 6.9 4.3 6.6 4C6.4 3.8 6.3 3.5 6.4 3.1C6.5 2.8 6.4 2.6 6.3 2.6C6.1 2.6 6.1 2.5 6.3 2.1ZM8.7 2.5C8.7 1.7 10.1 1.7 10.5 2.6C10.9 3.3 10.8 3.3 10.1 3C9.8 2.9 9.5 3 9.3 3.1C9.1 3.3 9.1 3.3 9.2 3C9.3 2.8 9.3 2.8 9.1 2.9C9 3 8.9 3.2 9 3.3C9 3.5 8.9 3.7 8.7 3.9C8.5 4 8.5 4.1 8.6 4C8.9 3.9 8.9 3.9 8.8 4.1C8.7 4.2 8.5 4.3 8.4 4.3C8.2 4.2 8 4.3 7.9 4.5C7.6 4.8 7.6 4.8 7.7 4.3C7.9 3.5 8.3 2.8 8.5 2.9C8.6 3 8.7 2.8 8.7 2.5ZM7 2.5C7.2 2 7.2 2.1 7.2 2.7C7.2 3 7.2 3.1 7.1 3C6.9 2.9 6.9 2.7 7 2.5ZM4.4 5.4C5.2 4.9 6 4.9 6.7 5.4L7.2 5.9L6.6 6.4C6.1 6.8 5.9 6.9 5.5 6.7C5.2 6.6 5 6.6 4.6 6.8C3.3 7.7 3.9 10.2 5.2 9.4C5.7 9.1 6.8 9.7 6.5 10.2C6.2 10.7 5.5 11 4.6 11.1C1.7 11.6 1.5 7.1 4.4 5.4ZM9.6 8C9.6 7.8 9.7 7.6 9.8 7.6C9.9 7.6 10 7.8 10 8C10 8.1 9.9 8.3 9.8 8.3C9.7 8.3 9.6 8.1 9.6 8ZM1.7 8.4L1.7 7.7L1.9 8.5C2.2 9.3 2 9.8 1.6 9.8C1.2 9.8 1.1 9.5 1.4 9.3C1.6 9.2 1.7 8.8 1.7 8.4ZM11.2 10C11.1 10 11.3 9.9 11.5 9.9C11.8 9.9 12 9.9 12 10C12 10.2 11.4 10.2 11.2 10ZM10 11.2C9.9 11.1 10 11 10.4 11C10.9 11 10.9 11 10.6 11.2C10.3 11.3 10.1 11.3 10 11.2ZM2.6 11.6C3.2 11 3.4 11 2.9 11.6C2.6 11.8 2.4 12 2.3 12C2.1 12 2.3 11.8 2.6 11.6ZM8.1 11.9C7.9 11.9 8 11.8 8.3 11.8C8.7 11.8 8.9 11.9 8.7 11.9C8.6 12 8.3 12 8.1 11.9ZM8.8 12.8C9.3 12.4 9.5 12.4 9.7 12.7C9.8 12.9 9.7 12.9 9.6 12.8C9.4 12.7 9.1 12.8 8.8 12.9C8.4 13.1 8.4 13.1 8.8 12.8Z",
+        fill: "#7a9a3c",
         fillDark: "",
-      },
-      {
-        d: "M8.4 1.4C8.8 1 9 0.9 8.7 1.4C8.6 1.5 8.5 1.8 8.6 2C8.6 2.1 8.4 2.6 8.1 2.9L7.6 3.6L7.7 2.9C7.8 2.5 7.8 2.3 7.6 2.6C7.4 2.9 7 1.9 7.3 1.5C7.4 1.2 8 1.2 8 1.5C8 1.7 8.2 1.7 8.4 1.4ZM4.3 5.3C5.8 4.4 7.7 5.1 7.5 6.4C7.4 6.7 7.3 7.4 7.3 7.9C7.3 8.4 7.3 8.6 7.2 8.4C7.1 7.7 6.5 8 6.5 8.7C6.5 9.4 6.8 9.8 7 9.3C7.1 9.2 7.1 9.5 7.1 10C7.1 10.6 7.3 11.2 7.5 11.3C8.2 12.1 4.1 11.7 3.1 10.9C2.9 10.8 2.5 10.8 2.1 10.9C1.6 11.1 1.4 11.1 1.1 10.9C0.9 10.7 0.8 10.8 0.7 11.1L0.7 11.6L0.4 11.1C0.2 10.9 0.2 10.7 0.3 10.8C0.5 10.9 0.6 10.8 0.6 10.5C0.6 10.3 0.7 9.9 0.9 9.7C1.2 9.4 1.4 9.1 1.4 8.4C1.4 8.4 1.6 8.3 1.7 8.3C1.9 8.3 2.3 7.7 2.7 7C3.2 6.1 3.5 5.7 4.3 5.3ZM8.9 6C8.9 5.7 9 5.7 9.2 5.9C9.5 6.1 9.8 8.1 9.5 7.9C9.4 7.9 9.3 8.2 9.3 8.7C9.3 9.7 10.2 10.2 10.7 9.6C10.9 9.3 10.9 9.4 10.8 9.7C10.7 9.9 10.8 10 11 10C11.2 10 11.3 9.9 11.2 9.6C11.2 9.3 11.2 9.2 11.5 9.3C11.8 9.4 12.1 9.3 12.3 9.2C12.7 8.8 12.7 9 12.4 9.6C12.3 9.9 12.1 10 11.9 9.9C11.8 9.8 11.6 9.9 11.4 10C11.2 10.2 10.7 10.3 10.2 10.2L9.4 10.1L9.2 11L9.1 11.9L8.8 11.2C8.6 10.9 8.5 10.5 8.6 10.4C8.7 10.3 8.9 6.8 8.9 6ZM1.8 7.4C2 7.1 2.1 7.1 2.1 7.7C2.1 8 2 8.1 1.9 7.9C1.7 7.8 1.7 7.6 1.8 7.4ZM1.7 8.7C1.7 8.8 1.8 8.9 1.9 8.9C2 8.9 2.1 8.8 2.1 8.7C2.1 8.6 2 8.5 1.9 8.5C1.8 8.5 1.7 8.6 1.7 8.7ZM1.9 10C1.9 10.3 2 10.4 2.1 10.4C2.2 10.3 2.3 10.1 2.3 9.9C2.3 9.7 2.2 9.6 2.1 9.6C2 9.6 1.9 9.8 1.9 10ZM1 10.5C1.1 10.6 1.3 10.8 1.4 10.9C1.6 10.9 1.7 10.8 1.6 10.7C1.6 10.5 1.4 10.3 1.2 10.3C1.1 10.2 1 10.3 1 10.5ZM2.9 13.7C2.8 13.6 2.9 13.6 3.2 13.6C3.5 13.6 3.6 13.6 3.5 13.7C3.3 13.7 3.1 13.7 2.9 13.7ZM5.3 13.7C5.2 13.6 5.3 13.6 5.6 13.6C5.9 13.6 6 13.6 5.9 13.7C5.7 13.7 5.5 13.7 5.3 13.7Z",
-        fill: "#273f41",
-        fillDark: "#3b5355",
       },
       {
         d: "M4.4 5.4C5.2 4.9 6 4.9 6.7 5.4L7.2 5.9L6.6 6.4C6.1 6.8 5.9 6.9 5.5 6.7C5.2 6.6 5 6.6 4.6 6.8C3.3 7.7 3.9 10.2 5.2 9.4C5.7 9.1 6.8 9.7 6.5 10.2C6.2 10.7 5.2 11.1 4.4 11.1C1.7 11.1 1.6 7.1 4.4 5.4ZM1.4 9.3C1.8 8.8 2.1 8.8 2.1 9.3C2.1 9.6 1.5 10 1.3 9.7C1.2 9.7 1.3 9.5 1.4 9.3Z",
@@ -230,7 +230,7 @@ export const profileLogos: readonly ProfileLogo[] = [
       },
     ],
     trace:
-      "PNG, background removed by flood fill from the border (seal 1); crop none; 4 colours (#d2c076 #716649 #273f41 #33d8e2, largest area at the bottom, cumulative masks); potrace turdSize 3, optTolerance 1, 14 px tall; lightness shifted (same hue and chroma) to reach 2:1 against the card where the brand colour failed; no fallback",
+      "PNG, background removed by flood fill from the border (seal 1); crop none; 4 colours (#273f41 #d2c076 #7a9a3c #33d8e2, largest area at the bottom, cumulative masks); potrace turdSize 4, optTolerance 1.5, 14 px tall; lightness shifted (same hue and chroma) to reach 2:1 against the card where the brand colour failed; traced at 64 px; palette fixed by hand (sand, palm green, dark teal, cyan; the brown outline folds into dark teal); turdSize 4 and optTolerance 1.5 instead of 2 and 0.2, the first step of the coarsening ladder whose paths together stay within 6000 characters; several neutral colours, so each keeps its colour (lightness-shifted per theme) instead of taking the ink; no fallback",
     page: "https://cobblemonislands.com/",
     source:
       "https://aquatic.gg/cobblemonislands.png (the author's own earlier profile README, https://aquatic.gg/cobblemonislands.png)",
@@ -267,7 +267,7 @@ export const profileLogos: readonly ProfileLogo[] = [
       },
     ],
     trace:
-      "PNG, background removed by flood fill from the border (seal 1); crop none; 4 colours (#070708 #bd2ef9 #85a3fd #4d07a4, largest area at the bottom, cumulative masks); potrace turdSize 2, optTolerance 0.2, 14 px tall; lightness shifted (same hue and chroma) to reach 2:1 against the card where the brand colour failed; no fallback",
+      "PNG, background removed by flood fill from the border (seal 1); crop none; 4 colours (#070708 #bd2ef9 #85a3fd #4d07a4, largest area at the bottom, cumulative masks); potrace turdSize 2, optTolerance 0.2, 14 px tall; lightness shifted (same hue and chroma) to reach 2:1 against the card where the brand colour failed; several neutral colours, so each keeps its colour (lightness-shifted per theme) instead of taking the ink; no fallback",
     page: "https://mineclub.net/",
     source:
       "https://aquatic.gg/mineclub.png (the author's own earlier profile README, https://aquatic.gg/mineclub.png)",
