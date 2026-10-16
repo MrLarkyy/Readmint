@@ -44,8 +44,9 @@ describe.each(cases)("%s %s languageShare", (template, section) => {
   });
 
   test.each(themes)("repositories without languagesByRepo draws the bytes list, %s", (theme) => {
-    const { github } = sampleProfileData();
-    const { languagesByRepo: _byRepo, ...older } = github;
+    const older = Object.fromEntries(
+      Object.entries(sampleProfileData().github).filter(([key]) => key !== "languagesByRepo"),
+    );
     const svg = render(template, section, theme, { languageShare: "repositories" }, {
       github: older,
     } as never);
