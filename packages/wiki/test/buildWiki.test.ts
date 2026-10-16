@@ -163,7 +163,9 @@ describe("buildWiki", () => {
 });
 
 describe("rewriteLinks", () => {
-  const pages: readonly WikiPage[] = [{ source: "a.md", name: "Page-A", summary: "" }];
+  const pages: readonly WikiPage[] = [
+    { source: "a.md", name: "Page-A", title: "Page A", group: "guides", summary: "" },
+  ];
   const url = "https://example.test/o/r/blob/main/docs";
 
   it("rewrites published links, keeps anchors and absolute links", () => {
