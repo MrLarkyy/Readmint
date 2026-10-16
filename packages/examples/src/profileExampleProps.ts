@@ -1,4 +1,19 @@
-import { profileLogos } from "./profileLogos.js";
+import { profileLogos, type ProfileLogo } from "./profileLogos.js";
+
+const layerSlots = 4;
+
+const padded = (pick: (logo: ProfileLogo, layer: number) => string): string[] =>
+  profileLogos.flatMap((logo) =>
+    Array.from({ length: layerSlots }, (_, layer) => pick(logo, layer)),
+  );
+
+/** The colour logos as the flat, stride-4 props of the year-ring and pinscreen templates (see their README). */
+const logoLayerProps: Readonly<Record<string, ExampleProp>> = {
+  logoLayers: padded((logo, layer) => logo.layers[layer]?.d ?? ""),
+  logoFills: padded((logo, layer) => logo.layers[layer]?.fill ?? ""),
+  logoFillsDark: padded((logo, layer) => logo.layers[layer]?.fillDark ?? ""),
+  logoWithName: profileLogos.map((logo) => (logo.withName ? "1" : "")),
+};
 
 /** One root prop value of a design: a text, a number, a flag or a list of them. */
 export type ExampleProp = string | number | boolean | readonly (string | number | boolean)[];
@@ -31,7 +46,7 @@ export const profileExampleProps: Readonly<
       logoLabels: ["Working now", "Before", "", "Creators"],
       logoLines: profileLogos.map((logo) => String(logo.line)),
       logoNames: profileLogos.map((logo) => logo.name),
-      logos: profileLogos.map((logo) => logo.d),
+      ...logoLayerProps,
       logosRow: 5,
     },
     footer: {
@@ -103,7 +118,7 @@ export const profileExampleProps: Readonly<
       logoLabels: ["working now", "before", "", "creators"],
       logoLines: profileLogos.map((logo) => String(logo.line)),
       logoNames: profileLogos.map((logo) => logo.name),
-      logos: profileLogos.map((logo) => logo.d),
+      ...logoLayerProps,
       logosRow: 1,
     },
     footer: {
