@@ -1,4 +1,6 @@
+import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
+import { sampleProfileData } from "../../components/test/sampleProfileData.js";
 import { ExitCode } from "../src/index.js";
 import { type CliTree, makeCliTree, propsDesign } from "./cliTree.js";
 
@@ -157,5 +159,37 @@ describe("--props", () => {
     const run = await tree.run(["render", "box.json", "--props", "none.json"]);
     expect(run).toMatchObject({ code: ExitCode.input, stdout: "" });
     expect(run.stderr).toContain('settings file "none.json" does not exist');
+  });
+});
+
+describe("--props with a shipped template", () => {
+  const yearRing = join(
+    import.meta.dirname,
+    "..",
+    "..",
+    "components",
+    "templates",
+    "profiles",
+    "year-ring",
+  );
+
+  test("a data error in year-ring index prints as without the file (languagesAfter 2, repeat item 2)", async () => {
+    const sample = sampleProfileData();
+    const languages = (
+      [
+        ["TypeScript", 0.5],
+        ["Rust", 0.3],
+        ["Go", "x"],
+      ] as const
+    ).map(([name, share]) => ({ name, color: "#3178c6", bytes: 1000, share }));
+    const data = { ...sample, github: { ...sample.github, languages } };
+    const dataFile = await tree.file("languages.json", data);
+    const args = ["render", "index.json", "--data", dataFile];
+    const io = { cwd: yearRing };
+    const plain = await tree.run(args, io);
+    const merged = await tree.run([...args, "--props", "settings.json"], io);
+    expect(plain.code).toBe(ExitCode.invalid);
+    expect(plain.stderr).toMatch(/needs two numbers, got string and number .*repeat item 2\)/);
+    expect(merged).toEqual(plain);
   });
 });

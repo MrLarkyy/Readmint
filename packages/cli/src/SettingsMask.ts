@@ -16,12 +16,18 @@ interface Trace {
 /** Leading code points of a string value looked for in a message: enough to spot an echo, short enough to survive clipping. */
 const traceLength = 12;
 
+/** The renderer's note of the component instances and repeat items around an issue: design text, never a value. */
+const where =
+  / \((?:in component instance [^,()]*|repeat item \d+)(?:, (?:in component instance [^,()]*|repeat item \d+))*\)$/;
+
 /**
  * Hides the message of an issue that could show a value of a design's settings section. An issue inside a prop the
  * settings wrote (a bad binding) is always hidden. One inside a component the written instances use, nested ones
- * included (where the renderer reports a child layer the value broke), is hidden when its message holds a string value
- * of the section quoted as the renderer echoes it (`"` and the JSON-escaped start, clipped echoes included) or one of
- * its numbers. Every other issue stays as it is. The code and path stay; the message names the section and the props,
+ * included (where the renderer reports a child layer the value broke), is hidden when its message, without the
+ * renderer's trailing note of instances and repeat items, holds a string value of the section quoted as the renderer
+ * echoes it (`"` and the JSON-escaped start, clipped echoes included) or one of its numbers where the renderer echoes a
+ * number (`got 7`, `gives 7`, `7 is outside ...`). A `binding` issue there is not searched: expression messages name
+ * types, and the source they quote is the design's own text. Every other issue stays as it is. The code and path stay; the message names the section and the props,
  * never a value.
  */
 export class SettingsMask {
@@ -71,9 +77,14 @@ export class SettingsMask {
     for (const [pointer, name] of this.pointers) {
       if (issue.path === pointer || issue.path.startsWith(`${pointer}/`)) names.add(name);
     }
-    if (names.size === 0 && [...this.scopes].some((scope) => issue.path.startsWith(scope))) {
+    if (
+      names.size === 0 &&
+      issue.code !== "binding" &&
+      [...this.scopes].some((scope) => issue.path.startsWith(scope))
+    ) {
+      const message = issue.message.replace(where, "");
       for (const trace of this.traces) {
-        if (trace.test(issue.message)) names.add(trace.name);
+        if (trace.test(message)) names.add(trace.name);
       }
     }
     if (names.size === 0) return issue;
@@ -102,7 +113,7 @@ function collectRefs(value: unknown, refs: string[]): void {
 function traceOf(value: ComponentPropValue): ((message: string) => boolean) | undefined {
   if (typeof value === "number") {
     const pattern = new RegExp(
-      `(?<![\\w.])${String(value).replace(/[.+]/g, "\\$&")}(?!\\w|\\.\\d)`,
+      `(?:^|got |gives )${String(value).replace(/[.+]/g, "\\$&")}(?!\\w|\\.\\d)`,
     );
     return (message) => pattern.test(message);
   }

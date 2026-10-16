@@ -90,8 +90,38 @@ describe("SettingsMask", () => {
     expect(
       mask({ size: -98765 }).mask({ ...child, message: "-98765 is outside 0..10" }).message,
     ).toMatch(hidden);
-    const issue = { ...child, message: "1170 is outside 0..10, 2.17 too" };
+    const issue = { ...child, message: "got 1170, 2.17 is outside 0..10" };
     expect(mask({ size: 17 }).mask(issue)).toBe(issue);
+  });
+
+  test("finds a number only where the renderer echoes one", () => {
+    const suffix = " (in component instance /layers/1, repeat item 2)";
+    for (const [size, message] of [
+      [7777777, `expected a number, got 7777777${suffix}`],
+      [-4242, `-4242 is outside 0..100000${suffix}`],
+      [1.5, "expected an integer, got 1.5"],
+      [3, "{{ x }} gives 3, which has no text form"],
+    ] as const) {
+      expect(mask({ size }).mask({ ...child, message }).message).toMatch(hidden);
+    }
+    for (const message of [
+      `expected a colour, got "red"${suffix}`,
+      "the layer 2 wide needs a font",
+      "got 22, 0.2 or 2.5",
+    ]) {
+      const issue = { ...child, message };
+      expect(mask({ size: 2 }).mask(issue)).toBe(issue);
+    }
+  });
+
+  test("searches no binding issue below a component: its message quotes the design's own source", () => {
+    const issue = {
+      ...child,
+      code: "binding",
+      message:
+        '"{{ languages[2].share - 2 }}": - needs two numbers, got string and number at column 2 (type)',
+    };
+    expect(mask({ size: 2, label: "{{ languages[2]" }).mask(issue)).toBe(issue);
   });
 
   test("leaves an unrelated issue as it is: empty strings and booleans trace nothing", () => {

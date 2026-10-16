@@ -139,8 +139,10 @@ same safe expression language. A prop the design's top-level components do not d
 enum value the prop does not list is an error (exit code 1) naming the design, the section and the prop
 (`header.json: error unknown-property at /header/colour: ...`), never the value. A render error at a prop the file set (a bad
 binding) keeps its code and path, but its message only names the section and the prop; so does an error inside a
-component the root layer uses (a fill that is no colour) whose message quotes a string or holds a number of the
-section. Every other message is printed as it is. A design whose section the file lacks is
+component the root layer uses (a fill that is no colour) whose message echoes a string or a number of the section as
+the renderer quotes a value (`got "..."`, `got 7`). Expression errors there quote the design's own binding, and the
+note of component instances and repeat items is design text, so neither counts. Every other message is printed as it
+is. A design whose section the file lacks is
 rendered as it is, and a section no design names is ignored. The output is the same as rendering the design with the
 props written into its root layer; the design format is not involved (no `$schema`, no version).
 
