@@ -43,9 +43,17 @@ The hyphen rule keeps ids usable as names: `props.my-label` and `repo-index` are
 
 ## Semantics
 
-- **Names.** A name is looked up in the locals first (the `repeat` item and index, component `props`, which canvas
-  bindings see as the props of the root instance, see [design-format.md](design-format.md#components)), then among the
-  own top-level keys of the data. An unknown name is an `unknown-name` error.
+- **Names.** A name is looked up in the locals first (the `repeat` item and index, the names a layer's `let` binds,
+  component `props`, which canvas bindings see as the props of the root instance, see
+  [design-format.md](design-format.md#components)), then among the own top-level keys of the data. An unknown name is
+  an `unknown-name` error.
+- **Local bindings.** A layer's `let` binds names in key order, each entry reading the entries before it
+  ([design-format.md](design-format.md#local-bindings-let)):
+  `"let": { "n": "{{ github.contributions.total }}", "half": "{{ n / 2 }}" }` lets the layer and its subtree write
+  `{{ half }}`. An entry that reads itself or a later entry (`"a": "{{ b }}", "b": "{{ 1 }}"`) is a render `binding`
+  issue at the entry, found from the names the entry reads before anything is evaluated; it never falls back to an
+  outer local or a data key of that name. A `let` name may not be a top-level data key either (`binding` at the
+  entry), and `props`, `true`, `false` and `null` are reserved.
 - **Missing data is `null`.** A missing property, an index out of range and any property of `null` read as `null`, so
   `{{ github.repo.owner.name }}` on partial data is `null`, not an error. Arrays have only integer indices (`list[0]`;
   `list.length` is `null`, use `| length`), and strings, numbers and booleans have no properties.
@@ -188,13 +196,15 @@ cannot silently change an existing pattern. A pattern has at most 64 characters.
 | strings       | 100000 UTF-16 code units for any string produced                                | `too-large` |
 | arrays        | 10000 items in an array literal and in a `repeat`                               | `too-large` |
 | filter args   | 4 per call                                                                      | `argument`  |
+| locals        | 256 in a scope a `let` extends (repeat names, `props` and `let` names together) | `too-large` |
 | measured text | 10000 UTF-16 code units for `textWidth` and `truncateWidth`                     | `too-large` |
 | error excerpt | 64 characters of the source                                                     |             |
 
 A step is one expression node, plus one per 16 characters or one per item a filter or operator processes: string
 `+`, `==`, `!=` and `< <= > >=`, a string used as an index, literal text, and every filter that reads a string or
 an array. Work is
-charged and sizes are checked before the work is done, so a hostile expression stops early. Long flat chains
+charged and sizes are checked before the work is done, so a hostile expression stops early. A `let` copies the locals
+of its scope once and is charged one step per local it copies plus one per name it binds, for every copy of the layer. Long flat chains
 (`a + b + …`, `a.b.c…`, `a | f | g …`) are evaluated by loops; only nesting counts against the depth limit.
 
 ## Errors
@@ -225,7 +235,7 @@ written as `\u{…}`.
 | `argument`       | a filter got too many or too few arguments, or one of the wrong kind or range                   |
 | `type`           | an operator or filter got a value of the wrong type                                             |
 | `not-finite`     | arithmetic gave an infinite or undefined number, or `sqrt` of a negative number                 |
-| `too-large`      | a string, an array literal or a repeat would pass its size limit                                |
+| `too-large`      | a string, an array literal or a repeat would pass its size limit, or a scope its 256 locals     |
 | `budget`         | the evaluation took more steps than its budget                                                  |
 | `unknown-locale` | the locale is not one of en, de, fr, es, cs                                                     |
 | `invalid-date`   | not an ISO 8601 date or epoch milliseconds in the years 0000 to 9999                            |
@@ -256,6 +266,8 @@ template.value.kind; // "expression" (exactly one placeholder) or "text"
 evaluateCondition(ifTemplate, scope); // ExprResult<boolean>, for a layer's `if`
 expandRepeat(eachTemplate, scope, { as: "repo", index: "i" }); // ExprResult<Scope[]>, one child scope per item
 scope.with({ props: { label: "Stars" } }); // a child scope with locals, e.g. component props
+scope.extend(["n", "half"], (name, inner) => valueOf(name, inner)); // ExprResult<Scope>, names bound in order
+template.value.names; // ReadonlySet<string>: the names the placeholders read, e.g. {"n"} for "{{ n.total / 2 }}"
 toText(value); // string | undefined: a value written as a placeholder in text is; undefined for an array or object
 ```
 
@@ -264,6 +276,10 @@ toText(value); // string | undefined: a value written as a placeholder in text i
 - `expandRepeat` defaults `as` to `item` and `index` to `index` (0-based); both must be names an expression can
   read (`repo-index`, not `repo-1`, `1st` or `true`) and differ, else `argument`; `null` repeats nothing, anything but an
   array is a `type` error, more than 10000 items `too-large`. Child scopes keep the outer locals and data.
+- `scope.extend(names, valueOf)` (a `let`) copies the locals once and binds each name to `valueOf(name, inner)`, where
+  `inner` already holds the names before it and is valid only during that call. The copy and the names are charged to
+  the budget first (`budget`), and more than `ExpressionLimits.maxLocals` (256) locals in the result fail `too-large`
+  before anything is evaluated; the error has an empty excerpt. When `valueOf` throws, the copy is dropped.
 - A `TextMeasurer` has `width(text, font, size, letterSpacing)` (pixels) and
   `truncate(text, width, font, size, letterSpacing)` (the cut text); both return `undefined` for a font id the design
   does not have. Child scopes keep it. A scope built by hand may leave `measurer` out.

@@ -150,6 +150,7 @@ Every layer has `type` (required) and these optional properties:
 | `style`    | id of a style                            | own properties win over the style                        |
 | `if`       | binding                                  | the layer is drawn only when it evaluates to true        |
 | `repeat`   | `{ each: binding, as?: id, index?: id }` | one copy per item of `each`, exposed as `as` and `index` |
+| `let`      | local name -> binding                    | named values, see [Local bindings](#local-bindings-let)  |
 | `animate`  | property -> track                        | see [Animation](#animation); needs `animation`           |
 
 | `type`      | required                                    | optional                                                                                                     |
@@ -179,6 +180,57 @@ Every layer has `type` (required) and these optional properties:
   width with `textWidth` and `truncateWidth` ([expressions](expressions.md#filters)), not to `length`, which counts
   characters a font may not draw.
 - A text needs a font: its own `font` or one from its `style`.
+
+### Local bindings (let)
+
+`let` names values computed once per layer copy, so a layer and everything below it can read them by name:
+
+```json
+{
+  "type": "group",
+  "let": {
+    "total": "{{ github.contributions.total }}",
+    "half": "{{ total / 2 }}",
+    "label": "{{ total | number }} / {{ half | number }}"
+  },
+  "children": [
+    { "type": "rect", "width": "{{ half }}", "height": 8, "fill": "#0969da" },
+    { "type": "text", "y": 12, "content": "{{ label }}", "font": "body" }
+  ]
+}
+```
+
+renders byte for byte like its older one-item-repeat form, one empty group per name:
+
+```json
+{
+  "type": "group",
+  "repeat": { "each": "{{ [github.contributions.total] }}", "as": "total" },
+  "children": [
+    {
+      "type": "group",
+      "repeat": { "each": "{{ [total / 2] }}", "as": "half" },
+      "children": ["..."]
+    }
+  ]
+}
+```
+
+- Keys are local names: a letter or `_`, then letters, digits and `_`, with `-` only before a letter or `_`
+  (`repo-name`, not `x-1`, which reads as a subtraction), at most 64 characters; at most 64 entries per layer. Values
+  are bindings (a constant is `"{{ 24 }}"`; a value written with several placeholders is a string).
+- Entries are evaluated in key order; an entry reads the entries before it. An entry that reads itself or a later entry
+  is a render `binding` issue at that entry (`/layers/0/let/total`), reported before any entry is evaluated, so it never
+  reads an outer value of the same name by accident.
+- Order on a layer: `repeat` first (each copy gets its own `let` values and can read `item` and `index`), then `let`,
+  then `visible` and `if`, then the layer's own properties, its props, its animation and its children. A `let` is
+  evaluated even when `if` then drops the copy, so a guard against missing data goes on the parent layer.
+- The names are visible to the layer and its whole subtree, including the layers of a component the layer
+  instantiates, exactly like repeat names.
+- A name may not be `props`, `true`, `false` or `null` (`reserved-name`), nor a name the same layer's repeat binds
+  (`item` and `index` by default) or an enclosing layer's `let` or repeat binds, and a repeat name may not hide an
+  enclosing `let` name (`duplicate-name`); each component definition is checked on its own. A name that is a top-level
+  key of the render data (`github`) is a render `binding` issue at the entry.
 
 ## Assets
 
@@ -234,7 +286,9 @@ Component layers read their props as bindings (`{{props.label}}`). The props of 
 The **root instance** is the document's only top-level `component` layer, when it has no `repeat` (other top-level
 layer kinds beside it do not matter). A design with no top-level component layer, with several, or whose one repeats
 has none. Its props (defaults overlaid by the instance's values, bindings evaluated at the data root, types checked)
-are in scope as `props` in every canvas binding, exactly as inside the component. When a canvas binding names
+are in scope as `props` in every canvas binding, exactly as inside the component; prop bindings may read the instance's
+own `let` names, which are evaluated first and then reused by the instance (the canvas itself sees `props`, not the
+`let` names). When a canvas binding names
 `props`, they are resolved once before the canvas, so an issue in them comes before any canvas or layer issue, and
 they are resolved even when the instance's `visible` or `if` then drops it; a canvas that does not name `props`
 resolves nothing early. A data object with a top-level key `props` is shadowed in canvas bindings by the root
@@ -343,6 +397,8 @@ How the timeline becomes CSS animation and static frames: [renderer.md](renderer
 | values        | 1000000 values visited; a reused YAML alias counts each time  | `too-large`       |
 | layers        | 10000, counting each component instance with all its layers   | `too-many-layers` |
 | YAML aliases  | 100 alias nodes in the source, counted before any is resolved | `too-large`       |
+| `let` entries | 64 per layer                                                  | `count`           |
+| `let` names   | 64 characters                                                 | `pattern`         |
 | issues        | 100 per result, then `truncated: true`                        |                   |
 
 YAML nesting is checked on the syntax tree before the document is built, so a too-deep YAML source fails at its first
@@ -401,11 +457,13 @@ interface DesignIssue {
 | `unknown-property`    | a property the format does not define, or a prop the component does not declare                       |
 | `type`                | wrong kind of value (string instead of number, not finite, not an integer)                            |
 | `enum`                | not one of the allowed words, including an unknown layer `type` or a value an enum prop does not list |
-| `pattern`             | a string in the wrong shape (colour, id, asset source, path data, arcs in `draw`)                     |
+| `pattern`             | a string in the wrong shape (colour, id, asset source, path data, arcs in `draw`, a `let` name)       |
 | `range`               | a number outside its range, or a keyframe offset below the one before it                              |
 | `length`              | a string too long or empty                                                                            |
-| `count`               | an array (a prop list too) with too few or too many items                                             |
+| `count`               | an array (a prop list too) with too few or too many items, or a `let` with more than 64 entries       |
 | `duplicate-id`        | a layer id used twice in one scope                                                                    |
+| `reserved-name`       | a `let` named `props`, `true`, `false` or `null`                                                      |
+| `duplicate-name`      | a `let` name its repeat or an enclosing `let`/repeat binds already, or a repeat name hiding a `let`   |
 | `unknown-reference`   | `style`, `font`, `asset` or `ref` names nothing in the document                                       |
 | `component-cycle`     | components that contain themselves; reported at the `ref` closing the loop                            |
 | `missing-font`        | a text with neither `font` nor a style with a font                                                    |
@@ -463,5 +521,8 @@ Canvas bindings that read the root instance's `props` (RM-83) were added to v0 w
 binding was already any string, and one naming `props` failed with an `unknown-name` issue before, while a canvas that
 does not name `props` is evaluated as before. So no design that rendered changes, with one corner case: a design with
 a root instance whose canvas binding read a data key named `props` now reads the instance's props instead.
+Local bindings (`let`, RM-118) were added to v0 as an optional layer property, with the issue codes `reserved-name` and
+`duplicate-name`, so no design needs migrating and every existing design renders as before; a reader older than
+RM-118 rejects `let` as an `unknown-property` instead of drawing the design without it.
 The grammar inside bindings is
 the expression language v0 of `@readmint/expr`, described in [docs/expressions.md](expressions.md).
