@@ -1,7 +1,8 @@
 import { describe, expect, test } from "vitest";
 import { renderSvg } from "../src/index.js";
 import gradient from "./assets/gradient.jpg?inline";
-import { app2, colourDesign, colourImages, inserted, swatchDeviation } from "./colourImages.js";
+import { colourDesign, colourImages, swatchDeviation } from "./colourImages.js";
+import { ultraHdrJpeg } from "./ultraHdr.js";
 import { dataUriBytes } from "./exifImages.js";
 
 /** The RGBA pixels Chromium draws of a 32x16 SVG, through a canvas. */
@@ -69,19 +70,7 @@ describe("embedded colour data", () => {
 describe("Ultra HDR JPEG", () => {
   test("Chromium draws the rendered gain map JPEG as the plain base image, as resvg does", async () => {
     const base = dataUriBytes(gradient);
-    const signature = "http://ns.adobe.com/xap/1.0/\0";
-    const text = signature + '<x:xmpmeta xmlns:hdrgm="http://ns.adobe.com/hdr-gain-map/1.0/"/>';
-    const xmp = [
-      0xff,
-      0xe1,
-      (text.length + 2) >> 8,
-      (text.length + 2) & 255,
-      ...Array.from(text, (c) => c.charCodeAt(0)),
-    ];
-    const hdr = new Uint8Array([
-      ...inserted(base, 2, [...app2("MPF\0", [0x4d, 0x4d, 0, 0x2a]), ...xmp]),
-      ...base,
-    ]);
+    const hdr = ultraHdrJpeg(base).data;
     const uri = (data: Uint8Array) =>
       "data:image/jpeg;base64," + btoa(String.fromCharCode(...data));
     const drawn = await chromiumPixels(rendered(uri(hdr)));

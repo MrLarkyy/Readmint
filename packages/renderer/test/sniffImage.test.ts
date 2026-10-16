@@ -5,6 +5,7 @@ import { describe, expect, test } from "vitest";
 import { loadScale } from "../../../test-support/loadScale.js";
 import { renderSvg, type RenderOptions } from "../src/index.js";
 import { sniffImage } from "../src/sniffImage.js";
+import { ultraHdrJpeg } from "./ultraHdr.js";
 import { colourImages, iccSegment, app2, inserted, jpegMarkerOffsets } from "./colourImages.js";
 import {
   dataUriBytes,
@@ -701,14 +702,40 @@ describe("colour data", () => {
     const icc = { start: 20, end: 494 };
     const shifted = (shift: number) => ({ start: icc.start + shift, end: icc.end + shift });
 
-    test("the MPF index and the hdrgm XMP are recorded, a second image after EOI is left", () => {
+    test("the MPF index and the hdrgm XMP are recorded", () => {
       const data = inserted(jpeg, 2, [...mpf, ...hdrgm]);
       const shift = mpf.length + hdrgm.length;
-      expect(ranges(new Uint8Array([...data, ...jpeg]))).toEqual([
+      expect(ranges(data)).toEqual([
         { start: 2, end: 2 + mpf.length },
         { start: 2 + mpf.length, end: 2 + shift },
         shifted(shift),
       ]);
+    });
+
+    test("an Ultra HDR file loses its XMP, ISO and MPF segments and everything after the primary EOI", () => {
+      const { data, primary } = ultraHdrJpeg(jpeg);
+      const found = ranges(data);
+      expect(found.length).toBe(5);
+      expect(found.at(-1)).toEqual({ start: primary.length, end: data.length });
+      expect(found.at(-1)?.start).toBeLessThan(data.length);
+      const sorted = found.every((range, i) => i === 0 || range.start >= (found[i - 1]?.end ?? 0));
+      expect(sorted).toBe(true);
+    });
+
+    test("a Google container XMP or an ISO 21496-1 APP2 alone is a gain map segment", () => {
+      const container = xmp(
+        '<x:xmpmeta xmlns:Container="http://ns.google.com/photos/1.0/container/"/>',
+      );
+      const iso = app2("urn:iso:std:iso:ts:21496:-1\0", [1, 2]);
+      expect(ranges(inserted(jpeg, 2, container))).toEqual([
+        { start: 2, end: 2 + container.length },
+        shifted(container.length),
+      ]);
+      expect(ranges(inserted(jpeg, 2, iso))[0]).toEqual({ start: 2, end: 2 + iso.length });
+    });
+
+    test("without a gain map segment the bytes after EOI stay", () => {
+      expect(ranges(new Uint8Array([...jpeg, 1, 2, 3]))).toEqual([icc]);
     });
 
     test("an XMP packet without the hdrgm namespace stays", () => {
