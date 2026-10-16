@@ -365,6 +365,16 @@ describe("palette reads agree with the expression tokenizer", () => {
     "{{ palette.zz | upper }}",
   ];
 
+  /**
+   * Reads the check reports but whose value cannot show in the SVG: `??` short-circuits past `zz`, and an array
+   * renders the same with or without it. The render comparison cannot cover them, so the report is asserted directly.
+   */
+  const unobservable = ["{{ palette.ok ?? palette.zz }}", "{{ [palette.zz] }}"];
+
+  test.each(unobservable)("%j is reported", (content) => {
+    expect(reportsZz(content)).toBe(true);
+  });
+
   test.each([...corpus, ...exceptions])("%j", (content) => {
     const lacks = renderOf(content, ["ok"]);
     const has = renderOf(content, ["ok", "zz"]);
