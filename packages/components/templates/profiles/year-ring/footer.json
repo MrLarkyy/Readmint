@@ -150,9 +150,7 @@
         },
         {
           "type": "text",
-          "x": 524,
-          "width": 300,
-          "align": "end",
+          "x": "{{ 824 - ((props.contactText || \"github.com/\" + github.login) | truncate(32) | truncateWidth(300, \"med\", 17) | textWidth(\"med\", 17)) }}",
           "y": 68.122,
           "content": "{{ (props.contactText || \"github.com/\" + github.login) | truncate(32) | truncateWidth(300, \"med\", 17) }}",
           "font": "med",

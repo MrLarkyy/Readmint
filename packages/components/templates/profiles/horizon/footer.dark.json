@@ -122,9 +122,7 @@
         },
         {
           "type": "text",
-          "x": 564,
-          "width": 260,
-          "align": "end",
+          "x": "{{ 824 - ((props.contactText || \"github.com/\" + github.login) | truncate(32) | truncateWidth(260, \"scm\", 18) | textWidth(\"scm\", 18)) }}",
           "y": 75.188,
           "content": "{{ (props.contactText || \"github.com/\" + github.login) | truncate(32) | truncateWidth(260, \"scm\", 18) }}",
           "font": "scm",

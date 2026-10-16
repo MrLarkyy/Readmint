@@ -255,36 +255,49 @@ describe("emoji no template font covers", () => {
     },
   );
   test.each([
-    ["horizon", "scm", 18, 564, 260, 99, 16],
-    ["year-ring", "med", 17, 524, 300, 90.25, 16],
-    ["pinscreen", "mono", 14, 540, 300, 92.25, 0],
+    ["horizon", "scm", 18, 32, 260, 824, 99, 16],
+    ["year-ring", "med", 17, 32, 300, 824, 90.25, 16],
+    ["pinscreen", "mono", 14, 34, 300, 840, 92.25, 0],
   ] as const)(
-    "the %s contact is cut to its box on one line and its pill or underline follows the cut",
-    (template, font, size, boxX, boxWidth, y, pad) => {
-      for (const theme of ["light", "dark"] as const) {
-        for (const contact of [
-          "github.com/sample-developer-name",
-          `linkedin.com/in/${rocket}ada-lovelace-18`,
-        ]) {
-          const design = withProps(loadProfile(template, "footer", theme), {
-            contactText: contact,
-          });
-          const data = sampleProfileData();
-          const svg = renderProfile({
-            template,
-            design,
-            data,
-            expectWarnings: contact.includes(rocket) ? ["missing-glyph"] : [],
-          });
-          const width = (text: string) => drawnWidth(template, design, font, size, text);
-          const cut = longestCut(width, contact, boxWidth);
-          const box = textBoxes(template, design, data).find(
-            (candidate) => candidate.x === boxX && candidate.width === boxWidth,
-          );
-          expect(box?.height).toBeCloseTo(size * 1.2, 6);
-          const pill = rounded(width(cut) + pad);
-          expect(rectAt(svg, y)).toEqual({ x: rounded(840 - pill), width: pill });
-        }
+    "the %s contact is cut to its room, drawn on one line, and its pill or underline follows the cut",
+    (template, font, size, cap, room, right, y, pad) => {
+      const contacts = [
+        "github.com/sample-developer-name",
+        `linkedin.com/in/${rocket}ada-lovelace-18`,
+        // Spaced contacts: kerning across a space must not make a cut that fits wrap.
+        "on at bluesky cal.com/ada book at or me or @ada.bsky.social",
+        "Write to ada at lovelace dot dev or say hi",
+        "AVA TV WAY To Yo We ATA LTY Wo Va",
+        "book a call: cal.com/ada-lovelace today",
+        "hi there, I'm Ada: ada.dev / @ada",
+      ];
+      const cases = [
+        ...contacts.map((contact) => ["light", contact] as const),
+        ["dark", contacts[0] ?? ""] as const,
+      ];
+      for (const [theme, contact] of cases) {
+        const design = withProps(loadProfile(template, "footer", theme), { contactText: contact });
+        const data = sampleProfileData();
+        const svg = renderProfile({
+          template,
+          design,
+          data,
+          expectWarnings: contact.includes(rocket) ? ["missing-glyph"] : [],
+        });
+        const width = (text: string) => drawnWidth(template, design, font, size, text);
+        const points = Array.from(contact);
+        const capped = points.length > cap ? `${points.slice(0, cap - 1).join("")}…` : contact;
+        const cut = longestCut(width, capped, room);
+        const drawn = rounded(width(cut));
+        const boxWidth = template === "pinscreen" ? room : drawn;
+        const box = textBoxes(template, design, data).find(
+          (candidate) =>
+            Math.abs(candidate.x + candidate.width - right) < 0.002 &&
+            Math.abs(candidate.width - boxWidth) < 0.002,
+        );
+        expect(box?.height, contact).toBeCloseTo(size * 1.2, 6);
+        const pill = rounded(drawn + pad);
+        expect(rectAt(svg, y), contact).toEqual({ x: rounded(840 - pill), width: pill });
       }
     },
   );

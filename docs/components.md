@@ -209,9 +209,12 @@ A folder holds, per section, `<section>.json` and its dark twin `<section>.dark.
   width (`textWidth`, `truncateWidth`, [expressions](expressions.md#filters)), so a dropped emoji moves nothing: the
   `horizon` name's font size, the slots of the `horizon` commit ticker and worked-with band, the `pinscreen`
   contact underline and stack parentheses, the `horizon` and `year-ring` contact pills, the contacts cut to their
-  box, the `pinscreen` ticker's cut and the `pinscreen` and `year-ring` ticker travel. Only texts that are ASCII
-  by nature and drawn in Geist Mono (a repository name, a login, a number, a weekday) are still placed by
-  characters times 0.6 em, which is exact there. Archivo has no arrow or star glyph
+  room (the `horizon` and `year-ring` ones are placed by their width, not wrapped in a box, so they never break), the
+  `pinscreen` ticker's cut and the `pinscreen` and `year-ring` ticker travel. A few texts that can only be ASCII
+  are still placed by counting characters: in `pinscreen`, a repository name and the login in Geist Mono (0.6 em a
+  character, exact); in `year-ring`, the row under the year (the longest streak and the busiest weekday, both
+  generated, in Archivo Regular 12) is centred by 6.2 px a character, an estimate that may leave it slightly off
+  centre; it holds no free text, so no dropped character can move it. Archivo has no arrow or star glyph
   either: the contact arrow and the worked-with stars are paths.
 
 ### Settings file
