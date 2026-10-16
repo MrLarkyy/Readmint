@@ -101,6 +101,28 @@ test("a data-json namespace the data-file holds fails the run naming it", async 
   expect(run.log).toContain("data namespace stats");
 });
 
+test("a data-feed namespace the data-file holds fails the run naming it", async () => {
+  const run = await tree.run(
+    {
+      designs: "card.json",
+      "data-file": "data.json",
+      "data-feed": "stats=https://feeds.example/x.xml?key=feedKEY123",
+      "dry-run": "true",
+    },
+    {
+      fetch: () =>
+        Promise.resolve(
+          new Response('<rss version="2.0"><channel><title>t</title></channel></rss>', {
+            headers: { "content-type": "application/rss+xml" },
+          }),
+        ),
+    },
+  );
+  expect(run.code).not.toBe(0);
+  expect(run.log).toContain("data namespace stats");
+  expect(run.log).not.toContain("feedKEY123");
+});
+
 test("a dry run binds a fixture feed fetched through deps.fetch, never logging its URL", async () => {
   const feed = await readFile(
     join(import.meta.dirname, "..", "..", "data-feed", "test", "fixtures", "unsorted.rss.xml"),

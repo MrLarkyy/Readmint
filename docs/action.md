@@ -207,9 +207,12 @@ are inlined in the SVG. The rules and error codes: [asset-loading.md](asset-load
   `{ title, link, published, summary }` newest first: bind `blog.entries[0].title`. Without `<namespace>=` the namespace
   is `feed`; a limit is 1 to 50 and a feed without one keeps 5.
 - A URL must be `https://`; at most 3 redirects (https only), an XML or `text/plain` content type, 1 MiB, 10 s. No
-  credentials are sent. The URL may hold a key: it is never printed, and errors name the namespace only.
+  credentials are sent. A URL that holds a key must come from a secret (`blog=${{ secrets.BLOG_FEED_URL }}`), as a header
+  value does: the runner prints `with:` values and masks only secrets. The Action itself never prints a feed URL, and
+  errors name the namespace only.
 - The feed namespaces are added to the `data-file` data or to `github`, as the JSON ones: `github` cannot be a feed
-  namespace unless `data-file` is given, and a namespace cannot be both a `data-json` and a `data-feed` namespace.
+  namespace unless `data-file` is given, a `data-file` key equal to a feed namespace fails the run, naming it, and a namespace cannot be
+  both a `data-json` and a `data-feed` namespace.
 - The feeds are loaded on every run (no cache).
 
 ## Pushing
@@ -262,7 +265,7 @@ A failed run exits with 1 and prints one `::error::` line per problem, each nami
 - inputs: a missing or invalid input (all at once);
 - data: the fixture file's problem, or `GitHub data (<code>): <message>` with the code of
   [data-github.md](data-github.md#errors), or `JSON data <namespace> (<code>): <message>` with a common code of
-  [data-sources.md](data-sources.md#the-json-source), `Feed data <namespace> (<code>): <message>` with a common code of [data-sources.md](data-sources.md#the-feed-source), or a namespace both the `data-file` and `data-json` give;
+  [data-sources.md](data-sources.md#the-json-source), `Feed data <namespace> (<code>): <message>` with a common code of [data-sources.md](data-sources.md#the-feed-source), or a namespace both the `data-file` and `data-json` or `data-feed` give, or a `data-file` key equal to a `data-json` or `data-feed` namespace;
 - render: the design's issues, as `readmint render` prints them (an image bound to data that cannot be fetched as
   `<design>: error image-<reason> at /assets/images/<id>/src: <message>`), or a raster export over a limit (the
   measured value, the limit and a fix);

@@ -45,7 +45,7 @@ inputs:
     description: Headers for the data-json URLs, one per line as `<namespace>:<Header-Name>=<ENV_NAME>` - the value is read from the step's environment variable ENV_NAME (set it from a secret with `env:`), masked and never printed, and sent only to that URL's origin.
     required: false
   data-feed:
-    description: RSS 2.0 or Atom 1.0 feeds to bind, one per line as `[<namespace>=]<https URL>` (the CLI `--data-feed`; default namespace feed, at most 8); each is bound as `{ version, title, link, entries }` with plain-text entries newest first, added after the data-json documents. The URL is never printed.
+    description: RSS 2.0 or Atom 1.0 feeds to bind, one per line as `[<namespace>=]<https URL>` (the CLI `--data-feed`; default namespace feed, at most 8); each is bound as `{ version, title, link, entries }` with plain-text entries newest first, added after the data-json documents. A URL that holds a key must come from a secret (`${{ secrets.NAME }}`) - the runner prints the with values and masks only secrets. The Action itself never prints it.
     required: false
   data-feed-limits:
     description: Entries kept per feed, one per line as `<namespace>=<n>` with n from 1 to 50 (the CLI `--data-feed-limit`); a feed without a line keeps 5.

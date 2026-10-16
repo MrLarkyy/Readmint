@@ -17,6 +17,7 @@ test("exposes its package name and the pinned API", () => {
     "dataSourceCacheKey",
     "fetchHttpsText",
     "isDataNamespace",
+    "mediaTypeCheck",
     "packageName",
     "readBodyCapped",
     "sha256Hex",

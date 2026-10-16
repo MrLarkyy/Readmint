@@ -15,6 +15,7 @@ export { HttpsLimits } from "./HttpsLimits.js";
 export { MemoryCache } from "./MemoryCache.js";
 export { checkDataSource } from "./checkDataSource.js";
 export { checkHttpsUrl } from "./checkHttpsUrl.js";
+export { mediaTypeCheck } from "./mediaTypeCheck.js";
 export { fetchHttpsText } from "./fetchHttpsText.js";
 export { dataSourceCacheKey } from "./dataSourceCacheKey.js";
 export { isDataNamespace } from "./isDataNamespace.js";
