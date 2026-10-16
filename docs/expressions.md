@@ -76,8 +76,9 @@ The hyphen rule keeps ids usable as names: `props.my-label` and `repo-index` are
 | `floor`                        | number                | the next integer down                                                                |
 | `ceil`                         | number                | the next integer up                                                                  |
 | `abs`                          | number                | the absolute value                                                                   |
-| `min(b)`                       | number                | the smaller of the value and `b`                                                     |
-| `max(b)`                       | number                | the larger of the value and `b`                                                      |
+| `sqrt`                         | number                | the square root; a negative number is a `not-finite` error                           |
+| `min(b)`, `min`                | number or array       | the smaller of the value and `b`; of an array (no `b`), its smallest item            |
+| `max(b)`, `max`                | number or array       | the larger of the value and `b`; of an array (no `b`), its largest item              |
 | `clamp(low, high)`             | number                | the value within `[low, high]`; `low > high` is an `argument` error                  |
 | `date(pattern?, locale?)`      | ISO 8601 string or ms | the date in UTC written with `pattern`, else the locale's default pattern            |
 | `upper`                        | string                | upper case by a fixed 1:1 table (see Determinism)                                    |
@@ -90,6 +91,9 @@ The hyphen rule keeps ids usable as names: `props.my-label` and `repo-index` are
 | `join(separator=", ")`         | array                 | the items written as in text, separated; arrays and objects in it are a `type` error |
 | `first`                        | array or string       | the first item (`null` when empty) or code point                                     |
 | `last`                         | array or string       | the last item (`null` when empty) or code point                                      |
+
+`min` and `max` of an array give `null` when it is empty; an item that is not a number is a `type` error, an argument
+with an array or a number without `b` an `argument` error.
 
 Arguments are expressions; a `null` argument means its default. Decimals, lengths and widths must be integers. Number
 filters round with `toFixed` (exact on the binary value: `1.005 | number(2)` is `1.00`); from `1e21` on a number is
@@ -196,7 +200,7 @@ written as `\u{…}`.
 | `unknown-filter` | no filter has this name                                                             |
 | `argument`       | a filter got too many or too few arguments, or one of the wrong kind or range       |
 | `type`           | an operator or filter got a value of the wrong type                                 |
-| `not-finite`     | arithmetic gave an infinite or undefined number                                     |
+| `not-finite`     | arithmetic gave an infinite or undefined number, or `sqrt` of a negative number     |
 | `too-large`      | a string, an array literal or a repeat would pass its size limit                    |
 | `budget`         | the evaluation took more steps than its budget                                      |
 | `unknown-locale` | the locale is not one of en, de, fr, es, cs                                         |
@@ -244,9 +248,11 @@ toText(value); // string | undefined: a value written as a placeholder in text i
 
 The same template, data and locale give the same value in Node and in every browser: no `Intl`, no host locale or
 time zone, no clock, no randomness; numbers are written by `toFixed` and `String(n)`, both exactly specified, and
-strings are compared by code unit. `upper` and `lower` never use `toUpperCase` / `toLowerCase`, whose mappings change
-with the engine's Unicode version: they use a fixed table of the simple (one to one) Unicode case mappings for Basic
-Latin, Latin-1 Supplement, Latin Extended-A, Greek and Coptic, and Cyrillic, and leave every other character
-unchanged. Nothing expands: `ß` stays `ß`, `İ` lowers to `i`, and `Σ` always lowers to `σ`. `trim` removes a fixed
+strings are compared by code unit. `sqrt` is `Math.sqrt`, which engines compute with the IEEE 754 square root: that
+operation is correctly rounded (unlike `Math.exp` or `Math.sin`), so every engine gives the same bits, and the corpus
+pins its results. `min` and `max` of an array reduce with `Math.min` / `Math.max`, so `-0` is below `0` in any order.
+`upper` and `lower` never use `toUpperCase` / `toLowerCase`, whose mappings change with the engine's Unicode version:
+they use a fixed table of the simple (one to one) Unicode case mappings for Basic Latin, Latin-1 Supplement, Latin
+Extended-A, Greek and Coptic, and Cyrillic, and leave every other character unchanged. Nothing expands: `ß` stays `ß`, `İ` lowers to `i`, and `Σ` always lowers to `σ`. `trim` removes a fixed
 set: tab, line feed, vertical tab, form feed, carriage return, space, U+00A0, U+1680, U+2000 to U+200A, U+2028,
 U+2029, U+202F, U+205F, U+3000 and U+FEFF. A shared corpus of expressions is checked in Node and in headless Chromium.
