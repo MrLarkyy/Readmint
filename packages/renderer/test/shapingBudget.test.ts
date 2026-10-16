@@ -119,3 +119,44 @@ describe("one shaping bound for the whole render", () => {
     expect(ms).toBeLessThan(1000 * loadScale());
   });
 });
+
+describe("measured text shares the render's shaping bound", () => {
+  test("2000 distinct textWidth calls in a costly font fail as asset-too-large at the expression well under a second", () => {
+    const letters = "cdefghijklmnopqrstuvwxyz";
+    const texts: string[] = [];
+    for (let index = 0; texts.length < 2000; index++) {
+      const pick = (shift: number) =>
+        letters[Math.floor(index / letters.length ** shift) % letters.length] ?? "c";
+      texts.push(`a${pick(0)}${pick(1)}${pick(2)}${pick(3)}`);
+    }
+    const design: Design = {
+      version: 0,
+      canvas: { width: 400, height: 100 },
+      assets: {
+        fonts: { f: { family: "Hostile", src: "hostile.ttf", licence: { embedding: "allowed" } } },
+      },
+      layers: [
+        {
+          type: "rect",
+          width: '{{ t | textWidth("f", 16) }}',
+          height: 1,
+          repeat: { each: "{{ texts }}", as: "t" },
+        },
+      ],
+    };
+    const started = performance.now();
+    const result = renderSvg(design, {
+      data: { texts },
+      assets: { fonts: { f: hostileFont(7000) } },
+    });
+    const ms = performance.now() - started;
+    expect(result).toMatchObject({
+      ok: false,
+      issues: [{ code: "asset-too-large", path: "/layers/0/width" }],
+    });
+    expect(result.ok ? "" : result.issues[0]?.message).toContain(
+      "shaping operations (all texts together)",
+    );
+    expect(ms).toBeLessThan(1000 * loadScale());
+  });
+});

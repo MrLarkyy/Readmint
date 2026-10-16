@@ -165,7 +165,10 @@ Every layer has `type` (required) and these optional properties:
   one placeholder (`"{{ shape }}"`) takes a data string whole, so its length is checked only there; text built from
   several placeholders stops earlier, at the 100000 characters an expression may produce (`binding`).
 - `content` of a text: at most 10000 characters; `{{...}}` placeholders may appear anywhere in it and are written into
-  the text ([expressions](expressions.md#placeholders-and-text)).
+  the text ([expressions](expressions.md#placeholders-and-text)). Something that follows the drawn width of a text (a
+  font size that makes it fill a line, an underline, a ticker's travel, a cut to fit a slot) binds to its measured
+  width with `textWidth` and `truncateWidth` ([expressions](expressions.md#filters)), not to `length`, which counts
+  characters a font may not draw.
 - A text needs a font: its own `font` or one from its `style`.
 
 ## Assets

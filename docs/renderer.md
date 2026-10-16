@@ -57,6 +57,14 @@ apply unchanged:
   checked against the declared type, an `enum` prop against its `values`, an `array` prop for being an array; a
   mismatch is a `type` issue at the instance prop). A repeat in the component can iterate an array prop. Defaults and literal list items are used as written, never
   evaluated.
+- The scope carries the renderer's text measurer, so `textWidth` and `truncateWidth`
+  ([expressions](expressions.md#filters)) measure with the shaping a text layer is drawn with: the same code lays
+  out a drawn text and a measured one (each paragraph on one line, the widest counts), so a measured width is the box
+  width of a text layer with that font, size and letter spacing and no `width`, in Node and in every browser. A
+  measurement gets the shaping budget a text of its length gets and counts against the render's shaping bound
+  (`asset-too-large` at the expression); results are cached per render. Measuring records no glyph: a font that is
+  only measured is loaded and checked but never embedded or drawn, and a character no font has warns `missing-glyph`
+  only where a text draws it.
 
 Each design string is compiled once per render. All evaluations of a render draw from one expr step budget
 (`maxExpressionSteps`, below); once it is spent the render fails with a `binding` issue of expr code `budget`. An

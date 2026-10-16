@@ -1,11 +1,14 @@
 import type { ExpressionErrorCode } from "./ExpressionError.js";
 import type { ExprValue } from "./ExprValue.js";
+import type { TextMeasurer } from "./TextMeasurer.js";
 
 export interface FilterContext {
   /** The scope's locale tag; a `locale` argument overrides it. */
   readonly locale: string;
   /** Adds work to the evaluation budget before it is done; false once the budget is spent. */
   charge(steps: number): boolean;
+  /** The scope's text measurer: `undefined` outside a render. */
+  readonly measurer: TextMeasurer | undefined;
 }
 
 export type FilterFailure = {

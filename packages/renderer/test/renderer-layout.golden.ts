@@ -1,7 +1,7 @@
 import { defineGoldenSuite } from "@readmint/golden";
 import type { Layer } from "@readmint/format";
 import { renderFixture, type RenderFixture } from "./renderFixture.js";
-import { fontAssets } from "./testAssets.js";
+import { fontAssets, goldenFonts } from "./testAssets.js";
 
 function design(layers: Layer[], data?: Readonly<Record<string, unknown>>): RenderFixture {
   return {
@@ -17,6 +17,7 @@ function box(width: number, height: number, fill: string, extra: Partial<Layer> 
 export default defineGoldenSuite<RenderFixture>({
   name: "renderer-layout",
   render: renderFixture,
+  fonts: goldenFonts,
   fixtures: [
     {
       name: "group-absolute",
@@ -313,6 +314,71 @@ export default defineGoldenSuite<RenderFixture>({
         ],
         { flags: { hidden: false, shown: true } },
       ),
+    },
+    {
+      // Sizes and places from the drawn width: the name fills 140 px, the underline is as long as the label (its rocket
+      // is not drawn and takes no space), the long line is cut to the 140 px guide.
+      name: "measured-width",
+      scale: 2,
+      input: {
+        design: {
+          version: 0,
+          canvas: { width: 160, height: 100, background: "#ffffff" },
+          assets: { fonts: { medium: fontAssets.medium } },
+          layers: [
+            {
+              type: "text",
+              x: 10,
+              y: 2,
+              content: "{{ name }}",
+              font: "medium",
+              fontSize: '{{ 140 / (name | textWidth("medium", 1)) | round(2) }}',
+              fill: "#1f2328",
+            },
+            {
+              type: "text",
+              x: 10,
+              y: 46,
+              content: "{{ label }}",
+              font: "medium",
+              fontSize: 14,
+              fill: "#1f2328",
+            },
+            {
+              type: "rect",
+              x: 10,
+              y: 64,
+              width: '{{ label | textWidth("medium", 14) }}',
+              height: 2,
+              fill: "#cf222e",
+            },
+            {
+              type: "rect",
+              x: 10,
+              y: 76,
+              width: 140,
+              height: 14.4,
+              fill: "none",
+              stroke: "#d0d7de",
+              strokeWidth: 1,
+            },
+            {
+              type: "text",
+              x: 10,
+              y: 76,
+              content: '{{ long | truncateWidth(140, "medium", 12) }}',
+              font: "medium",
+              fontSize: 12,
+              fill: "#0969da",
+            },
+          ],
+        },
+        data: {
+          name: "Readmint",
+          label: "Under 🚀 line",
+          long: "A push message far too long for its slot",
+        },
+      },
     },
   ],
 });
