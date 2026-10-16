@@ -1,4 +1,4 @@
-import type { DataJsonSpec, OutputFormat } from "@readmint/cli";
+import type { DataFeedSpec, DataJsonSpec, OutputFormat } from "@readmint/cli";
 
 /** The inputs of one run, read and checked by `readInputs`. */
 export interface ActionConfig {
@@ -22,6 +22,8 @@ export interface ActionConfig {
   readonly dataFile?: string;
   /** JSON sources of `data-json` with the headers of `data-json-headers`, added to the fixture or GitHub data. */
   readonly dataJson?: readonly DataJsonSpec[];
+  /** Feeds of `data-feed` with the limits of `data-feed-limits`, added after the JSON sources. */
+  readonly dataFeed?: readonly DataFeedSpec[];
   /** Settings file merged into every design (the CLI `--props`). */
   readonly propsFile?: string;
   /** Locale override for the expression filters; absent: the design's `locale`, else `en`. */

@@ -41,6 +41,9 @@ importers:
       '@readmint/cli':
         specifier: workspace:*
         version: link:../cli
+      '@readmint/data-feed':
+        specifier: workspace:*
+        version: link:../data-feed
       '@readmint/data-github':
         specifier: workspace:*
         version: link:../data-github
@@ -63,6 +66,9 @@ importers:
       '@readmint/data':
         specifier: workspace:*
         version: link:../data
+      '@readmint/data-feed':
+        specifier: workspace:*
+        version: link:../data-feed
       '@readmint/data-github':
         specifier: workspace:*
         version: link:../data-github
@@ -105,6 +111,12 @@ importers:
         version: link:../renderer
 
   packages/data: {}
+
+  packages/data-feed:
+    dependencies:
+      '@readmint/data':
+        specifier: workspace:*
+        version: link:../data
 
   packages/data-github:
     dependencies:

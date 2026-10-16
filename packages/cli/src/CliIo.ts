@@ -13,12 +13,12 @@ export interface CliIo {
   /** How often `preview` checks its input files for changes, in milliseconds; default 300. */
   readonly pollIntervalMs?: number;
   /**
-   * `fetch` for `--fetch-images`, `--github` and `--data-json` URLs, the only network use of the CLI; the global one
-   * when absent.
+   * `fetch` for `--fetch-images`, `--github`, `--data-json` and `--data-feed` URLs, the only network use of the CLI;
+   * the global one when absent.
    */
   readonly fetch?: ImageFetch;
   /**
-   * Opens the `preview --open` address in a browser (with a secret path, from `--github` or `--data-json`, the one-time launch address, never the secret
+   * Opens the `preview --open` address in a browser (with a secret path, from `--github`, `--data-json` or `--data-feed`, the one-time launch address, never the secret
    * one); `openInBrowser` when absent, tests inject one.
    */
   readonly openUrl?: (url: string) => Promise<void>;

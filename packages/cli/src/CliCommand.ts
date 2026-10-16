@@ -1,4 +1,5 @@
 import type { OutputFormat } from "./OutputFormat.js";
+import type { DataFeedSpec } from "./parseDataFeedArgs.js";
 import type { DataJsonSpec } from "./parseDataJsonArgs.js";
 
 /** Arguments every design command takes. */
@@ -23,6 +24,11 @@ export interface DesignArgs {
    * to `--data` or `--github` data.
    */
   readonly dataJson?: readonly DataJsonSpec[];
+  /**
+   * `--data-feed` with its `--data-feed-limit` limits: RSS or Atom feeds loaded live, each under its namespace, added
+   * after the JSON documents to `--data` or `--github` data.
+   */
+  readonly dataFeed?: readonly DataFeedSpec[];
 }
 
 /** `readmint render` beyond the design arguments. */
