@@ -150,6 +150,14 @@ describe("buildExamples over the real templates", () => {
     expect(text(files, "README.md")).toContain("`v9.9.9`");
   });
 
+  it("links no README to a docs/ file of the repository", () => {
+    for (const file of files.filter((f) => f.path.endsWith("README.md"))) {
+      const content = file.content.toString();
+      expect(content, file.path).not.toContain("](docs/");
+      expect(content, file.path).not.toMatch(/[/]docs[/][^ )]*[.]md/);
+    }
+  });
+
   it("copies the fonts and their licences byte for byte", () => {
     for (const template of templates) {
       for (const name of readdirSync(join(profilesDir, template, "fonts"))) {
