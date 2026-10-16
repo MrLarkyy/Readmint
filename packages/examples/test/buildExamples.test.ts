@@ -210,6 +210,22 @@ describe("buildExamples on a broken template folder", () => {
     expect(bare.map((f) => f.path)).not.toContain("t/designs/settings.json");
   });
 
+  it("refuses a pinned Action older than props-file when a settings.json is emitted", () => {
+    const props = { t: { a: { x: "1" } } };
+    expect(() =>
+      buildExamples(fixture(component), { ...options, actionRef: "o/a@v0.2.0", props }),
+    ).toThrow(/v0\.2\.0 predates props-file/);
+    expect(
+      buildExamples(fixture(component), { ...options, actionRef: "o/a@v0.3.0", props }),
+    ).not.toHaveLength(0);
+    expect(
+      buildExamples(fixture(component), { ...options, actionRef: "o/a@main", props }),
+    ).not.toHaveLength(0);
+    expect(
+      buildExamples(fixture(component), { ...options, actionRef: "o/a@v0.2.0", props: {} }),
+    ).not.toHaveLength(0);
+  });
+
   it("throws on example props for a section without a design", () => {
     expect(() =>
       buildExamples(fixture(component), { ...options, props: { t: { b: { x: "1" } } } }),

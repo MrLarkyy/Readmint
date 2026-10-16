@@ -8,6 +8,7 @@ import { listFiles } from "./listFiles.js";
 import { readmeTitle } from "./readmeTitle.js";
 import { assertNoLink } from "./assertNoLink.js";
 import { exampleWorkflow } from "./exampleWorkflow.js";
+import { assertActionSupportsSettings } from "./assertActionSupportsSettings.js";
 import { assertActionSupportsDesigns } from "./assertActionSupportsDesigns.js";
 
 const byCodeUnit = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
@@ -66,6 +67,7 @@ export function buildExamples(templatesDir: string, options: ExamplesOptions): E
     }
     const hasSettings = Object.keys(templateProps).length > 0;
     if (hasSettings) {
+      assertActionSupportsSettings(options.actionRef);
       files.push({
         path: `${name}/designs/${settingsFile}`,
         content: `${JSON.stringify(templateProps, null, 2)}\n`,
