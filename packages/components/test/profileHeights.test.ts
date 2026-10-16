@@ -72,6 +72,23 @@ describe("year-ring index: the canvas follows its rows", () => {
     for (const box of boxes) expect(bottom(box)).toBeLessThanOrEqual(height);
   });
 
+  test.each([
+    [8, 8],
+    [10, 9],
+    [7, 8],
+  ])("%i labels with the Languages row after %i: never drawn past the 8th row", (labels, after) => {
+    const props = {
+      labels: words(labels, "label"),
+      values: words(labels, "value"),
+      languagesAfter: after,
+    };
+    const { height, boxes } = renderTwins("year-ring", "index", props, 3);
+    expect(height).toBe(327);
+    const rules = boxes.filter((box) => box.height === 1 && box.width >= 840);
+    expect(rules.length).toBe(9);
+    for (const box of boxes) expect(bottom(box)).toBeLessThanOrEqual(height);
+  });
+
   test("8 rows is the tallest index, 327", () => {
     const props = { labels: words(12, "label"), values: words(12, "value") };
     expect(renderTwins("year-ring", "index", props, 3).height).toBe(327);

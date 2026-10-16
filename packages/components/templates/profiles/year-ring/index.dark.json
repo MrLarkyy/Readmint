@@ -121,7 +121,7 @@
           "type": "group",
           "x": 0,
           "y": "{{ 35 + (props.languagesAfter | clamp(0, (props.labels | length))) * 36 }}",
-          "if": "{{ ((github.languages | length | default(0)) > 0) }}",
+          "if": "{{ ((github.languages | length | default(0)) > 0) && (props.languagesAfter | clamp(0, (props.labels | length))) < 8 }}",
           "children": [
             {
               "type": "text",
