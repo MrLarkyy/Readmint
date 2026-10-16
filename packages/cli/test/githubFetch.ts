@@ -17,6 +17,8 @@ const bodyByOperation: Readonly<Record<string, string>> = {
   ReadmintViewer: "viewer",
   ReadmintProfile: "profile",
   ReadmintRepositories: "repositories-3",
+  ReadmintActivity: "activity",
+  ReadmintWeeks: "weeks",
 };
 
 export interface SentRequest {

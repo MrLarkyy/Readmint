@@ -71,7 +71,7 @@ describe("secondary rate limit", () => {
     ]);
     expect(waits).toEqual([2000]);
     expect(result?.data.login).toBe(FIXTURE_LOGIN);
-    expect(result?.meta.requests).toBe(5);
+    expect(result?.meta.requests).toBe(7);
     expect(replay.pending()).toBe(0);
   });
 
@@ -116,7 +116,7 @@ describe("other statuses", () => {
   test("a 502 is retried once after a second", async () => {
     const { result, waits } = await run([exchange("bad-gateway"), ...successExchanges()]);
     expect(waits).toEqual([1000]);
-    expect(result?.meta.requests).toBe(5);
+    expect(result?.meta.requests).toBe(7);
   });
 
   test("a second 502 fails as http", async () => {
@@ -135,7 +135,7 @@ describe("other statuses", () => {
 
   test("meta reports the remaining requests from the response headers", async () => {
     const { result } = await run(successExchanges());
-    expect(result?.meta.rateLimitRemaining).toBe(4995);
+    expect(result?.meta.rateLimitRemaining).toBe(4993);
     expect(result?.meta.resetAt).toBe(RESET_AT);
   });
 });

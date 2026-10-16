@@ -24,7 +24,12 @@ const success = (url: string, init: RequestInit): Promise<Response> => {
   const sent = JSON.parse(typeof init.body === "string" ? init.body : "{}") as {
     operationName?: string;
   };
-  const name = sent.operationName === "ReadmintProfile" ? "profile" : "repositories-3";
+  const names: Record<string, string> = {
+    ReadmintProfile: "profile",
+    ReadmintActivity: "activity",
+    ReadmintWeeks: "weeks",
+  };
+  const name = names[sent.operationName ?? ""] ?? "repositories-3";
   return Promise.resolve(Response.json(body(name), { status: 200 }));
 };
 

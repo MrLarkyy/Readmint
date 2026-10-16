@@ -4,6 +4,7 @@ import type { CliIo } from "./CliIo.js";
 import { ExitCode } from "./ExitCode.js";
 import { githubToken } from "./githubToken.js";
 import { loadLiveData } from "./loadLiveData.js";
+import { partialDataWarning } from "./partialDataWarning.js";
 
 /**
  * The `loadRenderInput` `loadData` option of `--github`: loads the GitHub data with the token from `io.env` when
@@ -29,6 +30,9 @@ export function liveData(
         token,
         ...(args.login === undefined ? {} : { login: args.login }),
         fetch: io.fetch ?? globalThis.fetch,
+        onPartial: (parts) => {
+          void io.stderr(`warning: ${partialDataWarning(parts)}\n`);
+        },
         ...(stop === undefined ? {} : { signal: stop }),
       });
     },

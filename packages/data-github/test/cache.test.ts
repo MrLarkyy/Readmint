@@ -59,6 +59,8 @@ describe("loading through a cache", () => {
       "ReadmintRepositories",
       "ReadmintRepositories",
       "ReadmintRepositories",
+      "ReadmintActivity",
+      "ReadmintWeeks",
     ]);
     expect(second.replay.failures).toEqual([]);
     expect(operations(second.replay.requests)).toEqual(["ReadmintViewer"]);
@@ -73,7 +75,7 @@ describe("loading through a cache", () => {
     const other = await load(cache, "bob");
     expect(other.replay.failures).toEqual([]);
     expect(other.result.meta.fromCache).toBe(false);
-    expect(other.replay.requests).toHaveLength(5);
+    expect(other.replay.requests).toHaveLength(7);
     const again = await load(cache, "bob", []);
     expect(again.result.meta.fromCache).toBe(true);
   });
@@ -85,7 +87,7 @@ describe("loading through a cache", () => {
     now += 3600 * 1000;
     const again = await load(cache);
     expect(again.result.meta.fromCache).toBe(false);
-    expect(again.replay.requests).toHaveLength(5);
+    expect(again.replay.requests).toHaveLength(7);
   });
 
   test("an entry that fails validation is a miss and is replaced", async () => {
@@ -178,7 +180,7 @@ describe("loading through a cache", () => {
     });
     expect(replay.failures).toEqual([]);
     expect(replay.pending()).toBe(0);
-    expect(result.meta).toMatchObject({ requests: 5, fromCache: false });
+    expect(result.meta).toMatchObject({ requests: 7, fromCache: false });
     expect(JSON.stringify(result.data)).toBe(expectedText);
     expect(writes).toBe(0);
   });

@@ -164,11 +164,11 @@ SVG links do not work inside an `<img>`, so each repository and the contact foot
 
 ## Data
 
-Every section reads the `github.*` object of the [GitHub data source](../../../../../docs/data-github.md). Some fields are
-not loaded yet; a design reads them as optional (a missing property is `null`) and shows a plain line where they are
-missing, so it renders with today's data too. Until the loader provides them, pass a data file with them
-(`data-file`): `github.status`, `github.pushes[]` and `github.pinned[]` with `weeklyCommits[52]`. Without
-`github.pinned` the repository slots show `github.repositories`.
+Every section reads the `github.*` object of the [GitHub data source](../../../../../docs/data-github.md). The loader provides
+`github.status`, `github.pushes[]` and `github.pinned[]` with `weeklyCommits[52]`. A design reads them as optional (a
+missing property is `null`) and shows a plain line where they are missing, for instance when the token cannot read
+them (the Actions `GITHUB_TOKEN` may not read the status); without `github.pinned` the repository slots show
+`github.repositories`.
 [docs/components.md](../../../../../docs/components.md#profile-templates) lists the fields and their shape.
 
 ## Motion

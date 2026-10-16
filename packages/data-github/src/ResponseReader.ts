@@ -31,6 +31,17 @@ export class ResponseReader {
     return this;
   }
 
+  /** Fails unless the value is an object. */
+  object(): this {
+    this.record();
+    return this;
+  }
+
+  /** True when the value is an object with an own field of that name. */
+  hasField(name: string): boolean {
+    return isJsonRecord(this.value) && ownField(this.value, name) !== undefined;
+  }
+
   items(max: number): ResponseReader[] {
     if (!Array.isArray(this.value)) this.fail("an array");
     const items: readonly unknown[] = this.value;
@@ -44,6 +55,19 @@ export class ResponseReader {
       this.fail(`at most ${String(GitHubLimits.maxStringLength)} characters`);
     }
     return this.value;
+  }
+
+  /**
+   * A string of any length, cut to the limit on a code point boundary: for free text such as a
+   * commit message, where a long value is data, not a broken response.
+   */
+  clippedString(): string {
+    if (typeof this.value !== "string") this.fail("a string");
+    const limit = GitHubLimits.maxStringLength;
+    if (this.value.length <= limit) return this.value;
+    const lastUnit = this.value.charCodeAt(limit - 1);
+    const cut = lastUnit >= 0xd800 && lastUnit <= 0xdbff ? limit - 1 : limit;
+    return this.value.slice(0, cut);
   }
 
   nullableString(): string | null {

@@ -30,6 +30,17 @@ export const GitHubLimits = Object.freeze({
   /** Languages loaded per repository (GitHub's page maximum; the rest are not counted). */
   maxLanguagesPerRepository: 100,
   maxCalendarWeeks: 54,
+  /** Repositories shown as pinned. */
+  maxPinned: 6,
+  /** Pushes returned. */
+  maxPushes: 10,
+  /** Repositories GitHub reports recent commits for. */
+  maxPushRepositories: 10,
+  maxCommitsPerRepository: 10,
+  /** Weeks of `weeklyCommits`. */
+  weeklyCommitWeeks: 52,
+  /** Days of `pushes`, the last one included. */
+  recentDays: 7,
 });
 
 export type GitHubLimits = typeof GitHubLimits;

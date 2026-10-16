@@ -1,3 +1,7 @@
+import type { GitHubPinnedRepository } from "./GitHubPinnedRepository.js";
+import type { GitHubPush } from "./GitHubPush.js";
+import type { GitHubStatus } from "./GitHubStatus.js";
+
 /** Version of the `github.*` data object; bumped on a rename, removal or change of meaning. */
 export const GITHUB_DATA_VERSION = 0;
 
@@ -22,6 +26,12 @@ export interface GitHubData {
   readonly following: number;
   readonly counts: GitHubCounts;
   readonly repositories: readonly GitHubRepository[];
+  /** The pinned repositories, else the six most starred own ones; empty when there are none. */
+  readonly pinned: readonly GitHubPinnedRepository[];
+  /** The user's commits of the last 7 days, newest first, at most 10; empty when unavailable. */
+  readonly pushes: readonly GitHubPush[];
+  /** The profile status, `null` when none is set or GitHub did not return it. */
+  readonly status: GitHubStatus | null;
   /** True when the account owns more public repositories than were loaded. */
   readonly repositoriesTruncated: boolean;
   readonly languages: readonly GitHubLanguageShare[];

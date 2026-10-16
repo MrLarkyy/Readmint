@@ -27,6 +27,7 @@
           },
           "nodes": [
             {
+              "id": "R_forked-lib",
               "name": "forked-lib",
               "nameWithOwner": "readmint-fixture/forked-lib",
               "description": "A fork",
@@ -55,6 +56,7 @@
               }
             },
             {
+              "id": "R_notes",
               "name": "notes",
               "nameWithOwner": "readmint-fixture/notes",
               "description": null,

@@ -178,8 +178,9 @@ A folder holds, per section, `<section>.json` and its dark twin `<section>.dark.
 - **Links.** SVG links do not work inside an `<img>`, so a clickable element is a link around the image: the example
   `README.md` wraps each repository and the contact footer.
 - **Repository slots.** `repo-1` to `repo-6` are the same design with the root prop `slot` 0 to 5 (a test pins that
-  they differ in nothing else). A slot reads `github.pinned`, or `github.repositories` where the data has no pinned
-  list (the loader does not produce one yet). In `year-ring` and `pinscreen` slot n shows the n-th of that list;
+  they differ in nothing else). A slot reads `github.pinned` (the loader fills it, see
+  [pinned repositories, pushes and status](data-github.md#pinned-repositories-pushes-and-status)), or
+  `github.repositories` where the data has no pinned list. In `year-ring` and `pinscreen` slot n shows the n-th of that list;
   `horizon` ranks its first six by stars (ties keep their order) and slot n shows the n-th. A slot past the list shows
   a plain "No repository in slot n." line (`pinscreen`: an empty file); a repository without `weeklyCommits` shows
   no line (`year-ring`) and flat bars (`horizon`).
@@ -225,10 +226,11 @@ account and the Action reference (`MrLarkyy` and `MrLarkyy/Readmint@v0.1.0` by d
 
 ### Data the templates read
 
-Everything but the fields below is the [GitHub data object](data-github.md). The loader does not produce those fields
-yet, so a template reads them as optional (a missing property reads as `null`, see
-[expressions](expressions.md#semantics)) and shows a plain line where they are missing; pass them in a data file
-(`data-file`, `--data`) until the loader does:
+These fields are part of the [GitHub data object](data-github.md); the loader fills them (`--github`, the Action). A
+template reads them as optional (a missing property reads as `null`, see [expressions](expressions.md#semantics))
+and shows a plain line where they are missing: with a token that cannot read them (the Actions `GITHUB_TOKEN` may
+not read the status or the pinned items), when GitHub refused the request (`meta.partial`), or with a data file
+(`data-file`, `--data`) that leaves them out:
 
 | path                                      | type           | used by                                                                     |
 | ----------------------------------------- | -------------- | --------------------------------------------------------------------------- |
@@ -237,7 +239,7 @@ yet, so a template reads them as optional (a missing property reads as `null`, s
 | `github.pushes[].repository`, `.hash`     | string         | repository name and short hash of the push                                  |
 | `github.pushes[].message`                 | string         | commit message                                                              |
 | `github.pushes[].additions`, `.deletions` | number         | lines added and removed                                                     |
-| `github.pushes[].date`                    | ISO date       | "today", "yesterday", "n days ago" against the calendar's last day          |
+| `github.pushes[].date`                    | timestamp      | "today", "yesterday", "n days ago" against the calendar's last day          |
 | `github.pinned[]`                         | array          | the pinned repositories, same items as `github.repositories[]` (else those) |
 | `github.pinned[].weeklyCommits`           | number[52]     | the 52-week line (`year-ring`) and bar code (`horizon`) of a repository     |
 
