@@ -22,6 +22,21 @@ describe("validateDesign", () => {
     expect(validateDesign(maximalDesign)).toEqual({ ok: true, value: maximalDesign });
   });
 
+  test("canvas bindings may name the props of the root instance, with no version step", () => {
+    const design = {
+      version: 0,
+      canvas: { width: 100, height: "{{ props.n * 10 }}", background: "{{ props.tone }}" },
+      components: {
+        card: {
+          props: { n: { type: "number", default: 2 }, tone: { type: "color", default: "#000000" } },
+          layers: [rect()],
+        },
+      },
+      layers: [{ type: "component", ref: "card", props: { n: 3 } }],
+    };
+    expect(validateDesign(design)).toEqual({ ok: true, value: design });
+  });
+
   test("returns the caller's object and never changes it", () => {
     const input = { ...base(), layers: [rect()] };
     const before = structuredClone(input);

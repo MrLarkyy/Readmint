@@ -109,6 +109,12 @@ export class RenderContext {
   /** `inkBounds` of the nodes measured so far; a node's bounds do not change within one render. */
   readonly inkBounds = new WeakMap<RenderNode, Bounds | undefined>();
   readonly animationCss: AnimationCss;
+  /**
+   * The props of the root instance at `path` (`/layers/<i>`), when the canvas needed them: its expansion reuses them,
+   * so their bindings are evaluated (and charged to the budget) once.
+   */
+  rootProps:
+    { readonly path: string; readonly props: Readonly<Record<string, unknown>> } | undefined;
   private readonly trail: string[] = [];
   private depth = 0;
   private repeatCopies = 0;
