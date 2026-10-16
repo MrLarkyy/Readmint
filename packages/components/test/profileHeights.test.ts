@@ -8,6 +8,7 @@ import { sampleProfileData } from "./sampleProfileData.js";
 type Props = Readonly<Record<string, ComponentPropValue>>;
 
 interface Sized {
+  readonly svg: string;
   readonly height: number;
   readonly boxes: readonly LayerBox[];
 }
@@ -37,7 +38,7 @@ function renderSized(
   });
   if (!result.ok) throw new Error(`render failed: ${JSON.stringify(result.issues)}`);
   const height = Number(/^<svg [^>]*\bheight="([^"]*)"/.exec(result.svg)?.[1]);
-  return { height, boxes: result.layerBoxes ?? [] };
+  return { svg: result.svg, height, boxes: result.layerBoxes ?? [] };
 }
 
 const bottom = (box: LayerBox) => box.y + box.height;
@@ -97,39 +98,56 @@ describe("year-ring index: the canvas follows its rows", () => {
 
 const logoNames = words(7, "logo");
 const logos = logoNames.map(() => "M0 0h14v14H0Z");
+const lineOf = (index: number) => String(Math.min(index, 3));
+const cardOf = (lines: number): Props => ({
+  logoNames,
+  logos,
+  logoLabels: words(lines, "caption"),
+  logoLines: logoNames.map((_, index) => lineOf(index)),
+});
+const squares = (boxes: readonly LayerBox[]) =>
+  boxes.filter((box) => box.width === 14 && box.height === 14);
 
-describe("year-ring index: a wrapping logo strip", () => {
+describe("year-ring index: the business card of logos", () => {
   const rows = { labels: words(8, "label"), values: words(8, "value"), logosRow: 3 };
 
-  test("8 rows with 7 logos make the tallest index, 349, every box inside", () => {
-    const { height, boxes } = renderTwins("year-ring", "index", { ...rows, logoNames, logos }, 3);
-    expect(height).toBe(349);
+  test.each([1, 2, 3, 4])("%i card lines make the canvas 327 + 24 per extra line", (lines) => {
+    const { height, boxes } = renderTwins("year-ring", "index", { ...rows, ...cardOf(lines) }, 3);
+    expect(height).toBe(327 + 24 * (lines - 1));
     for (const box of boxes) expect(bottom(box)).toBeLessThanOrEqual(height);
   });
 
-  test("5 logos stay on one line and add nothing", () => {
-    const five = { ...rows, logoNames: logoNames.slice(0, 5), logos: logos.slice(0, 5) };
-    expect(renderTwins("year-ring", "index", five, 3).height).toBe(327);
+  test("8 rows with 4 card lines make the tallest index, 399", () => {
+    expect(renderTwins("year-ring", "index", { ...rows, ...cardOf(4) }, 3).height).toBe(399);
   });
 
-  test("a row the 8-row cap hides draws no strip and adds no height", () => {
-    const hidden = { ...rows, logosRow: 7, logoNames, logos };
+  test.each([[[]], [[""]]])("captions %j count as one card line", (labels) => {
+    const one = renderTwins("year-ring", "index", { ...rows, ...cardOf(1) }, 3).height;
+    const props = { ...rows, ...cardOf(1), logoLabels: labels };
+    expect(renderTwins("year-ring", "index", props, 3).height).toBe(one);
+  });
+
+  test("more than 4 captions count as 4 lines", () => {
+    const props = { ...rows, ...cardOf(4), logoLabels: words(6, "caption") };
+    expect(renderTwins("year-ring", "index", props, 3).height).toBe(399);
+  });
+
+  test("a row the 8-row cap hides draws no card and adds no height", () => {
+    const hidden = { ...rows, ...cardOf(4), logosRow: 7 };
     expect(renderTwins("year-ring", "index", hidden, 3).height).toBe(327);
   });
 
-  test("a fractional row draws no strip and adds no height", () => {
-    const { height, boxes } = renderTwins(
-      "year-ring",
-      "index",
-      { ...rows, logosRow: 2.5, logoNames, logos },
-      3,
-    );
-    expect(height).toBe(327);
-    expect(boxes.filter((box) => box.width === 14 && box.height === 14)).toHaveLength(0);
+  test("a hidden, fractional or negative row renders as -1", () => {
+    const props = { ...rows, ...cardOf(4) };
+    const off = renderSized("year-ring", "index", "light", { ...props, logosRow: -1 }, 3).svg;
+    for (const logosRow of [7, 2.5, 8, -2]) {
+      const shown = renderSized("year-ring", "index", "light", { ...props, logosRow }, 3).svg;
+      expect(shown, String(logosRow)).toBe(off);
+    }
   });
 });
 
-describe("pinscreen stack: a wrapping logo strip", () => {
+describe("pinscreen stack: the business card of logos", () => {
   const notes = {
     plugin: 'kotlin("jvm")',
     labels: words(4, "group"),
@@ -139,20 +157,25 @@ describe("pinscreen stack: a wrapping logo strip", () => {
     logosRow: 1,
   };
 
-  test("15 lines with 7 logos make the tallest stack, 416, every box inside", () => {
-    const { height, boxes } = renderTwins("pinscreen", "stack", { ...notes, logoNames, logos }, 4);
-    expect(height).toBe(416);
+  test.each([1, 2, 3, 4])("%i card lines add %i code lines to 15", (lines) => {
+    const { height, boxes } = renderTwins("pinscreen", "stack", { ...notes, ...cardOf(lines) }, 4);
+    expect(height).toBe(96 + 20 * (15 + lines));
     for (const box of boxes) expect(bottom(box)).toBeLessThanOrEqual(height);
   });
 
-  test("5 logos add no line", () => {
-    const five = { ...notes, logoNames: logoNames.slice(0, 5), logos: logos.slice(0, 5) };
-    expect(renderTwins("pinscreen", "stack", five, 4).height).toBe(396);
+  test("4 card lines make the tallest stack, 476", () => {
+    expect(renderTwins("pinscreen", "stack", { ...notes, ...cardOf(4) }, 4).height).toBe(476);
   });
 
-  test("a fractional row draws no strip and adds no line", () => {
-    const fractional = { ...notes, logosRow: 1.5, logoNames, logos };
-    expect(renderTwins("pinscreen", "stack", fractional, 4).height).toBe(396);
+  test("a fractional, out of range or negative row renders as -1", () => {
+    const props = { ...notes, ...cardOf(4) };
+    const off = renderSized("pinscreen", "stack", "light", { ...props, logosRow: -1 }, 4);
+    expect(off.height).toBe(396);
+    expect(squares(off.boxes)).toHaveLength(0);
+    for (const logosRow of [1.5, 3, -2]) {
+      const shown = renderSized("pinscreen", "stack", "light", { ...props, logosRow }, 4);
+      expect(shown.svg, String(logosRow)).toBe(off.svg);
+    }
   });
 });
 

@@ -72,7 +72,9 @@ stays in the design (it is what makes the twin dark); `slot` of the repository s
 | `stack`  | `items`          | array  | the dependencies of each line                                   | `["git, make", "sqlite"]`                       |
 | `stack`  | `noteLabels`     | array  | comment lines at the end, up to three                           | `["editor"]`                                    |
 | `stack`  | `noteItems`      | array  | their texts                                                     | `["Neovim"]`                                    |
-| `stack`  | `logoNames`      | array  | project names drawn as a logo strip in one note line            | `["Example"]`                                   |
+| `stack`  | `logoLabels`     | array  | a caption per card line, up to four; empty: a continued line    | `["now", "before"]`                             |
+| `stack`  | `logoLines`      | array  | the line (0 to 3) of each name, as text; none: the first        | `["0", "1"]`                                    |
+| `stack`  | `logoNames`      | array  | project names drawn as a logo + name card under a note line     | `["Example"]`                                   |
 | `stack`  | `logos`          | array  | the path data of each logo, empty to draw the name as text      | `["M0 0h14v14H0Z"]`                             |
 | `stack`  | `logosRow`       | number | the index of the note line the strip replaces; default -1: none | `1`                                             |
 | `footer` | `headline`       | string | the closing line                                                | `Open to new projects.`                         |
@@ -81,7 +83,7 @@ stays in the design (it is what makes the twin dark); `slot` of the repository s
 | `footer` | `contactText`    | string | the contact; empty: your GitHub address                         | `hello@example.com`                             |
 
 The stack is as tall as its build file, up to fifteen lines, and never shorter than its languages panel, so a short
-file leaves no empty space below it. The row named by `logosRow` shows a strip instead of its text: each name in `logoNames` is drawn as the path data in the same place of `logos` (one monochrome path with its origin at 0 0, about 14 px tall, in the ink of the row, so one path serves the light and the dark design) or, where that entry is empty, as the name itself. Six or more names take two lines, which adds one code line (16 at most); at most 12 are drawn and a line is cut at its edge. Without `logoNames` or with `logosRow` outside the rows the row shows its text.
+file leaves no empty space below it. The note line named by `logosRow` keeps its label and is followed by a card of up to four code lines, each a comment with its caption from `logoLabels` (a line whose caption is empty continues the one above; with no caption at all the names start at the left) and the names whose `logoLines` entry is that line's number. A name is drawn as the path data in the same place of `logos` (one monochrome path with its origin at 0 0, 14 px tall, in the comment colour, so one path serves the light and the dark design) followed by the name in text; an empty entry draws the name alone. Every card line is one code line (19 at most); at most 12 names are drawn and a line is cut at the panel edge. Without `logoNames` or with `logosRow` outside the note lines the line shows its text.
 
 For example, `settings.json` for the `header` section:
 
