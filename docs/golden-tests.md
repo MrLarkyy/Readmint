@@ -1,4 +1,4 @@
-# Golden-image and SVG snapshot tests
+# Golden tests
 
 Everything that renders is covered by a golden suite from `@readmint/golden` (private package, a dev tool: no product
 package may list it in `dependencies`; a test pins this).

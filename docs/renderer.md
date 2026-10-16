@@ -1,4 +1,4 @@
-# SVG renderer
+# Renderer
 
 `@readmint/renderer` turns a validated [design](design-format.md) plus data into one self-contained SVG. The same code
 runs in Node (CLI, Action) and in the browser (editor preview): same design, data and assets give byte-identical SVG.
