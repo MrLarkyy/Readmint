@@ -15,6 +15,8 @@ export type DesignIssueCode =
   | "length"
   | "count"
   | "duplicate-id"
+  | "reserved-name"
+  | "duplicate-name"
   | "unknown-reference"
   | "component-cycle"
   | "missing-font"

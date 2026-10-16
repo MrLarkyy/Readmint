@@ -1,0 +1,10 @@
+[
+  {
+    "path": "/layers/0/let/props",
+    "code": "reserved-name"
+  },
+  {
+    "path": "/layers/0/let/null",
+    "code": "reserved-name"
+  }
+]

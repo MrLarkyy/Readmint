@@ -227,3 +227,49 @@ describe("the root props are resolved early only for a canvas that names props",
     expect(renderSvg(design).ok).toBe(true);
   });
 });
+
+describe("a root instance with a let (RM-118)", () => {
+  const instance: Layer = {
+    type: "component",
+    ref: "card",
+    let: { n: "{{ seed + 1 }}", list: "{{ [n, n, n] }}" },
+    props: { rows: "{{ list }}", size: "{{ n }}" },
+  };
+
+  /** Data whose `seed` reads are counted: each evaluation of the let reads it the same number of times. */
+  function countingData(): { data: Readonly<Record<string, unknown>>; reads: () => number } {
+    let count = 0;
+    const data = new Proxy<Record<string, unknown>>(
+      { seed: 2 },
+      {
+        getOwnPropertyDescriptor(target, key) {
+          if (key === "seed") count++;
+          return Reflect.getOwnPropertyDescriptor(target, key);
+        },
+      },
+    );
+    return { data, reads: () => count };
+  }
+
+  test("props bound to its let names size the canvas", () => {
+    const svg = svgOf(rowsDesign([instance]), { data: { seed: 2 } });
+    expect(heightOf(svg)).toBe("50");
+    expect(svg).toContain('height="3"');
+  });
+
+  test("its let is evaluated once, as when the canvas reads no props", () => {
+    const sized = countingData();
+    svgOf(rowsDesign([instance]), { data: sized.data });
+    const fixed = countingData();
+    svgOf(rowsDesign([instance], { width: 100, height: 50 }), { data: fixed.data });
+    expect(fixed.reads()).toBeGreaterThan(0);
+    expect(sized.reads()).toBe(fixed.reads());
+  });
+
+  test("the canvas sees props, not the let names", () => {
+    const issues = issuesOf(rowsDesign([instance], { width: 100, height: "{{ n }}" }), {
+      data: { seed: 2 },
+    });
+    expect(issues).toMatchObject([{ path: "/canvas/height", code: "binding" }]);
+  });
+});

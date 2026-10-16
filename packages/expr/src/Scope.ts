@@ -1,4 +1,8 @@
 import type { Budget } from "./Budget.js";
+import { failWith, type ErrorSite } from "./createError.js";
+import { ExpressionLimits } from "./ExpressionLimits.js";
+import type { ExprResult } from "./ExprResult.js";
+import type { ExprValue } from "./ExprValue.js";
 import { checkValue, readOwn, type PropertyRead } from "./readProperty.js";
 import type { TextMeasurer } from "./TextMeasurer.js";
 
@@ -17,11 +21,26 @@ export interface Scope {
   readonly budget: Budget | undefined;
   /** Optional, so a scope built by hand without one still fits; the measuring filters then fail. */
   readonly measurer?: TextMeasurer | undefined;
+  /** Locals this scope holds (repeat names, props, let names): what copying them into a child scope costs. */
+  readonly localCount: number;
   /** `undefined` when neither a local nor the data has `name`. */
   lookup(name: string): PropertyRead | undefined;
   /** A child scope whose locals shadow this scope's locals and data; this scope is unchanged. */
   with(locals: Readonly<Record<string, unknown>>): Scope;
+  /**
+   * A child scope binding `names` in order: `valueOf(names[k], scope)` runs with a scope that already holds
+   * `names[0..k-1]`, which is valid only during that call. The locals are copied once and the copy plus the names are
+   * charged to the budget; more than `maxLocals` locals fail `too-large`. When `valueOf` throws, the copy is dropped
+   * and this scope is unchanged.
+   */
+  extend(
+    names: readonly string[],
+    valueOf: (name: string, scope: Scope) => ExprValue,
+  ): ExprResult<Scope>;
 }
+
+/** Where an `extend` failure is reported: it has no text of its own. */
+const extendSite: ErrorSite = { source: "", segment: { start: 0, end: 0 } };
 
 export function createScope(
   data: Readonly<Record<string, unknown>>,
@@ -46,6 +65,10 @@ function makeScope(
     locale: shared.locale,
     budget: shared.budget,
     measurer: shared.measurer,
+    // A getter: `extend` fills its child's map while the entries are evaluated.
+    get localCount(): number {
+      return locals.size;
+    },
     lookup(name: string): PropertyRead | undefined {
       const local = locals.get(name);
       if (local !== undefined) return local;
@@ -57,6 +80,34 @@ function makeScope(
       const layered = new Map(locals);
       for (const name of Object.keys(added)) layered.set(name, readOwn(added, name));
       return makeScope(data, layered, shared);
+    },
+    extend(
+      names: readonly string[],
+      valueOf: (name: string, scope: Scope) => ExprValue,
+    ): ExprResult<Scope> {
+      const count = locals.size + names.length;
+      if (count > ExpressionLimits.maxLocals) {
+        const limit = String(ExpressionLimits.maxLocals);
+        return failWith(
+          extendSite,
+          "too-large",
+          `a scope holds at most ${limit} locals, this one would hold ${String(count)}`,
+          extendSite.segment,
+        );
+      }
+      if (shared.budget !== undefined && !shared.budget.charge(count)) {
+        const limit = String(shared.budget.maxSteps);
+        return failWith(
+          extendSite,
+          "budget",
+          `evaluation exceeded its budget of ${limit} steps`,
+          extendSite.segment,
+        );
+      }
+      const layered = new Map(locals);
+      const child = makeScope(data, layered, shared);
+      for (const name of names) layered.set(name, checkValue(valueOf(name, child)));
+      return { ok: true, value: child };
     },
   });
 }

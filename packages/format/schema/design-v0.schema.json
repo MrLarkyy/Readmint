@@ -444,6 +444,18 @@
       ],
       "additionalProperties": false
     },
+    "Let": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string",
+        "maxLength": 64,
+        "pattern": "^[A-Za-z_][A-Za-z0-9_]*(?:-[A-Za-z_][A-Za-z0-9_]*)*$"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/Binding"
+      },
+      "maxProperties": 64
+    },
     "Layout": {
       "type": "object",
       "oneOf": [
@@ -625,6 +637,9 @@
             "repeat": {
               "$ref": "#/$defs/Repeat"
             },
+            "let": {
+              "$ref": "#/$defs/Let"
+            },
             "animate": {
               "$ref": "#/$defs/LayerAnimation"
             },
@@ -758,6 +773,9 @@
             },
             "repeat": {
               "$ref": "#/$defs/Repeat"
+            },
+            "let": {
+              "$ref": "#/$defs/Let"
             },
             "animate": {
               "$ref": "#/$defs/ShapeAnimation"
@@ -905,6 +923,9 @@
             "repeat": {
               "$ref": "#/$defs/Repeat"
             },
+            "let": {
+              "$ref": "#/$defs/Let"
+            },
             "animate": {
               "$ref": "#/$defs/ShapeAnimation"
             },
@@ -1039,6 +1060,9 @@
             "repeat": {
               "$ref": "#/$defs/Repeat"
             },
+            "let": {
+              "$ref": "#/$defs/Let"
+            },
             "animate": {
               "$ref": "#/$defs/PathAnimation"
             },
@@ -1163,6 +1187,9 @@
             },
             "repeat": {
               "$ref": "#/$defs/Repeat"
+            },
+            "let": {
+              "$ref": "#/$defs/Let"
             },
             "animate": {
               "$ref": "#/$defs/TextAnimation"
@@ -1333,6 +1360,9 @@
             "repeat": {
               "$ref": "#/$defs/Repeat"
             },
+            "let": {
+              "$ref": "#/$defs/Let"
+            },
             "animate": {
               "$ref": "#/$defs/LayerAnimation"
             },
@@ -1464,6 +1494,9 @@
             },
             "repeat": {
               "$ref": "#/$defs/Repeat"
+            },
+            "let": {
+              "$ref": "#/$defs/Let"
             },
             "animate": {
               "$ref": "#/$defs/LayerAnimation"

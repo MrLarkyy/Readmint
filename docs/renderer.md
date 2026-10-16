@@ -52,14 +52,23 @@ apply unchanged:
 - A text content is written as text: `null` as nothing, numbers as `String(n)`, booleans as `true` / `false` (`toText`,
   also when the content is a single placeholder); an array or object has no text form and is a `type` issue.
 - Names are looked up in the locals first, then in the own top-level keys of `data`: in a `repeat` the item under `as`
-  (default `item`) and its position under `index` (default `index`); inside a component `props`, the definition's
+  (default `item`) and its position under `index` (default `index`); below a layer with `let` its names, bound in key
+  order per copy ([design format](design-format.md#local-bindings-let)); inside a component `props`, the definition's
   defaults overlaid by the instance's props (a prop given as a binding is evaluated in the instance's scope, then
   checked against the declared type, an `enum` prop against its `values`, an `array` prop for being an array; a
   mismatch is a `type` issue at the instance prop). A repeat in the component can iterate an array prop. Defaults and literal list items are used as written, never
   evaluated. Canvas bindings see `props` too, the props of the root instance
   ([design format](design-format.md#components)): when a canvas binding names `props`, they are resolved once at the
   data root before the canvas, and the instance's expansion reuses them, so they are charged to
-  `maxExpressionSteps` once.
+  `maxExpressionSteps` once. When the root instance has a `let`, it is evaluated first and its props are resolved in
+  that scope, which the instance then reuses, so the `let` is evaluated once too; the canvas sees `props`, not the
+  `let` names.
+- A `let` is checked once per render before any entry is evaluated: an entry that reads itself or a later entry, or
+  a name that is a top-level key of `data`, is a `binding` issue at that entry (`/layers/0/let/total`); an entry whose
+  expression fails is one too. Each copy copies the locals once, charged to `maxExpressionSteps` (one step per local
+  copied and per name bound), and so is every copy below it: each repeat copy one step per local it copies plus two
+  (item and index), each component instance one per local plus one (`props`). A scope of more than 256 locals is a
+  `binding` issue of expr code `too-large` at the `let`.
 - The scope carries the renderer's text measurer, so `textWidth` and `truncateWidth`
   ([expressions](expressions.md#filters)) measure with the shaping a text layer is drawn with: the same code lays
   out a drawn text and a measured one (each paragraph on one line, the widest counts), so a measured width is the box
@@ -81,8 +90,10 @@ expression error ends the render with a `binding` issue whose message carries ex
 
 Drawn in document order, first at the back. Layer `id` and `name` are not emitted.
 
-- **repeat** gives one copy per item of `each` (at most 10000 items per repeat); then, per copy, `visible: false` or a
-  falsy `if` drops it. A dropped layer takes no slot in a stack or grid. The copies of every repeat of a render count
+- **repeat** gives one copy per item of `each` (at most 10000 items per repeat); then, per copy, the `let` names are
+  bound in key order, then `visible: false` or a falsy `if` drops it, then the layer's own properties (a component
+  instance's props after them), then its children and last its animation are resolved with those names in scope. A `let` is evaluated before `if`, so a guard against missing data
+  goes on the parent. A dropped layer takes no slot in a stack or grid. The copies of every repeat of a render count
   toward `maxRepeatCopies` before any is dropped, so nested repeats that `if` empties still stop with `too-large` at
   the repeat that passes the limit.
 - **Position**: every layer has a box from its `x`/`y` (default 0) of its width and height. A `rect`, `ellipse` and
@@ -706,7 +717,7 @@ charged alike, the images the render checked found in the cache.
 
 | code                   | meaning                                                                                                                                                                                                                                                         |
 | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `binding`              | an expression failed to compile or evaluate, the step budget ran out, a repeat `each` is not a list or has more than 10000 items, or its `as`/`index` names are unreadable or equal (the message names expr's error code)                                       |
+| `binding`              | an expression failed to compile or evaluate (also a `let` entry reading itself, a later entry or a data key), the budget or 256 locals ran out, a repeat `each` is not a list or over 10000 items, its `as`/`index` unreadable or equal (names expr's code)     |
 | `type`                 | a value of the wrong kind (also a prop of the wrong type, a list or object written into text)                                                                                                                                                                   |
 | `range`                | a number outside the format's range, a keyframe offset below the one before it, a `time` outside [0, 86400000], a template `d` that gives empty, over-long (100000) or non-path data (at `d`), an arc a template `d` gives under `draw` (at the track)          |
 | `missing-asset`        | an asset path or an image `src` bound to data (`{{binding}}`) without supplied bytes, or a reference to no asset                                                                                                                                                |

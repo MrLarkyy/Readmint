@@ -1,6 +1,7 @@
 import { DESIGN_FORMAT_VERSION } from "./designMigrations.js";
 import { designLocales } from "./designLocales.js";
 import { DesignLimits } from "./DesignLimits.js";
+import { LocalNames } from "./LocalNames.js";
 import { PathData } from "./PathData.js";
 import { ValueRanges, type ValueRange } from "./ValueRanges.js";
 import {
@@ -28,6 +29,11 @@ const idKey = string("an id (a letter, then letters, digits, _ or -; at most 64)
   maxLength: 64,
   pattern: "^[A-Za-z][A-Za-z0-9_-]{0,63}$",
 });
+const localName = string(
+  `a local name (a letter or _, then letters, digits, _ and - before a letter or _; at most ${String(LocalNames.maxLength)})`,
+  { maxLength: LocalNames.maxLength, pattern: LocalNames.pattern },
+);
+
 function numberIn({ integer: whole, ...bounds }: ValueRange): NumberNode {
   return whole ? integer(bounds) : number(bounds);
 }
@@ -112,6 +118,7 @@ function layer(
     "style?": id,
     "if?": ref(bindingDef),
     "repeat?": ref("Repeat"),
+    "let?": ref("Let"),
     "animate?": ref(animation),
     ...properties,
   });
@@ -174,6 +181,12 @@ const defs = new Map<string, SchemaNode>([
     }),
   ],
   ["Repeat", object("a repeat", { each: ref(bindingDef), "as?": id, "index?": id })],
+  [
+    "Let",
+    record("local bindings", localName, ref(bindingDef), {
+      maxEntries: DesignLimits.maxLetEntries,
+    }),
+  ],
   [
     "Layout",
     union("a layout", [

@@ -1,4 +1,4 @@
-import { validateDesign, type Design } from "@readmint/format";
+import { applyDesignProps, validateDesign, type Design } from "@readmint/format";
 import { RenderLimits } from "@readmint/renderer";
 import { describe, expect, test } from "vitest";
 import { calendarTemplates } from "../src/index.js";
@@ -150,4 +150,90 @@ test("an unknown orientation is an enum issue at the prop", () => {
       expect.objectContaining({ path: "/layers/0/props/orientation", code: "enum" }),
     );
   }
+});
+
+const lightLevels = ["#ebedf0", "#9be9a8", "#40c463", "#30a14e", "#216e39"];
+
+describe.each(calendarTemplates)("%s theme", (name) => {
+  const data = contributionsYear();
+  const dark = () => withCalendar(loadTemplate(name), { theme: "dark" });
+
+  test("declares the theme enum, light by default", () => {
+    expect(loadTemplate(name).components?.["calendar"]?.props?.["theme"]).toEqual({
+      type: "enum",
+      values: ["light", "dark"],
+      default: "light",
+    });
+  });
+
+  test("an explicit light theme renders the default bytes", () => {
+    const light = withCalendar(loadTemplate(name), { theme: "light" });
+    expect(renderCalendar({ design: light, data })).toBe(
+      renderCalendar({ design: loadTemplate(name), data }),
+    );
+  });
+
+  test("the dark render has a transparent canvas and the dark level colours only", () => {
+    const svg = renderCalendar({ design: dark(), data });
+    expect(svg).not.toContain("#ffffff");
+    for (const colour of lightLevels) expect(svg).not.toContain(colour);
+    expect(svg).toContain("#161b22");
+    expect(svg).toContain("#39d353");
+    expect(svg).not.toMatch(/<\/desc><rect width=/u);
+    expect(renderCalendar({ design: loadTemplate(name), data })).toMatch(/<\/desc><rect width=/u);
+  });
+
+  test("the empty dark calendar draws no background", () => {
+    const svg = renderCalendar({ design: dark(), data: emptyContributions() });
+    expect(svg).toMatch(/<g transform="translate\(8 8\)"><\/g><\/svg>$/u);
+    expect(svg).not.toContain("<rect");
+  });
+
+  test("the dark render is deterministic", () => {
+    expect(renderCalendar({ design: dark(), data })).toBe(renderCalendar({ design: dark(), data }));
+  });
+
+  test("applyDesignProps sets the theme like the instance does", () => {
+    const applied = applyDesignProps(loadTemplate(name), { theme: "dark" });
+    expect(applied.ok).toBe(true);
+    if (applied.ok) {
+      expect(renderCalendar({ design: applied.value, data })).toBe(
+        renderCalendar({ design: dark(), data }),
+      );
+    }
+  });
+
+  test("an unknown theme is an enum issue at the prop", () => {
+    const result = applyDesignProps(loadTemplate(name), { theme: "sepia" });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.issues).toContainEqual(expect.objectContaining({ code: "enum" }));
+    }
+    const invalid = validateDesign(withCalendar(loadTemplate(name), { theme: "sepia" }));
+    expect(invalid.ok).toBe(false);
+    if (!invalid.ok) {
+      expect(invalid.issues).toContainEqual(
+        expect.objectContaining({ path: "/layers/0/props/theme", code: "enum" }),
+      );
+    }
+  });
+
+  test("level2Dark changes the dark colours only, level2 the light colours only", () => {
+    const red = "#ff0000";
+    const render = (props: Record<string, string>) =>
+      renderCalendar({ design: withCalendar(loadTemplate(name), props), data });
+    expect(render({ theme: "dark", level2Dark: red })).toContain(red);
+    expect(render({ theme: "light", level2Dark: red })).not.toContain(red);
+    expect(render({ theme: "light", level2: red })).toContain(red);
+    expect(render({ theme: "dark", level2: red })).not.toContain(red);
+  });
+
+  test("the dark calendar stays within the budget and half the work limits", () => {
+    const svg = renderCalendar({
+      design: dark(),
+      data: worstCaseContributions(),
+      limits: halvedLimits,
+    });
+    expect(utf8Bytes(svg)).toBeLessThanOrEqual(calendarSizeBudget);
+  });
 });

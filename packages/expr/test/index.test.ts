@@ -42,6 +42,7 @@ test("the limits are frozen and match the contract", () => {
     maxSteps: 100_000,
     maxStringLength: 100_000,
     maxArrayLength: 10_000,
+    maxLocals: 256,
     maxFilterArgs: 4,
     maxEcho: 64,
   });

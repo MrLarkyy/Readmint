@@ -22,25 +22,27 @@ Every template holds two components and one instance:
   by orientation and projection, with the cell props below. It is identical in all three files.
 - `components.cell`: how one day looks. This is what differs between the templates.
 - `layers`: one `calendar` instance at `x: 8, y: 8`; its `props` choose the options (the isometric template sets
-  `projection: "isometric"`).
+  `projection: "isometric"`). Set `theme: "dark"` there for the dark look (below).
 
 ### Calendar options
 
 Props of the `calendar` instance:
 
-| prop          | type   | default         | meaning                                                                          |
-| ------------- | ------ | --------------- | -------------------------------------------------------------------------------- |
-| `cellSize`    | number | `11`            | side of a cell (half the width of an isometric top face)                         |
-| `gap`         | number | `3`             | space between cells; the pitch is `cellSize + gap`                               |
-| `radius`      | number | `2`             | corner radius, passed to the cell (the heatmap cell uses it)                     |
-| `orientation` | enum   | `"horizontal"`  | `"horizontal"`: weeks are columns, weekdays rows; `"vertical"`: swapped          |
-| `projection`  | enum   | `"flat"`        | `"flat"` or `"isometric"`                                                        |
-| `weeks`       | number | `53`            | draw only the last this many weeks; older days are dropped by an `if`            |
-| `maxCount`    | number | `20`            | count at which an isometric pillar reaches `maxHeight`; larger counts are capped |
-| `maxHeight`   | number | `24`            | tallest isometric pillar; also the room left above the calendar                  |
-| `level0`..`4` | color  | GitHub's greens | colour of each level (`#ebedf0`, `#9be9a8`, `#40c463`, `#30a14e`, `#216e39`)     |
+| prop                  | type   | default              | meaning                                                                                 |
+| --------------------- | ------ | -------------------- | --------------------------------------------------------------------------------------- |
+| `cellSize`            | number | `11`                 | side of a cell (half the width of an isometric top face)                                |
+| `gap`                 | number | `3`                  | space between cells; the pitch is `cellSize + gap`                                      |
+| `radius`              | number | `2`                  | corner radius, passed to the cell (the heatmap cell uses it)                            |
+| `orientation`         | enum   | `"horizontal"`       | `"horizontal"`: weeks are columns, weekdays rows; `"vertical"`: swapped                 |
+| `projection`          | enum   | `"flat"`             | `"flat"` or `"isometric"`                                                               |
+| `weeks`               | number | `53`                 | draw only the last this many weeks; older days are dropped by an `if`                   |
+| `maxCount`            | number | `20`                 | count at which an isometric pillar reaches `maxHeight`; larger counts are capped        |
+| `maxHeight`           | number | `24`                 | tallest isometric pillar; also the room left above the calendar                         |
+| `level0`..`4`         | color  | GitHub's greens      | colour of each level (`#ebedf0`, `#9be9a8`, `#40c463`, `#30a14e`, `#216e39`)            |
+| `theme`               | enum   | `"light"`            | `"light"` or `"dark"`: picks the level colours and the canvas background                |
+| `level0Dark`..`4Dark` | color  | GitHub's dark greens | level colours in the dark theme (`#161b22`, `#0e4429`, `#006d32`, `#26a641`, `#39d353`) |
 
-`orientation` and `projection` are enum props: any other value is a validation issue (`enum`), or a `type` render issue
+`orientation`, `projection` and `theme` are enum props: any other value is a validation issue (`enum`), or a `type` render issue
 when it comes from data.
 
 **Canvas.** The calendar instance is the root instance, so the canvas bindings read its props
@@ -50,7 +52,9 @@ high (swapped when `orientation` is `"vertical"`), the isometric one `(w + 5) * 
 `(w + 5) * p / 2 + cellSize + maxHeight + 16` (`16` is twice the margin of 8). At the defaults that is
 `min(weeks, 53) * 14 + 13` by `111` and `(min(weeks, 53) + 5) * 14 + 38` by `(min(weeks, 53) + 5) * 7 + 51`. Setting
 `cellSize`, `gap`, `weeks`, `maxHeight` or `orientation` on the instance resizes the canvas with it; a fractional size
-is rounded up to whole pixels (`| ceil`) and kept within the canvas range 1 to 4096 (`| clamp(1, 4096)`).
+is rounded up to whole pixels (`| ceil`) and kept within the canvas range 1 to 4096 (`| clamp(1, 4096)`). The
+canvas `background` is `#ffffff` in the light theme and `none` (transparent) in the dark one, so a dark calendar sits
+on the page behind it.
 
 **Projections.** Flat: a cell sits at `column * pitch`, `weekday * pitch` (swapped when vertical); `height` is 0.
 Isometric: a cell sits at `x = (column - weekday + 6) * pitch`, `y = (column + weekday) * pitch / 2 + maxHeight`, and
@@ -58,7 +62,9 @@ Isometric: a cell sits at `x = (column - weekday + 6) * pitch`, `y = (column + w
 by week and weekday; in the isometric projection that is back to front, because a later day that lies further back is
 at least two pitches to the side and never overlaps an earlier one.
 
-**Colour scale.** `color = [level0, level1, level2, level3, level4][day.level]`, `level0` for a level outside 0..4.
+**Colour scale.** `color = [level0, level1, level2, level3, level4][day.level]`, `level0` for a level outside 0..4. With
+`theme: "dark"` the same lookup reads `level0Dark`..`level4Dark`; `level0`..`4` then change nothing, and the dark
+colours change nothing in the light theme.
 
 ### Cell props
 
@@ -134,7 +140,8 @@ Five complete designs that show what the format can do; each is an ordinary desi
   `enum` issue. The theme sets no canvas `background` (a canvas binding could read it), so the card's rounded panel
   keeps the page around its corners.
 - **The calendar.** `isometric-card` and `profile-card` carry the `calendar` and `cell` components of the
-  calendar templates above unchanged (a test compares them); only the instance's props differ.
+  calendar templates above unchanged (a test compares them); only the instance's props differ. They pass
+  the card's `theme` to the calendar's own `theme`, so the dark levels are the calendar's `level0Dark`..`4Dark`.
 - **Fonts.** Text needs a font asset. The templates use Montserrat Medium and ExtraBold from `templates/fonts/`
   (SIL Open Font License 1.1, `OFL.txt` and the sha256 of each file beside them); their `src` is the relative path
   `fonts/Montserrat-Medium.ttf`, resolved against the design file by the CLI and the Action. The banner names its

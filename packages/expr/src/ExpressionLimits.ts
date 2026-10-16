@@ -13,6 +13,11 @@ export const ExpressionLimits = Object.freeze({
   maxStringLength: 100_000,
   /** Items of an array literal and of a repeat. */
   maxArrayLength: 10_000,
+  /**
+   * Locals one scope may hold when a `let` extends it (repeat names, props and let names together), so repeat copies
+   * under large lets stay bounded.
+   */
+  maxLocals: 256,
   /** Arguments of one filter call. */
   maxFilterArgs: 4,
   /** Characters of the source an error excerpt shows. */

@@ -122,7 +122,10 @@ class Walker {
   }
 
   private checkRecord(node: RecordNode, value: Record<string, unknown>, path: string): void {
-    for (const key of Object.keys(value)) {
+    const keys = Object.keys(value);
+    if (node.maxEntries !== undefined && keys.length > node.maxEntries)
+      this.add(path, "count", `must have at most ${String(node.maxEntries)} entries`);
+    for (const key of keys) {
       if (this.issues.isFull()) return;
       const keyPath = jsonPointer(path, key);
       if (stringFailure(node.keys, key) === undefined) this.visit(node.values, value[key], keyPath);

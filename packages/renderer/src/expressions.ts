@@ -9,10 +9,11 @@ import {
   type Scope,
   type Template,
 } from "@readmint/expr";
-import type { Repeat } from "@readmint/format";
+import type { Binding, Repeat } from "@readmint/format";
+import { ownEntry } from "./ownEntry.js";
 import { pointer } from "./pointer.js";
 import type { RenderContext } from "./RenderContext.js";
-import { echo } from "./resolveValue.js";
+import { echo, isBinding } from "./resolveValue.js";
 
 /**
  * Every use of the expression language: bindings, `if`, `repeat` and text placeholders all go through
@@ -91,6 +92,62 @@ export function repeatScopes(
   const result = at(context, eachPath, () => expandRepeat(each, scope, options));
   if (!result.ok) fail(context, eachPath, repeat.each, result.error);
   return result.value;
+}
+
+/**
+ * The scope of a layer's `let`: `scope` plus each entry in key order, an entry reading the entries before it. Before
+ * any entry is evaluated (once per `let` object and render), an entry that reads itself or a later entry, or a name
+ * that hides a top-level data key, fails at that entry, so a forward reference never silently reads an outer local or
+ * a data key of the same name. Expression errors fail at the entry; the locals cap and the budget at the `let`.
+ */
+export function letScope(
+  context: RenderContext,
+  bindings: Readonly<Record<string, Binding>>,
+  layerPath: string,
+  scope: Scope,
+): Scope {
+  const letPath = pointer(layerPath, "let");
+  const names = Object.keys(bindings);
+  const sources = new Map<string, Binding>();
+  for (const name of names) {
+    const source = ownEntry(bindings, name);
+    if (!isBinding(source)) {
+      context.fail(pointer(letPath, name), "type", `let ${echo(name)} needs a {{binding}}`);
+    }
+    sources.set(name, source);
+  }
+  if (!context.checkedLets.has(bindings)) {
+    checkLetNames(context, sources, letPath);
+    context.checkedLets.add(bindings);
+  }
+  const result = scope.extend(names, (name, inner) =>
+    evaluateBinding(context, sources.get(name) ?? "{{ null }}", pointer(letPath, name), inner),
+  );
+  if (!result.ok) {
+    context.fail(letPath, "binding", `let: ${result.error.message} (${result.error.code})`);
+  }
+  return result.value;
+}
+
+function checkLetNames(
+  context: RenderContext,
+  sources: ReadonlyMap<string, Binding>,
+  letPath: string,
+): void {
+  const data = context.data;
+  const unbound = new Set(sources.keys());
+  for (const [name, source] of sources) {
+    const at = pointer(letPath, name);
+    if (Object.hasOwn(data, name)) {
+      context.fail(at, "binding", `let ${echo(name)} hides the data name ${echo(name)}`);
+    }
+    for (const read of compiled(context, source, at).names) {
+      if (!unbound.has(read)) continue;
+      const which = read === name ? "the entry itself" : "bound later in this let";
+      context.fail(at, "binding", `let ${echo(name)} reads ${echo(read)}, which is ${which}`);
+    }
+    unbound.delete(name);
+  }
 }
 
 /** A text content with its placeholders written in; a content that is one placeholder is converted to text. */

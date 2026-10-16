@@ -1,0 +1,111 @@
+{
+  "version": 0,
+  "title": "Local bindings on every layer kind",
+  "canvas": {
+    "width": 200,
+    "height": 100
+  },
+  "assets": {
+    "fonts": {
+      "inter": {
+        "family": "Inter",
+        "src": "fonts/Inter-Regular.woff2",
+        "licence": {
+          "embedding": "allowed",
+          "name": "OFL-1.1"
+        }
+      }
+    },
+    "images": {
+      "logo": {
+        "src": "images/logo.png"
+      }
+    }
+  },
+  "components": {
+    "chip": {
+      "props": {
+        "label": {
+          "type": "string",
+          "default": "chip"
+        }
+      },
+      "layers": [
+        {
+          "type": "text",
+          "let": {
+            "total": "{{ props.label + '!' }}"
+          },
+          "content": "{{ total }}",
+          "font": "inter"
+        }
+      ]
+    }
+  },
+  "layers": [
+    {
+      "type": "group",
+      "let": {
+        "total": "{{ github.contributions.total }}",
+        "half": "{{ total / 2 }}"
+      },
+      "children": [
+        {
+          "type": "rect",
+          "let": {
+            "w": "{{ half }}"
+          },
+          "width": "{{ w }}",
+          "height": 10
+        },
+        {
+          "type": "ellipse",
+          "let": {
+            "r": "{{ half / 2 }}"
+          },
+          "width": "{{ r }}",
+          "height": "{{ r }}"
+        },
+        {
+          "type": "path",
+          "let": {
+            "_end": "{{ half }}"
+          },
+          "d": "M0 0 L{{ _end }} 0"
+        },
+        {
+          "type": "text",
+          "repeat": {
+            "each": "{{ repos }}",
+            "as": "repo"
+          },
+          "let": {
+            "repo-name": "{{ repo.name }}"
+          },
+          "content": "{{ repo-name }}",
+          "font": "inter"
+        },
+        {
+          "type": "image",
+          "let": {
+            "__proto__": "{{ 8 }}",
+            "constructor": "{{ __proto__ * 2 }}"
+          },
+          "asset": "logo",
+          "width": "{{ constructor }}",
+          "height": 8
+        },
+        {
+          "type": "component",
+          "let": {
+            "caption": "{{ half }} of {{ total }}"
+          },
+          "ref": "chip",
+          "props": {
+            "label": "{{ caption }}"
+          }
+        }
+      ]
+    }
+  ]
+}

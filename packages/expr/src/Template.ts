@@ -18,5 +18,7 @@ export type TemplatePart =
 export interface Template {
   readonly source: string;
   readonly kind: TemplateKind;
+  /** Every name the placeholders read from the scope (not property steps or string literals), in first-read order. */
+  readonly names: ReadonlySet<string>;
   evaluate(scope: Scope): ExprResult<ExprValue>;
 }

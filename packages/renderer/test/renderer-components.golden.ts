@@ -73,5 +73,30 @@ export default defineGoldenSuite<RenderFixture>({
         { status: { label: "failing", colour: "#cf222e" } },
       ),
     },
+    {
+      name: "let",
+      scale: 2,
+      input: design(
+        [
+          {
+            type: "group",
+            x: 10,
+            y: 10,
+            let: { label: "{{ status.label }}", wide: "{{ status.count * 30 }}" },
+            children: [
+              { type: "rect", width: "{{ wide }}", height: 4, radius: 2, fill: "#0969da" },
+              {
+                type: "component",
+                ref: "badge",
+                y: 12,
+                let: { tone: "{{ status.count > 2 ? '#cf222e' : '#1a7f37' }}" },
+                props: { label: "{{ label }} {{ wide }}", colour: "{{ tone }}" },
+              },
+            ],
+          },
+        ],
+        { status: { label: "let", count: 3 } },
+      ),
+    },
   ],
 });
