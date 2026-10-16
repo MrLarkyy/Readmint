@@ -9,7 +9,13 @@ import {
   type ProfileTheme,
 } from "./profileDesigns.js";
 import { profileExampleProps } from "@readmint/examples/props";
-import { sampleProfileData, sparseProfileData, worstCaseProfileData } from "./sampleProfileData.js";
+import {
+  noPushProfileData,
+  noStatusProfileData,
+  sampleProfileData,
+  sparseProfileData,
+  worstCaseProfileData,
+} from "./sampleProfileData.js";
 
 /** Chromium and resvg place the 11-13 px monospaced code and terminal text of pinscreen a sub-pixel apart. */
 const browserTolerances: Readonly<Partial<Record<ProfileTemplate, { maxDiffRatio: number }>>> = {
@@ -24,6 +30,9 @@ const longSections: Readonly<Record<ProfileTemplate, readonly ProfileSection[]>>
   horizon: ["header", "ticker", "year", "repo-1"],
   pinscreen: ["header", "year", "repo-1", "log"],
 };
+
+/** The templates whose header reads the status: the others have no status golden, it would repeat the header. */
+const statusHeaders: readonly ProfileTemplate[] = ["horizon", "pinscreen"];
 
 /** A frame mid-animation of one section per template, so the motion itself is pinned, not only its end state. */
 const frames: Readonly<Record<ProfileTemplate, readonly [ProfileSection, number]>> = {
@@ -107,6 +116,14 @@ export function profileGoldenSuite(template: ProfileTemplate): GoldenSuite<Profi
           data: emojiData,
           expectWarnings: ["missing-glyph"],
         }),
+      })),
+      ...(statusHeaders.includes(template) ? themes : []).map((theme) => ({
+        name: `header-no-status-${theme}`,
+        input: render("header", theme, { data: noStatusProfileData() }),
+      })),
+      ...themes.map((theme) => ({
+        name: `header-no-push-${theme}`,
+        input: render("header", theme, { data: noPushProfileData() }),
       })),
       {
         name: `${frameSection}-t${String(frameTime)}`,

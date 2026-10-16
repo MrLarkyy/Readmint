@@ -68,7 +68,7 @@ stays in the design (it is what makes the twin dark); `slot` of the repository s
 | `header` | `roleDetail`      | string | first column, second line                               | `Tools and infrastructure`     |
 | `header` | `workingOn`       | string | second column, first line                               | `A build cache,`               |
 | `header` | `workingOnDetail` | string | second column, second line                              | `a docs site`                  |
-| `header` | `statusNote`      | string | third column, under the GitHub status                   | `Open to new projects`         |
+| `header` | `statusNote`      | string | third column, under the GitHub status, or in its place  | `Open to new projects`         |
 | `stack`  | `labels`          | array  | column headings after the languages, up to four         | `["Tools", "Data"]`            |
 | `stack`  | `items`           | array  | one text per heading, an item per line                  | `["Git\nMake", "SQLite"]`      |
 | `worked` | `items`           | array  | the names that run past; empty: the section stays blank | `["Team A", "Team B"]`         |

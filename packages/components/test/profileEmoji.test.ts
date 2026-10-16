@@ -2,7 +2,13 @@ import type { ComponentPropValue, Design } from "@readmint/format";
 import { renderSvg } from "@readmint/renderer";
 import { describe, expect, test } from "vitest";
 import type { ProfileTemplate } from "../src/index.js";
-import { loadProfile, profileFontAssets, renderProfile } from "./profileDesigns.js";
+import { profileExampleProps } from "@readmint/examples/props";
+import {
+  loadExampleProfile,
+  loadProfile,
+  profileFontAssets,
+  renderProfile,
+} from "./profileDesigns.js";
 import { sampleProfileData } from "./sampleProfileData.js";
 
 const rocket = "\u{1F680}";
@@ -124,14 +130,47 @@ describe("emoji no template font covers", () => {
     expect(dropped).toEqual(plain);
   });
 
-  test("the pinscreen status row keeps its place without a status", () => {
-    const svg = renderProfile({
-      template: "pinscreen",
-      design: loadProfile("pinscreen", "header"),
-      data: withStatus(""),
-    });
-    expect(slotStarts(svg)).toContain(118);
-  });
+  test.each(["light", "dark"] as const)(
+    "the pinscreen status bar closes up without a status (%s)",
+    (theme) => {
+      const render = (data: ReturnType<typeof withGitHub>) =>
+        renderProfile({
+          template: "pinscreen",
+          design: loadProfile("pinscreen", "header", theme),
+          data,
+        });
+      const dividers = (svg: string) => (svg.match(/width="1" height="16"/gu) ?? []).length;
+      for (const message of ["", null] as const) {
+        const data = message === null ? withGitHub({ status: null }) : withStatus(message);
+        const svg = render(data);
+        expect(slotStarts(svg)).toContain(80);
+        expect(slotStarts(svg)).not.toContain(118);
+        expect(dividers(svg)).toBe(1);
+      }
+      expect(dividers(render(withStatus("busy")))).toBe(2);
+    },
+  );
+
+  test.each(["light", "dark"] as const)(
+    "the horizon status dot follows the status, not the note (%s)",
+    (theme) => {
+      const accent = theme === "dark" ? "#ff8a3d" : "#e8590c";
+      const accented = (svg: string) =>
+        [...svg.matchAll(/<ellipse[^>]*>/gu)].filter((tag) => tag[0].includes(accent)).length;
+      const design = loadExampleProfile("horizon", "header", theme);
+      const without = renderProfile({
+        template: "horizon",
+        design,
+        data: withGitHub({ status: null }),
+      });
+      const note = String(profileExampleProps.horizon?.header?.["statusNote"] ?? "");
+      expect(note).not.toBe("");
+      expect(accented(without)).toBe(0);
+      expect(without).toContain(">status<");
+      const withMessage = renderProfile({ template: "horizon", design, data: withStatus("busy") });
+      expect(accented(withMessage)).toBe(3);
+    },
+  );
 
   test("the horizon name fills the 840 px line as drawn, emoji and all, and never passes it", () => {
     for (const name of [
@@ -246,6 +285,29 @@ describe("emoji no template font covers", () => {
     expectTranslation(svg, -travel);
     expectTranslation(svg, travel - 900);
     expectTranslation(svg, 900 - travel);
+  });
+
+  test("the pinscreen ticker uses the closed-up slot without a status", () => {
+    const right = `${party} v2.0`;
+    const push =
+      "a very long push message that cannot fit beside the branch and the right-hand note at all, really";
+    const design = withProps(loadProfile("pinscreen", "header"), { statusBarRight: right });
+    const data = withGitHub({
+      status: null,
+      pushes: [{ ...sampleProfileData().github.pushes[0], repository: "tinydb", message: push }],
+    });
+    const svg = renderProfile({
+      template: "pinscreen",
+      design,
+      data,
+      expectWarnings: ["missing-glyph"],
+    });
+    const width = (text: string) => drawnWidth("pinscreen", design, "mono", 11.5, text);
+    const slot = 826 - (80 + 85) - width(right) - 24;
+    const ticker = longestCut(width, `tinydb: ${push}`, Math.max(slot, 27.6));
+    const travel = width(ticker);
+    expect(travel).toBeLessThanOrEqual(slot);
+    expectTranslation(svg, -travel);
   });
 
   test("the year-ring ticker travels the push's drawn width", () => {

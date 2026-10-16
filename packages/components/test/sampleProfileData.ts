@@ -294,3 +294,15 @@ export function otherProfileData(): ProfileData {
     },
   };
 }
+
+/** The sample data of an account with no status set, as GitHub returns it for most users. */
+export function noStatusProfileData(): ProfileData {
+  const data = sampleProfileData();
+  return { github: { ...data.github, status: null } };
+}
+
+/** The sample data with no status and no pushes: the headers' two empty rows. */
+export function noPushProfileData(): ProfileData {
+  const data = noStatusProfileData();
+  return { github: { ...data.github, pushes: [] } };
+}
