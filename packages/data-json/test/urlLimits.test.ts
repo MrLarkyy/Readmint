@@ -235,3 +235,14 @@ describe("status codes", () => {
     if (status !== 204) expect(error.message).toContain(`HTTP ${String(status)}`);
   });
 });
+
+describe("header names", () => {
+  test("a header named __proto__ is sent as a header, not dropped", async () => {
+    const stub = stubFetch(() => json("{}"));
+    await load(stub.fetch, {
+      headers: JSON.parse('{"__proto__":"PROTO_KEY"}') as Record<string, string>,
+      env: { PROTO_KEY: "value" },
+    });
+    expect(new Headers(stub.calls[0]?.init.headers).get("__proto__")).toBe("value");
+  });
+});

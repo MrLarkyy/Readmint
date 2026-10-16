@@ -18,7 +18,7 @@ export function resolveHeaders(
   headerEnv: readonly (readonly [string, string])[],
   env: Readonly<Record<string, string | undefined>> | undefined,
 ): ResolvedHeaders {
-  const headers: Record<string, string> = {};
+  const headers: [string, string][] = [];
   const secrets: string[] = [];
   for (const [name, envName] of headerEnv) {
     const raw = env !== undefined && Object.hasOwn(env, envName) ? env[envName] : undefined;
@@ -38,7 +38,8 @@ export function resolveHeaders(
         `The environment variable ${envName} for header ${name} holds characters a header value cannot have (control or non-ASCII).`,
       );
     }
-    headers[name] = value;
+    headers.push([name, value]);
   }
-  return { headers, secrets };
+  // fromEntries defines own keys: a header named __proto__ stays a header.
+  return { headers: Object.fromEntries(headers), secrets };
 }

@@ -45,8 +45,8 @@ export async function fetchJsonDocument(url: URL, context: FetchJsonContext): Pr
   let requests = 0;
   for (;;) {
     if (signal.aborted) throw timedOut(context.namespace);
-    const headers: Record<string, string> = { accept: "application/json" };
-    if (current.origin === url.origin) Object.assign(headers, context.headers);
+    const headers: [string, string][] = [["accept", "application/json"]];
+    if (current.origin === url.origin) headers.push(...Object.entries(context.headers));
     requests += 1;
     let response: Response;
     try {
