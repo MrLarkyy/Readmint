@@ -52,8 +52,14 @@ body {
   color: #9a6700;
 }
 .rm-settings .rm-field {
-  grid-template-columns: 100px 1fr auto;
+  grid-template-columns: 100px minmax(0, 1fr) auto;
   align-items: center;
+}
+.rm-settings input:not([type="checkbox"]),
+.rm-settings select {
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
 }
 .rm-settings .rm-field label {
   display: contents;
@@ -61,7 +67,7 @@ body {
 .rm-settings .rm-item {
   grid-column: 1 / -1;
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 4px;
 }
 .rm-settings .rm-default input,
@@ -74,10 +80,10 @@ body {
 }
 @media (max-width: 700px) {
   .rm-main {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
   .rm-settings .rm-field {
-    grid-template-columns: 1fr auto;
+    grid-template-columns: minmax(0, 1fr) auto;
   }
   .rm-settings .rm-field label {
     display: grid;
