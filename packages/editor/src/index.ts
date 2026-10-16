@@ -16,6 +16,9 @@ export {
 } from "./EditorHistory.js";
 export type { EditorIssue, EditorIssueSource } from "./EditorIssue.js";
 export { EditorLimits } from "./EditorLimits.js";
+export { chooseSection } from "./chooseSection.js";
+export { effectiveDesign, type EffectiveDesign } from "./effectiveDesign.js";
+export type { EditorSettings } from "./EditorSettings.js";
 export { createEditorState, type EditorState } from "./EditorState.js";
 export { exportDesign } from "./exportDesign.js";
 export { exportDesignYaml } from "./exportDesignYaml.js";
@@ -31,6 +34,7 @@ export {
   type SavedDesign,
   type SavedImage,
 } from "./mountEditor.js";
+export { loadSettings } from "./loadSettings.js";
 export { moveLayer } from "./moveLayer.js";
 export { newDesign } from "./newDesign.js";
 export {

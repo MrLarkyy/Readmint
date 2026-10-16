@@ -4,8 +4,17 @@ import { join } from "node:path";
 // Reached through the workspace alias, not a dependency: no browser-side package may list the CLI.
 import { ExitCode, runCli } from "@readmint/cli";
 import { afterEach, beforeEach, expect, test } from "vitest";
-import { exportDesign, importDesign, renderPreview } from "../src/index.js";
+import {
+  chooseSection,
+  createEditorState,
+  effectiveDesign,
+  exportDesign,
+  importDesign,
+  loadSettings,
+  renderPreview,
+} from "../src/index.js";
 import { editorSession, imageSession } from "./editorSession.js";
+import { settingsDesign, settingsText } from "./settingsDesign.js";
 
 let folder: string;
 
@@ -74,4 +83,26 @@ test("the exported design with an uploaded image renders in the CLI to the previ
   expect(svg).toBe(preview.svg);
   expect(svg).toContain('href="data:image/png;base64,');
   expect(await importDesign(exportDesign(state.design))).toEqual({ ok: true, value: state.design });
+});
+
+test("the preview with a settings section equals readmint render --props on the exported design", async () => {
+  const loaded = loadSettings(createEditorState(settingsDesign), settingsText, "header");
+  const state = chooseSection(loaded, "header");
+  const { design, issues } = effectiveDesign(state);
+  expect(issues).toEqual([]);
+  const preview = renderPreview({ design, data: state.data, sessionAssets: state.sessionAssets });
+  expect(preview.ok).toBe(true);
+  if (!preview.ok) return;
+  await writeFile(join(folder, "header.json"), exportDesign(state.design));
+  await writeFile(join(folder, "settings.json"), settingsText);
+  let stdout = "";
+  const code = await runCli(["render", "header.json", "--props", "settings.json"], {
+    cwd: folder,
+    stdout: (text) => {
+      stdout += text;
+    },
+    stderr: () => undefined,
+  });
+  expect(code).toBe(ExitCode.ok);
+  expect(stdout).toBe(preview.svg);
 });

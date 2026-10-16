@@ -38,6 +38,7 @@ import {
   quoteInput,
   parseDesignProps,
   applyDesignProps,
+  propsSection,
 } from "@readmint/format";
 
 parseDesign(source, { format?: "json" | "yaml" }); // text -> parse -> migrate -> validate
@@ -48,6 +49,7 @@ validateDesign(value); // already parsed (editor state): migrate -> validate
 migrateDesign(value, { migrations?, target? }); // only the migration chain
 quoteInput(value, { maxEcho?, escape? }); // an input value as issue messages quote it
 parseDesignProps(source); // settings JSON -> DesignProps (props by section), no value in a message
+propsSection(fileName); // the settings section a design file takes: its base name without .json/.yaml/.yml and a trailing .dark
 applyDesignProps(design, props); // one section's props -> the root component layers, validated again; the input is kept
 ```
 

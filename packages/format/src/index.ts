@@ -20,6 +20,7 @@ export { DESIGN_FORMAT_VERSION } from "./designMigrations.js";
 export { migrateDesign } from "./migrateDesign.js";
 export { parseDesign } from "./parseDesign.js";
 export { parseDesignProps } from "./parseDesignProps.js";
+export { propsSection } from "./propsSection.js";
 export { parseDesignAsync } from "./parseDesignAsync.js";
 export { parseDesignSourceAsync } from "./parseDesignSourceAsync.js";
 export { isPathTemplate, PathData } from "./PathData.js";

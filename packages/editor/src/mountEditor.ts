@@ -1,9 +1,10 @@
-import { DesignLimits, type Design } from "@readmint/format";
+import { DesignLimits, propsSection, type Design } from "@readmint/format";
 import { addLayer, type NewLayerType } from "./addLayer.js";
 import { AssetPanel } from "./AssetPanel.js";
 import { attachAsset } from "./attachAsset.js";
 import { CanvasView } from "./CanvasView.js";
 import { refuse } from "./commitDesign.js";
+import { chooseSection } from "./chooseSection.js";
 import { createPreviewWorker } from "./createPreviewWorker.js";
 import { createRasterWorker } from "./createRasterWorker.js";
 import { element, readCapped } from "./dom.js";
@@ -20,6 +21,7 @@ import {
 import type { EditorIssue } from "./EditorIssue.js";
 import { EditorLimits } from "./EditorLimits.js";
 import { createEditorState, type EditorState } from "./EditorState.js";
+import { effectiveDesign } from "./effectiveDesign.js";
 import { exportDesign } from "./exportDesign.js";
 import { exportDesignYaml } from "./exportDesignYaml.js";
 import { importDesign } from "./importDesign.js";
@@ -27,6 +29,7 @@ import { IssueList } from "./IssueList.js";
 import { findLayer } from "./layerAccess.js";
 import { LayerTreeView } from "./LayerTreeView.js";
 import { loadFixture } from "./loadFixture.js";
+import { loadSettings } from "./loadSettings.js";
 import { moveLayer } from "./moveLayer.js";
 import { newDesign } from "./newDesign.js";
 import { PreviewClient, type PreviewOutcome, type PreviewWorker } from "./PreviewClient.js";
@@ -94,10 +97,22 @@ export function mountEditor(root: HTMLElement, options: MountEditorOptions = {})
   let state = createEditorState(options.initial ?? newDesign());
   let history: EditorHistory = createHistory();
   let previewIssues: readonly EditorIssue[] = [];
+  let settingsIssues: readonly EditorIssue[] = [];
+  let designFileName: string | undefined;
   let svg: string | undefined;
   const pending = new Set<Promise<unknown>>();
   const shell = element(root, "div", { className: "rm-editor" });
 
+  /** Renders what the state shows: the design with the chosen settings section applied. */
+  const render = (current: EditorState) => {
+    const effective = effectiveDesign(current);
+    settingsIssues = effective.issues;
+    client.render({
+      design: effective.design,
+      data: current.data,
+      sessionAssets: current.sessionAssets,
+    });
+  };
   /** Applies `command`; its design change becomes an undo entry, or, with `fresh`, the history starts over. */
   const apply = (command: (current: EditorState) => EditorState, fresh: boolean) => {
     const before = state;
@@ -106,9 +121,10 @@ export function mountEditor(root: HTMLElement, options: MountEditorOptions = {})
     if (
       state.design !== before.design ||
       state.data !== before.data ||
+      state.settings !== before.settings ||
       state.sessionAssets !== before.sessionAssets
     ) {
-      client.render(state);
+      render(state);
     }
     show();
   };
@@ -122,7 +138,7 @@ export function mountEditor(root: HTMLElement, options: MountEditorOptions = {})
     if (result === undefined) return;
     history = result.history;
     state = result.state;
-    client.render(state);
+    render(state);
     show();
   };
   /** Waits for `work` in `settled()`; a failure (a file that cannot be read, a chunk that does not load) is an issue. */
@@ -150,7 +166,15 @@ export function mountEditor(root: HTMLElement, options: MountEditorOptions = {})
       report("export", "a raster export is already running; wait for it to finish");
       return;
     }
-    const { design, data, sessionAssets } = state;
+    const { design, issues } = effectiveDesign(state);
+    if (issues.length > 0) {
+      report(
+        "export",
+        `the ${format} export needs the settings section to apply; fix or remove it first (${issues.map((issue) => issue.message).join("; ")})`,
+      );
+      return;
+    }
+    const { data, sessionAssets } = state;
     track(
       raster.export({ design, data, sessionAssets, format }).then((outcome) => {
         switch (outcome.kind) {
@@ -194,7 +218,8 @@ export function mountEditor(root: HTMLElement, options: MountEditorOptions = {})
 
   const toolbar = new Toolbar(shell, {
     newDesign: () => {
-      apply((current) => ({ ...createEditorState(newDesign()), data: current.data }), true);
+      designFileName = undefined;
+      apply((current) => withSession(createEditorState(newDesign()), current), true);
     },
     importFile: (file) => {
       if (file.size > DesignLimits.maxSourceLength * 3) {
@@ -223,7 +248,13 @@ export function mountEditor(root: HTMLElement, options: MountEditorOptions = {})
               }));
               return;
             }
-            apply((current) => ({ ...createEditorState(result.value), data: current.data }), true);
+            designFileName = file.name;
+            apply((current) => {
+              const next = withSession(createEditorState(result.value), current);
+              return next.settings === undefined
+                ? next
+                : chooseSection(next, defaultSection(next.settings.sections, file.name));
+            }, true);
             withFonts();
           }),
         "import",
@@ -317,6 +348,31 @@ export function mountEditor(root: HTMLElement, options: MountEditorOptions = {})
         "fixture data could not be read",
       );
     },
+    loadSettings: (file) => {
+      if (file.size > EditorLimits.maxSettingsBytes) {
+        report(
+          "settings",
+          `settings file is larger than ${String(EditorLimits.maxSettingsBytes)} bytes`,
+        );
+        return;
+      }
+      track(
+        file.text().then((text) => {
+          dispatch((current) =>
+            loadSettings(
+              current,
+              text,
+              designFileName === undefined ? undefined : propsSection(designFileName),
+            ),
+          );
+        }),
+        "settings",
+        "settings file could not be read",
+      );
+    },
+    chooseSection: (section) => {
+      dispatch((current) => chooseSection(current, section));
+    },
     zoom: (zoom) => {
       canvas.setZoom(zoom);
     },
@@ -381,11 +437,12 @@ export function mountEditor(root: HTMLElement, options: MountEditorOptions = {})
 
   const show = () => {
     toolbar.update(canUndo(history), canRedo(history));
+    toolbar.setSections(state.settings);
     tree.update(state);
     assets.update(state);
     canvas.update(state);
     properties.update(state);
-    issues.update([...state.issues, ...previewIssues]);
+    issues.update([...state.issues, ...settingsIssues, ...previewIssues]);
   };
 
   const client = new PreviewClient({
@@ -413,7 +470,7 @@ export function mountEditor(root: HTMLElement, options: MountEditorOptions = {})
   };
   root.ownerDocument.addEventListener("keydown", keydown);
 
-  client.render(state);
+  render(state);
   show();
   if (options.initial !== undefined) withFonts();
 
@@ -444,6 +501,21 @@ export function mountEditor(root: HTMLElement, options: MountEditorOptions = {})
       shell.remove();
     },
   };
+}
+
+/** A fresh state that keeps the session inputs of `previous`: fixture data and settings. */
+function withSession(fresh: EditorState, previous: EditorState): EditorState {
+  return {
+    ...fresh,
+    data: previous.data,
+    ...(previous.settings === undefined ? {} : { settings: previous.settings }),
+  };
+}
+
+/** The section of the settings a design file name picks, when the file has it. */
+function defaultSection(sections: Readonly<Record<string, unknown>>, fileName: string) {
+  const name = propsSection(fileName);
+  return Object.hasOwn(sections, name) ? name : undefined;
 }
 
 /** The selected layer when it is a group, which a new layer goes into. */
