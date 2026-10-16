@@ -4,6 +4,7 @@ import { describe, expect, test } from "vitest";
 import { plainColourImage } from "../src/plainColourImage.js";
 import { type ImageInfo, sniffImage } from "../src/sniffImage.js";
 import { colourImages, iccSegment, inserted } from "./colourImages.js";
+import { ultraHdrJpeg } from "./ultraHdr.js";
 import { dataUriBytes, vp8x } from "./exifImages.js";
 
 const assets = join(import.meta.dirname, "assets");
@@ -91,6 +92,15 @@ describe("plainColourImage", () => {
     ]);
     const plain = plainColourImage(split, infoOf(split));
     expect([...plain]).toEqual([...jpeg.subarray(0, 20), ...jpeg.subarray(494)]);
+  });
+
+  test("an Ultra HDR JPEG is copied as its plain base image alone", () => {
+    const jpeg = read("gradient.jpg");
+    const { data, primary } = ultraHdrJpeg(jpeg);
+    const plain = plainColourImage(data, infoOf(data));
+    expect([...plain]).toEqual([...jpeg.subarray(0, 20), ...jpeg.subarray(494)]);
+    expect(plain.length).toBeLessThan(primary.length);
+    expect(infoOf(plain).colourData).toEqual([]);
   });
 
   test.each([

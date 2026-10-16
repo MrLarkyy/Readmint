@@ -77,6 +77,8 @@ export class JpegStructure {
   private readonly libjpeg: ColourMarks = { jfif: false, adobe: undefined };
   private readonly decoder: ColourMarks = { jfif: false, adobe: undefined };
   private scanned = false;
+  /** Where the first EOI ends (the primary image), once the walk has met it. */
+  imageEnd: number | undefined;
 
   /** @param budget the symbol-check steps the render has left, shared by all its images; none, the file's cap only */
   constructor(private readonly budget?: EntropyBudget) {}
@@ -155,6 +157,7 @@ export class JpegStructure {
         table === undefined ? undefined : this.entropy?.losslessFault(bytes.data, data, table);
       if (fault !== undefined) return entropyRefusal(fault);
       const end = skipEntropyData(bytes.data, data, false);
+      if (end?.marker === 0xd9) this.imageEnd ??= end.offset;
       return lossless.problemAfterImageData(end?.marker);
     }
     let scan = offset;
@@ -169,7 +172,10 @@ export class JpegStructure {
         if (next === undefined) return this.cutProblem();
         const marker = next.marker;
         if (marker === 0) return resvgDiffers("image data with fill bytes before a stuffed zero");
-        if (marker === 0xd9) return this.endProblem();
+        if (marker === 0xd9) {
+          this.imageEnd ??= next.offset;
+          return this.endProblem();
+        }
         if (marker === 0xda) break;
         if (!isAppOrTable(marker)) {
           // libjpeg skips RSTn, TEM and DNL past the image data and draws what it has; jpeg-decoder stops.

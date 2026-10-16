@@ -203,7 +203,14 @@ A folder holds, per section, `<section>.json` and its dark twin `<section>.dark.
   folder, with the licence text beside them. Archivo has no Cyrillic and none of the families has emoji or CJK glyphs:
   such a name or commit message is not drawn and the render warns `missing-glyph` ([renderer](renderer.md)). Add a
   font asset that has them and list it in the `fallback` of the design's fonts
-  ([design format](design-format.md#assets)), and mind the size budget below. Archivo has no arrow or star glyph
+  ([design format](design-format.md#assets)), and mind the size budget below. A dropped emoji takes no space, so
+  what follows a text in `pinscreen` (the status bar: separator, "last push", the ticker) is placed by the layout
+  after the text as drawn. Four places still size by `length`, which counts a dropped emoji as a character, so with
+  an emoji in the text they err on the safe side: the `horizon` name's font size (smaller, the name fills less of
+  the width; pinned by the `header-emoji` golden) and the `pinscreen` contact underline (longer than the text;
+  pinned by a test). The width the `pinscreen` ticker may take (it truncates earlier) and the `year-ring` and
+  `pinscreen` ticker travel (it scrolls a little further than the text) are not pinned by a golden or a test
+  (the `header-emoji` goldens are frames at time 0 and do not truncate the push text). Archivo has no arrow or star glyph
   either: the contact arrow and the worked-with stars are paths.
 
 ### Settings file

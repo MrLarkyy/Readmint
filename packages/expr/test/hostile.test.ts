@@ -90,6 +90,32 @@ describe("hostile expressions are bounded in time and memory", () => {
     expectBounded("{{ list | max }}", { list: new Array<number>(200_000).fill(1) }, "budget");
   });
 
+  test("max with a key over 200000 objects exhausts the budget before scanning", () => {
+    const list = Array.from({ length: 200_000 }, () => ({ count: 1 }));
+    expectBounded("{{ list | max('count') }}", { list }, "budget");
+  });
+
+  test("a 20M-character key exhausts the budget", () => {
+    expectBounded(
+      "{{ list | max(key) }}",
+      { list: [{ count: 1 }], key: "k".repeat(20_000_000) },
+      "budget",
+    );
+  });
+
+  test("max with a key charges the items plus the key once", () => {
+    const budget = createBudget();
+    const template = compileTemplate("{{ list | max('count') }}");
+    if (!template.ok) expect.fail(template.error.message);
+    const list = new Array(1000).fill({ count: 2 }) as unknown[];
+    const before = createBudget();
+    const plain = compileTemplate("{{ list | max('count') }}");
+    if (!plain.ok) expect.fail(plain.error.message);
+    plain.value.evaluate(createScope({ list: [] }, { budget: before }));
+    template.value.evaluate(createScope({ list }, { budget }));
+    expect(budget.used - before.used).toBe(1000);
+  });
+
   test("min charges one step per item", () => {
     const budget = createBudget();
     const template = compileTemplate("{{ list | min }}");

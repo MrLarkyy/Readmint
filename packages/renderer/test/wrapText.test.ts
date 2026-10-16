@@ -6,7 +6,7 @@ import { wrapParagraphs, wrapText } from "../src/wrapText.js";
 const count = (text: string) => Array.from(text).length;
 
 describe("wrapText space variants", () => {
-  test.each(["\u2009", "\u3000", "\u2003", "\u205f"])(
+  test.each(["\u1680", "\u2009", "\u3000", "\u2003", "\u205f"])(
     "space variant %# breaks and is dropped at a soft break",
     (space) => {
       expect(wrapText(`aa${space}bb${space}cc`, 5, count)).toEqual(["aa" + space + "bb", "cc"]);
@@ -20,6 +20,11 @@ describe("wrapText space variants", () => {
     expect(wrapText("a\u3000b", 4, wide)).toEqual(["a", "b"]);
     expect(wrapText("a\u3000b", 5, wide)).toEqual(["a\u3000b"]);
     expect(wrapText("a b", 3, wide)).toEqual(["a b"]);
+  });
+
+  test("U+1680 breaks, is dropped at the soft break and kept inside a line", () => {
+    expect(wrapText("aa\u1680bb", 2, count)).toEqual(["aa", "bb"]);
+    expect(wrapText("aa\u1680bb", 5, count)).toEqual(["aa\u1680bb"]);
   });
 
   test.each(["\u00a0", "\u2007", "\u202f"])("no-break variant %# never breaks", (space) => {
@@ -88,5 +93,45 @@ describe("wrapText", () => {
     const started = performance.now();
     expect(wrapText(text, 50, count).length).toBeGreaterThan(100);
     expect(performance.now() - started).toBeLessThan(500 * loadScale());
+  });
+});
+
+describe("wrapText zero-width words", () => {
+  /** An emoji with no glyph is dropped by the shaper: it measures 0. */
+  const dropped = (text: string) => Array.from(text).filter((c) => c !== "\u{1F680}").length;
+
+  test("a dropped word last never starts a line of its own", () => {
+    expect(wrapText("Building tools \u{1F680}", 14, dropped)).toEqual(["Building tools \u{1F680}"]);
+  });
+
+  test("a dropped word in the middle stays on the line, the next word breaks without a leading space", () => {
+    expect(wrapText("Building tools \u{1F680} and more", 14, dropped)).toEqual([
+      "Building tools \u{1F680}",
+      "and more",
+    ]);
+  });
+
+  test("a text of dropped words alone is one line", () => {
+    expect(wrapText("\u{1F680}", 5, dropped)).toEqual(["\u{1F680}"]);
+    expect(wrapText("\u{1F680} \u{1F680} \u{1F680}", 1, dropped)).toEqual([
+      "\u{1F680} \u{1F680} \u{1F680}",
+    ]);
+  });
+
+  test("a dropped word at the start of a wrapped line stays with the word before it", () => {
+    expect(wrapText("aaaa \u{1F680}\u{1F680} bbbb", 4, dropped)).toEqual([
+      "aaaa \u{1F680}\u{1F680}",
+      "bbbb",
+    ]);
+  });
+});
+
+describe("wrapText consecutive spaces", () => {
+  test("the empty word between two spaces has no width: the break falls after the first space", () => {
+    expect(wrapText("aaaa  bbbb", 4, count)).toEqual(["aaaa ", "bbbb"]);
+  });
+
+  test("three spaces keep two on the first line", () => {
+    expect(wrapText("aaaa   bbbb", 4, count)).toEqual(["aaaa  ", "bbbb"]);
   });
 });
