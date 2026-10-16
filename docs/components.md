@@ -205,12 +205,16 @@ A folder holds, per section, `<section>.json` and its dark twin `<section>.dark.
   font asset that has them and list it in the `fallback` of the design's fonts
   ([design format](design-format.md#assets)), and mind the size budget below. A dropped emoji takes no space, so
   what follows a text in `pinscreen` (the status bar: separator, "last push", the ticker) is placed by the layout
-  after the text as drawn. Four places still size by `length`, which counts a dropped emoji as a character, so with
-  an emoji in the text they err on the safe side: the `horizon` name's font size (smaller, the name fills less of
-  the width; pinned by the `header-emoji` golden) and the `pinscreen` contact underline (longer than the text;
-  pinned by a test). The width the `pinscreen` ticker may take (it truncates earlier) and the `year-ring` and
-  `pinscreen` ticker travel (it scrolls a little further than the text) are not pinned by a golden or a test
-  (the `header-emoji` goldens are frames at time 0 and do not truncate the push text). Archivo has no arrow or star glyph
+  after the text as drawn. Whatever follows the width of a text that may hold any character is bound to its drawn
+  width (`textWidth`, `truncateWidth`, [expressions](expressions.md#filters)), so a dropped emoji moves nothing: the
+  `horizon` name's font size, the slots of the `horizon` commit ticker and worked-with band, the `pinscreen`
+  contact underline and stack parentheses, the `horizon` and `year-ring` contact pills, the contacts cut to their
+  room (the `horizon` and `year-ring` ones are placed by their width, not wrapped in a box, so they never break), the
+  `pinscreen` ticker's cut and the `pinscreen` and `year-ring` ticker travel. A few texts that can only be ASCII
+  are still placed by counting characters: in `pinscreen`, a repository name and the login in Geist Mono (0.6 em a
+  character, exact); in `year-ring`, the row under the year (the longest streak and the busiest weekday, both
+  generated, in Archivo Regular 12) is centred by 6.2 px a character, an estimate that may leave it slightly off
+  centre; it holds no free text, so no dropped character can move it. Archivo has no arrow or star glyph
   either: the contact arrow and the worked-with stars are paths.
 
 ### Settings file
@@ -288,9 +292,9 @@ and `pinscreen` "no pushes yet" and "no commits yet"; the sections that do not r
   loop whose period is shorter than the timeline needs more keyframes than a track holds (32), so it is a few copies of
   its layer (a `repeat` over a short list with `stagger`), each playing a window of whole periods and invisible outside
   it; every period divides the timeline, so the loop is seamless.
-- **Tickers without measuring.** A ticker gives each item a slot as wide as its estimated text (characters times an
-  average advance; Geist Mono exactly 0.6 em), clipped to the slot, so the width of one run is known in the design and
-  the band moves by whole runs per timeline.
+- **Tickers by measured width.** A ticker gives each item a slot as wide as its texts as drawn (`textWidth` of the
+  repository name and message, fixed widths for the hash, date and gaps), clipped to the slot, so the width of one run
+  is known in the design and the band moves by whole runs per timeline.
 - **A 3D ring without trigonometry.** A point of an ellipse with semi-axes `R1 + R2` and `R1 - R2` is the sum of two
   counter-rotating circles. Each day is three nested groups, each only a rotation (outer `phi`, middle `-2 phi` turning
   twice as fast the other way, inner `phi` so the line stays upright), so all 365 copies share three animation rules

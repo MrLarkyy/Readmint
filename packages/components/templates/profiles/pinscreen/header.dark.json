@@ -603,14 +603,14 @@
                                         },
                                         {
                                           "offset": 0.999,
-                                          "value": "{{ (((github.pushes[0].repository + \": \" + github.pushes[0].message) | truncate(((826 - ((104 + ((github.status.message | default(\"\") | lower | truncate(28)) | length) * 6.9 + 14) + 85) - ((props.statusBarRight | truncate(40)) | length) * 6.9 - 24) / 6.9 | floor | max(4))) | length) * 6.9) - 900 }}"
+                                          "value": "{{ (((github.pushes[0].repository + \": \" + github.pushes[0].message) | truncateWidth(((826 - ((104 + ((github.status.message | default(\"\") | lower | truncate(28)) | textWidth(\"mono\", 11.5)) + 14) + 85) - ((props.statusBarRight | truncate(40)) | textWidth(\"mono\", 11.5)) - 24) | max(27.6)), \"mono\", 11.5) | textWidth(\"mono\", 11.5))) - 900 }}"
                                         },
                                         {
                                           "offset": 1,
                                           "value": 0
                                         }
                                       ],
-                                      "duration": "{{ (((github.pushes[0].repository + \": \" + github.pushes[0].message) | truncate(((826 - ((104 + ((github.status.message | default(\"\") | lower | truncate(28)) | length) * 6.9 + 14) + 85) - ((props.statusBarRight | truncate(40)) | length) * 6.9 - 24) / 6.9 | floor | max(4))) | length) | max(1)) * 55 }}"
+                                      "duration": "{{ (((github.pushes[0].repository + \": \" + github.pushes[0].message) | truncateWidth(((826 - ((104 + ((github.status.message | default(\"\") | lower | truncate(28)) | textWidth(\"mono\", 11.5)) + 14) + 85) - ((props.statusBarRight | truncate(40)) | textWidth(\"mono\", 11.5)) - 24) | max(27.6)), \"mono\", 11.5) | length) | max(1)) * 55 }}"
                                     }
                                   },
                                   "children": [
@@ -629,14 +629,14 @@
                                             },
                                             {
                                               "offset": 0.999,
-                                              "value": "{{ 900 - (((github.pushes[0].repository + \": \" + github.pushes[0].message) | truncate(((826 - ((104 + ((github.status.message | default(\"\") | lower | truncate(28)) | length) * 6.9 + 14) + 85) - ((props.statusBarRight | truncate(40)) | length) * 6.9 - 24) / 6.9 | floor | max(4))) | length) * 6.9) }}"
+                                              "value": "{{ 900 - (((github.pushes[0].repository + \": \" + github.pushes[0].message) | truncateWidth(((826 - ((104 + ((github.status.message | default(\"\") | lower | truncate(28)) | textWidth(\"mono\", 11.5)) + 14) + 85) - ((props.statusBarRight | truncate(40)) | textWidth(\"mono\", 11.5)) - 24) | max(27.6)), \"mono\", 11.5) | textWidth(\"mono\", 11.5))) }}"
                                             },
                                             {
                                               "offset": 1,
                                               "value": 0
                                             }
                                           ],
-                                          "duration": "{{ (((github.pushes[0].repository + \": \" + github.pushes[0].message) | truncate(((826 - ((104 + ((github.status.message | default(\"\") | lower | truncate(28)) | length) * 6.9 + 14) + 85) - ((props.statusBarRight | truncate(40)) | length) * 6.9 - 24) / 6.9 | floor | max(4))) | length) | max(1)) * 55 }}"
+                                          "duration": "{{ (((github.pushes[0].repository + \": \" + github.pushes[0].message) | truncateWidth(((826 - ((104 + ((github.status.message | default(\"\") | lower | truncate(28)) | textWidth(\"mono\", 11.5)) + 14) + 85) - ((props.statusBarRight | truncate(40)) | textWidth(\"mono\", 11.5)) - 24) | max(27.6)), \"mono\", 11.5) | length) | max(1)) * 55 }}"
                                         }
                                       },
                                       "children": [
@@ -644,7 +644,7 @@
                                           "type": "text",
                                           "x": 0,
                                           "y": 2.3,
-                                          "content": "{{ (github.pushes[0].repository + \": \" + github.pushes[0].message) | truncate(((826 - ((104 + ((github.status.message | default(\"\") | lower | truncate(28)) | length) * 6.9 + 14) + 85) - ((props.statusBarRight | truncate(40)) | length) * 6.9 - 24) / 6.9 | floor | max(4))) }}",
+                                          "content": "{{ (github.pushes[0].repository + \": \" + github.pushes[0].message) | truncateWidth(((826 - ((104 + ((github.status.message | default(\"\") | lower | truncate(28)) | textWidth(\"mono\", 11.5)) + 14) + 85) - ((props.statusBarRight | truncate(40)) | textWidth(\"mono\", 11.5)) - 24) | max(27.6)), \"mono\", 11.5) }}",
                                           "font": "mono",
                                           "fontSize": 11.5,
                                           "fill": "{{ props.theme == \"dark\" ? \"#EDEDED\" : \"#0A0A0A\" }}"
@@ -665,7 +665,7 @@
                                       "type": "text",
                                       "x": 0,
                                       "y": 235.018,
-                                      "content": "{{ (github.pushes[0].repository + \": \" + github.pushes[0].message) | truncate(((826 - ((104 + ((github.status.message | default(\"\") | lower | truncate(28)) | length) * 6.9 + 14) + 85) - ((props.statusBarRight | truncate(40)) | length) * 6.9 - 24) / 6.9 | floor | max(4))) }}",
+                                      "content": "{{ (github.pushes[0].repository + \": \" + github.pushes[0].message) | truncateWidth(((826 - ((104 + ((github.status.message | default(\"\") | lower | truncate(28)) | textWidth(\"mono\", 11.5)) + 14) + 85) - ((props.statusBarRight | truncate(40)) | textWidth(\"mono\", 11.5)) - 24) | max(27.6)), \"mono\", 11.5) }}",
                                       "font": "mono",
                                       "fontSize": 11.5,
                                       "fill": "{{ props.theme == \"dark\" ? \"#EDEDED\" : \"#0A0A0A\" }}",
@@ -687,7 +687,7 @@
                                                 },
                                                 {
                                                   "offset": 0,
-                                                  "value": "{{ 0 - (((github.pushes[0].repository + \": \" + github.pushes[0].message) | truncate(((826 - ((104 + ((github.status.message | default(\"\") | lower | truncate(28)) | length) * 6.9 + 14) + 85) - ((props.statusBarRight | truncate(40)) | length) * 6.9 - 24) / 6.9 | floor | max(4))) | length) * 6.9) }}"
+                                                  "value": "{{ 0 - (((github.pushes[0].repository + \": \" + github.pushes[0].message) | truncateWidth(((826 - ((104 + ((github.status.message | default(\"\") | lower | truncate(28)) | textWidth(\"mono\", 11.5)) + 14) + 85) - ((props.statusBarRight | truncate(40)) | textWidth(\"mono\", 11.5)) - 24) | max(27.6)), \"mono\", 11.5) | textWidth(\"mono\", 11.5))) }}"
                                                 },
                                                 {
                                                   "offset": 0.999,
@@ -698,7 +698,7 @@
                                                   "value": 0
                                                 }
                                               ],
-                                              "duration": "{{ (((github.pushes[0].repository + \": \" + github.pushes[0].message) | truncate(((826 - ((104 + ((github.status.message | default(\"\") | lower | truncate(28)) | length) * 6.9 + 14) + 85) - ((props.statusBarRight | truncate(40)) | length) * 6.9 - 24) / 6.9 | floor | max(4))) | length) | max(1)) * 55 }}"
+                                              "duration": "{{ (((github.pushes[0].repository + \": \" + github.pushes[0].message) | truncateWidth(((826 - ((104 + ((github.status.message | default(\"\") | lower | truncate(28)) | textWidth(\"mono\", 11.5)) + 14) + 85) - ((props.statusBarRight | truncate(40)) | textWidth(\"mono\", 11.5)) - 24) | max(27.6)), \"mono\", 11.5) | length) | max(1)) * 55 }}"
                                             }
                                           },
                                           "children": [

@@ -67,30 +67,32 @@ The hyphen rule keeps ids usable as names: `props.my-label` and `repo-index` are
 
 ## Filters
 
-| filter                         | input                 | result                                                                               |
-| ------------------------------ | --------------------- | ------------------------------------------------------------------------------------ |
-| `number(decimals=0, locale?)`  | number                | `1,234.5` with the locale's separators; `decimals` 0 to 20                           |
-| `compact(decimals=1, locale?)` | number                | `1.2K`, `3.4M`, `1B`, `2T`; trailing zeros dropped, `999950` is `1M`                 |
-| `percent(decimals=0, locale?)` | number                | `0.25` is `25%` (`25 %` in de, fr, es, cs)                                           |
-| `round(decimals=0)`            | number                | a number, rounded half away from zero (`2.5` is `3`, `-2.5` is `-3`)                 |
-| `floor`                        | number                | the next integer down                                                                |
-| `ceil`                         | number                | the next integer up                                                                  |
-| `abs`                          | number                | the absolute value                                                                   |
-| `sqrt`                         | number                | the square root; a negative number is a `not-finite` error                           |
-| `min(b)`, `min`, `min(key)`    | number or array       | the smaller of the value and `b`; of an array, its smallest item (of `key`)          |
-| `max(b)`, `max`, `max(key)`    | number or array       | the larger of the value and `b`; of an array, its largest item (of `key`)            |
-| `clamp(low, high)`             | number                | the value within `[low, high]`; `low > high` is an `argument` error                  |
-| `date(pattern?, locale?)`      | ISO 8601 string or ms | the date in UTC written with `pattern`, else the locale's default pattern            |
-| `upper`                        | string                | upper case by a fixed 1:1 table (see Determinism)                                    |
-| `lower`                        | string                | lower case by a fixed 1:1 table (see Determinism)                                    |
-| `trim`                         | string                | without leading and trailing white space (a fixed set, see Determinism)              |
-| `truncate(length, suffix="…")` | string                | at most `length` code points, the suffix included when it was cut                    |
-| `padStart(width, char=" ")`    | string or number      | padded on the left to `width` code points with `char` (exactly one code point)       |
-| `default(value)`               | anything              | `value` when the input is `null`, else the input                                     |
-| `length`                       | string or array       | code points of a string, items of an array                                           |
-| `join(separator=", ")`         | array                 | the items written as in text, separated; arrays and objects in it are a `type` error |
-| `first`                        | array or string       | the first item (`null` when empty) or code point                                     |
-| `last`                         | array or string       | the last item (`null` when empty) or code point                                      |
+| filter                                              | input                 | result                                                                                                                        |
+| --------------------------------------------------- | --------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `number(decimals=0, locale?)`                       | number                | `1,234.5` with the locale's separators; `decimals` 0 to 20                                                                    |
+| `compact(decimals=1, locale?)`                      | number                | `1.2K`, `3.4M`, `1B`, `2T`; trailing zeros dropped, `999950` is `1M`                                                          |
+| `percent(decimals=0, locale?)`                      | number                | `0.25` is `25%` (`25 %` in de, fr, es, cs)                                                                                    |
+| `round(decimals=0)`                                 | number                | a number, rounded half away from zero (`2.5` is `3`, `-2.5` is `-3`)                                                          |
+| `floor`                                             | number                | the next integer down                                                                                                         |
+| `ceil`                                              | number                | the next integer up                                                                                                           |
+| `abs`                                               | number                | the absolute value                                                                                                            |
+| `sqrt`                                              | number                | the square root; a negative number is a `not-finite` error                                                                    |
+| `min(b)`, `min`, `min(key)`                         | number or array       | the smaller of the value and `b`; of an array, its smallest item (of `key`)                                                   |
+| `max(b)`, `max`, `max(key)`                         | number or array       | the larger of the value and `b`; of an array, its largest item (of `key`)                                                     |
+| `clamp(low, high)`                                  | number                | the value within `[low, high]`; `low > high` is an `argument` error                                                           |
+| `date(pattern?, locale?)`                           | ISO 8601 string or ms | the date in UTC written with `pattern`, else the locale's default pattern                                                     |
+| `upper`                                             | string                | upper case by a fixed 1:1 table (see Determinism)                                                                             |
+| `lower`                                             | string                | lower case by a fixed 1:1 table (see Determinism)                                                                             |
+| `trim`                                              | string                | without leading and trailing white space (a fixed set, see Determinism)                                                       |
+| `truncate(length, suffix="…")`                      | string                | at most `length` code points, the suffix included when it was cut                                                             |
+| `padStart(width, char=" ")`                         | string or number      | padded on the left to `width` code points with `char` (exactly one code point)                                                |
+| `default(value)`                                    | anything              | `value` when the input is `null`, else the input                                                                              |
+| `length`                                            | string or array       | code points of a string, items of an array                                                                                    |
+| `join(separator=", ")`                              | array                 | the items written as in text, separated; arrays and objects in it are a `type` error                                          |
+| `first`                                             | array or string       | the first item (`null` when empty) or code point                                                                              |
+| `last`                                              | array or string       | the last item (`null` when empty) or code point                                                                               |
+| `textWidth(font, size, letterSpacing=0)`            | string                | the width in pixels the text takes drawn with font asset `font` at `size` (see below)                                         |
+| `truncateWidth(width, font, size, letterSpacing=0)` | string                | the text when it fits `width` pixels, else its longest start of whole clusters plus `…` that does; `""` when `…` does not fit |
 
 `min` and `max` of an array give `null` when it is empty; an item that is not a number is a `type` error. With a string
 `key` (`days | max("count")`, a `null` key means none) every item must be an object and its own property `key` a number:
@@ -101,6 +103,23 @@ is charged once, on top of one step per item.
 Arguments are expressions; a `null` argument means its default. Decimals, lengths and widths must be integers. Number
 filters round with `toFixed` (exact on the binary value: `1.005 | number(2)` is `1.00`); from `1e21` on a number is
 written as `String(n)` (`1e+21`). `-0` and values that round to zero are written without a sign.
+
+`textWidth` and `truncateWidth` measure a text as the renderer draws it, so a design can size or place something by
+the drawn width of a bound text instead of guessing from `length`. The renderer gives the scope its measurer (see API);
+without one both are `unknown-filter` errors. That is so wherever an expression is evaluated before or outside a
+render: the `src` binding of a remote image, which the CLI and the Action evaluate to fetch the image, cannot measure
+(the image is refused with `image-binding`, saying the filter needs a renderer). `font` is the id of a font asset of the design (any other value, an
+unknown id included, is an `argument` error), `size` is above 0 and at most 1000, `letterSpacing` from -100 to 100.
+The width is that of a text layer with this font, size and letter spacing and no `width`: its fallbacks apply, a
+character no font has takes no space, a line break starts a new line and the widest line counts. A layer's
+`fontWeight` is not applied: name the font asset of the weight that is drawn. A width scales with the size when the
+letter spacing scales too, so `840 / (name | textWidth("display", 1, -0.01))` is the size at which a name drawn with
+`letterSpacing` `-0.01 × size` fills 840 pixels. `truncateWidth` cuts between clusters (never inside an emoji sequence
+or a ligature) and finds the cut by bisection; where negative letter spacing or kerning makes a shorter start wider,
+the cut it finds fits but may not be the longest that would. A text of more than 10000 UTF-16 code units is
+`too-large`. Each measurement is charged the steps of its text, `truncateWidth` once per text it lays out (the whole
+text, the ellipsis, one per bit of the text's length); the renderer also counts the shaping against its own bound.
+Measuring draws nothing: it embeds no font and never warns `missing-glyph`.
 
 ## Locales
 
@@ -168,6 +187,7 @@ cannot silently change an existing pattern. A pattern has at most 64 characters.
 | strings       | 100000 UTF-16 code units for any string produced                                | `too-large` |
 | arrays        | 10000 items in an array literal and in a `repeat`                               | `too-large` |
 | filter args   | 4 per call                                                                      | `argument`  |
+| measured text | 10000 UTF-16 code units for `textWidth` and `truncateWidth`                     | `too-large` |
 | error excerpt | 64 characters of the source                                                     |             |
 
 A step is one expression node, plus one per 16 characters or one per item a filter or operator processes: string
@@ -194,21 +214,21 @@ Messages name types, operators, filters and names from the design, never a value
 control characters, the line and paragraph separators, the twelve Bidi_Control characters and lone surrogates are
 written as `\u{…}`.
 
-| code             | meaning                                                                             |
-| ---------------- | ----------------------------------------------------------------------------------- |
-| `syntax`         | the placeholder is not valid: unexpected token, unclosed `{{` or string, bad escape |
-| `too-long`       | the string is longer than 10000 characters                                          |
-| `too-deep`       | nesting deeper than 64 levels                                                       |
-| `unknown-name`   | neither a local nor the data has this name                                          |
-| `unknown-filter` | no filter has this name                                                             |
-| `argument`       | a filter got too many or too few arguments, or one of the wrong kind or range       |
-| `type`           | an operator or filter got a value of the wrong type                                 |
-| `not-finite`     | arithmetic gave an infinite or undefined number, or `sqrt` of a negative number     |
-| `too-large`      | a string, an array literal or a repeat would pass its size limit                    |
-| `budget`         | the evaluation took more steps than its budget                                      |
-| `unknown-locale` | the locale is not one of en, de, fr, es, cs                                         |
-| `invalid-date`   | not an ISO 8601 date or epoch milliseconds in the years 0000 to 9999                |
-| `invalid-data`   | the data holds something that is not a JSON value where it was read                 |
+| code             | meaning                                                                                         |
+| ---------------- | ----------------------------------------------------------------------------------------------- |
+| `syntax`         | the placeholder is not valid: unexpected token, unclosed `{{` or string, bad escape             |
+| `too-long`       | the string is longer than 10000 characters                                                      |
+| `too-deep`       | nesting deeper than 64 levels                                                                   |
+| `unknown-name`   | neither a local nor the data has this name                                                      |
+| `unknown-filter` | no filter has this name, or `textWidth` / `truncateWidth` without a measurer (outside a render) |
+| `argument`       | a filter got too many or too few arguments, or one of the wrong kind or range                   |
+| `type`           | an operator or filter got a value of the wrong type                                             |
+| `not-finite`     | arithmetic gave an infinite or undefined number, or `sqrt` of a negative number                 |
+| `too-large`      | a string, an array literal or a repeat would pass its size limit                                |
+| `budget`         | the evaluation took more steps than its budget                                                  |
+| `unknown-locale` | the locale is not one of en, de, fr, es, cs                                                     |
+| `invalid-date`   | not an ISO 8601 date or epoch milliseconds in the years 0000 to 9999                            |
+| `invalid-data`   | the data holds something that is not a JSON value where it was read                             |
 
 ## API
 
@@ -228,6 +248,7 @@ if (!template.ok) report(template.error);
 
 const budget = createBudget(); // optional: one budget shared by a whole render
 const scope = createScope(data, { locale: "de", budget }); // data: a plain JSON object
+createScope(data, { measurer }); // a TextMeasurer: what textWidth and truncateWidth measure with (the renderer's)
 template.value.evaluate(scope); // ExprResult<ExprValue>
 template.value.kind; // "expression" (exactly one placeholder) or "text"
 
@@ -242,6 +263,9 @@ toText(value); // string | undefined: a value written as a placeholder in text i
 - `expandRepeat` defaults `as` to `item` and `index` to `index` (0-based); both must be names an expression can
   read (`repo-index`, not `repo-1`, `1st` or `true`) and differ, else `argument`; `null` repeats nothing, anything but an
   array is a `type` error, more than 10000 items `too-large`. Child scopes keep the outer locals and data.
+- A `TextMeasurer` has `width(text, font, size, letterSpacing)` (pixels) and
+  `truncate(text, width, font, size, letterSpacing)` (the cut text); both return `undefined` for a font id the design
+  does not have. Child scopes keep it. A scope built by hand may leave `measurer` out.
 - Without a shared budget each `evaluate` gets a fresh one of 100000 steps; with `createBudget(n)` passed to
   `createScope`, every evaluation in that scope and its children draws from the same `n` steps, and an exhausted
   budget stays exhausted. `createBudget` throws a `RangeError` for a negative or fractional `n`: that is a caller
@@ -260,4 +284,5 @@ one) Unicode case mappings for Basic Latin, Latin-1 Supplement, Latin Extended-A
 leave every other character unchanged. Nothing expands: `ß` stays `ß`, `İ` lowers to `i`, and `Σ` always lowers to
 `σ`. `trim` removes a fixed set: tab, line feed, vertical tab, form feed, carriage return, space, U+00A0, U+1680,
 U+2000 to U+200A, U+2028, U+2029, U+202F, U+205F, U+3000 and U+FEFF. A shared corpus of expressions is checked in Node
-and in headless Chromium.
+and in headless Chromium. `textWidth` and `truncateWidth` give what the renderer's measurer gives: it adds the
+font's advances in a fixed order, the same numbers in Node and every browser ([renderer](renderer.md#expressions)).

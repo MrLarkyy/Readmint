@@ -809,7 +809,7 @@
                                     },
                                     {
                                       "offset": 0.999,
-                                      "value": "{{ ((github.pushes[0].message | truncate(60) | length) * 7) - 900 }}"
+                                      "value": "{{ ((github.pushes[0].message | truncate(60) | textWidth(\"reg\", 14))) - 900 }}"
                                     },
                                     {
                                       "offset": 1,
@@ -835,7 +835,7 @@
                                         },
                                         {
                                           "offset": 0.999,
-                                          "value": "{{ 900 - ((github.pushes[0].message | truncate(60) | length) * 7) }}"
+                                          "value": "{{ 900 - ((github.pushes[0].message | truncate(60) | textWidth(\"reg\", 14))) }}"
                                         },
                                         {
                                           "offset": 1,
@@ -893,7 +893,7 @@
                                             },
                                             {
                                               "offset": 0,
-                                              "value": "{{ 0 - ((github.pushes[0].message | truncate(60) | length) * 7) }}"
+                                              "value": "{{ 0 - ((github.pushes[0].message | truncate(60) | textWidth(\"reg\", 14))) }}"
                                             },
                                             {
                                               "offset": 0.999,

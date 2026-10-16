@@ -8,6 +8,7 @@ import type { RenderContext } from "./RenderContext.js";
 import type { TextNode } from "./RenderNode.js";
 import { resolveBase } from "./resolveBase.js";
 import { resolveStyle } from "./resolveStyle.js";
+import { shapeLines } from "./shapeLines.js";
 import { stripXmlInvalid } from "./stripXmlInvalid.js";
 import { evaluateText } from "./expressions.js";
 import { exceedsCodePoints } from "./exceedsCodePoints.js";
@@ -16,7 +17,6 @@ import { privateCode } from "./privateCode.js";
 import type { PlacedGlyph, TextLine, TextRun } from "./TextLine.js";
 import type { TextLayout } from "./TextLayout.js";
 import { TextShaper, type ShapedLine, type TextShaperOptions } from "./TextShaper.js";
-import { wrapParagraphs } from "./wrapText.js";
 
 export const defaultFontSize = 16;
 export const defaultLineHeight = 1.2;
@@ -136,18 +136,7 @@ function layOut(
   // One shaping budget for the whole text, shared by every word and line: words are shaped to measure them and again
   // as lines, so it allows two passes, max(16384, 64 x twice its length).
   const shaper = new TextShaper(context, options, ShapingBudget.forText(2 * content.length));
-  const paragraphs = wrapParagraphs(
-    content,
-    width,
-    (text) => shaper.measure(text),
-    (word) => shaper.clusters(word),
-  );
-  const shaped = paragraphs.flatMap((paragraph) => {
-    const bidi = shaper.paragraph(paragraph.text);
-    return paragraph.lines.map((line) => shaper.layout(paragraph.text, bidi, line.start, line.end));
-  });
-  let widest = 0;
-  for (const line of shaped) widest = Math.max(widest, line.width);
+  const { lines: shaped, widest } = shapeLines(shaper, content, width);
   const boxWidth = width ?? widest;
   const drawnAs = shaped.some((line) => line.glyphs.some((glyph) => glyph.font?.drawAs === "paths"))
     ? "paths"

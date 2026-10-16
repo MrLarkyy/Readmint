@@ -57,6 +57,17 @@ apply unchanged:
   checked against the declared type, an `enum` prop against its `values`, an `array` prop for being an array; a
   mismatch is a `type` issue at the instance prop). A repeat in the component can iterate an array prop. Defaults and literal list items are used as written, never
   evaluated.
+- The scope carries the renderer's text measurer, so `textWidth` and `truncateWidth`
+  ([expressions](expressions.md#filters)) measure with the shaping a text layer is drawn with: the same code lays
+  out a drawn text and a measured one (each paragraph on one line, the widest counts), so a measured width is the box
+  width of a text layer with that font, size and letter spacing and no `width`, in Node and in every browser. A
+  `textWidth` measurement gets its own shaping budget, the one a text of its length gets; a `truncateWidth` one
+  gets max(16384, 128 x (its length + 1) x (the bit length of its length + 3)), for every text it lays out together
+  (the whole text, the ellipsis, one start per halving). Past its own budget a measurement fails as a text does
+  (`asset-format` at the font); both count against the render's shaping bound, and the measurement that crosses it
+  fails with `asset-too-large` at its expression. Results are cached per render. Measuring records no glyph: a font
+  that is only measured is loaded and checked but never embedded or drawn, and a character no font has warns
+  `missing-glyph` only where a text draws it.
 
 Each design string is compiled once per render. All evaluations of a render draw from one expr step budget
 (`maxExpressionSteps`, below); once it is spent the render fails with a `binding` issue of expr code `budget`. An
@@ -304,7 +315,7 @@ Drawn in document order, first at the back. Layer `id` and `name` are not emitte
   lookup; feature selection visits each feature once and reads at most 4096 lookup indices; an extension lookup may
   not point to another extension; a context rule or ligature names at most 64 glyphs; lookups nest at most 8 deep;
   shaping one text (every word measured and every line laid out, together) spends at most max(16384, 128 x the text's
-  length) operations (a subtable tried, a glyph stepped over, a rule, ligature or lookup entry compared, glyphs
+  length) operations (a `textWidth` measurement the same, a `truncateWidth` one more: see Expressions) (a subtable tried, a glyph stepped over, a rule, ligature or lookup entry compared, glyphs
   moved; the Devanagari probes for reph and below-base forms included, each answered once per font); one shaping call
   grows its buffer to at most max(4096, 8 x its characters) glyphs; a mark finds its base by searching back only to
   where the last search stopped (HarfBuzz's last base), and a cluster holds at most 32 code points, so long runs of
@@ -669,9 +680,11 @@ Animation CSS counts toward `maxOutputBytes` like any markup, and every animated
 is written only once every track is built, so `maxAnimationKeyframes` bounds that work: each track charges its
 keyframes before any is resolved. Fixed limits: 10000 items per `repeat` (expr, `binding` at
 `repeat/each`) and 64 levels of nested component instances (`too-large`). Shaping is bounded twice by counts (see Fonts, untrusted fonts):
-each text by its own budget, max(16384, 128 x its length) operations, which fails as `asset-format` at the font; and
-the whole render by 4000000 shaping operations, every text together (an internal bound like the outline work, not a
-`RenderLimits` field), which fails as `asset-too-large` at the content of the text that crossed it, naming its font.
+each text by its own budget, max(16384, 128 x its length) operations, which fails as `asset-format` at the font (a
+`textWidth` or `truncateWidth` measurement by its own budget too, see Expressions); and the whole render by 4000000
+shaping operations, every text and measurement together (an internal bound like the outline work, not a
+`RenderLimits` field), which fails as `asset-too-large` at the content of the text that crossed it, or at the
+expression whose measurement did, naming its font.
 A text laid out once is shaped once, however many copies draw it.
 The JPEG symbol check (see Images) is bounded by fixed limits, not `RenderLimits` fields. Per file, each an
 `asset-format` naming it: 134217728 (2^27) decoding steps (a block or MCU visited, a run of empty bands in a first AC
@@ -688,21 +701,21 @@ charged alike, the images the render checked found in the cache.
 
 ## Issues
 
-| code                   | meaning                                                                                                                                                                                                                                                   |
-| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `binding`              | an expression failed to compile or evaluate, the step budget ran out, a repeat `each` is not a list or has more than 10000 items, or its `as`/`index` names are unreadable or equal (the message names expr's error code)                                 |
-| `type`                 | a value of the wrong kind (also a prop of the wrong type, a list or object written into text)                                                                                                                                                             |
-| `range`                | a number outside the format's range, a keyframe offset below the one before it, a `time` outside [0, 86400000], a template `d` that gives empty, over-long (100000) or non-path data (at `d`), an arc a template `d` gives under `draw` (at the track)    |
-| `missing-asset`        | an asset path or an image `src` bound to data (`{{binding}}`) without supplied bytes, or a reference to no asset                                                                                                                                          |
-| `asset-format`         | not an accepted image or a malformed font (also one found broken when its glyphs, layout tables or subset are read, one whose layout tables pass a shaping cap, or a table that decompresses past its declared size); a data URI type that does not match |
-| `asset-too-large`      | over a byte, side or frame limit; a font past its outline budget or whose subset could not fit the output budget; a text that brings the render past its shaping bound (at the text)                                                                      |
-| `unsupported-font`     | a font collection (TTC, or WOFF2 with several fonts), CFF2 outlines or a CFF FontMatrix other than 1/unitsPerEm                                                                                                                                           |
-| `font-not-embeddable`  | warning: the licence or the fsType forbids embedding; the font's text is drawn as paths (once per asset)                                                                                                                                                  |
-| `font-reserved-name`   | warning: the font has a Reserved Font Name (declared, or stated in its name table), so no subset may be embedded; its text is drawn as paths (once per asset, at what decided)                                                                            |
-| `too-large`            | the SVG passes `maxOutputBytes`, a text passes `maxTextLength`, the repeats pass `maxRepeatCopies` (at the `repeat` that crossed it), the tracks pass `maxAnimationKeyframes` (at the track that crossed it), components nest deeper than 64 levels       |
-| `font-family-mismatch` | warning: the asset family differs from the family inside the font                                                                                                                                                                                         |
-| `missing-glyph`        | warning: characters neither the font nor its fallbacks have; they are not drawn and take no space (once per font asset, up to ten named)                                                                                                                  |
-| `animation-cut`        | warning: a track runs past the end of the timeline and is cut there (once per track, however many copies)                                                                                                                                                 |
+| code                   | meaning                                                                                                                                                                                                                                                         |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `binding`              | an expression failed to compile or evaluate, the step budget ran out, a repeat `each` is not a list or has more than 10000 items, or its `as`/`index` names are unreadable or equal (the message names expr's error code)                                       |
+| `type`                 | a value of the wrong kind (also a prop of the wrong type, a list or object written into text)                                                                                                                                                                   |
+| `range`                | a number outside the format's range, a keyframe offset below the one before it, a `time` outside [0, 86400000], a template `d` that gives empty, over-long (100000) or non-path data (at `d`), an arc a template `d` gives under `draw` (at the track)          |
+| `missing-asset`        | an asset path or an image `src` bound to data (`{{binding}}`) without supplied bytes, or a reference to no asset                                                                                                                                                |
+| `asset-format`         | not an accepted image or a malformed font (also one found broken when its glyphs, layout tables or subset are read, one whose layout tables pass a shaping cap, or a table that decompresses past its declared size); a data URI type that does not match       |
+| `asset-too-large`      | over a byte, side or frame limit; a font past its outline budget or whose subset could not fit the output budget; a text or a `textWidth` / `truncateWidth` measurement that brings the render past its shaping bound (at the text's content or the expression) |
+| `unsupported-font`     | a font collection (TTC, or WOFF2 with several fonts), CFF2 outlines or a CFF FontMatrix other than 1/unitsPerEm                                                                                                                                                 |
+| `font-not-embeddable`  | warning: the licence or the fsType forbids embedding; the font's text is drawn as paths (once per asset)                                                                                                                                                        |
+| `font-reserved-name`   | warning: the font has a Reserved Font Name (declared, or stated in its name table), so no subset may be embedded; its text is drawn as paths (once per asset, at what decided)                                                                                  |
+| `too-large`            | the SVG passes `maxOutputBytes`, a text passes `maxTextLength`, the repeats pass `maxRepeatCopies` (at the `repeat` that crossed it), the tracks pass `maxAnimationKeyframes` (at the track that crossed it), components nest deeper than 64 levels             |
+| `font-family-mismatch` | warning: the asset family differs from the family inside the font                                                                                                                                                                                               |
+| `missing-glyph`        | warning: characters neither the font nor its fallbacks have; they are not drawn and take no space (once per font asset, up to ten named)                                                                                                                        |
+| `animation-cut`        | warning: a track runs past the end of the timeline and is cut there (once per track, however many copies)                                                                                                                                                       |
 
 ## Report
 

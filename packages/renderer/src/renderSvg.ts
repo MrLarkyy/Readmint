@@ -2,6 +2,7 @@ import { createBudget, createScope } from "@readmint/expr";
 import { ValueRanges, type Design } from "@readmint/format";
 import { collectLayerBoxes } from "./collectLayerBoxes.js";
 import { countImageUses } from "./countImageUses.js";
+import { createTextMeasurer } from "./createTextMeasurer.js";
 import { embedFonts } from "./embedFonts.js";
 import { escapeText } from "./escapeXml.js";
 import { expandLayers } from "./expandLayers.js";
@@ -51,6 +52,7 @@ function render(context: RenderContext, options: RenderOptions): RenderResult {
   const locale = options.locale ?? (typeof design.locale === "string" ? design.locale : undefined);
   const scope = createScope(options.data ?? {}, {
     budget,
+    measurer: createTextMeasurer(context),
     ...(locale === undefined ? {} : { locale }),
   });
   const canvas = design.canvas;

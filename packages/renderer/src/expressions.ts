@@ -41,9 +41,21 @@ export function evaluateBinding(
   path: string,
   scope: Scope,
 ): ExprValue {
-  const result = compiled(context, source, path).evaluate(scope);
+  const template = compiled(context, source, path);
+  const result = at(context, path, () => template.evaluate(scope));
   if (!result.ok) fail(context, path, source, result.error);
   return result.value;
+}
+
+/** Runs an evaluation with `path` as the render's `expressionPath`. */
+function at<T>(context: RenderContext, path: string, evaluate: () => T): T {
+  const outer = context.expressionPath;
+  context.expressionPath = path;
+  try {
+    return evaluate();
+  } finally {
+    context.expressionPath = outer;
+  }
 }
 
 /** A layer's `if`: false for `false`, `null`, `0`, `""` and `[]`. */
@@ -53,7 +65,8 @@ export function evaluateIf(
   path: string,
   scope: Scope,
 ): boolean {
-  const result = evaluateCondition(compiled(context, source, path), scope);
+  const template = compiled(context, source, path);
+  const result = at(context, path, () => evaluateCondition(template, scope));
   if (!result.ok) fail(context, path, source, result.error);
   return result.value;
 }
@@ -74,7 +87,8 @@ export function repeatScopes(
   const names = expandRepeat(compiled(context, "{{ null }}", repeatPath), scope, options);
   if (!names.ok) context.fail(repeatPath, "binding", `repeat: ${names.error.message}`);
   const eachPath = pointer(repeatPath, "each");
-  const result = expandRepeat(compiled(context, repeat.each, eachPath), scope, options);
+  const each = compiled(context, repeat.each, eachPath);
+  const result = at(context, eachPath, () => expandRepeat(each, scope, options));
   if (!result.ok) fail(context, eachPath, repeat.each, result.error);
   return result.value;
 }

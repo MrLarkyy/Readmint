@@ -278,6 +278,7 @@ function evaluatePipe(node: PipeNode, context: EvalContext): ExprResult<ExprValu
   const filterContext: FilterContext = {
     locale: context.scope.locale,
     charge: (steps) => context.budget.charge(steps),
+    measurer: context.scope.measurer,
   };
   for (const call of node.filters) {
     if (!context.budget.charge(1)) return budgetExceeded(context, call);

@@ -96,7 +96,7 @@ and never a request header or the text of a network error.
 
 | code                | meaning                                                                                                                                                                          |
 | ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `image-binding`     | the binding does not evaluate, gives no string, or there is no data                                                                                                              |
+| `image-binding`     | the binding does not evaluate (`textWidth` and `truncateWidth` cannot: no renderer measures here), gives no string, or there is no data                                          |
 | `image-url`         | not a URL, not https, a user name, password or port in it, or over 2048 characters                                                                                               |
 | `image-host`        | the host is not on the allow-list                                                                                                                                                |
 | `image-fetch`       | network error, timeout, redirect, a status outside 200..299, or a 33rd URL in one run                                                                                            |

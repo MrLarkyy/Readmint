@@ -74,6 +74,10 @@ export class RenderContext {
    * recorded) once; one entry per distinct text, whose content each copy has reserved in the output budget.
    */
   readonly textLayouts = new Map<string, TextLayout>();
+  /** Results of `textWidth` and `truncateWidth` by filter, font, size, letter spacing (width) and text. */
+  readonly textWidths = new Map<string, number | string>();
+  /** Pointer of the expression being evaluated: where measuring its text fails, for instance on the shaping bound. */
+  expressionPath = "";
   /** Loaded images by asset id, in first-use order. */
   readonly images = new Map<string, LoadedImage>();
   /** Compiled expressions by source text; a design string is compiled once per render. */
