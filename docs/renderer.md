@@ -528,7 +528,7 @@ refused:` and the reason (`a JFIF segment`, `Adobe transform 1`, `component ids 
   raster output (a Display P3 or Adobe RGB profile, a P3 cICP or cHRM, gAMA 1.0 alone: 40 to 73 levels per channel
   apart). Removed, as whole segments or chunks, where decoders read them: JPEG APP2 `ICC_PROFILE\0` segments before
   the first SOS, with the 0xFF fill bytes before the marker, so the copy's walk meets the same markers where stray
-  bytes follow the segment (every part of a split profile; another APP2, such as `MPF`, stays); PNG `iCCP`, `sRGB`, `gAMA`,
+  bytes follow the segment (every part of a split profile; another APP2 stays), and the segments that lead a decoder to an Ultra HDR gain map: APP2 `MPF\0` and APP1 XMP (`http://ns.adobe.com/xap/1.0/\0`) naming the `http://ns.adobe.com/hdr-gain-map/1.0/` namespace (a second image after the first EOI is left: nothing then points to it), so the pixels drawn are the SDR base image in both Chromium and resvg); PNG `iCCP`, `sRGB`, `gAMA`,
   `cHRM`, `cICP`, `mDCV` and `cLLI` before the first `IDAT` (no decoder reads later copies); WebP `ICCP` chunks inside
   the RIFF payload (bytes after it are left alone), with the VP8X ICC flag (0x20) cleared, with or without a chunk,
   and the RIFF size lowered by the bytes removed. Every

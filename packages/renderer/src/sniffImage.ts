@@ -28,7 +28,9 @@ export interface ImageInfo {
   readonly orientationFields: readonly OrientationField[];
   /**
    * Every whole segment or chunk, in file order, that tells a decoder how to colour-manage the pixels where decoders
-   * read it: JPEG APP2 `ICC_PROFILE` before the first scan, with the 0xFF fill bytes before its marker; PNG iCCP, sRGB, gAMA, cHRM, cICP, mDCV, cLLI before the
+   * read it: JPEG APP2 `ICC_PROFILE` before the first scan, with the 0xFF fill bytes before its marker, and the segments that
+   * lead to an Ultra HDR gain map (APP2 `MPF`, APP1 XMP naming the `hdrgm` namespace), which Chromium may apply on an
+   * HDR display; PNG iCCP, sRGB, gAMA, cHRM, cICP, mDCV, cLLI before the
    * image data; WebP ICCP. Chromium applies them and resvg ignores them, so `plainColourImage` removes them.
    */
   readonly colourData: readonly ColourRange[];
@@ -316,7 +318,10 @@ function sniffJpeg(bytes: Bytes, budget: EntropyBudget | undefined): SniffResult
         exif = true;
         blocks.push(exifOrientation(bytes.data, offset + 8, offset + length));
       }
-      if (isIccSegment(bytes, marker, offset, length)) {
+      if (
+        isIccSegment(bytes, marker, offset, length) ||
+        isGainMapSegment(bytes, marker, offset, length)
+      ) {
         // From the first fill byte before the marker on: the walk of a copy without the range then reads on from its
         // end as it does here, where stray bytes past the frame header would otherwise meet the fill bytes left.
         addColourRange(bytes, next.fillStart, offset + length, colourData);
@@ -352,6 +357,22 @@ function isIccSegment(bytes: Bytes, marker: number, offset: number, length: numb
     offset + length <= bytes.data.length &&
     bytes.ascii(offset + 2, 12) === "ICC_PROFILE\0"
   );
+}
+
+const xmpSignature = "http://ns.adobe.com/xap/1.0/\0";
+const gainMapNamespace = "http://ns.adobe.com/hdr-gain-map/1.0/";
+
+/**
+ * The segments that let a decoder find an Ultra HDR gain map: the APP2 `MPF\0` index of the images in the file and
+ * the APP1 XMP packet naming the `hdrgm` namespace; read only when the whole segment lies inside the data.
+ */
+function isGainMapSegment(bytes: Bytes, marker: number, offset: number, length: number): boolean {
+  if (offset + length > bytes.data.length) return false;
+  if (marker === 0xe2) return length >= 6 && bytes.ascii(offset + 2, 4) === "MPF\0";
+  if (marker !== 0xe1 || length < 2 + xmpSignature.length) return false;
+  if (bytes.ascii(offset + 2, xmpSignature.length) !== xmpSignature) return false;
+  const start = offset + 2 + xmpSignature.length;
+  return bytes.ascii(start, offset + length - start).includes(gainMapNamespace);
 }
 
 function skipSubBlocks(bytes: Bytes, start: number): number {

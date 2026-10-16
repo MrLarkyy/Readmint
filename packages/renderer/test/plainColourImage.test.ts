@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { describe, expect, test } from "vitest";
 import { plainColourImage } from "../src/plainColourImage.js";
 import { type ImageInfo, sniffImage } from "../src/sniffImage.js";
-import { colourImages, iccSegment, inserted } from "./colourImages.js";
+import { app2, colourImages, iccSegment, inserted } from "./colourImages.js";
 import { dataUriBytes, vp8x } from "./exifImages.js";
 
 const assets = join(import.meta.dirname, "assets");
@@ -91,6 +91,27 @@ describe("plainColourImage", () => {
     ]);
     const plain = plainColourImage(split, infoOf(split));
     expect([...plain]).toEqual([...jpeg.subarray(0, 20), ...jpeg.subarray(494)]);
+  });
+
+  test("an Ultra HDR JPEG loses its MPF index and gain map XMP: the copy is the plain base image", () => {
+    const jpeg = read("gradient.jpg");
+    const signature = "http://ns.adobe.com/xap/1.0/\0";
+    const packet = '<x:xmpmeta xmlns:hdrgm="http://ns.adobe.com/hdr-gain-map/1.0/"/>';
+    const text = signature + packet;
+    const xmp = [
+      0xff,
+      0xe1,
+      (text.length + 2) >> 8,
+      (text.length + 2) & 255,
+      ...Array.from(text, (char) => char.charCodeAt(0)),
+    ];
+    const hdr = new Uint8Array([
+      ...inserted(jpeg, 2, [...app2("MPF\0", [0x4d, 0x4d, 0, 0x2a]), ...xmp]),
+      ...jpeg,
+    ]);
+    const plain = plainColourImage(hdr, infoOf(hdr));
+    expect([...plain]).toEqual([...jpeg.subarray(0, 20), ...jpeg.subarray(494), ...jpeg]);
+    expect(infoOf(plain).colourData).toEqual([]);
   });
 
   test.each([

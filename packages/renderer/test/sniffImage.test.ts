@@ -676,11 +676,58 @@ describe("colour data", () => {
     });
   });
 
-  test("another APP2 segment (MPF) is not colour data", () => {
-    const mpf = app2("MPF\0", [0x4d, 0x4d, 0, 0x2a]);
-    expect(sniffImage(inserted(jpeg, 2, mpf), 1000)).toMatchObject({
+  test("another APP2 segment is not colour data", () => {
+    const other = app2("XYZ\0", [0x4d, 0x4d, 0, 0x2a]);
+    expect(sniffImage(inserted(jpeg, 2, other), 1000)).toMatchObject({
       ok: true,
-      info: { colourData: [{ start: 20 + mpf.length, end: 494 + mpf.length }] },
+      info: { colourData: [{ start: 20 + other.length, end: 494 + other.length }] },
+    });
+  });
+
+  describe("Ultra HDR gain map", () => {
+    const mpf = app2("MPF\0", [0x4d, 0x4d, 0, 0x2a]);
+    const xmp = (packet: string) => {
+      const signature = "http://ns.adobe.com/xap/1.0/\0";
+      const length = 2 + signature.length + packet.length;
+      return [0xff, 0xe1, length >> 8, length & 255, ...bytes(signature + packet)];
+    };
+    const hdrgm = xmp('<x:xmpmeta xmlns:hdrgm="http://ns.adobe.com/hdr-gain-map/1.0/"/>');
+    const ranges = (data: Uint8Array) => {
+      const sniffed = sniffImage(data, 1000);
+      if (!sniffed.ok) throw new Error(sniffed.message);
+      return sniffed.info.colourData;
+    };
+
+    const icc = { start: 20, end: 494 };
+    const shifted = (shift: number) => ({ start: icc.start + shift, end: icc.end + shift });
+
+    test("the MPF index and the hdrgm XMP are recorded, a second image after EOI is left", () => {
+      const data = inserted(jpeg, 2, [...mpf, ...hdrgm]);
+      const shift = mpf.length + hdrgm.length;
+      expect(ranges(new Uint8Array([...data, ...jpeg]))).toEqual([
+        { start: 2, end: 2 + mpf.length },
+        { start: 2 + mpf.length, end: 2 + shift },
+        shifted(shift),
+      ]);
+    });
+
+    test("an XMP packet without the hdrgm namespace stays", () => {
+      const plain = xmp("<x:xmpmeta/>");
+      expect(ranges(inserted(jpeg, 2, plain))).toEqual([shifted(plain.length)]);
+    });
+
+    test("a segment the data cuts off is not recorded", () => {
+      const sof = jpegMarkerOffsets(jpeg, 0xc0)[0] ?? 0;
+      const frameEnd = sof + 2 + ((jpeg[sof + 2] ?? 0) * 256 + (jpeg[sof + 3] ?? 0));
+      const data = inserted(jpeg, frameEnd, hdrgm);
+      const cut = data.slice(0, frameEnd + hdrgm.length - 3);
+      expect(ranges(cut)).toEqual([icc]);
+      expect(ranges(data)).toEqual([icc, { start: frameEnd, end: frameEnd + hdrgm.length }]);
+    });
+
+    test("EXIF orientation is read beside them", () => {
+      const data = inserted(jpeg, 2, [...mpf, ...hdrgm]);
+      expect(sniffImage(data, 1000)).toMatchObject({ ok: true, info: { orientation: 1 } });
     });
   });
 
