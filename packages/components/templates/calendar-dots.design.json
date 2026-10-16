@@ -4,8 +4,8 @@
   "title": "Contribution calendar: dots",
   "description": "GitHub's contribution calendar as dots that grow with the day's level.",
   "canvas": {
-    "width": "{{ (github.contributions.weeks | min(53)) * 14 - 3 + 16 | max(1) }}",
-    "height": "{{ 7 * 14 - 3 + 16 }}",
+    "width": "{{ (props.orientation == \"vertical\" ? 7 * (props.cellSize + props.gap) - props.gap + 16 : (github.contributions.weeks | min(props.weeks)) * (props.cellSize + props.gap) - props.gap + 16) | max(1) }}",
+    "height": "{{ (props.orientation == \"vertical\" ? (github.contributions.weeks | min(props.weeks)) * (props.cellSize + props.gap) - props.gap + 16 : 7 * (props.cellSize + props.gap) - props.gap + 16) | max(1) }}",
     "background": "#ffffff"
   },
   "components": {

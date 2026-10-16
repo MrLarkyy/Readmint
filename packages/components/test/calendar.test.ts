@@ -67,6 +67,23 @@ describe.each(calendarTemplates)("%s", (name) => {
   });
 });
 
+test.each([
+  ["calendar-heatmap", { orientation: "vertical", gap: 0 }, 7 * 11 + 16, 53 * 11 + 16],
+  ["calendar-dots", { cellSize: 9, gap: 2, weeks: 20 }, 20 * 11 - 2 + 16, 7 * 11 - 2 + 16],
+  ["calendar-isometric", { weeks: 12 }, (12 + 5) * 14 + 22 + 16, (12 + 5) * 7 + 11 + 24 + 16],
+  [
+    "calendar-isometric",
+    { cellSize: 8, maxHeight: 10 },
+    (53 + 5) * 11 + 16 + 16,
+    319 + 8 + 10 + 16,
+  ],
+] as const)("the %s canvas follows the calendar props %j", (name, props, width, height) => {
+  const data = contributionsYear();
+  const bound = renderCalendar({ design: withCalendar(loadTemplate(name), props), data });
+  const sized = withCalendar(loadTemplate(name), props, { width, height });
+  expect(bound).toBe(renderCalendar({ design: sized, data }));
+});
+
 test("the three templates carry one identical calendar component", () => {
   const [first, ...rest] = calendarTemplates.map(
     (name) => loadTemplate(name).components?.["calendar"],

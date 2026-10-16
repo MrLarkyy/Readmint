@@ -4,8 +4,8 @@
   "title": "Contribution calendar: isometric 3D",
   "description": "GitHub's contribution calendar as isometric pillars whose height follows the day's count.",
   "canvas": {
-    "width": "{{ ((github.contributions.weeks | min(53)) + 5) * 14 + 22 + 16 }}",
-    "height": "{{ ((github.contributions.weeks | min(53)) + 5) * 7 + 11 + 24 + 16 }}",
+    "width": "{{ ((github.contributions.weeks | min(props.weeks)) + 5) * (props.cellSize + props.gap) + 2 * props.cellSize + 16 }}",
+    "height": "{{ ((github.contributions.weeks | min(props.weeks)) + 5) * (props.cellSize + props.gap) / 2 + props.cellSize + props.maxHeight + 16 }}",
     "background": "#ffffff"
   },
   "components": {

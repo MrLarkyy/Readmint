@@ -5,7 +5,7 @@
   "description": "Key facts in rows, with the languages of the public repositories and a bar of their shares.",
   "canvas": {
     "width": 840,
-    "height": 327
+    "height": "{{ 39 + 36 * ((props.labels | length) + ((github.languages | length | default(0)) > 0 ? 1 : 0) | min(8)) }}"
   },
   "assets": {
     "fonts": {
