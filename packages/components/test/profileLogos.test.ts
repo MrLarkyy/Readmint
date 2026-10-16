@@ -4,12 +4,17 @@ import { profileLogos } from "@readmint/examples/logos";
 import { profileExampleProps } from "@readmint/examples/props";
 import { describe, expect, test } from "vitest";
 import type { ProfileSection, ProfileTemplate } from "../src/index.js";
-import { loadProfile, profileFontAssets, type ProfileTheme } from "./profileDesigns.js";
+import {
+  loadExampleProfile,
+  loadProfile,
+  profileFontAssets,
+  type ProfileTheme,
+} from "./profileDesigns.js";
 import { sampleProfileData, worstCaseProfileData } from "./sampleProfileData.js";
 
 type Props = Readonly<Record<string, ComponentPropValue>>;
 
-/** A neutral square of the nominal logo height: the committed examples carry no brand path. */
+/** A neutral square of the nominal logo height: the committed templates carry no brand path. */
 const square = "M0 0h14v14H0Z";
 /** The widest path data a logo may have, as plain strokes of the format's character set. */
 const widest = `M0 0${"l1 1".repeat(1499)}`;
@@ -18,8 +23,15 @@ interface Strip {
   readonly template: ProfileTemplate;
   readonly section: ProfileSection;
   readonly row: number;
+  /** The right edge of the room a line of tiles may use. */
   readonly right: number;
-  readonly lineShift: number;
+  /** Where the first tile starts with and without a caption column. */
+  readonly start: { readonly captions: number; readonly none: number };
+  /** The top of card line `g` and the height its tiles are centred in. */
+  readonly band: (g: number) => number;
+  readonly bandHeight: number;
+  /** How far the card moves what follows it, for 4 lines. */
+  readonly shift: number;
   readonly ink: Readonly<Record<ProfileTheme, string>>;
   readonly base: Props;
 }
@@ -29,8 +41,11 @@ const strips: readonly Strip[] = [
     template: "year-ring",
     section: "index",
     row: 5,
-    right: 840,
-    lineShift: 22,
+    right: 832,
+    start: { captions: 294, none: 174 },
+    band: (g) => 35 + 36 * 6 + 9 + 24 * g,
+    bandHeight: 18,
+    shift: 72,
     ink: { light: "#15171C", dark: "#ECEEF2" },
     base: {
       labels: ["a", "b", "c", "d", "e", "Shipped for", "f"],
@@ -41,8 +56,11 @@ const strips: readonly Strip[] = [
     template: "pinscreen",
     section: "stack",
     row: 1,
-    right: 620,
-    lineShift: 20,
+    right: 604,
+    start: { captions: 168.2, none: 78.5 },
+    band: (g) => 96 + 20 * (12 + 1 + 1 + g) - 10.982,
+    bandHeight: 14,
+    shift: 80,
     ink: { light: "#8C8C8C", dark: "#808080" },
     base: {
       plugin: 'kotlin("jvm")',
@@ -55,6 +73,8 @@ const strips: readonly Strip[] = [
 ];
 const themes: readonly ProfileTheme[] = ["light", "dark"];
 const names = ["Alpha", "Bravo", "Charlie", "Delta", "Echo", "Foxtrot", "Golf"];
+const lineOfName = ["0", "1", "1", "2", "2", "3", "3"];
+const captions = ["Now", "Before", "", "Creators"];
 const cases = strips.flatMap((strip) => themes.map((theme) => [strip, theme] as const));
 
 interface Rendered {
@@ -79,20 +99,33 @@ function render(strip: Strip, theme: ProfileTheme, props: Props): Rendered {
   return { svg: result.svg, height, boxes: result.layerBoxes ?? [] };
 }
 
-const withLogos = (strip: Strip, logos: readonly string[], list = names): Props => ({
+const withLogos = (
+  strip: Strip,
+  logos: readonly string[],
+  list = names,
+  lines: readonly string[] = lineOfName,
+  labels: readonly string[] = captions,
+): Props => ({
   logoNames: list,
   logos,
+  logoLines: lines,
+  logoLabels: labels,
   logosRow: strip.row,
 });
+const allSquares = names.map(() => square);
 /** The drawn paths: the 14 px boxes, once each (an item group has the box of its path). */
 const squares = (boxes: readonly LayerBox[]) => {
   const own = boxes.filter((box) => box.width === 14 && box.height === 14);
   return own.filter((box, index) => own.findIndex((o) => o.x === box.x && o.y === box.y) === index);
 };
 const bottom = (box: LayerBox) => box.y + box.height;
+const centre = (box: LayerBox) => box.y + box.height / 2;
+const lineCentre = (strip: Strip, g: number) => strip.band(g) + strip.bandHeight / 2;
+const onLine = (strip: Strip, boxes: readonly LayerBox[], g: number) =>
+  squares(boxes).filter((box) => Math.abs(centre(box) - lineCentre(strip, g)) < 1);
 
-describe.each(cases)("the logo strip of %o (%s)", (strip, theme) => {
-  test("draws one path in the row ink per logo and the name as text where there is none", () => {
+describe.each(cases)("the card of %o (%s)", (strip, theme) => {
+  test("draws one path in the row ink per logo and the name as text only where there is none", () => {
     const logos = [square, "", square, "", square, square, ""];
     const { svg } = render(strip, theme, withLogos(strip, logos));
     const paths = svg.match(new RegExp(`<path [^>]*fill="${strip.ink[theme]}"[^>]*>`, "giu")) ?? [];
@@ -103,102 +136,91 @@ describe.each(cases)("the logo strip of %o (%s)", (strip, theme) => {
     expect(svg).not.toContain("Joined names");
   });
 
-  test("takes two lines from 6 items, the second lower by one line", () => {
+  test("draws item k on the line logoLines[k]", () => {
+    const { boxes } = render(strip, theme, withLogos(strip, allSquares));
+    expect([0, 1, 2, 3].map((g) => onLine(strip, boxes, g).length)).toEqual([1, 2, 2, 2]);
+    expect(squares(boxes)).toHaveLength(7);
+  });
+
+  test("reads logoLines as a number or its text", () => {
+    const text = render(strip, theme, withLogos(strip, allSquares));
+    const numbers = render(strip, theme, {
+      ...withLogos(strip, allSquares),
+      logoLines: lineOfName.map(Number),
+    });
+    expect(numbers.svg).toBe(text.svg);
+  });
+
+  test("puts an item without an entry in logoLines on the first line", () => {
+    const { boxes } = render(strip, theme, withLogos(strip, allSquares, names, ["2"]));
+    expect([0, 1, 2, 3].map((g) => onLine(strip, boxes, g).length)).toEqual([6, 0, 1, 0]);
+  });
+
+  test("draws no item of a line the captions do not give", () => {
     const { boxes } = render(
       strip,
       theme,
-      withLogos(
-        strip,
-        names.map(() => square),
-      ),
+      withLogos(strip, allSquares, names, lineOfName, ["Now", "Before"]),
     );
-    const items = squares(boxes);
-    expect(items).toHaveLength(7);
-    const lines = [...new Set(items.map((box) => box.y))];
-    expect(lines).toHaveLength(2);
-    expect(Math.max(...lines) - Math.min(...lines)).toBe(strip.lineShift);
-    expect(items.filter((box) => box.y === Math.min(...lines))).toHaveLength(4);
+    expect(squares(boxes)).toHaveLength(3);
   });
 
-  test.runIf(strip.template === "year-ring")(
-    "centres a line of logos on the 18 px text height of its row, like a line of text",
-    () => {
-      const { boxes } = render(
-        strip,
-        theme,
-        withLogos(
-          strip,
-          names.map(() => square),
-        ),
-      );
-      const rowTop = 35 + 36 * (strip.row + 1);
-      const textTop = rowTop + 8.292;
-      const first = Math.min(...squares(boxes).map((box) => box.y));
-      expect(first + 7).toBeCloseTo(textTop + 9, 6);
-    },
-  );
+  test("starts the tiles after the caption column, or at the left where no line has a caption", () => {
+    const left = (boxes: readonly LayerBox[]) => Math.min(...squares(boxes).map((box) => box.x));
+    for (const labels of [[""], []]) {
+      const { boxes } = render(strip, theme, withLogos(strip, allSquares, names, ["0"], labels));
+      expect(left(boxes)).toBeCloseTo(strip.start.none, 6);
+    }
+    expect(left(render(strip, theme, withLogos(strip, allSquares)).boxes)).toBeCloseTo(
+      strip.start.captions,
+      6,
+    );
+  });
 
-  test("stays on one line below 6 items and grows the canvas only when it wraps", () => {
-    const plain = render(strip, theme, {});
-    const five = render(
+  test("draws the name alone where the path is empty", () => {
+    const { svg } = render(
       strip,
       theme,
       withLogos(
         strip,
-        names.slice(0, 5).map(() => square),
-        names.slice(0, 5),
+        names.map(() => ""),
       ),
     );
-    const seven = render(
-      strip,
-      theme,
-      withLogos(
-        strip,
-        names.map(() => square),
-      ),
-    );
-    expect(new Set(squares(five.boxes).map((box) => box.y)).size).toBe(1);
-    expect(five.height).toBe(plain.height);
-    expect(seven.height).toBe(plain.height + strip.lineShift);
+    for (const name of names) expect(svg.includes(`>${name}<`), name).toBe(true);
+    expect(svg).not.toContain(`d="${square}"`);
+  });
+
+  test("centres the logos of a line of logos and of a line with a name only on the line", () => {
+    const logos = [square, square, "", square, square, "", ""];
+    const { boxes } = render(strip, theme, withLogos(strip, logos));
+    expect(squares(boxes)).toHaveLength(4);
+    expect(onLine(strip, boxes, 0)).toHaveLength(1);
+    expect(onLine(strip, boxes, 1)).toHaveLength(1);
+    expect(onLine(strip, boxes, 2)).toHaveLength(2);
   });
 
   test("keeps every box inside the canvas and left of the panel", () => {
-    const { boxes, height } = render(
-      strip,
-      theme,
-      withLogos(
-        strip,
-        names.map(() => square),
-      ),
-    );
+    const { boxes, height } = render(strip, theme, withLogos(strip, allSquares));
     for (const box of squares(boxes)) expect(box.x + box.width).toBeLessThanOrEqual(strip.right);
     for (const box of boxes) expect(bottom(box)).toBeLessThanOrEqual(height);
   });
 
-  test("moves what follows the strip down by one line and nothing before it", () => {
+  test("grows the canvas by the lines of the card and moves what follows it", () => {
     const plain = render(strip, theme, {});
-    const wrapped = render(
-      strip,
-      theme,
-      withLogos(
-        strip,
-        names.map(() => square),
-      ),
-    );
-    const pick = (boxes: readonly LayerBox[]) =>
+    const card = render(strip, theme, withLogos(strip, allSquares));
+    expect(card.height).toBe(plain.height + strip.shift);
+    const rules = (boxes: readonly LayerBox[]) =>
       boxes
         .filter((box) =>
           strip.template === "pinscreen" ? box.x === 44 : box.height === 1 && box.width === 840,
         )
-        .map((box) => box.y)
-        .sort((a, b) => a - b);
-    const before = pick(plain.boxes);
-    const after = pick(wrapped.boxes);
-    const stripTop = strip.template === "pinscreen" ? 96 + 20 * 14 - 11 : 35 + 36 * 6 + 34;
-    expect(after).toHaveLength(before.length);
-    const moved = before.map((y) => (y > stripTop ? y + strip.lineShift : y));
-    expect(after).toEqual(moved);
-    expect(before.filter((y) => y > stripTop).length).toBeGreaterThan(0);
+        .map((box) => box.y);
+    const top = strip.band(0) - 5;
+    const after = (boxes: readonly LayerBox[]) => rules(boxes).filter((y) => y > top);
+    const above = (boxes: readonly LayerBox[]) => rules(boxes).filter((y) => y <= top);
+    expect(above(card.boxes)).toEqual(above(plain.boxes));
+    expect(after(plain.boxes).length).toBeGreaterThan(0);
+    for (const y of after(plain.boxes)) expect(after(card.boxes)).toContain(y + strip.shift);
   });
 
   test("draws at most 12 items", () => {
@@ -210,6 +232,7 @@ describe.each(cases)("the logo strip of %o (%s)", (strip, theme) => {
         strip,
         many.map(() => square),
         many,
+        many.map(() => "0"),
       ),
     );
     expect(squares(boxes)).toHaveLength(12);
@@ -219,9 +242,16 @@ describe.each(cases)("the logo strip of %o (%s)", (strip, theme) => {
     const plain = render(strip, theme, {}).svg;
     expect(plain).toContain("Joined names");
     expect(render(strip, theme, { logoNames: [], logos: [], logosRow: strip.row }).svg).toBe(plain);
-    expect(render(strip, theme, { logoNames: names, logos: names.map(() => square) }).svg).toBe(
-      plain,
-    );
+    expect(render(strip, theme, { logoNames: names, logos: allSquares }).svg).toBe(plain);
+  });
+
+  test("draws one line without captions and lines", () => {
+    const { boxes } = render(strip, theme, {
+      logoNames: names,
+      logos: allSquares,
+      logosRow: strip.row,
+    });
+    expect(onLine(strip, boxes, 0)).toHaveLength(7);
   });
 
   test("refuses path data outside the format's character set and draws nothing", () => {
@@ -240,7 +270,7 @@ describe.each(cases)("the logo strip of %o (%s)", (strip, theme) => {
     if (!result.ok) expect(result.issues.map((issue) => issue.code)).toContain("range");
   });
 
-  test("stays within the budget and half the limits with 12 widest paths, every prop at its cap, worst-case data", () => {
+  test("stays within the budget and half the limits with 12 widest paths, 4 lines, every prop at its cap, worst-case data", () => {
     const long = (label: string) => `${label} ${"W".repeat(200)}`;
     const capped = (count: number, label: string) =>
       Array.from({ length: count }, (_, index) => long(`${label}${String(index)}`));
@@ -262,6 +292,8 @@ describe.each(cases)("the logo strip of %o (%s)", (strip, theme) => {
         strip,
         twelve.map(() => widest),
         twelve,
+        twelve.map((_, index) => String(index % 4)),
+        capped(4, "Caption"),
       ),
     });
     if (!applied.ok) throw new Error(JSON.stringify(applied.issues));
@@ -279,14 +311,86 @@ describe.each(cases)("the logo strip of %o (%s)", (strip, theme) => {
   });
 });
 
+describe.each(cases)("the example card of %o (%s)", (strip, theme) => {
+  const example = () => {
+    const design = loadExampleProfile(strip.template, strip.section, theme);
+    const sample = sampleProfileData();
+    const result = renderSvg(design, {
+      data: { github: { ...sample.github, languages: sample.github.languages.slice(0, 3) } },
+      assets: { fonts: profileFontAssets(strip.template, design) },
+      time: 0,
+      layerBoxes: true,
+    });
+    if (!result.ok) throw new Error(JSON.stringify(result.issues));
+    return { svg: result.svg, boxes: result.layerBoxes ?? [] };
+  };
+
+  test("draws the paths found and every name, no tile past its line, every box in the canvas", () => {
+    const { svg, boxes } = example();
+    const height = Number(/^<svg [^>]*\bheight="([^"]*)"/.exec(svg)?.[1]);
+    for (const logo of profileLogos.filter((entry) => entry.d !== "")) {
+      expect(svg).toContain(` d="${logo.d}"`);
+    }
+    for (const logo of profileLogos) {
+      expect(svg.includes(`>${logo.name}<`), logo.name).toBe(logo.d === "");
+    }
+    for (const box of boxes) expect(bottom(box)).toBeLessThanOrEqual(height);
+    for (let g = 0; g < 4; g++) {
+      const line = boxes.filter(
+        (box) =>
+          box.x >= strip.start.none &&
+          box.height <= strip.bandHeight &&
+          Math.abs(centre(box) - lineCentre(strip, g)) < 3,
+      );
+      expect(line.length, `line ${String(g)}`).toBeGreaterThan(0);
+      for (const box of line) {
+        expect(box.x + box.width, `line ${String(g)}`).toBeLessThanOrEqual(strip.right);
+      }
+    }
+  });
+
+  test("centres every logo of the example on its line", () => {
+    const { boxes } = example();
+    const first = lineCentre(strip, 0) - 8;
+    const last = lineCentre(strip, 3) + 8;
+    const found = boxes.filter(
+      (box) =>
+        box.x >= strip.start.none &&
+        box.height >= 13.5 &&
+        box.height <= 14.5 &&
+        centre(box) > first &&
+        centre(box) < last,
+    );
+    expect(found.length).toBeGreaterThanOrEqual(
+      profileLogos.filter((logo) => logo.d !== "").length,
+    );
+    for (const box of found) {
+      const nearest = [0, 1, 2, 3].map((g) => Math.abs(centre(box) - lineCentre(strip, g)));
+      expect(Math.min(...nearest)).toBeLessThan(1);
+    }
+  });
+
+  test("has no script, event attribute or external reference", () => {
+    const { svg } = example();
+    expect(svg).not.toMatch(/<script|\son[a-z]+=|href="https?:|url\(https?:|<foreignObject/iu);
+  });
+});
+
 describe("profileLogos", () => {
   test("names the projects of the example in the order of its props", () => {
-    expect(profileExampleProps["year-ring"]?.index?.logoNames).toEqual(
-      profileLogos.map((logo) => logo.name),
-    );
-    expect(profileExampleProps.pinscreen?.stack?.logoNames).toEqual(
-      profileLogos.map((logo) => logo.name),
-    );
+    for (const props of [
+      profileExampleProps["year-ring"]?.index,
+      profileExampleProps.pinscreen?.stack,
+    ]) {
+      expect(props?.logoNames).toEqual(profileLogos.map((logo) => logo.name));
+      expect(props?.logoLines).toEqual(profileLogos.map((logo) => String(logo.line)));
+    }
+  });
+
+  test("puts the projects of a line next to each other, lines in order", () => {
+    const lines = profileLogos.map((logo) => logo.line);
+    expect(lines).toEqual([...lines].sort((a, b) => a - b));
+    expect(Math.max(...lines)).toBeLessThan(4);
   });
 
   test.each(profileLogos.map((logo) => [logo.name, logo] as const))(
@@ -294,13 +398,15 @@ describe("profileLogos", () => {
     (_, logo) => {
       const drawn = logo.d !== "";
       expect(logo.licence.length).toBeGreaterThan(0);
-      expect(logo.trademark.length).toBeGreaterThan(0);
+      expect(logo.owner.length).toBeGreaterThan(0);
+      expect(logo.note).toContain("author's responsibility");
+      expect(logo.page).toMatch(/^https:\/\/[^\s]+$/u);
       expect(logo.retrieved).toMatch(/^\d{4}-\d{2}-\d{2}$/u);
-      expect(logo.source).toMatch(drawn ? /^https:\/\/[^\s]+$/u : /^(https:\/\/[^\s]+|n\/a: .+)$/u);
-      expect(logo.sha256).toMatch(drawn ? /^[0-9a-f]{64}$/u : /^([0-9a-f]{64}|n\/a: .+)$/u);
+      expect(logo.source).toMatch(drawn ? /^https:\/\/[^\s]+$/u : /^n\/a: .+$/u);
+      expect(logo.sha256).toMatch(drawn ? /^[0-9a-f]{64}$/u : /^n\/a: .+$/u);
       if (!drawn) return;
       expect(logo.d.length).toBeLessThanOrEqual(6000);
-      expect(logo.d).toMatch(/^[MmLlHhVvCcSsQqTtAaZz0-9eE+\-.,\s]+$/u);
+      expect(logo.d).toMatch(/^M[MLCZ0-9.\-\s]*Z$/u);
       const alone = renderSvg(
         {
           version: 0,
@@ -311,10 +417,10 @@ describe("profileLogos", () => {
       );
       if (!alone.ok) throw new Error(JSON.stringify(alone.issues));
       const [box] = alone.layerBoxes ?? [];
-      expect(box?.x).toBeGreaterThanOrEqual(0);
-      expect(box?.y).toBeGreaterThanOrEqual(0);
-      expect(box?.height).toBeGreaterThanOrEqual(10);
-      expect(box?.height).toBeLessThanOrEqual(16);
+      expect(box?.x).toBeGreaterThanOrEqual(-0.05);
+      expect(box?.y).toBeGreaterThanOrEqual(-0.05);
+      expect(box?.height).toBeGreaterThanOrEqual(13.5);
+      expect(box?.height).toBeLessThanOrEqual(14.5);
     },
   );
 });

@@ -44,7 +44,7 @@ const cases: readonly RowCase[] = [
     section: "index",
     state: "filled",
     ruleWidth: 840,
-    bands: 8,
+    bands: 7,
     barHeight: 5,
     omit: ["logosRow"],
   },
