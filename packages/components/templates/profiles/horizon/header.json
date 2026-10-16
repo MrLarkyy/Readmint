@@ -630,7 +630,7 @@
             {
               "type": "group",
               "x": 580,
-              "y": "{{ github.status.message ? 226 : 200 }}",
+              "y": "{{ github.status.message ? 226 : 203 }}",
               "width": 270,
               "height": 24,
               "clip": true,

@@ -213,7 +213,7 @@
         },
         {
           "type": "rect",
-          "x": 80,
+          "x": "{{ 80 + (((32 + (props.branch | truncate(12) | textWidth(\"mono\", 11.5)) + 12) | max(80)) - 80) }}",
           "y": 234,
           "width": 1,
           "height": 16,
@@ -228,6 +228,13 @@
             "gap": 0
           },
           "children": [
+            {
+              "type": "group",
+              "width": "{{ (((32 + (props.branch | truncate(12) | textWidth(\"mono\", 11.5)) + 12) | max(80)) - 80) }}",
+              "height": 1,
+              "children": [],
+              "if": "{{ (((32 + (props.branch | truncate(12) | textWidth(\"mono\", 11.5)) + 12) | max(80)) - 80) > 0 }}"
+            },
             {
               "type": "group",
               "if": "{{ github.status.message }}",
@@ -604,14 +611,14 @@
                                         },
                                         {
                                           "offset": 0.999,
-                                          "value": "{{ (((github.pushes[0].repository + \": \" + github.pushes[0].message) | truncateWidth(((826 - ((github.status.message ? 104 + ((github.status.message | default(\"\") | lower | truncate(28)) | textWidth(\"mono\", 11.5)) + 14 : 80) + 85) - ((props.statusBarRight | truncate(40)) | textWidth(\"mono\", 11.5)) - 24) | max(27.6)), \"mono\", 11.5) | textWidth(\"mono\", 11.5))) - 900 }}"
+                                          "value": "{{ (((github.pushes[0].repository + \": \" + github.pushes[0].message) | truncateWidth(((826 - (((github.status.message ? 104 + ((github.status.message | default(\"\") | lower | truncate(28)) | textWidth(\"mono\", 11.5)) + 14 : 80) + (((32 + (props.branch | truncate(12) | textWidth(\"mono\", 11.5)) + 12) | max(80)) - 80)) + 85) - ((props.statusBarRight | truncate(40)) | textWidth(\"mono\", 11.5)) - 24) | max(27.6)), \"mono\", 11.5) | textWidth(\"mono\", 11.5))) - 900 }}"
                                         },
                                         {
                                           "offset": 1,
                                           "value": 0
                                         }
                                       ],
-                                      "duration": "{{ (((github.pushes[0].repository + \": \" + github.pushes[0].message) | truncateWidth(((826 - ((github.status.message ? 104 + ((github.status.message | default(\"\") | lower | truncate(28)) | textWidth(\"mono\", 11.5)) + 14 : 80) + 85) - ((props.statusBarRight | truncate(40)) | textWidth(\"mono\", 11.5)) - 24) | max(27.6)), \"mono\", 11.5) | length) | max(1)) * 55 }}"
+                                      "duration": "{{ (((github.pushes[0].repository + \": \" + github.pushes[0].message) | truncateWidth(((826 - (((github.status.message ? 104 + ((github.status.message | default(\"\") | lower | truncate(28)) | textWidth(\"mono\", 11.5)) + 14 : 80) + (((32 + (props.branch | truncate(12) | textWidth(\"mono\", 11.5)) + 12) | max(80)) - 80)) + 85) - ((props.statusBarRight | truncate(40)) | textWidth(\"mono\", 11.5)) - 24) | max(27.6)), \"mono\", 11.5) | length) | max(1)) * 55 }}"
                                     }
                                   },
                                   "children": [
@@ -630,14 +637,14 @@
                                             },
                                             {
                                               "offset": 0.999,
-                                              "value": "{{ 900 - (((github.pushes[0].repository + \": \" + github.pushes[0].message) | truncateWidth(((826 - ((github.status.message ? 104 + ((github.status.message | default(\"\") | lower | truncate(28)) | textWidth(\"mono\", 11.5)) + 14 : 80) + 85) - ((props.statusBarRight | truncate(40)) | textWidth(\"mono\", 11.5)) - 24) | max(27.6)), \"mono\", 11.5) | textWidth(\"mono\", 11.5))) }}"
+                                              "value": "{{ 900 - (((github.pushes[0].repository + \": \" + github.pushes[0].message) | truncateWidth(((826 - (((github.status.message ? 104 + ((github.status.message | default(\"\") | lower | truncate(28)) | textWidth(\"mono\", 11.5)) + 14 : 80) + (((32 + (props.branch | truncate(12) | textWidth(\"mono\", 11.5)) + 12) | max(80)) - 80)) + 85) - ((props.statusBarRight | truncate(40)) | textWidth(\"mono\", 11.5)) - 24) | max(27.6)), \"mono\", 11.5) | textWidth(\"mono\", 11.5))) }}"
                                             },
                                             {
                                               "offset": 1,
                                               "value": 0
                                             }
                                           ],
-                                          "duration": "{{ (((github.pushes[0].repository + \": \" + github.pushes[0].message) | truncateWidth(((826 - ((github.status.message ? 104 + ((github.status.message | default(\"\") | lower | truncate(28)) | textWidth(\"mono\", 11.5)) + 14 : 80) + 85) - ((props.statusBarRight | truncate(40)) | textWidth(\"mono\", 11.5)) - 24) | max(27.6)), \"mono\", 11.5) | length) | max(1)) * 55 }}"
+                                          "duration": "{{ (((github.pushes[0].repository + \": \" + github.pushes[0].message) | truncateWidth(((826 - (((github.status.message ? 104 + ((github.status.message | default(\"\") | lower | truncate(28)) | textWidth(\"mono\", 11.5)) + 14 : 80) + (((32 + (props.branch | truncate(12) | textWidth(\"mono\", 11.5)) + 12) | max(80)) - 80)) + 85) - ((props.statusBarRight | truncate(40)) | textWidth(\"mono\", 11.5)) - 24) | max(27.6)), \"mono\", 11.5) | length) | max(1)) * 55 }}"
                                         }
                                       },
                                       "children": [
@@ -645,7 +652,7 @@
                                           "type": "text",
                                           "x": 0,
                                           "y": 2.3,
-                                          "content": "{{ (github.pushes[0].repository + \": \" + github.pushes[0].message) | truncateWidth(((826 - ((github.status.message ? 104 + ((github.status.message | default(\"\") | lower | truncate(28)) | textWidth(\"mono\", 11.5)) + 14 : 80) + 85) - ((props.statusBarRight | truncate(40)) | textWidth(\"mono\", 11.5)) - 24) | max(27.6)), \"mono\", 11.5) }}",
+                                          "content": "{{ (github.pushes[0].repository + \": \" + github.pushes[0].message) | truncateWidth(((826 - (((github.status.message ? 104 + ((github.status.message | default(\"\") | lower | truncate(28)) | textWidth(\"mono\", 11.5)) + 14 : 80) + (((32 + (props.branch | truncate(12) | textWidth(\"mono\", 11.5)) + 12) | max(80)) - 80)) + 85) - ((props.statusBarRight | truncate(40)) | textWidth(\"mono\", 11.5)) - 24) | max(27.6)), \"mono\", 11.5) }}",
                                           "font": "mono",
                                           "fontSize": 11.5,
                                           "fill": "{{ props.theme == \"dark\" ? \"#EDEDED\" : \"#0A0A0A\" }}"
@@ -666,7 +673,7 @@
                                       "type": "text",
                                       "x": 0,
                                       "y": 235.018,
-                                      "content": "{{ (github.pushes[0].repository + \": \" + github.pushes[0].message) | truncateWidth(((826 - ((github.status.message ? 104 + ((github.status.message | default(\"\") | lower | truncate(28)) | textWidth(\"mono\", 11.5)) + 14 : 80) + 85) - ((props.statusBarRight | truncate(40)) | textWidth(\"mono\", 11.5)) - 24) | max(27.6)), \"mono\", 11.5) }}",
+                                      "content": "{{ (github.pushes[0].repository + \": \" + github.pushes[0].message) | truncateWidth(((826 - (((github.status.message ? 104 + ((github.status.message | default(\"\") | lower | truncate(28)) | textWidth(\"mono\", 11.5)) + 14 : 80) + (((32 + (props.branch | truncate(12) | textWidth(\"mono\", 11.5)) + 12) | max(80)) - 80)) + 85) - ((props.statusBarRight | truncate(40)) | textWidth(\"mono\", 11.5)) - 24) | max(27.6)), \"mono\", 11.5) }}",
                                       "font": "mono",
                                       "fontSize": 11.5,
                                       "fill": "{{ props.theme == \"dark\" ? \"#EDEDED\" : \"#0A0A0A\" }}",
@@ -688,7 +695,7 @@
                                                 },
                                                 {
                                                   "offset": 0,
-                                                  "value": "{{ 0 - (((github.pushes[0].repository + \": \" + github.pushes[0].message) | truncateWidth(((826 - ((github.status.message ? 104 + ((github.status.message | default(\"\") | lower | truncate(28)) | textWidth(\"mono\", 11.5)) + 14 : 80) + 85) - ((props.statusBarRight | truncate(40)) | textWidth(\"mono\", 11.5)) - 24) | max(27.6)), \"mono\", 11.5) | textWidth(\"mono\", 11.5))) }}"
+                                                  "value": "{{ 0 - (((github.pushes[0].repository + \": \" + github.pushes[0].message) | truncateWidth(((826 - (((github.status.message ? 104 + ((github.status.message | default(\"\") | lower | truncate(28)) | textWidth(\"mono\", 11.5)) + 14 : 80) + (((32 + (props.branch | truncate(12) | textWidth(\"mono\", 11.5)) + 12) | max(80)) - 80)) + 85) - ((props.statusBarRight | truncate(40)) | textWidth(\"mono\", 11.5)) - 24) | max(27.6)), \"mono\", 11.5) | textWidth(\"mono\", 11.5))) }}"
                                                 },
                                                 {
                                                   "offset": 0.999,
@@ -699,7 +706,7 @@
                                                   "value": 0
                                                 }
                                               ],
-                                              "duration": "{{ (((github.pushes[0].repository + \": \" + github.pushes[0].message) | truncateWidth(((826 - ((github.status.message ? 104 + ((github.status.message | default(\"\") | lower | truncate(28)) | textWidth(\"mono\", 11.5)) + 14 : 80) + 85) - ((props.statusBarRight | truncate(40)) | textWidth(\"mono\", 11.5)) - 24) | max(27.6)), \"mono\", 11.5) | length) | max(1)) * 55 }}"
+                                              "duration": "{{ (((github.pushes[0].repository + \": \" + github.pushes[0].message) | truncateWidth(((826 - (((github.status.message ? 104 + ((github.status.message | default(\"\") | lower | truncate(28)) | textWidth(\"mono\", 11.5)) + 14 : 80) + (((32 + (props.branch | truncate(12) | textWidth(\"mono\", 11.5)) + 12) | max(80)) - 80)) + 85) - ((props.statusBarRight | truncate(40)) | textWidth(\"mono\", 11.5)) - 24) | max(27.6)), \"mono\", 11.5) | length) | max(1)) * 55 }}"
                                             }
                                           },
                                           "children": [

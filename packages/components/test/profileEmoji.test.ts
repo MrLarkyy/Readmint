@@ -169,6 +169,15 @@ describe("emoji no template font covers", () => {
       expect(without).toContain(">status<");
       const withMessage = renderProfile({ template: "horizon", design, data: withStatus("busy") });
       expect(accented(withMessage)).toBe(3);
+      const baseline = (svg: string) => {
+        const match =
+          /translate\(580 ([\d.]+)\)" clip-path="[^"]*"><g transform="translate\(-580 -226\)">.*?<tspan x="580 [^"]*" y="([\d.]+)">Open to/u.exec(
+            svg,
+          );
+        return Number(match?.[1]) - 226 + Number(match?.[2]);
+      };
+      expect(baseline(without)).toBe(220);
+      expect(baseline(withMessage)).toBe(243);
     },
   );
 
@@ -286,6 +295,52 @@ describe("emoji no template font covers", () => {
     expectTranslation(svg, travel - 900);
     expectTranslation(svg, 900 - travel);
   });
+
+  test.each(["light", "dark"] as const)(
+    "the pinscreen status bar follows the branch as drawn (%s)",
+    (theme) => {
+      const divider = (svg: string) =>
+        [...svg.matchAll(/<rect x="([\d.]+)" y="234" width="1" height="16"/gu)].map((match) =>
+          Number(match[1]),
+        );
+      for (const branch of ["main", "production", "development", "release/1.2.3"]) {
+        const design = withProps(loadProfile("pinscreen", "header", theme), {
+          branch,
+          statusBarRight: "v2",
+        });
+        const drawn = drawnWidth("pinscreen", design, "mono", 11.5, branch.slice(0, 12));
+        const end = 32 + drawn;
+        const start = Math.max(80, end + 12);
+        for (const status of [null, { emoji: null, message: "busy" }]) {
+          const svg = renderProfile({
+            template: "pinscreen",
+            design,
+            data: withGitHub({ status }),
+          });
+          const dividers = divider(svg);
+          expect(dividers.filter((x) => x > 0)).toHaveLength(status === null ? 0 : 1);
+          const slots = slotStarts(svg);
+          const has = (x: number) => slots.some((slot) => Math.abs(slot - x) < 0.01);
+          if (status === null) {
+            expect(has(start)).toBe(true);
+          } else {
+            expect(dividers.find((x) => x > 0)).toBeCloseTo(start, 2);
+            expect(has(start - 80) || start === 80).toBe(true);
+          }
+          const text = drawnWidth("pinscreen", design, "mono", 11.5, "busy");
+          const base = status === null ? start : start + 24 + text + 14;
+          const slot = 826 - (base + 85) - drawnWidth("pinscreen", design, "mono", 11.5, "v2") - 24;
+          const push = `${sampleProfileData().github.pushes[0]?.repository ?? ""}: ${sampleProfileData().github.pushes[0]?.message ?? ""}`;
+          const ticker = longestCut(
+            (text) => drawnWidth("pinscreen", design, "mono", 11.5, text),
+            push,
+            Math.max(slot, 27.6),
+          );
+          expectTranslation(svg, -drawnWidth("pinscreen", design, "mono", 11.5, ticker));
+        }
+      }
+    },
+  );
 
   test("the pinscreen ticker uses the closed-up slot without a status", () => {
     const right = `${party} v2.0`;

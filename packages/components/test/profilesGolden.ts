@@ -34,6 +34,9 @@ const longSections: Readonly<Record<ProfileTemplate, readonly ProfileSection[]>>
 /** The templates whose header reads the status: the others have no status golden, it would repeat the header. */
 const statusHeaders: readonly ProfileTemplate[] = ["horizon", "pinscreen"];
 
+/** The templates whose header reads the pushes. */
+const pushHeaders: readonly ProfileTemplate[] = ["pinscreen", "year-ring"];
+
 /** A frame mid-animation of one section per template, so the motion itself is pinned, not only its end state. */
 const frames: Readonly<Record<ProfileTemplate, readonly [ProfileSection, number]>> = {
   "year-ring": ["year", 15000],
@@ -121,7 +124,7 @@ export function profileGoldenSuite(template: ProfileTemplate): GoldenSuite<Profi
         name: `header-no-status-${theme}`,
         input: render("header", theme, { data: noStatusProfileData() }),
       })),
-      ...themes.map((theme) => ({
+      ...(pushHeaders.includes(template) ? themes : []).map((theme) => ({
         name: `header-no-push-${theme}`,
         input: render("header", theme, { data: noPushProfileData() }),
       })),
