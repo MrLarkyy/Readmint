@@ -36,7 +36,7 @@ inputs:
     required: false
     default: ${{ github.repository_owner }}
   data-file:
-    description: Fixture data JSON file (the CLI `--data` format) used instead of loading GitHub data.
+    description: Fixture data JSON file (the CLI `--data` format) used instead of loading GitHub data; a file inside the workspace.
     required: false
   data-json:
     description: JSON documents to bind, one per line as `[<namespace>=]<source>` (the CLI `--data-json`; default namespace json, at most 8) - a file inside the workspace or an https URL; each is bound as `{ version, document }` under its namespace, added to the data-file or GitHub data.

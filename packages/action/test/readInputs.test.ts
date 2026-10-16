@@ -259,6 +259,24 @@ describe("props-file", () => {
   });
 });
 
+describe("data-file", () => {
+  test.each([
+    ["../x.json", "leaves the workspace (..)"],
+    ["/tmp/x.json", "is not a relative path"],
+    ["C:\\x.json", "is not a relative path"],
+  ])("%s is refused naming the input", (dataFile, reason) => {
+    expect(problems({ ...base, "data-file": dataFile })).toEqual([
+      `input data-file ${JSON.stringify(dataFile)} ${reason}`,
+    ]);
+  });
+
+  test("a relative path is kept", () => {
+    expect(readInputs(env({ ...base, "data-file": "fixtures/d.json" })).dataFile).toBe(
+      "fixtures/d.json",
+    );
+  });
+});
+
 describe("data-json", () => {
   test("one source per line, headers attached by namespace", () => {
     const config = readInputs(
