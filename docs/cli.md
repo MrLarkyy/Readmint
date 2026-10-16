@@ -243,7 +243,7 @@ A port in use, or one the system refuses, is exit code 3.
 `@readmint/cli` exports `runCli(argv, io)` (returns the exit code, never throws; `CliIo.openUrl` opens the `preview --open` address (with `--github` the one-time launch address), the platform's opener when absent; `CliIo.env` is the environment `--github` takes its token
 from, `bin` passes `process.env`), `ExitCode`, `CliError`, `CliIo`,
 `escapeForLog`, `quoteForLog`, `formatIssue`, `localeProblem(locale)` (why a tag cannot be the `--locale`, `undefined` when it can; the Action's `locale` input uses it too), `outputFormats` and `outputExtension(format)` (the `OutputFormat`s and their file extension, `apng` → `png`), and the loaders the commands share: `loadDesignFile`, `loadDesignAssets`,
-`loadFixtureData` (with `maxFixtureBytes`, its size cap), `loadLiveData` (the `--github` load: `LiveDataOptions` with
+`loadFixtureData` (with `maxFixtureBytes`, its size cap), `loadDesignProps(file, cwd)` (the `--props` settings file, a `DesignProps` of `@readmint/format`; whose `props` in `RenderInputOptions` stands in for `--props`) and `propsSection(fileName)` (the section a design file takes), `loadLiveData` (the `--github` load: `LiveDataOptions` with
 `token`, `login`, `fetch`, `signal` and `onPartial`, at most `liveDataTimeoutMs`; a failure is a `CliError` with exit code 4),
 `partialDataWarning(parts)` (the one warning line for `meta.partial`, also the Action's),
 `redactSecrets(text, secrets)` (the redaction of standard error, also the Action's log), `loadRenderInput` (design file, assets, fixture data and the images bound to data in one call; `RenderInput`,
