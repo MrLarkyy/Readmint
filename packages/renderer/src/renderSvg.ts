@@ -6,6 +6,7 @@ import { createTextMeasurer } from "./createTextMeasurer.js";
 import { embedFonts } from "./embedFonts.js";
 import { escapeText } from "./escapeXml.js";
 import { expandLayers } from "./expandLayers.js";
+import { letScope } from "./expressions.js";
 import { formatNumber } from "./formatNumber.js";
 import { paintAttributes, resolvePaint } from "./paint.js";
 import { pointer } from "./pointer.js";
@@ -53,7 +54,7 @@ function render(context: RenderContext, options: RenderOptions): RenderResult {
   const budget = createBudget(steps);
   // An unvalidated editor object may carry any value here; only a string reaches the locale lookup.
   const locale = options.locale ?? (typeof design.locale === "string" ? design.locale : undefined);
-  const scope = createScope(options.data ?? {}, {
+  const scope = createScope(context.data, {
     budget,
     measurer: createTextMeasurer(context),
     ...(locale === undefined ? {} : { locale }),
@@ -122,7 +123,8 @@ function render(context: RenderContext, options: RenderOptions): RenderResult {
 /**
  * The scope of the canvas bindings: the data root, plus `props` of the root instance when there is one. The props are
  * resolved only when a canvas binding names `props`, so any other canvas evaluates nothing early: its issues keep their
- * order, and an instance an `if` drops never has its props checked.
+ * order, and an instance an `if` drops never has its props checked. Props reading the instance's `let` names are
+ * resolved in its let scope, which the instance then reuses; the canvas itself sees `props` only.
  */
 function canvasScopeOf(context: RenderContext, scope: Scope): Scope {
   const { canvas } = context.design;
@@ -132,8 +134,10 @@ function canvasScopeOf(context: RenderContext, scope: Scope): Scope {
   const root = rootInstance(context.design);
   if (root === undefined) return scope;
   const path = pointer("/layers", root.index);
-  const props = resolveProps(context, root.layer, root.definition.props ?? {}, path, scope);
-  context.rootProps = { path, props };
+  const bindings = root.layer.let;
+  const local = bindings === undefined ? scope : letScope(context, bindings, path, scope);
+  const props = resolveProps(context, root.layer, root.definition.props ?? {}, path, local);
+  context.rootProps = bindings === undefined ? { path, props } : { path, props, scope: local };
   return scope.with({ props });
 }
 

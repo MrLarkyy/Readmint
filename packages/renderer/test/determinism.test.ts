@@ -3,6 +3,7 @@ import { expect, test } from "vitest";
 import { renderSvg } from "../src/index.js";
 import { animationDesigns } from "./animationDesigns.js";
 import { renderFixture } from "./renderFixture.js";
+import components from "./renderer-components.golden.js";
 import fontFormats from "./renderer-fonts-formats.golden.js";
 import fonts from "./renderer-fonts.golden.js";
 import layout from "./renderer-layout.golden.js";
@@ -31,6 +32,13 @@ test("rendering A, B, A in one process gives the same bytes for both A renders",
   renderFixture(b);
   renderFixture(input(text, "text-gradient-fill"));
   expect(renderFixture(a)).toBe(first);
+});
+
+test("a design with lets gives the same bytes on every render", () => {
+  const design = input(components, "let");
+  const first = renderFixture(design);
+  expect(first).toContain("let 90");
+  expect(renderFixture(design)).toBe(first);
 });
 
 test.each(animationDesigns.map(({ name, input }) => [name, input] as const))(

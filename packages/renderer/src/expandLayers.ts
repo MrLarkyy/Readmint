@@ -7,7 +7,7 @@ import {
   type Layout,
 } from "@readmint/format";
 import type { Scope } from "@readmint/expr";
-import { evaluateIf, repeatScopes } from "./expressions.js";
+import { evaluateIf, letScope, repeatScopes } from "./expressions.js";
 import { placeChildren, type ResolvedLayout } from "./layout.js";
 import { ownEntry } from "./ownEntry.js";
 import { pointer } from "./pointer.js";
@@ -41,8 +41,8 @@ export const maxComponentDepth = 64;
 
 /**
  * Turns layers into render nodes in document order: a `repeat` gives one copy per item (scope: `as`, default
- * `item`, and `index`, default `index`); then `visible` false or a falsy `if` drops a copy; a component instance
- * becomes a group of its definition's layers, evaluated with `props` in scope.
+ * `item`, and `index`, default `index`); then each copy binds its `let` names in order; then `visible` false or a falsy
+ * `if` drops a copy; a component instance becomes a group of its definition's layers, evaluated with `props` in scope.
  */
 export function expandLayers(
   context: RenderContext,
@@ -84,23 +84,34 @@ function addLayer(
   context: RenderContext,
   layer: Layer,
   path: string,
-  scope: Scope,
+  outer: Scope,
   copy: number,
   out: RenderNode[],
 ): void {
+  const local = localScope(context, layer, path, outer);
   if (
     layer.visible !== undefined &&
-    !resolveBoolean(context, layer.visible, pointer(path, "visible"), scope)
+    !resolveBoolean(context, layer.visible, pointer(path, "visible"), local)
   ) {
     return;
   }
-  if (layer.if !== undefined && !evaluateIf(context, layer.if, pointer(path, "if"), scope)) {
+  if (layer.if !== undefined && !evaluateIf(context, layer.if, pointer(path, "if"), local)) {
     return;
   }
   context.writer.reserve(minimumNodeBytes[layer.type]);
-  const node = resolveLayer(context, layer, path, scope);
-  const animation = resolveAnimation(context, layer, node, path, scope, copy);
+  const node = resolveLayer(context, layer, path, local);
+  const animation = resolveAnimation(context, layer, node, path, local, copy);
   out.push(animation === undefined ? node : { ...node, animation });
+}
+
+/** The layer's scope with its `let` names; the root instance's was built for the canvas already and is reused. */
+function localScope(context: RenderContext, layer: Layer, path: string, scope: Scope): Scope {
+  if (layer.let === undefined) return scope;
+  const root = context.rootProps;
+  if (root?.scope !== undefined && root.path === path && context.componentDepth === 0) {
+    return root.scope;
+  }
+  return letScope(context, layer.let, path, scope);
 }
 
 function resolveLayer(

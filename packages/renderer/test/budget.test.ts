@@ -1,5 +1,5 @@
 import type { AnimationTrack, Design, Layer } from "@readmint/format";
-import { expect, test } from "vitest";
+import { describe, expect, test } from "vitest";
 import { loadScale } from "../../../test-support/loadScale.js";
 import { RenderLimits, renderSvg } from "../src/index.js";
 import { minimumNodeBytes } from "../src/expandLayers.js";
@@ -719,3 +719,85 @@ test.each(["font", "paths"] as const)(
     expect(result.report.bytes).toBeLessThan(RenderLimits.maxOutputBytes);
   },
 );
+
+describe("hostile lets (RM-118)", () => {
+  const heavy = `{{ ${"item+".repeat(405)}item }}`;
+  const entries = (prefix: string, count: number, source: (index: number) => string) =>
+    Object.fromEntries(
+      Array.from({ length: count }, (_, index) => [`${prefix}${String(index)}`, source(index)]),
+    ) as Record<string, `{{${string}}}`>;
+  const items = new Array<number>(10_000).fill(1);
+
+  test("64 heavy entries under a 10000-item repeat stop at the budget at an entry", () => {
+    expect(heavy.length).toBeLessThanOrEqual(2048);
+    const design: Design = {
+      version: 0,
+      canvas: { width: 10, height: 10 },
+      layers: [
+        {
+          type: "rect",
+          width: 1,
+          height: 1,
+          repeat: { each: "{{ items }}" },
+          let: entries("n", 64, () => heavy),
+        },
+      ],
+    };
+    const started = performance.now();
+    const result = renderSvg(design, { data: { items } });
+    const elapsed = performance.now() - started;
+    expect(result).toMatchObject({ ok: false, issues: [{ code: "binding" }] });
+    const issue = result.ok ? undefined : result.issues[0];
+    expect(issue?.path).toMatch(/^\/layers\/0\/let(?:\/n\d+)?$/u);
+    expect(issue?.message).toContain("(budget)");
+    expect(elapsed).toBeLessThan(2000 * loadScale());
+  });
+
+  test("a doubling chain stops at the string limit at its entry", () => {
+    const design: Design = {
+      version: 0,
+      canvas: { width: 10, height: 10 },
+      layers: [
+        {
+          type: "rect",
+          width: 1,
+          height: 1,
+          let: entries("a", 64, (index) =>
+            index === 0
+              ? "{{ 'xxxxxxxx' }}"
+              : `{{ a${String(index - 1)} + a${String(index - 1)} }}`,
+          ),
+        },
+      ],
+    };
+    const result = renderSvg(design);
+    // 8 * 2^14 = 131072 characters passes the 100000 limit at entry 14.
+    expect(result).toMatchObject({
+      ok: false,
+      issues: [{ path: "/layers/0/let/a14", code: "binding" }],
+    });
+    expect(result.ok ? "" : result.issues[0]?.message).toContain("(too-large)");
+  });
+
+  test("30 nested 64-entry lets under a 10000-item repeat stop fast", () => {
+    let layer: Layer = { type: "rect", width: 1, height: 1 };
+    for (let level = 29; level >= 0; level--) {
+      layer = {
+        type: "group",
+        let: entries(`l${String(level)}_`, 64, () => "{{ item }}"),
+        children: [layer],
+      };
+    }
+    const design: Design = {
+      version: 0,
+      canvas: { width: 10, height: 10 },
+      layers: [{ type: "group", repeat: { each: "{{ items }}" }, children: [layer] }],
+    };
+    const started = performance.now();
+    const result = renderSvg(design, { data: { items } });
+    const elapsed = performance.now() - started;
+    expect(result.ok).toBe(false);
+    expect(result.ok ? "" : result.issues[0]?.message).toMatch(/\((?:too-large|budget)\)/u);
+    expect(elapsed).toBeLessThan(2000 * loadScale());
+  });
+});
