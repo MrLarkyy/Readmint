@@ -377,13 +377,16 @@ the theme as a prop), in each mode.
   instance's `let` names or `palette`. A value that is not the name of a mode is a render `type` issue at the prop
   (`/layers/0/props/theme`, or `/components/card/props/theme/default` for the default). With no root instance, no
   `theme` prop or no value for it, the active mode is the first mode in document order. Only `theme` is resolved this
-  early; every other prop keeps its order.
+  early; every other prop keeps its order. The theme is resolved even when the instance's `visible` or `if` hides it,
+  so a bound theme that gives `null` for the data is a `type` issue there too (the same trade as the canvas props above).
 - **Names.** Modes are ids; tokens are local names (a letter or `_`, then letters, digits and `_`, with `-` only before a
   letter or `_`, so `palette.bg-muted` is one token), at most 64 characters, not `true`, `false` or `null`
   (`reserved-name`). Values are colours: no `none`, gradient or binding.
 - **Every mode holds every token.** A token some mode defines and another lacks is a `missing-property` issue at the
   mode lacking it (`/palette/dark`, `missing token "accent" (defined in mode "light")`).
-- **Reads are checked.** A `palette.<token>` or `palette["<token>"]` in a binding of the design that names no token is an
+- **Reads are checked.** A `palette.<token>` or `palette["<token>"]` in the canvas, styles, layers or component layers
+  (the text that is evaluated; not `title`, `description`, `assets`, a component's `description` or `props`, which are
+  literal) that names no token is an
   `unknown-reference` issue at that string (`/layers/0/fill`, `unknown palette token "fg"`). The check reads the
   placeholders lexically: text outside `{{ }}`, string literals and properties (`x.palette.y`) are not reads, and a
   computed key (`palette[name]`) is not checked; it reads `null` when no token has that name.

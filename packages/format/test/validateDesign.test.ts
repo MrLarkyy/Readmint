@@ -839,6 +839,58 @@ describe("palette (RM-119)", () => {
     valid(textOf(content));
   });
 
+  test("text the renderer never evaluates is no read", () => {
+    const note = "Set {{ palette.nope }} for links";
+    valid({
+      ...textOf("x"),
+      title: note,
+      description: note,
+      components: {
+        c: {
+          description: note,
+          props: { label: { type: "string", default: "{{ palette.nope }}" } },
+          layers: [rect({})],
+        },
+      },
+    });
+  });
+
+  test.each([
+    [
+      "the canvas",
+      { canvas: { width: 1, height: 1, background: "{{ palette.nope }}" } },
+      "/canvas/background",
+    ],
+    ["a style", { styles: { s: { fill: "{{ palette.nope }}" } } }, "/styles/s/fill"],
+    ["a layer", { layers: [rect({ fill: "{{ palette.nope }}" })] }, "/layers/0/fill"],
+    [
+      "a layer animation",
+      {
+        animation: { duration: 1000 },
+        layers: [
+          rect({
+            animate: {
+              fill: {
+                keyframes: [
+                  { offset: 0, value: "{{ palette.nope }}" },
+                  { offset: 1, value: "#000" },
+                ],
+              },
+            },
+          }),
+        ],
+      },
+      "/layers/0/animate/fill/keyframes/0/value",
+    ],
+    [
+      "a component",
+      { components: { c: { layers: [rect({ fill: "{{ palette.nope }}" })] } } },
+      "/components/c/layers/0/fill",
+    ],
+  ])("an unknown read in %s is reported", (_area, extra, path) => {
+    expect(codes(withPalette(extra))).toEqual([{ path, code: "unknown-reference" }]);
+  });
+
   test("without a palette, palette.x is a data read", () => {
     valid({ ...base(), layers: [rect({ fill: "{{ palette.anything }}" })] });
   });

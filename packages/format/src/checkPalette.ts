@@ -10,10 +10,14 @@ import { quoteInput } from "./quoteInput.js";
  */
 const literals: ReadonlySet<string> = new Set(["true", "false", "null"]);
 
+/** The top-level keys whose strings the renderer evaluates (a component's `layers` are handled apart). */
+const evaluated: ReadonlySet<string> = new Set(["canvas", "styles", "layers", "animation"]);
+
 /**
  * Checks the palette of a structurally valid design: every mode holds every token some mode defines, no token is an
- * expression literal, and every `palette.<token>` an expression of the design reads names a token. A read is found
- * lexically (`paletteReads`), so a computed key is not checked here; it reads `null` when rendering. Tokens live in
+ * expression literal, and every `palette.<token>` an expression of the design reads names a token. Only text the
+ * renderer evaluates is scanned (canvas, styles, layers, animation, component layers); titles, descriptions, assets
+ * and prop definitions are literal. A read is found lexically (`paletteReads`), so a computed key is not checked here; it reads `null` when rendering. Tokens live in
  * Maps only, so `__proto__` or `constructor` is a plain token. Document order is kept.
  */
 export function checkPalette(design: Design, issues: IssueCollector): void {
@@ -47,8 +51,15 @@ export function checkPalette(design: Design, issues: IssueCollector): void {
     }
   }
   for (const key of Object.keys(design)) {
-    if (key !== "palette")
+    if (key === "components") {
+      for (const name of Object.keys(design.components ?? {})) {
+        const path = jsonPointer("/components", name);
+        const layers = design.components?.[name]?.layers;
+        checkReads(layers, jsonPointer(path, "layers"), tokens, issues);
+      }
+    } else if (evaluated.has(key)) {
       checkReads(design[key as keyof Design], jsonPointer("", key), tokens, issues);
+    }
   }
 }
 

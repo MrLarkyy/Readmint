@@ -67,6 +67,7 @@ apply unchanged:
   every scope below holds it ([design format](design-format.md#palette)). The active mode is the root instance's
   `theme` prop: only that one prop is resolved this early, from the instance's value (a binding evaluated over the data
   alone, before any `let` or `palette`) or the definition's default; a value naming no mode is a `type` issue at it.
+  It is resolved even when the instance's `visible` or `if` hides it.
   A top-level data key `palette` is then a `binding` issue at `/palette`. A design without a palette evaluates and
   charges exactly as before; with one, each scope copy (repeat item, `let`, component instance) copies one more local.
 - A `let` is checked once per render before any entry is evaluated: an entry that reads itself or a later entry, or

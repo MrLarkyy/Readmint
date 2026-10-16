@@ -1,4 +1,11 @@
-import type { Binding, ComponentDefinition, Design, Layer, Palette } from "@readmint/format";
+import {
+  validateDesign,
+  type Binding,
+  type ComponentDefinition,
+  type Design,
+  type Layer,
+  type Palette,
+} from "@readmint/format";
 import { describe, expect, test } from "vitest";
 import { renderSvg, type RenderOptions } from "../src/index.js";
 import { fontAssets } from "./testAssets.js";
@@ -238,6 +245,18 @@ describe("the active mode", () => {
     ]);
   });
 
+  test("the theme is resolved although `if` hides the root instance", () => {
+    const hidden = (theme: string): Design =>
+      withRoot(themeProp(), [{ ...instance({ theme }), if: "{{ settings.show }}" }]);
+    const data = { settings: { show: false, theme: null } };
+    expect(issuesOf(hidden("{{ settings.theme }}"), { data })).toMatchObject([
+      { path: "/layers/0/props/theme", code: "type" },
+    ]);
+    const svg = svgOf(hidden("dark"), { data });
+    expect(svg).toContain("#0d1117");
+    expect(svg).not.toContain("#1f2328");
+  });
+
   test("the message lists at most eight modes", () => {
     const modes = Object.fromEntries(
       Array.from({ length: 10 }, (_, i) => [`m${String(i)}`, palette["light"]]),
@@ -292,6 +311,74 @@ describe("palette reads", () => {
   test("an unvalidated palette that is not an object is a type issue", () => {
     const design = { ...text("x"), palette: [] } as unknown as Design;
     expect(issuesOf(design)).toMatchObject([{ path: "/palette", code: "type" }]);
+  });
+});
+
+describe("palette reads agree with the expression tokenizer", () => {
+  const tokens = (names: string[]): Palette => ({
+    light: Object.fromEntries(names.map((name) => [name, "#101010"])),
+  });
+  const textDesign = (content: string, names: string[]): Design => ({
+    version: 0,
+    canvas: { width: 100, height: 20 },
+    assets: { fonts: { m: fontAssets.medium } },
+    palette: tokens(names),
+    layers: [{ type: "text", content, font: "m" }],
+  });
+  const renderOf = (content: string, names: string[]): string => {
+    const result = renderSvg(textDesign(content, names));
+    return result.ok ? result.svg : JSON.stringify(result.issues);
+  };
+  const reportsZz = (content: string): boolean => {
+    const result = validateDesign(textDesign(content, ["ok"]));
+    return (
+      !result.ok &&
+      result.issues.some(
+        (issue) => issue.code === "unknown-reference" && issue.message.includes('"zz"'),
+      )
+    );
+  };
+
+  /** Reads the expression evaluates but the lexical check cannot name: computed or escaped keys. */
+  const exceptions = ["{{ palette[k] }}", '{{ palette["z\\u{7a}"] }}'];
+  const corpus = [
+    "{{ palette.zz }}",
+    "{{ palette . zz }}",
+    '{{ palette["zz"] }}',
+    "{{ palette['zz'] }}",
+    "{{ palette.ok }}",
+    "a {{ 1 }} b {{ palette.zz }}",
+    '{{ "}}" + palette.zz }}',
+    '{{ "palette.zz" }}',
+    "{{ 'palette.zz' }}",
+    '{{ "a\\"}} palette.zz" }}',
+    "{{ x.palette.zz }}",
+    "{{ x?.palette.zz }}",
+    "{{ my-palette.zz }}",
+    "{{ palette_x.zz }}",
+    "{{ palette-x.zz }}",
+    "{{ 1 + palette.zz }}",
+    "{{ 1e3 + palette.zz }}",
+    "{{ 1.5 | number }} {{ palette.zz }}",
+    "{{ palette.ok }} palette.zz",
+    "palette.zz {{ 1 }}",
+    "{{ palette.zz | upper }}",
+  ];
+
+  test.each([...corpus, ...exceptions])("%j", (content) => {
+    const lacks = renderOf(content, ["ok"]);
+    const has = renderOf(content, ["ok", "zz"]);
+    if (exceptions.includes(content)) {
+      expect(reportsZz(content)).toBe(false);
+      return;
+    }
+    expect(lacks !== has).toBe(reportsZz(content));
+  });
+
+  test("the corpus has reads and non-reads", () => {
+    const flags = corpus.map(reportsZz);
+    expect(flags).toContain(true);
+    expect(flags).toContain(false);
   });
 });
 
