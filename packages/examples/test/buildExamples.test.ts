@@ -72,24 +72,52 @@ describe("buildExamples over the real templates", () => {
     }
   });
 
-  it("merges the personal texts into the root props of the light and the dark design", () => {
-    for (const [template, sections] of Object.entries(profileExampleProps)) {
-      for (const [section, props] of Object.entries(sections)) {
-        const [name, value] = Object.entries(props)[0] ?? [];
-        for (const file of [`${section}.json`, `${section}.dark.json`]) {
-          const design = JSON.parse(text(files, `${template}/designs/${file}`)) as {
-            layers: { props: Record<string, unknown> }[];
-          };
-          expect(design.layers[0]?.props[String(name)], `${template}/${file}`).toEqual(value);
-        }
+  it("copies every design byte for byte from the template folder", () => {
+    for (const template of templates) {
+      for (const design of readdirSync(join(profilesDir, template)).filter(
+        (f) => f.endsWith(".json") && f !== "settings.json",
+      )) {
+        const copy = files.find((f) => f.path === `${template}/designs/${design}`)?.content;
+        const original = readFileSync(join(profilesDir, template, design));
+        expect(Buffer.from(copy ?? "").equals(original), `${template}/${design}`).toBe(true);
       }
     }
   });
 
-  it("leaves a design without personal texts as the template file", () => {
-    const original = readFileSync(join(profilesDir, "horizon", "repo-1.json"));
-    const copy = files.find((f) => f.path === "horizon/designs/repo-1.json")?.content;
-    expect(Buffer.from(copy ?? "").equals(original)).toBe(true);
+  it("writes designs/settings.json with the personal texts, only for templates with props", () => {
+    for (const template of templates) {
+      const path = `${template}/designs/settings.json`;
+      const props = profileExampleProps[template];
+      if (props === undefined || Object.keys(props).length === 0) {
+        expect(
+          files.map((f) => f.path),
+          template,
+        ).not.toContain(path);
+        continue;
+      }
+      const content = text(files, path);
+      expect(JSON.parse(content)).toEqual(props);
+      expect(content).toBe(`${JSON.stringify(props, null, 2)}\n`);
+      for (const section of Object.keys(JSON.parse(content) as object)) {
+        const paths = files.map((f) => f.path);
+        expect(paths, `${template}/${section}`).toContain(`${template}/designs/${section}.json`);
+        expect(paths, `${template}/${section}`).toContain(
+          `${template}/designs/${section}.dark.json`,
+        );
+      }
+    }
+  });
+
+  it("passes props-file in the workflow step of the templates with settings", () => {
+    const workflow = text(files, ".github/workflows/readmint.yml");
+    for (const template of templates) {
+      const line = `          props-file: ${template}/designs/settings.json\n`;
+      if (files.some((f) => f.path === `${template}/designs/settings.json`)) {
+        expect(workflow, template).toContain(line);
+      } else {
+        expect(workflow, template).not.toContain(line);
+      }
+    }
   });
 
   it("lists every light design of every template in the workflow, with the given action", () => {
@@ -166,13 +194,36 @@ describe("buildExamples on a broken template folder", () => {
     expect(files.map((f) => f.path)).toContain("t/designs/a.dark.json");
   });
 
-  it("builds a folder with a settings.json and leaves it out of the output", () => {
+  it("does not treat the template's own settings.json as a design", () => {
     const files = buildExamples(fixture(component, { "settings.json": '{"a":{"x":""}}' }), {
       ...options,
       props: { t: { a: { x: "1" } } },
     });
-    expect(files.map((f) => f.path).filter((path) => path.includes("settings"))).toEqual([]);
-    expect(files.map((f) => f.path)).toContain("t/designs/a.json");
+    expect(files.map((f) => f.path).filter((path) => path.includes("settings"))).toEqual([
+      "t/designs/settings.json",
+    ]);
+    expect(text(files, "t/designs/settings.json")).toBe('{\n  "a": {\n    "x": "1"\n  }\n}\n');
+    const bare = buildExamples(fixture(component, { "settings.json": "{}" }), {
+      ...options,
+      props: {},
+    });
+    expect(bare.map((f) => f.path)).not.toContain("t/designs/settings.json");
+  });
+
+  it("refuses a pinned Action older than props-file when a settings.json is emitted", () => {
+    const props = { t: { a: { x: "1" } } };
+    expect(() =>
+      buildExamples(fixture(component), { ...options, actionRef: "o/a@v0.2.0", props }),
+    ).toThrow(/v0\.2\.0 predates props-file/);
+    expect(
+      buildExamples(fixture(component), { ...options, actionRef: "o/a@v0.3.0", props }),
+    ).not.toHaveLength(0);
+    expect(
+      buildExamples(fixture(component), { ...options, actionRef: "o/a@main", props }),
+    ).not.toHaveLength(0);
+    expect(
+      buildExamples(fixture(component), { ...options, actionRef: "o/a@v0.2.0", props: {} }),
+    ).not.toHaveLength(0);
   });
 
   it("throws on example props for a section without a design", () => {
@@ -184,13 +235,6 @@ describe("buildExamples on a broken template folder", () => {
   it("throws on example props for a template that does not exist", () => {
     expect(() => buildExamples(fixture(component), { ...options, props: { gone: {} } })).toThrow(
       /gone/,
-    );
-  });
-
-  it("throws when the root layer is not a component", () => {
-    const dir = fixture({ layers: [{ type: "rect" }] });
-    expect(() => buildExamples(dir, { ...options, props: { t: { a: { x: "1" } } } })).toThrow(
-      /a(\.dark)?\.json.*component/,
     );
   });
 

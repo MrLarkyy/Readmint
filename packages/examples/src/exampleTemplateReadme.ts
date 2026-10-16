@@ -32,7 +32,7 @@ export function exampleTemplateReadme(
   return [
     `# ${readmeTitle(readme, template)}`,
     "",
-    `Rendered by Readmint with live data of ${login}. Designs with the personal texts filled in are in [designs/](designs/).`,
+    `Rendered by Readmint with live data of ${login}. The designs are in [designs/](designs/), the personal texts in \`designs/settings.json\` (Action input \`props-file\`).`,
     `How to use them and the props of each section: [the template README](${url}).`,
     "",
     snippet,

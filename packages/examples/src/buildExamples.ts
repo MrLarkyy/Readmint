@@ -8,12 +8,12 @@ import { listFiles } from "./listFiles.js";
 import { readmeTitle } from "./readmeTitle.js";
 import { assertNoLink } from "./assertNoLink.js";
 import { exampleWorkflow } from "./exampleWorkflow.js";
+import { assertActionSupportsSettings } from "./assertActionSupportsSettings.js";
 import { assertActionSupportsDesigns } from "./assertActionSupportsDesigns.js";
 
 const byCodeUnit = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
-/** The template's shared settings (`--props`): not a design, the examples already have the texts merged in. */
+/** The template's own settings (`--props`): not a design; the examples get a generated one with the personal texts. */
 const settingsFile = "settings.json";
-const sectionOf = (file: string): string => file.replace(/(\.dark)?\.json$/, "");
 const readText = (path: string): string => readFileSync(path, "utf8").replace(/\r\n/g, "\n");
 
 /** The template folders of `profilesDir`: those named in `props` first, in its order, then the rest sorted. */
@@ -33,26 +33,14 @@ function discoverTemplates(profilesDir: string, props: ExamplesOptions["props"])
   return [...known, ...folders.filter((name) => !known.includes(name))];
 }
 
-function mergedDesign(
-  text: string,
-  file: string,
-  texts: Readonly<Record<string, unknown>>,
-): string {
-  const design = JSON.parse(text) as { layers?: { type?: unknown; props?: object }[] };
-  const [root, ...rest] = design.layers ?? [];
-  if (root?.type !== "component") throw new Error(`${file}: the root layer is not a component`);
-  const merged = { ...design, layers: [{ ...root, props: { ...root.props, ...texts } }, ...rest] };
-  return `${JSON.stringify(merged, null, 2)}\n`;
-}
-
 /**
- * The examples repository for the template folders of `<templatesDir>/profiles`: per template the designs with the
- * personal texts merged in, the fonts, a README, plus the root README and the workflow. Pure and deterministic.
+ * The examples repository for the template folders of `<templatesDir>/profiles`: per template the designs byte for byte, a
+ * `designs/settings.json` with the personal texts, the fonts, a README, plus the root README and the workflow. Pure and deterministic.
  */
 export function buildExamples(templatesDir: string, options: ExamplesOptions): ExampleFile[] {
   const profilesDir = join(templatesDir, "profiles");
   const files: ExampleFile[] = [];
-  const summaries: { name: string; title: string; designs: string[] }[] = [];
+  const summaries: { name: string; title: string; designs: string[]; hasSettings: boolean }[] = [];
   for (const name of discoverTemplates(profilesDir, options.props)) {
     const dir = join(profilesDir, name);
     const all = listFiles(dir);
@@ -71,14 +59,19 @@ export function buildExamples(templatesDir: string, options: ExamplesOptions): E
       }
     }
     for (const file of designFiles) {
-      const texts = templateProps[sectionOf(file)];
       const raw = readFileSync(join(dir, file));
       assertActionSupportsDesigns(options.actionRef, [
         { file: `${name}/${file}`, text: raw.toString("utf8") },
       ]);
-      const content =
-        texts === undefined ? raw : mergedDesign(raw.toString("utf8"), `${name}/${file}`, texts);
-      files.push({ path: `${name}/designs/${file}`, content });
+      files.push({ path: `${name}/designs/${file}`, content: raw });
+    }
+    const hasSettings = Object.keys(templateProps).length > 0;
+    if (hasSettings) {
+      assertActionSupportsSettings(options.actionRef);
+      files.push({
+        path: `${name}/designs/${settingsFile}`,
+        content: `${JSON.stringify(templateProps, null, 2)}\n`,
+      });
     }
     for (const file of all.filter((path) => path.startsWith("fonts/"))) {
       files.push({ path: `${name}/designs/${file}`, content: readFileSync(join(dir, file)) });
@@ -88,7 +81,7 @@ export function buildExamples(templatesDir: string, options: ExamplesOptions): E
       path: `${name}/README.md`,
       content: exampleTemplateReadme(readme, name, options),
     });
-    summaries.push({ name, title: readmeTitle(readme, name), designs: light });
+    summaries.push({ name, title: readmeTitle(readme, name), designs: light, hasSettings });
   }
   files.push({
     path: "README.md",
