@@ -21,7 +21,7 @@ test("reads sections of scalar and list props", () => {
 });
 
 test("a leading byte order mark is ignored", () => {
-  expect(parseDesignProps(`﻿{"a":{"b":1}}`)).toMatchObject({ ok: true });
+  expect(parseDesignProps(`\ufeff{"a":{"b":1}}`)).toMatchObject({ ok: true });
 });
 
 test.each([["[]"], ['"text"'], ["3"], ["null"]])("the root %s is not an object", (source) => {
