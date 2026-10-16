@@ -1,7 +1,13 @@
+export { buildGallery, type Gallery, type GalleryLinks } from "./buildGallery.js";
 export { buildWiki, type WikiOptions } from "./buildWiki.js";
 export { examplesRepository } from "./examplesRepository.js";
 export { extractWorkflow } from "./extractWorkflow.js";
+export { galleryImagePath } from "./galleryImagePath.js";
+export { galleryPage } from "./galleryPage.js";
+export { galleryTemplates } from "./galleryTemplates.js";
+export type { GalleryTemplate } from "./GalleryTemplate.js";
+export { onPageColour } from "./onPageColour.js";
 export { rewriteLinks } from "./rewriteLinks.js";
-export type { WikiGroup, WikiGroupId, WikiPage } from "./WikiPage.js";
+export type { WikiEntry, WikiGroup, WikiGroupId, WikiPage } from "./WikiPage.js";
 export { wikiGroups, wikiPages } from "./wikiPages.js";
 export { writeWiki } from "./writeWiki.js";
