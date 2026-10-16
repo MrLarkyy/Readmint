@@ -228,7 +228,9 @@ describe("sqrt and array min, max", () => {
     ["{{ [[1]] | max }}", "type"],
     ["{{ 'a' | max }}", "type"],
     ["{{ [1] | max(2) }}", "argument"],
+    ["{{ [1] | max(true) }}", "argument"],
     ["{{ [] | min(2) }}", "argument"],
+    ["{{ 5 | max('c') }}", "argument"],
     ["{{ 5 | max }}", "argument"],
     ["{{ 5 | min }}", "argument"],
     ["{{ 5 | min() }}", "argument"],
@@ -248,11 +250,61 @@ describe("sqrt and array min, max", () => {
       "min needs a number or an array, got object",
     );
     expect(errorOf("{{ 5 | max }}").message).toContain("max: argument 1 is required");
-    expect(errorOf("{{ [1] | max(2) }}").message).toContain("max: an array takes no argument");
+    expect(errorOf("{{ [1] | max(2) }}").message).toContain("max: argument 1 must be a string");
   });
 
   test("a non-finite item in the host data is invalid-data", () => {
     expect(errorOf("{{ list | max }}", { list: [1, Number.NaN] }).code).toBe("invalid-data");
     expect(errorOf("{{ list | min }}", { list: [Infinity] }).code).toBe("invalid-data");
+  });
+});
+
+describe("array min, max with a key", () => {
+  const list = [{ c: 3 }, { c: 1 }, { c: 2 }];
+
+  test("reads the property of every item", () => {
+    expect(valueOf("{{ list | max('c') }}", { list })).toBe(3);
+    expect(valueOf("{{ list | min('c') }}", { list })).toBe(1);
+    expect(valueOf("{{ list | max('') }}", { list: [{ "": 4 }, { "": 9 }] })).toBe(9);
+  });
+
+  test("-0 is below 0, an empty list and a null input give null", () => {
+    expect(Object.is(valueOf("{{ list | min('c') }}", { list: [{ c: 0 }, { c: -0 }] }), -0)).toBe(
+      true,
+    );
+    expect(valueOf("{{ list | max('c') }}", { list: [] })).toBeNull();
+    expect(valueOf("{{ v | max('c') }}", { v: null })).toBeNull();
+  });
+
+  test("a null key is no key", () => {
+    expect(valueOf("{{ list | max(null) }}", { list: [1, 5] })).toBe(5);
+    expect(errorOf("{{ list | max(null) }}", { list }).code).toBe("type");
+  });
+
+  test.each([
+    [[{}]],
+    [[{ c: "1" }]],
+    [[{ c: null }]],
+    [[1]],
+    [[[1]]],
+    [[null]],
+    [[{ c: 1 }, { d: 2 }]],
+  ])("%j with max('c') is a type error", (items) => {
+    expect(errorOf("{{ list | max('c') }}", { list: items }).code).toBe("type");
+  });
+
+  test("a non-finite property or a getter is invalid-data", () => {
+    expect(errorOf("{{ list | max('c') }}", { list: [{ c: Number.NaN }] }).code).toBe(
+      "invalid-data",
+    );
+  });
+
+  test("messages never carry the key or a value", () => {
+    const message = errorOf("{{ list | max('secret') }}", { list: [{ secret: "x" }] }).message;
+    expect(message).toContain("max: item properties must be numbers, got string");
+    expect(message).not.toContain("secret");
+    expect(errorOf("{{ [1] | min('secret') }}").message).toContain(
+      "min: items must be objects, got number",
+    );
   });
 });

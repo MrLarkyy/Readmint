@@ -77,8 +77,8 @@ The hyphen rule keeps ids usable as names: `props.my-label` and `repo-index` are
 | `ceil`                         | number                | the next integer up                                                                  |
 | `abs`                          | number                | the absolute value                                                                   |
 | `sqrt`                         | number                | the square root; a negative number is a `not-finite` error                           |
-| `min(b)`, `min`                | number or array       | the smaller of the value and `b`; of an array (no `b`), its smallest item            |
-| `max(b)`, `max`                | number or array       | the larger of the value and `b`; of an array (no `b`), its largest item              |
+| `min(b)`, `min`, `min(key)`    | number or array       | the smaller of the value and `b`; of an array, its smallest item (of `key`)          |
+| `max(b)`, `max`, `max(key)`    | number or array       | the larger of the value and `b`; of an array, its largest item (of `key`)            |
 | `clamp(low, high)`             | number                | the value within `[low, high]`; `low > high` is an `argument` error                  |
 | `date(pattern?, locale?)`      | ISO 8601 string or ms | the date in UTC written with `pattern`, else the locale's default pattern            |
 | `upper`                        | string                | upper case by a fixed 1:1 table (see Determinism)                                    |
@@ -92,8 +92,11 @@ The hyphen rule keeps ids usable as names: `props.my-label` and `repo-index` are
 | `first`                        | array or string       | the first item (`null` when empty) or code point                                     |
 | `last`                         | array or string       | the last item (`null` when empty) or code point                                      |
 
-`min` and `max` of an array give `null` when it is empty; an item that is not a number is a `type` error, an argument
-with an array or a number without `b` an `argument` error.
+`min` and `max` of an array give `null` when it is empty; an item that is not a number is a `type` error. With a string
+`key` (`days | max("count")`, a `null` key means none) every item must be an object and its own property `key` a number:
+an item that is not an object, or a missing or non-number property, is a `type` error, and the key is read like `.key`
+(never a getter or a prototype). A key that is not a string is an `argument` error, as is a number without `b`. The key
+is charged once, on top of one step per item.
 
 Arguments are expressions; a `null` argument means its default. Decimals, lengths and widths must be integers. Number
 filters round with `toFixed` (exact on the binary value: `1.005 | number(2)` is `1.00`); from `1e21` on a number is

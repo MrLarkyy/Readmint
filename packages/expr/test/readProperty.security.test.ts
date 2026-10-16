@@ -84,6 +84,22 @@ describe("readProperty and the evaluator never reach a prototype", () => {
     expect(getter).not.toHaveBeenCalled();
   });
 
+  test.each(["__proto__", "constructor", "toString"])(
+    "max(%s) over objects never reaches a prototype",
+    (key) => {
+      expect(errorOf(`{{ list | max('${key}') }}`, { list: [{ count: 1 }] }).code).toBe("type");
+    },
+  );
+
+  test("max with a key never invokes a getter and rejects a non-plain item", () => {
+    const getter = vi.fn(() => 1);
+    const item = {};
+    Object.defineProperty(item, "count", { get: getter, enumerable: true });
+    expect(errorOf("{{ list | max('count') }}", { list: [item] }).code).toBe("invalid-data");
+    expect(errorOf("{{ list | min('count') }}", { list: [new Date(0)] }).code).toBe("invalid-data");
+    expect(getter).not.toHaveBeenCalled();
+  });
+
   test.each([
     [
       "a class instance",
