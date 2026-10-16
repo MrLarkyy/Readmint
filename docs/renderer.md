@@ -217,7 +217,7 @@ Drawn in document order, first at the back. Layer `id` and `name` are not emitte
   U+2011 (Text, Space and hyphen fallbacks). No vertical text, no variable-font axes,
   no fallback shaping for fonts without layout tables (Arabic presentation forms). Characters of one word in different
   fonts do not join or attach across the font change.
-- A line break in the content is a hard break. With a `width`, words (split at breakable spaces: U+0020, U+2000-2006, U+2008-200A, U+205F, U+3000; U+00A0, U+2007 and U+202F never break) fill each line greedily; a word
+- A line break in the content is a hard break. With a `width`, words (split at breakable spaces: U+0020, U+1680, U+2000-2006, U+2008-200A, U+205F, U+3000; U+00A0, U+2007 and U+202F never break) fill each line greedily; a word
   wider than the line breaks between clusters, never inside one (a ligature, a letter with its marks, a conjunct). Word widths include kerning inside the word; kerning across a space
   is left out of the wrapping decision (it is in the final positions). The space at a soft break is dropped, every
   other space is kept (`xml:space="preserve"`).
@@ -528,7 +528,7 @@ refused:` and the reason (`a JFIF segment`, `Adobe transform 1`, `component ids 
   raster output (a Display P3 or Adobe RGB profile, a P3 cICP or cHRM, gAMA 1.0 alone: 40 to 73 levels per channel
   apart). Removed, as whole segments or chunks, where decoders read them: JPEG APP2 `ICC_PROFILE\0` segments before
   the first SOS, with the 0xFF fill bytes before the marker, so the copy's walk meets the same markers where stray
-  bytes follow the segment (every part of a split profile; another APP2, such as `MPF`, stays); PNG `iCCP`, `sRGB`, `gAMA`,
+  bytes follow the segment (every part of a split profile; another APP2 stays), and the segments that lead a decoder to an Ultra HDR gain map: APP2 `MPF\0`, APP2 `urn:iso:std:iso:ts:21496:-1\0` and APP1 XMP (`http://ns.adobe.com/xap/1.0/\0`) naming the `http://ns.adobe.com/hdr-gain-map/1.0/` or the `ns.google.com/photos/1.0/container` namespace; when one is found, every byte after the first EOI goes too (the appended gain map image would only count against the size budget), so the pixels drawn are the SDR base image in both Chromium and resvg. The rule rests on how Chromium (Skia) finds a gain map, by the MPF index and the XMP directory; no HDR display was available to probe it, so the browser test compares SDR output only); PNG `iCCP`, `sRGB`, `gAMA`,
   `cHRM`, `cICP`, `mDCV` and `cLLI` before the first `IDAT` (no decoder reads later copies); WebP `ICCP` chunks inside
   the RIFF payload (bytes after it are left alone), with the VP8X ICC flag (0x20) cleared, with or without a chunk,
   and the RIFF size lowered by the bytes removed. Every
