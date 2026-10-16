@@ -57,7 +57,7 @@ The personal texts are set once, in `settings.json` next to the designs: an obje
 design's file name without `.json` and `.dark`), each holding that section's props. The Action input `props-file`
 (CLI: `--props`) merges a section's props into the root component of its light design **and** its `.dark` twin, so
 you write every text once. They are empty in this folder, and an empty text hides its block; the file lists every
-prop of every section that has one, at its empty default. Delete what you do not use, a prop left out keeps the
+prop of every section that has one, at its component default. Delete what you do not use, a prop left out keeps the
 design's own value. A value in `settings.json` wins over the same prop written in a design, an unknown section
 is ignored by the CLI and warned about by the Action, and a prop a section does not have fails the render. `theme`
 stays in the design (it is what makes the twin dark); `slot` of the repository sections may be set in either.

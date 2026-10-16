@@ -99,7 +99,8 @@ Outputs of designs you remove from the list are not deleted.
 
 ## What a run does
 
-1. Reads and checks the inputs, then pairs the designs with their outputs.
+1. Reads and checks the inputs, then pairs the designs with their outputs and loads the `props-file`, so a bad
+   settings file or a section no design has is reported before any git check or GitHub request.
 2. Unless it is a dry run: finds the branch to push to, checks its name and that the checkout is that branch's latest
    commit on `origin`, before anything is written.
 3. Loads the data once: the `data-file`, else the GitHub data of `login`, bound as `github` (see
@@ -120,7 +121,7 @@ Renderer warnings are printed as `::warning::` lines and do not fail the run.
 
 ## Settings file
 
-`props-file` names a JSON file in the workspace, `{ "<section>": { "<prop>": value } }`, read once before the first
+`props-file` names a JSON file, a path relative to the workspace that (like `data-file`) is not restricted to it, `{ "<section>": { "<prop>": value } }`, read once before the first
 render. The section of a design is its file name without the extension and without `.dark`, so a light design and its
 dark twin share the entry, and the output is the same as the CLI `readmint render <design> --props <file>` gives
 ([cli.md](cli.md#settings-file)). A section no listed design has is a `::warning::` line naming the section only; a

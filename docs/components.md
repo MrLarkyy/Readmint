@@ -185,8 +185,8 @@ A folder holds, per section, `<section>.json` and its dark twin `<section>.dark.
   a plain "No repository in slot n." line (`pinscreen`: an empty file); a repository without `weeklyCommits` shows
   no line (`year-ring`) and flat bars (`horizon`).
 - **Personal texts are root props.** What only a person can say (an introduction, a role, index rows, stack groups,
-  the people worked with, the footer and the contact) is a prop of the root instance, declared per section with an
-  empty default; an empty prop hides its block (an empty introduction falls back to `github.bio`, an empty contact to
+  the people worked with, the footer and the contact) is a prop of the root instance, declared per section with a
+  default (empty for the texts); an empty prop hides its block (an empty introduction falls back to `github.bio`, an empty contact to
   the GitHub address). They are set once per template in its `settings.json` (below), which covers the light design and its twin alike. Array props hold strings only, so a
   table is two arrays of the same length (`labels`, `values`), and a multi-line item is one string with line breaks.
   Each template's `README.md` lists its props with neutral examples. The canvas height cannot read a prop, so the
@@ -208,7 +208,7 @@ A folder holds, per section, `<section>.json` and its dark twin `<section>.dark.
 
 ### Settings file
 
-Each template folder ships a `settings.json`: the personal texts of every section by name, at the empty defaults, for
+Each template folder ships a `settings.json`: the personal texts of every section by name, at the component defaults, for
 you to fill in once.
 
 ```json

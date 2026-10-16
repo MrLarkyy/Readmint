@@ -133,7 +133,7 @@ object of sections, each an object of root props.
 
 The section of a design is its file name without the extension (`.json`, `.yaml`, `.yml`) and without a trailing
 `.dark`: `header.json` and `header.dark.json` both take the `header` entry. For each top-level `component` layer of
-that design, every prop of the section is set on it and wins over the same prop written on the layer; the merged design
+that design, each prop of the section that the layer's component declares is set on it and wins over the same prop written on the layer; the merged design
 is then validated like any design, so a value takes the same types and limits, and a `{{ }}` string is a binding of the
 same safe expression language. A prop the design's top-level components do not declare, a value of the wrong type or an
 enum value the prop does not list is an error (exit code 1) naming the design, the section and the prop

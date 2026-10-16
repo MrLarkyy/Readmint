@@ -36,6 +36,8 @@ import {
   migrateDesign,
   designJsonSchema,
   quoteInput,
+  parseDesignProps,
+  applyDesignProps,
 } from "@readmint/format";
 
 parseDesign(source, { format?: "json" | "yaml" }); // text -> parse -> migrate -> validate
@@ -45,6 +47,8 @@ await stringifyDesignYamlAsync(design); // a design -> YAML text, the YAML libra
 validateDesign(value); // already parsed (editor state): migrate -> validate
 migrateDesign(value, { migrations?, target? }); // only the migration chain
 quoteInput(value, { maxEcho?, escape? }); // an input value as issue messages quote it
+parseDesignProps(source); // settings JSON -> DesignProps (props by section), no value in a message
+applyDesignProps(design, props); // one section's props -> the root component layers, validated again; the input is kept
 ```
 
 `quoteInput` is how every issue message quotes a value from the input: JSON-quoted, clipped at `maxEcho` code points
