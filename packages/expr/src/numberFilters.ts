@@ -12,6 +12,7 @@ import { formatCompact, formatNumber, formatPercent } from "./formatNumber.js";
 import type { ExprValue } from "./ExprValue.js";
 import type { LocaleData } from "./LocaleData.js";
 import { readProperty } from "./readProperty.js";
+import { textSteps } from "./textSteps.js";
 import { typeName } from "./typeName.js";
 
 const maxDecimals = 20;
@@ -58,7 +59,7 @@ function math(name: string, operation: (value: number) => number): FilterDefinit
   };
 }
 
-/** `n | min(b)` bounds a number; `list | min` (no argument) is the extremum of an array. */
+/** `n | min(b)` bounds a number; `list | min` is the extremum of an array, `list | min("key")` of a number property of its objects. */
 function boundOrExtremum(
   name: string,
   operation: (value: number, limit: number) => number,
@@ -85,16 +86,31 @@ function extremum(
   args: readonly ExprValue[],
   context: FilterContext,
 ): FilterOutcome {
-  if (args.length > 0) return failure("argument", `${name}: an array takes no argument`);
-  if (!context.charge(input.length)) return budgetFailure();
+  const key = args[0] ?? null;
+  if (key !== null && typeof key !== "string") {
+    return failure("argument", `${name}: argument 1 must be a string`);
+  }
+  const cost = key === null ? input.length : input.length + textSteps(key.length);
+  if (!context.charge(cost)) return budgetFailure();
   let result: number | null = null;
   for (let index = 0; index < input.length; index++) {
     const item = readProperty(input, index);
     if (!item.ok) return failure("invalid-data", `${name}: an item is not a JSON value`);
-    if (typeof item.value !== "number") {
-      return failure("type", `${name}: items must be numbers, got ${typeName(item.value)}`);
+    let number = item.value;
+    if (key !== null) {
+      if (number === null || typeof number !== "object" || Array.isArray(number)) {
+        return failure("type", `${name}: items must be objects, got ${typeName(number)}`);
+      }
+      const property = readProperty(number, key);
+      if (!property.ok) return failure("invalid-data", `${name}: an item is not a JSON value`);
+      number = property.value;
+      if (typeof number !== "number") {
+        return failure("type", `${name}: item properties must be numbers, got ${typeName(number)}`);
+      }
+    } else if (typeof number !== "number") {
+      return failure("type", `${name}: items must be numbers, got ${typeName(number)}`);
     }
-    result = result === null ? item.value : operation(result, item.value);
+    result = result === null ? number : operation(result, number);
   }
   return success(result);
 }
