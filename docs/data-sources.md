@@ -86,10 +86,17 @@ source reads every body through it.
 checked by `checkHttpsUrl` (https only, no user name or password, no whitespace or control character, at most
 `HttpsLimits.maxUrlLength`, 2048 characters; it returns the `URL` or the reason, never quoting the URL); `headers` sent
 only while a hop stays on the origin of the first URL; no cookies; one `timeoutMs` for every hop and the body; the
-`content-type` checked by the source's `checkMediaType`; the body read through `readBodyCapped`. Every failure is a
+`content-type` checked by the source's check, built with `mediaTypeCheck`; the body read through `readBodyCapped`. Every failure is a
 `DataSourceError` of the context's `namespace` whose message is fixed text built from the context's `label` ("The
 `<label>` URL answered HTTP 404.", "The `<label>` document is larger than ... bytes.", "The `<label>` request timed out
 or was aborted."), never a URL, a header or an upstream message. The rules are listed under [URLs](#urls).
+
+`mediaTypeCheck(types, suffix, kind)` builds that check: it returns `(value: string | null) => string | undefined`, the
+reason a `content-type` is refused or `undefined`. It accepts the `types` (lower case `type/subtype` essences) and any
+`application/*+<suffix>` type, with no charset or UTF-8; `suffix` is a plain word (`json`, `xml`) placed into a regular
+expression, so it is a constant of the source, never input. The reasons are `has no content type`,
+`has content type "<type>", not <kind>` and `has charset "<charset>", not UTF-8`, the quoted part cut at 64 characters
+with anything unprintable shown as `?`.
 
 ## Host duties
 
