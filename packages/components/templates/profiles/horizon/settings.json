@@ -1,0 +1,22 @@
+{
+  "footer": {
+    "headline": "",
+    "note": "",
+    "contactLabel": "",
+    "contactText": ""
+  },
+  "header": {
+    "role": "",
+    "roleDetail": "",
+    "workingOn": "",
+    "workingOnDetail": "",
+    "statusNote": ""
+  },
+  "stack": {
+    "labels": [],
+    "items": []
+  },
+  "worked": {
+    "items": []
+  }
+}

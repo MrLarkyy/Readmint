@@ -36,6 +36,8 @@ import {
   migrateDesign,
   designJsonSchema,
   quoteInput,
+  parseDesignProps,
+  applyDesignProps,
 } from "@readmint/format";
 
 parseDesign(source, { format?: "json" | "yaml" }); // text -> parse -> migrate -> validate
@@ -45,6 +47,8 @@ await stringifyDesignYamlAsync(design); // a design -> YAML text, the YAML libra
 validateDesign(value); // already parsed (editor state): migrate -> validate
 migrateDesign(value, { migrations?, target? }); // only the migration chain
 quoteInput(value, { maxEcho?, escape? }); // an input value as issue messages quote it
+parseDesignProps(source); // settings JSON -> DesignProps (props by section), no value in a message
+applyDesignProps(design, props); // one section's props -> the root component layers, validated again; the input is kept
 ```
 
 `quoteInput` is how every issue message quotes a value from the input: JSON-quoted, clipped at `maxEcho` code points
@@ -217,7 +221,7 @@ folder: see [asset-loading.md](asset-loading.md).
 A component definition is `{ description?, width?, height?, props?, layers }` (`width`/`height` are literal sizes).
 `props` maps a prop name to `{ type: "string" | "number" | "boolean" | "color", required?: boolean, default? }`, to
 `{ type: "enum", values, required?, default? }` or to `{ type: "array", required?, default? }`.
-Component layers read their props as bindings (`{{props.label}}`).
+Component layers read their props as bindings (`{{props.label}}`). The props of a root instance can also come from a settings file passed to the CLI or the Action, which is not part of the format ([cli.md](cli.md#settings-file)).
 
 An `enum` prop takes a string that is one of `values` (1 to 64 strings of 1 to 128 characters); a `default` not listed
 is an `enum` issue at `.../default`. An `array` prop takes a list: a literal list of at most 1000 strings, numbers or

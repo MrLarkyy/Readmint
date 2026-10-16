@@ -9,9 +9,9 @@ from the `github.*` object of the account the Action runs for, and your own text
 ## Use it
 
 1. Copy this folder, with its `fonts/`, to `readmint/designs/horizon/` in your profile repository.
-2. Fill in your texts (below) in each light design and the same in its `.dark.json`.
+2. Fill in your texts once in `settings.json` (below): they apply to every section, light and dark.
 3. Add the workflow below. Only the light designs are listed; the Action finds each `.dark.json` next to its light
-   design and writes both.
+   design and writes both, and `props-file` merges your texts from `settings.json` into each of them.
 4. Paste the snippet below into your profile `README.md`, with your own login and repository addresses.
 
 ```yaml
@@ -46,14 +46,21 @@ jobs:
             readmint/designs/horizon/stack.json
             readmint/designs/horizon/worked.json
             readmint/designs/horizon/footer.json
+          props-file: readmint/designs/horizon/settings.json
 ```
 
 The repository rows rank the first six of `github.pinned` (else of `github.repositories`, which the loader produces today) by stars: `repo-1` shows the most starred, `repo-6` the sixth. Each slot's design differs only in its root prop `slot` (0 to 5).
 
 ## Your texts
 
-The personal texts are root props of each section: the `props` of the one layer in `layers`, next to `theme`. They
-are empty in this folder, and an empty text hides its block. Write the same props in the light design and its twin.
+The personal texts are set once, in `settings.json` next to the designs: an object with one entry per section (the
+design's file name without `.json` and `.dark`), each holding that section's props. The Action input `props-file`
+(CLI: `--props`) merges a section's props into the root component of its light design **and** its `.dark` twin, so
+you write every text once. They are empty in this folder, and an empty text hides its block; the file lists every
+prop of every section that has one, at its component default. Delete what you do not use, a prop left out keeps the
+design's own value. A value in `settings.json` wins over the same prop written in a design, an unknown section
+is ignored by the CLI and warned about by the Action, and a prop a section does not have fails the render. `theme`
+stays in the design (it is what makes the twin dark); `slot` of the repository sections may be set in either.
 
 | section  | prop              | type   | what it shows                                           | example                        |
 | -------- | ----------------- | ------ | ------------------------------------------------------- | ------------------------------ |
@@ -70,11 +77,21 @@ are empty in this folder, and an empty text hides its block. Write the same prop
 | `footer` | `contactLabel`    | string | the label over the contact; empty: github               | `email`                        |
 | `footer` | `contactText`     | string | the contact; empty: your GitHub address                 | `hello@example.com`            |
 
-For example, in `header.json` (and `header.dark.json` with `"theme": "dark"`):
+For example, `settings.json` for the `header` section:
 
 ```json
-"layers": [{ "type": "component", "ref": "card", "props": {"theme":"light","role":"Developer","roleDetail":"Tools and infrastructure","workingOn":"A build cache,","workingOnDetail":"a docs site","statusNote":"Open to new projects"} }]
+{
+  "header": {
+    "role": "Developer",
+    "roleDetail": "Tools and infrastructure",
+    "workingOn": "A build cache,",
+    "workingOnDetail": "a docs site",
+    "statusNote": "Open to new projects"
+  }
+}
 ```
+
+To render one section by hand: `readmint render header.json --props settings.json --data data.json`.
 
 ## The README
 

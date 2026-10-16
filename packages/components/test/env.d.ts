@@ -13,7 +13,7 @@ declare module "*?inline" {
 // The glob import Vite resolves at build time, in both test projects.
 interface ImportMeta {
   glob(
-    pattern: string,
+    pattern: string | readonly string[],
     options: { eager: true; query: string; import: "default" },
   ): Record<string, string>;
 }

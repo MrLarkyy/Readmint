@@ -18,6 +18,7 @@ export const ActionInputs = Object.freeze({
   token: { required: false, default: "${{ github.token }}", runnerDefault: true },
   login: { required: false, default: "${{ github.repository_owner }}", runnerDefault: true },
   "data-file": { required: false, default: "", runnerDefault: false },
+  "props-file": { required: false, default: "", runnerDefault: false },
   locale: { required: false, default: "", runnerDefault: false },
   "commit-message": { required: false, default: "Update Readmint graphics", runnerDefault: false },
   branch: { required: false, default: "", runnerDefault: false },

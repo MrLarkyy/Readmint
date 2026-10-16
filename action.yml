@@ -38,6 +38,9 @@ inputs:
   data-file:
     description: Fixture data JSON file (the CLI `--data` format) used instead of loading GitHub data.
     required: false
+  props-file:
+    description: Settings JSON file (the CLI `--props` format, root component props by section) merged into every listed design and its dark twin, for texts set once per template.
+    required: false
   locale:
     description: BCP 47 tag for the number and date filters, checked as the CLI `--locale`; empty uses the design's locale, else en.
     required: false

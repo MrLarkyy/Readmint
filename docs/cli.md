@@ -37,6 +37,7 @@ data it fails `image-binding`.
 | ------------------ | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `--root <dir>`     | all                  | the folder the design file must lie in; default the current folder                                                                                                                                                                                                                                                                    |
 | `--data <file>`    | all                  | fixture data (below)                                                                                                                                                                                                                                                                                                                  |
+| `--props <file>`   | all                  | settings: root component props by section, merged into the design ([Settings file](#settings-file))                                                                                                                                                                                                                                   |
 | `--locale <tag>`   | all                  | BCP 47 language tag for the `number`, `compact`, `percent` and `date` filters; default the design's `locale`, else `en`; a tag the expression tables lack (`en`, `de`, `fr`, `es`, `cs`, or a region tag of one) is a usage error                                                                                                     |
 | `--time <ms>`      | `render`, `validate` | renders that frame of the animation as a static SVG (or a still raster image), in 0..86400000                                                                                                                                                                                                                                         |
 | `--out <file>`     | `render`             | writes the output to this file (its folder must exist) instead of standard output; written only once the whole output is made, so a failed raster export leaves it as it was                                                                                                                                                          |
@@ -117,6 +118,40 @@ lowercase letters or digits, not `true`, `false` or `null`). The `github` shape 
 no token and no environment variable (it only keeps the values of `GH_TOKEN` and `GITHUB_TOKEN` out of its messages,
 see below), and makes no network request except, with `--fetch-images`, the image requests of
 [asset-loading.md](asset-loading.md#images-bound-from-data).
+
+## Settings file
+
+`--props` names a JSON file with the personal texts of a template, set once for all its sections, light and dark: an
+object of sections, each an object of root props.
+
+```json
+{
+  "header": { "intro": "I build developer tools." },
+  "stack": { "labels": ["Tools"], "items": ["Git"] }
+}
+```
+
+The section of a design is its file name without the extension (`.json`, `.yaml`, `.yml`) and without a trailing
+`.dark`: `header.json` and `header.dark.json` both take the `header` entry. For each top-level `component` layer of
+that design, each prop of the section that the layer's component declares is set on it and wins over the same prop written on the layer; the merged design
+is then validated like any design, so a value takes the same types and limits, and a `{{ }}` string is a binding of the
+same safe expression language. A prop the design's top-level components do not declare, a value of the wrong type or an
+enum value the prop does not list is an error (exit code 1) naming the design, the section and the prop
+(`header.json: error unknown-property at /header/colour: ...`), never the value. A render error at a prop the file set (a bad
+binding) keeps its code and path, but its message only names the section and the prop; so does an error inside a
+component the root layer uses (a fill that is no colour) whose message echoes a string or a number of the section as
+the renderer quotes a value (`got "..."`, `got 7`). Expression errors there quote the design's own binding, and the
+note of component instances and repeat items is design text, so neither counts. Every other message is printed as it
+is. A design whose section the file lacks is
+rendered as it is, and a section no design names is ignored. The output is the same as rendering the design with the
+props written into its root layer; the design format is not involved (no `$schema`, no version).
+
+The file is JSON, UTF-8, at most 4 MiB of text; section and prop names are ids (a letter, then letters, digits, `_` or
+`-`, at most 64); a value is a string, a number, a boolean or an array of those. Like `--data` it is the user's own
+file and may lie anywhere. A file that cannot be read exits with code 3, one whose content is invalid with code 1; the
+message names the file and the pointer, not the content. `preview` watches the file and re-renders when it changes.
+The Action takes the same file as [`props-file`](action.md#inputs). The profile templates ship one, see
+[components.md](components.md#profile-templates).
 
 ## Live GitHub data
 
@@ -213,7 +248,7 @@ A port in use, or one the system refuses, is exit code 3.
 `@readmint/cli` exports `runCli(argv, io)` (returns the exit code, never throws; `CliIo.openUrl` opens the `preview --open` address (with `--github` the one-time launch address), the platform's opener when absent; `CliIo.env` is the environment `--github` takes its token
 from, `bin` passes `process.env`), `ExitCode`, `CliError`, `CliIo`,
 `escapeForLog`, `quoteForLog`, `formatIssue`, `localeProblem(locale)` (why a tag cannot be the `--locale`, `undefined` when it can; the Action's `locale` input uses it too), `outputFormats` and `outputExtension(format)` (the `OutputFormat`s and their file extension, `apng` → `png`), and the loaders the commands share: `loadDesignFile`, `loadDesignAssets`,
-`loadFixtureData` (with `maxFixtureBytes`, its size cap), `loadLiveData` (the `--github` load: `LiveDataOptions` with
+`loadFixtureData` (with `maxFixtureBytes`, its size cap), `loadDesignProps(file, cwd)` (the `--props` settings file, a `DesignProps` of `@readmint/format`; whose `props` in `RenderInputOptions` stands in for `--props`) and `propsSection(fileName)` (the section a design file takes), `loadLiveData` (the `--github` load: `LiveDataOptions` with
 `token`, `login`, `fetch`, `signal` and `onPartial`, at most `liveDataTimeoutMs`; a failure is a `CliError` with exit code 4),
 `partialDataWarning(parts)` (the one warning line for `meta.partial`, also the Action's),
 `redactSecrets(text, secrets)` (the redaction of standard error, also the Action's log), `loadRenderInput` (design file, assets, fixture data and the images bound to data in one call; `RenderInput`,

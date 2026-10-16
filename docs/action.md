@@ -38,21 +38,22 @@ templates as working workflows ([components.md](components.md#the-examples-repos
 
 ## Inputs
 
-| input            | default                          | meaning                                                                                                                                                                                                                                                         |
-| ---------------- | -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `designs`        | (required)                       | design files, one per line, relative to the workspace; blank lines are ignored; 1 to 64                                                                                                                                                                         |
-| `output-dir`     | `readmint`                       | folder inside the workspace the output files go to; created when missing                                                                                                                                                                                        |
-| `formats`        | `svg`                            | output formats, comma or newline separated: `svg`, `png`, `webp`, `apng`, `gif` (see [raster.md](raster.md)); each design is written once per format; the first one is what the snippet shows; `png` and `apng` together are an input error (both write `.png`) |
-| `scale`          | `2`                              | raster pixels per design pixel, 1..4 (up to three decimals), as the CLI `--scale`                                                                                                                                                                               |
-| `frame-rate`     | none                             | frames per second of an animated raster output, a whole number in 1..60 (1..50 when `gif` is listed), as the CLI `--frame-rate`; none: 30, `gif` 25                                                                                                             |
-| `quality`        | none                             | lossy WebP at this quality, a whole number in 1..100, as the CLI `--quality`; `webp` must be listed in `formats`; none: lossless                                                                                                                                |
-| `token`          | `${{ github.token }}`            | token for the GitHub data; not used with `data-file`; never printed and never given to git                                                                                                                                                                      |
-| `login`          | `${{ github.repository_owner }}` | the GitHub user whose data is loaded; needed with `GITHUB_TOKEN`, which belongs to no user                                                                                                                                                                      |
-| `data-file`      | none                             | fixture data JSON (the CLI `--data` format) used instead of loading GitHub data: no token, no GitHub API (only images bound to data are fetched)                                                                                                                |
-| `locale`         | none                             | BCP 47 tag for the `number`, `compact`, `percent` and `date` filters, checked as the CLI `--locale` (`en`, `de`, `fr`, `es`, `cs` or a region tag of one); none: the design's `locale`, else `en`                                                               |
-| `commit-message` | `Update Readmint graphics`       | message of the commit; at most 4096 characters                                                                                                                                                                                                                  |
-| `branch`         | the checked-out branch           | branch the commit is pushed to, without `refs/`; the checkout must be this branch at its latest commit on `origin` (see [Pushing](#pushing))                                                                                                                    |
-| `dry-run`        | `false`                          | `true` renders and writes the files but runs no git command                                                                                                                                                                                                     |
+| input            | default                          | meaning                                                                                                                                                                                                                                                                   |
+| ---------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `designs`        | (required)                       | design files, one per line, relative to the workspace; blank lines are ignored; 1 to 64                                                                                                                                                                                   |
+| `output-dir`     | `readmint`                       | folder inside the workspace the output files go to; created when missing                                                                                                                                                                                                  |
+| `formats`        | `svg`                            | output formats, comma or newline separated: `svg`, `png`, `webp`, `apng`, `gif` (see [raster.md](raster.md)); each design is written once per format; the first one is what the snippet shows; `png` and `apng` together are an input error (both write `.png`)           |
+| `scale`          | `2`                              | raster pixels per design pixel, 1..4 (up to three decimals), as the CLI `--scale`                                                                                                                                                                                         |
+| `frame-rate`     | none                             | frames per second of an animated raster output, a whole number in 1..60 (1..50 when `gif` is listed), as the CLI `--frame-rate`; none: 30, `gif` 25                                                                                                                       |
+| `quality`        | none                             | lossy WebP at this quality, a whole number in 1..100, as the CLI `--quality`; `webp` must be listed in `formats`; none: lossless                                                                                                                                          |
+| `token`          | `${{ github.token }}`            | token for the GitHub data; not used with `data-file`; never printed and never given to git                                                                                                                                                                                |
+| `login`          | `${{ github.repository_owner }}` | the GitHub user whose data is loaded; needed with `GITHUB_TOKEN`, which belongs to no user                                                                                                                                                                                |
+| `data-file`      | none                             | fixture data JSON (the CLI `--data` format) used instead of loading GitHub data: no token, no GitHub API (only images bound to data are fetched)                                                                                                                          |
+| `props-file`     | none                             | settings JSON file (the CLI [`--props`](cli.md#settings-file) format: root component props by section) merged into every listed design and its dark twin, so personal texts are set once per template; a section no listed design has is warned about, without its values |
+| `locale`         | none                             | BCP 47 tag for the `number`, `compact`, `percent` and `date` filters, checked as the CLI `--locale` (`en`, `de`, `fr`, `es`, `cs` or a region tag of one); none: the design's `locale`, else `en`                                                                         |
+| `commit-message` | `Update Readmint graphics`       | message of the commit; at most 4096 characters                                                                                                                                                                                                                            |
+| `branch`         | the checked-out branch           | branch the commit is pushed to, without `refs/`; the checkout must be this branch at its latest commit on `origin` (see [Pushing](#pushing))                                                                                                                              |
+| `dry-run`        | `false`                          | `true` renders and writes the files but runs no git command                                                                                                                                                                                                               |
 
 Booleans are YAML core booleans: `true`, `True`, `TRUE`, `false`, `False`, `FALSE`. A blank input takes its default.
 Every problem with the inputs is reported at once, before anything is rendered.
@@ -98,7 +99,8 @@ Outputs of designs you remove from the list are not deleted.
 
 ## What a run does
 
-1. Reads and checks the inputs, then pairs the designs with their outputs.
+1. Reads and checks the inputs, then pairs the designs with their outputs and loads the `props-file`, so a bad
+   settings file or a section no design has is reported before any git check or GitHub request.
 2. Unless it is a dry run: finds the branch to push to, checks its name and that the checkout is that branch's latest
    commit on `origin`, before anything is written.
 3. Loads the data once: the `data-file`, else the GitHub data of `login`, bound as `github` (see
@@ -116,6 +118,16 @@ Outputs of designs you remove from the list are not deleted.
    and pushes the commit to `origin`. A second run over unchanged designs and data makes no commit.
 
 Renderer warnings are printed as `::warning::` lines and do not fail the run.
+
+## Settings file
+
+`props-file` names a JSON file, a path relative to the workspace that (like `data-file`) is not restricted to it, `{ "<section>": { "<prop>": value } }`, read once before any git
+command or GitHub request. The section of a design is its file name without the extension and without `.dark`, so a light design and its
+dark twin share the entry, and the output is the same as the CLI `readmint render <design> --props <file>` gives
+([cli.md](cli.md#settings-file)). A section no listed design has is a `::warning::` line naming the section only; a
+file that cannot be read or is invalid, or a prop a design does not declare or a wrongly typed value, fails the run
+before anything is written, with the section and prop in the message, never the value; a render error at a set prop, or
+inside its component with the value in the message, keeps its path but its message names only the section and props.
 
 ## Data and the token
 

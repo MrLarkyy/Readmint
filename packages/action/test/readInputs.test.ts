@@ -249,3 +249,12 @@ describe("readInputs", () => {
     expect(lines.join("\n")).not.toContain("ghp_secret");
   });
 });
+
+describe("props-file", () => {
+  test("is read when given and absent otherwise", () => {
+    expect(readInputs(env({ ...base, "props-file": " readmint/settings.json " }))).toMatchObject({
+      propsFile: "readmint/settings.json",
+    });
+    expect(readInputs(env(base))).not.toHaveProperty("propsFile");
+  });
+});

@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { ExitCode, type ImageFetch, runCli } from "../src/index.js";
 import { previewPage } from "../src/previewPage.js";
 import { PreviewServer } from "../src/PreviewServer.js";
-import { boundDesign, type CliTree, makeCliTree, png } from "./cliTree.js";
+import { boundDesign, type CliTree, makeCliTree, png, propsDesign } from "./cliTree.js";
 
 interface Reply {
   readonly status: number;
@@ -864,4 +864,19 @@ test("Ctrl+C stops a preview whose image fetch never answers (RM-28)", async () 
   expect(await exit).toBe(ExitCode.ok);
   expect(signals[0]?.aborted).toBe(true);
   expect(Date.now() - started).toBeLessThan(10_000);
+});
+
+test("an edit of the settings file reloads the preview", async () => {
+  await tree.file("box.json", propsDesign());
+  await tree.file("settings.json", { box: { w: 5 } });
+  const { port } = await startPreview("box.json", { args: ["--props", "settings.json"] });
+  const before = (await get(port, "/render.svg")).body;
+  await tree.file("settings.json", { box: { w: 30 } });
+  await until(async () => (await status(port)).version === 2);
+  const after = (await get(port, "/render.svg")).body;
+  expect(after).not.toBe(before);
+  expect(after).toBe(
+    (await tree.run(["render", "box.json", "--data", "data.json", "--props", "settings.json"]))
+      .stdout,
+  );
 });
