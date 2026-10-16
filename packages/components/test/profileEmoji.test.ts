@@ -159,6 +159,30 @@ describe("emoji no template font covers", () => {
     }
   });
 
+  test.each(["light", "dark"] as const)(
+    "the horizon %s status line ends with an ellipsis within its slot instead of being clipped",
+    (theme) => {
+      const design = withProps(loadProfile("horizon", "header", theme), {
+        statusNote: "n".repeat(200),
+      });
+      const message = "Working on a very long status message that cannot fit its slot at all";
+      const svg = renderProfile({
+        template: "horizon",
+        design,
+        data: withStatus(message),
+      });
+      const width = (font: string) => (text: string) => drawnWidth("horizon", design, font, 17, text);
+      const cutMessage = longestCut(width("scm"), message, 244);
+      const cutNote = longestCut(width("sc"), "n".repeat(200), 260);
+      expect(cutMessage.endsWith("…")).toBe(true);
+      expect(cutNote.endsWith("…")).toBe(true);
+      expect(svg).toContain(`>${cutMessage}<`);
+      expect(svg).toContain(`>${cutNote}<`);
+      expect(width("scm")(cutMessage)).toBeLessThanOrEqual(244);
+      expect(width("sc")(cutNote)).toBeLessThanOrEqual(260);
+    },
+  );
+
   test("the pinscreen contact underline is as long as the contact as drawn", () => {
     const contact = `hi ${rocket} there`;
     const design = withProps(loadProfile("pinscreen", "footer"), { contactText: contact });
