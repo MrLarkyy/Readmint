@@ -9,8 +9,7 @@ export interface ExamplesIo {
   readonly stderr: (text: string) => void;
 }
 
-const usage =
-  "usage: readmint-examples <templates dir> <examples repository dir> [--check] [--login MrLarkyy] [--action MrLarkyy/Readmint@v0.1.0]\n";
+const usage = `usage: readmint-examples <templates dir> <examples repository dir> [--check] [--login MrLarkyy] [--action ${defaultActionRef}]\n`;
 
 /** The command line of `readmint-examples` without process wiring; returns the exit code (0, 1 out of sync or failed, 2 usage). */
 export function runExamples(argv: readonly string[], io: ExamplesIo): number {
