@@ -24,6 +24,7 @@ type ValueOption =
   | "frame-rate"
   | "quality"
   | "login"
+  | "exclude-repositories"
   | "data-json"
   | "data-json-header"
   | "data-feed"
@@ -42,6 +43,7 @@ const valueOptions: ReadonlySet<string> = new Set<ValueOption>([
   "frame-rate",
   "quality",
   "login",
+  "exclude-repositories",
   "data-json",
   "data-json-header",
   "data-feed",
@@ -76,6 +78,7 @@ const allowed: Readonly<Record<DesignCommand, ReadonlySet<ValueOption>>> = {
     "frame-rate",
     "quality",
     "login",
+    "exclude-repositories",
     "data-json",
     "data-json-header",
     "data-feed",
@@ -88,6 +91,7 @@ const allowed: Readonly<Record<DesignCommand, ReadonlySet<ValueOption>>> = {
     "locale",
     "time",
     "login",
+    "exclude-repositories",
     "data-json",
     "data-json-header",
     "data-feed",
@@ -100,6 +104,7 @@ const allowed: Readonly<Record<DesignCommand, ReadonlySet<ValueOption>>> = {
     "locale",
     "port",
     "login",
+    "exclude-repositories",
     "data-json",
     "data-json-header",
     "data-feed",
@@ -179,6 +184,9 @@ export function parseCliArgs(argv: readonly string[]): CliCommand {
   const github = flags.has("github");
   if (github && values.has("data")) usage("--github and --data exclude each other");
   if (!github && values.has("login")) usage("option --login needs --github");
+  if (!github && values.has("exclude-repositories")) {
+    usage("option --exclude-repositories needs --github");
+  }
   const dataJson = dataJsonArgs(repeated, github);
   const dataFeed = dataFeedArgs(repeated, github, dataJson);
   const common: DesignArgs = {
@@ -190,6 +198,7 @@ export function parseCliArgs(argv: readonly string[]): CliCommand {
     ...(flags.has("fetch-images") ? { fetchImages: true } : {}),
     ...(github ? { github: true } : {}),
     ...optional("login", values.get("login")),
+    ...excludeArgs(values.get("exclude-repositories")),
     ...(dataJson.length === 0 ? {} : { dataJson }),
     ...(dataFeed.length === 0 ? {} : { dataFeed }),
   };
@@ -338,6 +347,15 @@ function parseQuality(text: string): number {
     usage(`--quality must be a whole number in 1..100, got ${quoteForLog(text)}`);
   }
   return quality;
+}
+
+function excludeArgs(value: string | undefined): { excludeRepositories?: readonly string[] } {
+  if (value === undefined) return {};
+  const names = value
+    .split(",")
+    .map((name) => name.trim())
+    .filter((name) => name !== "");
+  return names.length === 0 ? {} : { excludeRepositories: names };
 }
 
 function optional<K extends string>(key: K, value: string | undefined): { [P in K]?: string } {

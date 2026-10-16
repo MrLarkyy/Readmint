@@ -36,6 +36,9 @@ export async function loadActionData(
         : await loadLiveData({
             token: config.token,
             ...(config.login === "" ? {} : { login: config.login }),
+            ...(config.excludeRepositories === undefined
+              ? {}
+              : { excludeRepositories: config.excludeRepositories }),
             ...(fetch === undefined ? {} : { fetch }),
             ...(onPartial === undefined ? {} : { onPartial }),
           });
