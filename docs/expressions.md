@@ -246,13 +246,15 @@ toText(value); // string | undefined: a value written as a placeholder in text i
 
 ## Determinism
 
-The same template, data and locale give the same value in Node and in every browser: no `Intl`, no host locale or
-time zone, no clock, no randomness; numbers are written by `toFixed` and `String(n)`, both exactly specified, and
-strings are compared by code unit. `sqrt` is `Math.sqrt`, which engines compute with the IEEE 754 square root: that
-operation is correctly rounded (unlike `Math.exp` or `Math.sin`), so every engine gives the same bits, and the corpus
-pins its results. `min` and `max` of an array reduce with `Math.min` / `Math.max`, so `-0` is below `0` in any order.
-`upper` and `lower` never use `toUpperCase` / `toLowerCase`, whose mappings change with the engine's Unicode version:
-they use a fixed table of the simple (one to one) Unicode case mappings for Basic Latin, Latin-1 Supplement, Latin
-Extended-A, Greek and Coptic, and Cyrillic, and leave every other character unchanged. Nothing expands: `ß` stays `ß`, `İ` lowers to `i`, and `Σ` always lowers to `σ`. `trim` removes a fixed
-set: tab, line feed, vertical tab, form feed, carriage return, space, U+00A0, U+1680, U+2000 to U+200A, U+2028,
-U+2029, U+202F, U+205F, U+3000 and U+FEFF. A shared corpus of expressions is checked in Node and in headless Chromium.
+The same template, data and locale give the same value in Node and in every browser: no `Intl`, no host locale or time
+zone, no clock, no randomness; numbers are written by `toFixed` and `String(n)`, both exactly specified, and strings
+are compared by code unit. `sqrt` is `Math.sqrt`, which ECMA-262 defines as the exact square root rounded to the
+nearest double (unlike `Math.exp` or `Math.sin`, which it leaves implementation-approximated), so every conforming
+engine gives the same bits; the corpus pins the results in Node and Chromium. `min` and `max` of an array reduce with
+`Math.min` / `Math.max`, so `-0` is below `0` in any order. `upper` and `lower` never use `toUpperCase` /
+`toLowerCase`, whose mappings change with the engine's Unicode version: they use a fixed table of the simple (one to
+one) Unicode case mappings for Basic Latin, Latin-1 Supplement, Latin Extended-A, Greek and Coptic, and Cyrillic, and
+leave every other character unchanged. Nothing expands: `ß` stays `ß`, `İ` lowers to `i`, and `Σ` always lowers to
+`σ`. `trim` removes a fixed set: tab, line feed, vertical tab, form feed, carriage return, space, U+00A0, U+1680,
+U+2000 to U+200A, U+2028, U+2029, U+202F, U+205F, U+3000 and U+FEFF. A shared corpus of expressions is checked in Node
+and in headless Chromium.
