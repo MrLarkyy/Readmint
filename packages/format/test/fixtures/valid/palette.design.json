@@ -1,0 +1,74 @@
+{
+  "version": 0,
+  "title": "A palette with a light and a dark mode",
+  "canvas": {
+    "width": 200,
+    "height": 100,
+    "background": "{{ palette.bg }}"
+  },
+  "assets": {
+    "fonts": {
+      "inter": {
+        "family": "Inter",
+        "src": "fonts/Inter-Regular.woff2",
+        "licence": {
+          "embedding": "allowed",
+          "name": "OFL-1.1"
+        }
+      }
+    }
+  },
+  "palette": {
+    "light": {
+      "bg": "#ffffff",
+      "ink": "#1f2328",
+      "accent-soft": "#ddf4ff80"
+    },
+    "dark": {
+      "bg": "#0d1117",
+      "ink": "#e6edf3",
+      "accent-soft": "#388bfd26"
+    }
+  },
+  "components": {
+    "card": {
+      "props": {
+        "theme": {
+          "type": "enum",
+          "values": ["light", "dark"],
+          "default": "light"
+        }
+      },
+      "layers": [
+        {
+          "type": "rect",
+          "width": 180,
+          "height": 80,
+          "fill": {
+            "type": "linear",
+            "stops": [
+              { "offset": 0, "color": "{{ palette['accent-soft'] }}" },
+              { "offset": 1, "color": "{{ palette.bg }}" }
+            ]
+          },
+          "stroke": "{{ palette.ink }}"
+        },
+        {
+          "type": "text",
+          "content": "{{ props.theme }} on {{ palette.bg }}",
+          "font": "inter",
+          "fill": "{{ palette.ink }}"
+        }
+      ]
+    }
+  },
+  "layers": [
+    {
+      "type": "component",
+      "ref": "card",
+      "props": {
+        "theme": "dark"
+      }
+    }
+  ]
+}

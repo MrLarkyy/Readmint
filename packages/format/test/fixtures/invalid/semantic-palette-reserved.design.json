@@ -1,0 +1,31 @@
+{
+  "version": 0,
+  "canvas": {
+    "width": 10,
+    "height": 10
+  },
+  "palette": {
+    "light": {
+      "true": "#ffffff"
+    }
+  },
+  "layers": [
+    {
+      "type": "group",
+      "let": {
+        "palette": "{{ 1 }}"
+      },
+      "children": [
+        {
+          "type": "rect",
+          "width": 1,
+          "height": 1,
+          "repeat": {
+            "each": "{{ [1] }}",
+            "as": "palette"
+          }
+        }
+      ]
+    }
+  ]
+}

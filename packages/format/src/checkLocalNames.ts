@@ -15,18 +15,20 @@ const reserved: ReadonlySet<string> = new Set(LocalNames.reserved);
 /**
  * Checks the local names of a structurally valid design: a `let` name is not reserved and is not bound already by the
  * same layer's repeat or by an enclosing layer's `let` or repeat; a repeat name does not hide an enclosing `let` name.
+ * When the design has a `palette`, neither a `let` nor a repeat may take that name.
  * The document and each component definition are separate trees (a definition's callers are unknown statically).
  * Names live in Maps and Sets only, so `__proto__` or `constructor` is a plain name. Document order is kept.
  */
 export function checkLocalNames(design: Design, issues: IssueCollector): void {
+  const palette = design.palette !== undefined;
   for (const key of Object.keys(design)) {
-    if (key === "layers") new LocalNameWalker(issues).walkLayers(design.layers, "/layers");
+    if (key === "layers") new LocalNameWalker(issues, palette).walkLayers(design.layers, "/layers");
     else if (key === "components") {
       const components = design.components ?? {};
       for (const name of Object.keys(components)) {
         const definition = components[name] as ComponentDefinition;
         const path = jsonPointer(jsonPointer("/components", name), "layers");
-        new LocalNameWalker(issues).walkLayers(definition.layers, path);
+        new LocalNameWalker(issues, palette).walkLayers(definition.layers, path);
       }
     }
   }
@@ -39,7 +41,11 @@ class LocalNameWalker {
    */
   private readonly enclosing = new Map<string, Bound>();
 
-  constructor(private readonly issues: IssueCollector) {}
+  constructor(
+    private readonly issues: IssueCollector,
+    /** Whether the design declares a palette, which reserves the name `palette`. */
+    private readonly palette: boolean,
+  ) {}
 
   walkLayers(layers: readonly Layer[], path: string): void {
     layers.forEach((layer, index) => {
@@ -78,6 +84,14 @@ class LocalNameWalker {
 
   private checkRepeat(own: ReadonlyMap<string, Bound>): void {
     for (const [name, bound] of own) {
+      if (this.isPalette(name)) {
+        this.issues.add({
+          path: bound.path,
+          code: "reserved-name",
+          message: `${quoteInput(name)} is reserved by the design's palette and cannot be a repeat name`,
+        });
+        continue;
+      }
       const outer = this.enclosing.get(name);
       if (outer?.kind !== "let") continue;
       this.issues.add({
@@ -86,6 +100,10 @@ class LocalNameWalker {
         message: `repeat name ${quoteInput(name)} hides the let name bound at ${outer.path}`,
       });
     }
+  }
+
+  private isPalette(name: string): boolean {
+    return this.palette && name === "palette";
   }
 
   private checkLet(
@@ -101,6 +119,12 @@ class LocalNameWalker {
           path: at,
           code: "reserved-name",
           message: `${quoteInput(name)} is reserved and cannot be a let name`,
+        });
+      } else if (this.isPalette(name)) {
+        this.issues.add({
+          path: at,
+          code: "reserved-name",
+          message: `${quoteInput(name)} is reserved by the design's palette and cannot be a let name`,
         });
       } else if (first !== undefined) {
         this.issues.add({

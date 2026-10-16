@@ -188,6 +188,19 @@ const defs = new Map<string, SchemaNode>([
     }),
   ],
   [
+    "Palette",
+    record("palette modes", idKey, ref("PaletteMode"), {
+      minEntries: 1,
+      maxEntries: DesignLimits.maxPaletteModes,
+    }),
+  ],
+  [
+    "PaletteMode",
+    record("palette tokens", localName, ref("Colour"), {
+      maxEntries: DesignLimits.maxPaletteTokens,
+    }),
+  ],
+  [
     "Layout",
     union("a layout", [
       object("an absolute layout", { type: literal("absolute") }),
@@ -388,6 +401,7 @@ export const designSchemaV0: SchemaDocument = {
       "images?": record("image assets", idKey, ref("ImageAsset")),
     }),
     "components?": record("components", idKey, ref("ComponentDefinition")),
+    "palette?": ref("Palette"),
     "animation?": ref("Animation"),
   }),
 };

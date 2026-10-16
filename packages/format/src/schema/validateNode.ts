@@ -123,7 +123,15 @@ class Walker {
 
   private checkRecord(node: RecordNode, value: Record<string, unknown>, path: string): void {
     const keys = Object.keys(value);
-    if (node.maxEntries !== undefined && keys.length > node.maxEntries)
+    if (node.minEntries !== undefined && keys.length < node.minEntries)
+      this.add(
+        path,
+        "count",
+        node.minEntries === 1
+          ? "must have at least 1 entry"
+          : `must have at least ${String(node.minEntries)} entries`,
+      );
+    else if (node.maxEntries !== undefined && keys.length > node.maxEntries)
       this.add(path, "count", `must have at most ${String(node.maxEntries)} entries`);
     for (const key of keys) {
       if (this.issues.isFull()) return;
