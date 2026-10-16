@@ -131,6 +131,12 @@ export interface LayerBase {
   readonly style?: string;
   readonly if?: Binding;
   readonly repeat?: Repeat;
+  /**
+   * Local names, each bound to a binding evaluated per copy after `repeat` and before `visible`, `if` and the rest of
+   * the layer; key order is evaluation order, an entry reads the entries before it. Visible to the layer and its
+   * subtree, including the layers of a component it instantiates.
+   */
+  readonly let?: Readonly<Record<string, Binding>>;
   /** Needs the design's `animation`. */
   readonly animate?: LayerAnimation;
 }

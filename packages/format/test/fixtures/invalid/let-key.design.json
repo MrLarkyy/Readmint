@@ -1,0 +1,19 @@
+{
+  "version": 0,
+  "canvas": {
+    "width": 10,
+    "height": 10
+  },
+  "layers": [
+    {
+      "type": "rect",
+      "width": 1,
+      "height": 1,
+      "let": {
+        "ok": "{{ 1 }}",
+        "x-1": "{{ 2 }}",
+        "value": "3"
+      }
+    }
+  ]
+}

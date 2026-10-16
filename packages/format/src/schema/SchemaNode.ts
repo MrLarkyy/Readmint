@@ -71,6 +71,7 @@ export interface RecordNode {
   readonly label: string;
   readonly keys: StringNode;
   readonly values: SchemaNode;
+  readonly maxEntries?: number;
 }
 
 /** Objects told apart by their `type` property; only the named variant is validated. */
@@ -170,8 +171,19 @@ export function array(
   };
 }
 
-export function record(label: string, keys: StringNode, values: SchemaNode): RecordNode {
-  return { kind: "record", label, keys, values };
+export function record(
+  label: string,
+  keys: StringNode,
+  values: SchemaNode,
+  options: Optional<Pick<RecordNode, "maxEntries">> = {},
+): RecordNode {
+  return {
+    kind: "record",
+    label,
+    keys,
+    values,
+    ...(options.maxEntries === undefined ? {} : { maxEntries: options.maxEntries }),
+  };
 }
 
 /** Each variant must declare `type: literal(<tag>)` as its first property. */

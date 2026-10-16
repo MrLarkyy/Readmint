@@ -1,0 +1,45 @@
+{
+  "version": 0,
+  "canvas": {
+    "width": 10,
+    "height": 10
+  },
+  "layers": [
+    {
+      "type": "group",
+      "let": {
+        "n": "{{ 1 }}"
+      },
+      "children": [
+        {
+          "type": "rect",
+          "width": 1,
+          "height": 1,
+          "let": {
+            "n": "{{ 2 }}"
+          }
+        },
+        {
+          "type": "rect",
+          "width": 1,
+          "height": 1,
+          "repeat": {
+            "each": "{{ [1] }}",
+            "as": "n"
+          }
+        },
+        {
+          "type": "rect",
+          "width": 1,
+          "height": 1,
+          "repeat": {
+            "each": "{{ [1] }}"
+          },
+          "let": {
+            "item": "{{ 3 }}"
+          }
+        }
+      ]
+    }
+  ]
+}

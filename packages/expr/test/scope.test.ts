@@ -5,6 +5,7 @@ import {
   createScope,
   evaluateCondition,
   expandRepeat,
+  ExpressionLimits,
   type Scope,
   type Template,
 } from "../src/index.js";
@@ -64,6 +65,83 @@ describe("scope", () => {
     expect(scope.locale).toBe("de");
     expect(read("{{ n | number }}", scope)).toBe("1.234");
     expect(budget.used).toBeGreaterThan(0);
+  });
+});
+
+describe("Scope.extend", () => {
+  function extended(scope: Scope, entries: Readonly<Record<string, string>>): Scope {
+    const result = scope.extend(Object.keys(entries), (name, inner) => {
+      const value = compile(entries[name] ?? "").evaluate(inner);
+      if (!value.ok) throw new Error(`${value.error.code}: ${value.error.message}`);
+      return value.value;
+    });
+    if (!result.ok) expect.fail(result.error.message);
+    return result.value;
+  }
+
+  test("a later entry sees an earlier one and the outer scope is unchanged", () => {
+    const outer = createScope({ n: 4 }).with({ item: 1 });
+    const inner = extended(outer, { half: "{{ n / 2 }}", sum: "{{ half + item }}" });
+    expect(read("{{ half }}-{{ sum }}", inner)).toBe("2-3");
+    const unknown = compile("{{ half }}").evaluate(outer);
+    expect(!unknown.ok && unknown.error.code).toBe("unknown-name");
+  });
+
+  test("an earlier entry does not see a later one", () => {
+    expect(() => extended(createScope({}), { a: "{{ b }}", b: "{{ 1 }}" })).toThrow("unknown-name");
+  });
+
+  test("a throwing valueOf leaves the scope it extends unchanged", () => {
+    const outer = createScope({}).with({ a: 1 });
+    expect(() =>
+      outer.extend(["a", "b"], (name) => {
+        if (name === "b") throw new Error("stop");
+        return 2;
+      }),
+    ).toThrow("stop");
+    expect(read("{{ a }}", outer)).toBe(1);
+  });
+
+  test("the copy of the locals and the names are charged to the budget once", () => {
+    const budget = createBudget();
+    const scope = createScope({}, { budget }).with({ p: 1 });
+    const result = scope.extend(["a", "b"], () => 0);
+    expect(result.ok).toBe(true);
+    expect(budget.used).toBe(3);
+  });
+
+  test("an exhausted budget fails before any entry is evaluated", () => {
+    const budget = createBudget(2);
+    let calls = 0;
+    const result = createScope({}, { budget })
+      .with({ p: 1 })
+      .extend(["a", "b"], () => ++calls);
+    expect(!result.ok && result.error.code).toBe("budget");
+    expect(calls).toBe(0);
+  });
+
+  test("more than maxLocals locals are too large", () => {
+    const names = Array.from(
+      { length: ExpressionLimits.maxLocals },
+      (_, index) => `n${String(index)}`,
+    );
+    const full = createScope({}).extend(names, () => 1);
+    expect(full.ok).toBe(true);
+    const over = createScope({})
+      .with({ item: 1 })
+      .extend(names, () => 1);
+    expect(!over.ok && over.error.code).toBe("too-large");
+    expect(!over.ok && over.error.message).toContain("at most 256 locals");
+  });
+
+  test("__proto__ and constructor bind as plain locals and touch no prototype", () => {
+    const scope = extended(createScope({}), {
+      ["__proto__"]: "{{ 'p' }}",
+      constructor: "{{ 'c' }}",
+    });
+    expect(read("{{ __proto__ }}{{ constructor }}", scope)).toBe("pc");
+    expect(Object.hasOwn(Object.prototype, "p")).toBe(false);
+    expect(({} as Record<string, unknown>)["__proto__"]).toBe(Object.prototype);
   });
 });
 
@@ -173,6 +251,29 @@ describe("expandRepeat", () => {
   test("the item and the index need different names", () => {
     const result = expandRepeat(compile("{{ repos }}"), createScope(data), { as: "x", index: "x" });
     expect(!result.ok && result.error.code).toBe("argument");
+  });
+
+  test("charges each item the locals it copies plus its two names", () => {
+    const stepsWith = (locals: Readonly<Record<string, unknown>>) => {
+      const budget = createBudget();
+      const result = expandRepeat(
+        compile("{{ [1, 2, 3] }}"),
+        createScope({}, { budget }).with(locals),
+      );
+      expect(result.ok).toBe(true);
+      return budget.used;
+    };
+    expect(stepsWith({ a: 1, b: 2, c: 3 }) - stepsWith({})).toBe(3 * 3);
+    expect(createScope({}).with({ a: 1, b: 2 }).localCount).toBe(2);
+  });
+
+  test("a repeat under a full let is charged its copies before any is made", () => {
+    const names = Array.from({ length: 256 }, (_, index) => `n${String(index)}`);
+    const budget = createBudget(1000);
+    const wide = createScope({}, { budget }).extend(names, () => 1);
+    if (!wide.ok) expect.fail(wide.error.message);
+    const result = expandRepeat(compile("{{ [1, 2, 3, 4] }}"), wide.value);
+    expect(!result.ok && result.error.code).toBe("budget");
   });
 
   test("charges a shared budget per item", () => {

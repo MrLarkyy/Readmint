@@ -1,0 +1,14 @@
+[
+  {
+    "path": "/layers/0/children/0/let/n",
+    "code": "duplicate-name"
+  },
+  {
+    "path": "/layers/0/children/1/repeat/as",
+    "code": "duplicate-name"
+  },
+  {
+    "path": "/layers/0/children/2/let/item",
+    "code": "duplicate-name"
+  }
+]

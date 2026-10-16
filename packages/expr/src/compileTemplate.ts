@@ -1,4 +1,5 @@
 import { createBudget } from "./Budget.js";
+import { collectNames } from "./collectNames.js";
 import { failWith, type ErrorSite } from "./createError.js";
 import { evaluateNode, type EvalContext } from "./evaluate.js";
 import { ExpressionLimits } from "./ExpressionLimits.js";
@@ -30,6 +31,7 @@ export function compileTemplate(text: string): ExprResult<Template> {
     );
   }
   const parts: TemplatePart[] = [];
+  const names = new Set<string>();
   let position = 0;
   while (position < text.length) {
     const open = text.indexOf("{{", position);
@@ -43,6 +45,7 @@ export function compileTemplate(text: string): ExprResult<Template> {
     const segment = { start: open, end: placeholder.value.end };
     const node = parseExpression(placeholder.value.tokens, { source: text, segment });
     if (!node.ok) return node;
+    collectNames(node.value, names);
     parts.push({ kind: "expression", node: node.value, segment });
     position = segment.end;
   }
@@ -56,6 +59,7 @@ export function compileTemplate(text: string): ExprResult<Template> {
     value: Object.freeze({
       source: text,
       kind,
+      names,
       evaluate: (scope: Scope) => evaluateParts(text, parts, kind === "expression", scope),
     }),
   };

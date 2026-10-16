@@ -140,3 +140,21 @@ test("YAML over the YAML source limit is refused naming both lengths", async () 
   expect(issue?.message).toMatch(/\d{7,} characters as YAML/u);
   expect(issue?.message).toContain("export JSON instead");
 });
+
+test("let entries keep their evaluation order through YAML and back", async () => {
+  const order = ["zeta", "alpha", "_m", "b-c", "a1"];
+  const design: Design = {
+    version: 0,
+    canvas: { width: 20, height: 20 },
+    layers: [
+      {
+        type: "rect",
+        width: 4,
+        height: 4,
+        let: Object.fromEntries(order.map((key) => [key, "{{ 1 }}" as const])),
+      },
+    ],
+  };
+  const back = await reread(await yamlOf(design));
+  expect(Object.keys((back.layers[0] as { let?: object }).let ?? {})).toEqual(order);
+});

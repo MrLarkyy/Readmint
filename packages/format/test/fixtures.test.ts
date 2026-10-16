@@ -45,6 +45,8 @@ describe("invalid fixtures", () => {
       "unknown-reference",
       "component-cycle",
       "missing-font",
+      "reserved-name",
+      "duplicate-name",
     ];
     expect([...codes].sort()).toEqual([...covered].sort());
   });

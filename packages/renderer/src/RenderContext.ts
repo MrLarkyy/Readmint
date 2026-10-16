@@ -1,5 +1,5 @@
 import type { Design } from "@readmint/format";
-import type { ExprResult, Template } from "@readmint/expr";
+import type { ExprResult, Scope, Template } from "@readmint/expr";
 import { OutlineBudget, type GlyphOutline, type SfntFont } from "@readmint/fonts";
 import { AnimationCss } from "./AnimationCss.js";
 import { EntropyBudget } from "./EntropyBudget.js";
@@ -110,11 +110,20 @@ export class RenderContext {
   readonly inkBounds = new WeakMap<RenderNode, Bounds | undefined>();
   readonly animationCss: AnimationCss;
   /**
-   * The props of the root instance at `path` (`/layers/<i>`), when the canvas needed them: its expansion reuses them,
-   * so their bindings are evaluated (and charged to the budget) once.
+   * The props of the root instance at `path` (`/layers/<i>`), when the canvas needed them, and the scope of its `let`
+   * when it has one: its expansion reuses both, so their bindings are evaluated (and charged to the budget) once.
    */
   rootProps:
-    { readonly path: string; readonly props: Readonly<Record<string, unknown>> } | undefined;
+    | {
+        readonly path: string;
+        readonly props: Readonly<Record<string, unknown>>;
+        readonly scope?: Scope;
+      }
+    | undefined;
+  /** The render data: a `let` name may not hide one of its own top-level keys. */
+  readonly data: Readonly<Record<string, unknown>>;
+  /** `let` objects whose names were checked (reads of later entries, data keys), each once per render. */
+  readonly checkedLets = new WeakSet<object>();
   private readonly trail: string[] = [];
   private depth = 0;
   private repeatCopies = 0;
@@ -130,6 +139,7 @@ export class RenderContext {
     this.fontBytesLeft = this.limits.maxTotalFontBytes;
     this.subsetBytesLeft = this.limits.maxOutputBytes * 4;
     this.time = options.time;
+    this.data = options.data ?? {};
     this.animationCss = new AnimationCss(this.writer);
   }
 
