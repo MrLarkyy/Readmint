@@ -238,10 +238,9 @@ function resolveComponent(
       ? root.props
       : resolveProps(context, layer, definition.props ?? {}, path, scope);
   const definitionPath = pointer(pointer("/components", layer.ref), "layers");
+  const inner = propsScope(context, scope, props, path);
   const children = context.within(`in component instance ${path}`, () =>
-    context.nested(() =>
-      expandLayers(context, definition.layers, definitionPath, scope.with({ props })),
-    ),
+    context.nested(() => expandLayers(context, definition.layers, definitionPath, inner)),
   );
   const content = placeChildren({ type: "absolute" }, children, { width, height });
   return {
@@ -252,4 +251,26 @@ function resolveComponent(
     children,
     clip: false,
   };
+}
+
+/**
+ * The scope of a component's layers: `scope` plus `props`. The copy of the locals is charged to the budget (one step per
+ * local and one for `props`), as a repeat copy and a `let` are, so instances under large lets stay bounded.
+ */
+function propsScope(
+  context: RenderContext,
+  scope: Scope,
+  props: Readonly<Record<string, unknown>>,
+  path: string,
+): Scope {
+  const budget = scope.budget;
+  if (budget !== undefined && !budget.charge(scope.localCount + 1)) {
+    const limit = String(budget.maxSteps);
+    context.fail(
+      path,
+      "binding",
+      `component props: evaluation exceeded its budget of ${limit} steps (budget)`,
+    );
+  }
+  return scope.with({ props });
 }

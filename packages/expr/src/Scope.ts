@@ -21,6 +21,8 @@ export interface Scope {
   readonly budget: Budget | undefined;
   /** Optional, so a scope built by hand without one still fits; the measuring filters then fail. */
   readonly measurer?: TextMeasurer | undefined;
+  /** Locals this scope holds (repeat names, props, let names): what copying them into a child scope costs. */
+  readonly localCount: number;
   /** `undefined` when neither a local nor the data has `name`. */
   lookup(name: string): PropertyRead | undefined;
   /** A child scope whose locals shadow this scope's locals and data; this scope is unchanged. */
@@ -63,6 +65,10 @@ function makeScope(
     locale: shared.locale,
     budget: shared.budget,
     measurer: shared.measurer,
+    // A getter: `extend` fills its child's map while the entries are evaluated.
+    get localCount(): number {
+      return locals.size;
+    },
     lookup(name: string): PropertyRead | undefined {
       const local = locals.get(name);
       if (local !== undefined) return local;

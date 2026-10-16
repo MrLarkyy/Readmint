@@ -253,6 +253,29 @@ describe("expandRepeat", () => {
     expect(!result.ok && result.error.code).toBe("argument");
   });
 
+  test("charges each item the locals it copies plus its two names", () => {
+    const stepsWith = (locals: Readonly<Record<string, unknown>>) => {
+      const budget = createBudget();
+      const result = expandRepeat(
+        compile("{{ [1, 2, 3] }}"),
+        createScope({}, { budget }).with(locals),
+      );
+      expect(result.ok).toBe(true);
+      return budget.used;
+    };
+    expect(stepsWith({ a: 1, b: 2, c: 3 }) - stepsWith({})).toBe(3 * 3);
+    expect(createScope({}).with({ a: 1, b: 2 }).localCount).toBe(2);
+  });
+
+  test("a repeat under a full let is charged its copies before any is made", () => {
+    const names = Array.from({ length: 256 }, (_, index) => `n${String(index)}`);
+    const budget = createBudget(1000);
+    const wide = createScope({}, { budget }).extend(names, () => 1);
+    if (!wide.ok) expect.fail(wide.error.message);
+    const result = expandRepeat(compile("{{ [1, 2, 3, 4] }}"), wide.value);
+    expect(!result.ok && result.error.code).toBe("budget");
+  });
+
   test("charges a shared budget per item", () => {
     const budget = createBudget(3);
     const result = expandRepeat(compile("{{ repos }}"), createScope(data, { budget }));

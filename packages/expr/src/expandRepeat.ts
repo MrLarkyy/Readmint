@@ -16,7 +16,9 @@ export interface RepeatOptions {
 
 /**
  * A layer's `repeat`: one child scope per item of the array `template` evaluates to, with the item
- * and its 0-based index as locals. `null` (missing data) repeats nothing.
+ * and its 0-based index as locals. `null` (missing data) repeats nothing. Each copy copies the
+ * scope's locals and adds two, so a shared budget is charged that for every item before any copy
+ * is made.
  */
 export function expandRepeat(
   template: Template,
@@ -58,7 +60,7 @@ export function expandRepeat(
     const limit = String(ExpressionLimits.maxArrayLength);
     return failWith(site, "too-large", `repeat allows at most ${limit} items`, span);
   }
-  if (scope.budget !== undefined && !scope.budget.charge(items.length)) {
+  if (scope.budget !== undefined && !scope.budget.charge(items.length * (scope.localCount + 2))) {
     const limit = String(scope.budget.maxSteps);
     return failWith(site, "budget", `evaluation exceeded its budget of ${limit} steps`, span);
   }

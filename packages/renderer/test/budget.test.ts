@@ -753,6 +753,58 @@ describe("hostile lets (RM-118)", () => {
     expect(elapsed).toBeLessThan(2000 * loadScale());
   });
 
+  /** Four nested 64-entry lets (256 locals) above a group of 10 copies of a 9990-copy repeat of `leaf`. */
+  function wideLetsAbove(leaf: Layer, components?: Design["components"]): Design {
+    let layer: Layer = {
+      type: "group",
+      repeat: { each: "{{ outer }}", as: "row" },
+      children: [{ ...leaf, repeat: { each: "{{ inner }}", as: "cell", index: "i" } }],
+    };
+    for (let level = 3; level >= 0; level--) {
+      layer = {
+        type: "group",
+        let: entries(`l${String(level)}_`, 64, () => "{{ 1 }}"),
+        children: [layer],
+      };
+    }
+    return {
+      version: 0,
+      canvas: { width: 10, height: 10 },
+      ...(components === undefined ? {} : { components }),
+      layers: [layer],
+    };
+  }
+
+  const wideData = {
+    outer: new Array<number>(10).fill(1),
+    inner: new Array<number>(9990).fill(1),
+  };
+
+  const wideLeaves: readonly (readonly [string, Layer, Design["components"]])[] = [
+    ["a rect", { type: "rect", width: 1, height: 1 }, undefined],
+    [
+      "a three-deep component chain",
+      { type: "component", ref: "c1" },
+      {
+        c1: { layers: [{ type: "component", ref: "c2" }] },
+        c2: { layers: [{ type: "component", ref: "c3" }] },
+        c3: { layers: [{ type: "rect", width: 1, height: 1 }] },
+      },
+    ],
+  ];
+
+  test.each(wideLeaves)(
+    "repeat copies of %s under 256 let locals are charged their copies and stop fast",
+    (_name, leaf, components) => {
+      const started = performance.now();
+      const result = renderSvg(wideLetsAbove(leaf, components), { data: wideData });
+      const elapsed = performance.now() - started;
+      expect(result).toMatchObject({ ok: false, issues: [{ code: "binding" }] });
+      expect(result.ok ? "" : result.issues[0]?.message).toContain("(budget)");
+      expect(elapsed).toBeLessThan(2000 * loadScale());
+    },
+  );
+
   test("a doubling chain stops at the string limit at its entry", () => {
     const design: Design = {
       version: 0,
