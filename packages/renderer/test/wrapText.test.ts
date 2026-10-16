@@ -6,7 +6,7 @@ import { wrapParagraphs, wrapText } from "../src/wrapText.js";
 const count = (text: string) => Array.from(text).length;
 
 describe("wrapText space variants", () => {
-  test.each(["\u2009", "\u3000", "\u2003", "\u205f"])(
+  test.each(["\u1680", "\u2009", "\u3000", "\u2003", "\u205f"])(
     "space variant %# breaks and is dropped at a soft break",
     (space) => {
       expect(wrapText(`aa${space}bb${space}cc`, 5, count)).toEqual(["aa" + space + "bb", "cc"]);
@@ -20,6 +20,11 @@ describe("wrapText space variants", () => {
     expect(wrapText("a\u3000b", 4, wide)).toEqual(["a", "b"]);
     expect(wrapText("a\u3000b", 5, wide)).toEqual(["a\u3000b"]);
     expect(wrapText("a b", 3, wide)).toEqual(["a b"]);
+  });
+
+  test("U+1680 breaks, is dropped at the soft break and kept inside a line", () => {
+    expect(wrapText("aa\u1680bb", 2, count)).toEqual(["aa", "bb"]);
+    expect(wrapText("aa\u1680bb", 5, count)).toEqual(["aa\u1680bb"]);
   });
 
   test.each(["\u00a0", "\u2007", "\u202f"])("no-break variant %# never breaks", (space) => {
