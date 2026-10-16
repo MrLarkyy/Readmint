@@ -1,4 +1,4 @@
-import type { DataSourceLoadOptions } from "@readmint/data";
+import { HttpsLimits, type DataSourceLoadOptions } from "@readmint/data";
 
 /** Ranges and defaults of the load options, and the fixed caps applied to every document. */
 export const JsonLimits = Object.freeze({
@@ -12,13 +12,13 @@ export const JsonLimits = Object.freeze({
   minCacheTtlSeconds: 1,
   maxCacheTtlSeconds: 604_800,
   defaultCacheTtlSeconds: 3600,
-  /** Redirects followed per load. */
-  maxRedirects: 3,
+  /** Redirects followed per load (the shared `HttpsLimits`). */
+  maxRedirects: HttpsLimits.maxRedirects,
   /** Nesting of arrays and objects. */
   maxDepth: 64,
   /** Values in the document, containers included. */
   maxNodes: 200_000,
-  maxUrlLength: 2048,
+  maxUrlLength: HttpsLimits.maxUrlLength,
   /** UTF-16 code units of a file source. */
   maxSourceLength: 1024,
   maxHeaders: 8,

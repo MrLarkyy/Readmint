@@ -100,3 +100,88 @@ test("a data-json namespace the data-file holds fails the run naming it", async 
   expect(run.code).not.toBe(0);
   expect(run.log).toContain("data namespace stats");
 });
+
+test("a data-feed namespace the data-file holds fails the run naming it", async () => {
+  const run = await tree.run(
+    {
+      designs: "card.json",
+      "data-file": "data.json",
+      "data-feed": "stats=https://feeds.example/x.xml?key=feedKEY123",
+      "dry-run": "true",
+    },
+    {
+      fetch: () =>
+        Promise.resolve(
+          new Response('<rss version="2.0"><channel><title>t</title></channel></rss>', {
+            headers: { "content-type": "application/rss+xml" },
+          }),
+        ),
+    },
+  );
+  expect(run.code).not.toBe(0);
+  expect(run.log).toContain("data namespace stats");
+  expect(run.log).not.toContain("feedKEY123");
+});
+
+test("a dry run binds a fixture feed fetched through deps.fetch, never logging its URL", async () => {
+  const feed = await readFile(
+    join(import.meta.dirname, "..", "..", "data-feed", "test", "fixtures", "unsorted.rss.xml"),
+    "utf8",
+  );
+  const url = "https://feeds.example/unsorted.xml?key=feedKEY123";
+  await tree.file("feed.json", {
+    version: 0,
+    canvas: { width: 40, height: 24, background: "#ffffff" },
+    layers: [
+      {
+        type: "rect",
+        x: 0,
+        y: 0,
+        width: "{{ posts.entries | length }}",
+        height: 4,
+        fill: "#0969da",
+      },
+    ],
+  });
+  const requests: string[] = [];
+  const run = await tree.run(
+    {
+      designs: "feed.json",
+      "data-file": "data.json",
+      "data-feed": `posts=${url}`,
+      "data-feed-limits": "posts=3",
+      "dry-run": "true",
+    },
+    {
+      fetch: (requested) => {
+        requests.push(requested);
+        return Promise.resolve(
+          new Response(feed, { headers: { "content-type": "application/rss+xml" } }),
+        );
+      },
+      runGit: () => {
+        throw new Error("git must not run");
+      },
+    },
+  );
+  expect(run.code).toBe(0);
+  expect(requests).toEqual([url]);
+  expect(await tree.read("readmint/feed.svg")).toContain('width="3"');
+  expect(run.log).not.toContain("feedKEY123");
+});
+
+test("a feed that cannot load fails the run with its line and no URL", async () => {
+  const run = await tree.run(
+    {
+      designs: "card.json",
+      "data-file": "data.json",
+      "data-feed": "https://feeds.example/x.xml?key=feedKEY123",
+      "dry-run": "true",
+    },
+    { fetch: () => Promise.resolve(new Response("", { status: 404 })) },
+  );
+  expect(run.code).not.toBe(0);
+  expect(run.log).toContain("::error::Feed data feed (not-found): The feed URL answered HTTP 404.");
+  expect(run.log).not.toContain("feedKEY123");
+  expect(run.log).not.toContain("feeds.example");
+});

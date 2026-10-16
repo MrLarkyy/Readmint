@@ -45,6 +45,7 @@ export default defineConfig(({ mode }) => ({
       ...[
         "cli",
         "data",
+        "data-feed",
         "data-github",
         "data-json",
         "expr",

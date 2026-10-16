@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@readmint/cli": "workspace:*",
+    "@readmint/data-feed": "workspace:*",
     "@readmint/data-github": "workspace:*",
     "@readmint/data-json": "workspace:*",
     "@readmint/raster": "workspace:*"

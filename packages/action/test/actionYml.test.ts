@@ -24,6 +24,15 @@ test("action.yml declares exactly the inputs of ActionInputs, with their default
   }
 });
 
+test("no description of action.yml holds an expression", () => {
+  for (const [name, input] of Object.entries(yml.inputs)) {
+    expect(input.description, name).not.toContain("${{");
+  }
+  for (const [name, output] of Object.entries(yml.outputs)) {
+    expect(output.description, name).not.toContain("${{");
+  }
+});
+
 test("action.yml declares exactly the outputs the Action writes", () => {
   expect(Object.keys(yml.outputs)).toEqual([...ActionOutputs]);
 });

@@ -22,6 +22,7 @@
   },
   "dependencies": {
     "@readmint/data": "workspace:*",
+    "@readmint/data-feed": "workspace:*",
     "@readmint/data-github": "workspace:*",
     "@readmint/data-json": "workspace:*",
     "@readmint/expr": "workspace:*",

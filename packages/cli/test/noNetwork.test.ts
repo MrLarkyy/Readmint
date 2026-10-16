@@ -49,3 +49,16 @@ test("--data-json with a file source never fetches", async () => {
   expect(run.code).toBe(ExitCode.ok);
   expect(fetch).not.toHaveBeenCalled();
 });
+
+test("--data-feed with a refused URL is a usage error before any request", async () => {
+  const fetch = vi.spyOn(globalThis, "fetch");
+  const run = await tree.run([
+    "render",
+    "bound/design.json",
+    "--data-feed",
+    "http://x.example/feed",
+  ]);
+  expect(run.code).toBe(ExitCode.usage);
+  expect(run.stderr).not.toContain("x.example");
+  expect(fetch).not.toHaveBeenCalled();
+});
