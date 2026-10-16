@@ -139,7 +139,11 @@ function checkLetNames(
   for (const [name, source] of sources) {
     const at = pointer(letPath, name);
     if (Object.hasOwn(data, name)) {
-      context.fail(at, "binding", `let ${echo(name)} hides the data name ${echo(name)}`);
+      context.fail(
+        at,
+        "binding",
+        `let ${echo(name)} hides the data name ${echo(name)}; rename the let name or the data namespace`,
+      );
     }
     for (const read of compiled(context, source, at).names) {
       if (!unbound.has(read)) continue;

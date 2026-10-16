@@ -58,7 +58,7 @@ The hyphen rule keeps ids usable as names: `props.my-label` and `repo-index` are
   `{{ half }}`. An entry that reads itself or a later entry (`"a": "{{ b }}", "b": "{{ 1 }}"`) is a render `binding`
   issue at the entry, found from the names the entry reads before anything is evaluated; it never falls back to an
   outer local or a data key of that name. A `let` name may not be a top-level data key either (`binding` at the
-  entry), and `props`, `true`, `false` and `null` are reserved.
+  entry, message `let "x" hides the data name "x"; rename the let name or the data namespace`), and `props`, `true`, `false` and `null` are reserved.
 - **Missing data is `null`.** A missing property, an index out of range and any property of `null` read as `null`, so
   `{{ github.repo.owner.name }}` on partial data is `null`, not an error. Arrays have only integer indices (`list[0]`;
   `list.length` is `null`, use `| length`), and strings, numbers and booleans have no properties.

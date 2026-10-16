@@ -377,7 +377,8 @@ describe("let errors are located at the entry", () => {
       {
         path: "/layers/0/let/github",
         code: "binding",
-        message: 'let "github" hides the data name "github"',
+        message:
+          'let "github" hides the data name "github"; rename the let name or the data namespace',
       },
     ]);
   });
