@@ -137,9 +137,10 @@ that design, each prop of the section that the layer's component declares is set
 is then validated like any design, so a value takes the same types and limits, and a `{{ }}` string is a binding of the
 same safe expression language. A prop the design's top-level components do not declare, a value of the wrong type or an
 enum value the prop does not list is an error (exit code 1) naming the design, the section and the prop
-(`header.json: error unknown-property at /header/colour: ...`), never the value. A render error a value causes (a bad
-binding, or a component's inner layer the value reaches, such as a fill that is no colour) keeps its code and path, but
-its message only names the section and the props whose value it would show. A design whose section the file lacks is
+(`header.json: error unknown-property at /header/colour: ...`), never the value. A render error at a prop the file set (a bad
+binding) keeps its code and path, but its message only names the section and the prop; so does an error inside a
+component the root layer uses (a fill that is no colour) whose message quotes a string or holds a number of the
+section. Every other message is printed as it is. A design whose section the file lacks is
 rendered as it is, and a section no design names is ignored. The output is the same as rendering the design with the
 props written into its root layer; the design format is not involved (no `$schema`, no version).
 

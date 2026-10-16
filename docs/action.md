@@ -126,8 +126,8 @@ command or GitHub request. The section of a design is its file name without the 
 dark twin share the entry, and the output is the same as the CLI `readmint render <design> --props <file>` gives
 ([cli.md](cli.md#settings-file)). A section no listed design has is a `::warning::` line naming the section only; a
 file that cannot be read or is invalid, or a prop a design does not declare or a wrongly typed value, fails the run
-before anything is written, with the section and prop in the message, never the value; a render error a value causes,
-also at a component's inner layer, keeps its path but its message names only the section and the props.
+before anything is written, with the section and prop in the message, never the value; a render error at a set prop, or
+inside its component with the value in the message, keeps its path but its message names only the section and props.
 
 ## Data and the token
 

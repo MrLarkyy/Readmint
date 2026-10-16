@@ -17,14 +17,17 @@ interface Trace {
 const traceLength = 12;
 
 /**
- * Hides the message of every issue that could show a value of a design's settings section, whatever path it was
- * reported at: an issue inside a prop the settings wrote (a bad binding), or one whose message holds a string value
- * of the section (raw, JSON-escaped or log-escaped, clipped echoes included) or one of its numbers (a child layer
- * the value broke). The code and path stay; the message names the section and the props, never a value.
+ * Hides the message of an issue that could show a value of a design's settings section. An issue inside a prop the
+ * settings wrote (a bad binding) is always hidden. One inside a component the written instances use, nested ones
+ * included (where the renderer reports a child layer the value broke), is hidden when its message holds a string value
+ * of the section quoted as the renderer echoes it (`"` and the JSON-escaped start, clipped echoes included) or one of
+ * its numbers. Every other issue stays as it is. The code and path stay; the message names the section and the props,
+ * never a value.
  */
 export class SettingsMask {
   private readonly section: string;
   private readonly pointers = new Map<string, string>();
+  private readonly scopes = new Set<string>();
   private readonly traces: readonly Trace[];
 
   /** `design` is the design `applyDesignProps` returned for `props`, the section `section` of the settings file. */
@@ -34,15 +37,26 @@ export class SettingsMask {
     design: Design,
   ) {
     this.section = section;
+    const refs: string[] = [];
     design.layers.forEach((layer, index) => {
       if (layer.type !== "component") return;
       const declared = design.components?.[layer.ref]?.props ?? {};
       for (const name of Object.keys(props)) {
         if (Object.hasOwn(declared, name)) {
           this.pointers.set(`/layers/${String(index)}/props/${name}`, name);
+          refs.push(layer.ref);
         }
       }
     });
+    const seen = new Set<string>();
+    while (refs.length > 0) {
+      const ref = refs.pop() as string;
+      const component = design.components?.[ref];
+      if (seen.has(ref) || component === undefined) continue;
+      seen.add(ref);
+      this.scopes.add(`/components/${ref}/`);
+      collectRefs(component.layers, refs);
+    }
     this.traces = Object.entries(props).flatMap(([name, value]) =>
       (Array.isArray(value) ? value : [value]).flatMap((item: ComponentPropValue) => {
         const test = traceOf(item);
@@ -57,8 +71,10 @@ export class SettingsMask {
     for (const [pointer, name] of this.pointers) {
       if (issue.path === pointer || issue.path.startsWith(`${pointer}/`)) names.add(name);
     }
-    for (const trace of this.traces) {
-      if (trace.test(issue.message)) names.add(trace.name);
+    if (names.size === 0 && [...this.scopes].some((scope) => issue.path.startsWith(scope))) {
+      for (const trace of this.traces) {
+        if (trace.test(issue.message)) names.add(trace.name);
+      }
     }
     if (names.size === 0) return issue;
     const listed = [...names].sort().map(quoteForLog).join(", ");
@@ -66,6 +82,20 @@ export class SettingsMask {
       ...issue,
       message: `a value of settings section ${quoteForLog(this.section)} (${names.size === 1 ? "prop" : "props"} ${listed}) is not valid here; the message is hidden so the value is not shown`,
     };
+  }
+}
+
+/** Pushes the `ref` of every component layer below `value` (a component's layers, groups included). */
+function collectRefs(value: unknown, refs: string[]): void {
+  if (Array.isArray(value)) {
+    for (const item of value) collectRefs(item, refs);
+    return;
+  }
+  if (typeof value !== "object" || value === null) return;
+  const record = value as Readonly<Record<string, unknown>>;
+  if (record.type === "component" && typeof record.ref === "string") refs.push(record.ref);
+  for (const child of Object.values(record)) {
+    if (typeof child === "object") collectRefs(child, refs);
   }
 }
 
@@ -79,8 +109,7 @@ function traceOf(value: ComponentPropValue): ((message: string) => boolean) | un
   // A boolean is no personal text, and "true" / "false" appear in many messages; its pointer still masks it.
   if (typeof value !== "string" || value === "") return undefined;
   const head = Array.from(value).slice(0, traceLength).join("");
-  const forms = [
-    ...new Set([head, JSON.stringify(head).slice(1, -1), quoteForLog(head).slice(1, -1)]),
-  ];
+  // The opening quote and the escaped start: the renderer's echo (JSON) and the CLI's log quoting.
+  const forms = [...new Set([JSON.stringify(head).slice(0, -1), quoteForLog(head).slice(0, -1)])];
   return (message) => forms.some((form) => message.includes(form));
 }
