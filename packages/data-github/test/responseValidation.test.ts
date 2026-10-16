@@ -259,7 +259,20 @@ describe("body size", () => {
       ...source,
       headers: { ...source.headers, "content-length": String(GitHubLimits.maxBodyBytes + 1) },
     };
-    expect((await failure([oversized])).code).toBe("too-large");
+    const error = await failure([oversized]);
+    expect(error.code).toBe("too-large");
+    expect(error.message).toBe(
+      `The GitHub response is larger than ${String(GitHubLimits.maxBodyBytes)} bytes.`,
+    );
+  });
+
+  test("a body that is not UTF-8 is invalid-response with the unchanged message", async () => {
+    const fetch: GitHubFetch = () =>
+      Promise.resolve(new Response(new Uint8Array([0x7b, 0xff, 0xfe, 0x7d]), { status: 200 }));
+    const error: unknown = await load(fetch).catch((reason: unknown) => reason);
+    expect(error).toBeInstanceOf(GitHubDataError);
+    expect((error as GitHubDataError).code).toBe("invalid-response");
+    expect((error as GitHubDataError).message).toBe("The GitHub response is not valid UTF-8.");
   });
 
   test("a streamed body over the cap is too-large and the stream is cancelled", async () => {
