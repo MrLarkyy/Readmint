@@ -157,6 +157,7 @@ export class JpegStructure {
         table === undefined ? undefined : this.entropy?.losslessFault(bytes.data, data, table);
       if (fault !== undefined) return entropyRefusal(fault);
       const end = skipEntropyData(bytes.data, data, false);
+      if (end?.marker === 0xd9) this.imageEnd ??= end.offset;
       return lossless.problemAfterImageData(end?.marker);
     }
     let scan = offset;

@@ -5,6 +5,7 @@ import { describe, expect, test } from "vitest";
 import { loadScale } from "../../../test-support/loadScale.js";
 import { renderSvg, type RenderOptions } from "../src/index.js";
 import { sniffImage } from "../src/sniffImage.js";
+import { plainColourImage } from "../src/plainColourImage.js";
 import { ultraHdrJpeg } from "./ultraHdr.js";
 import { colourImages, iccSegment, app2, inserted, jpegMarkerOffsets } from "./colourImages.js";
 import {
@@ -732,6 +733,21 @@ describe("colour data", () => {
         shifted(container.length),
       ]);
       expect(ranges(inserted(jpeg, 2, iso))[0]).toEqual({ start: 2, end: 2 + iso.length });
+    });
+
+    test("a lossless JPEG with an MPF index loses it and the bytes after its EOI", () => {
+      const lossless = acceptedLosslessJpegs[0]?.bytes ?? new Uint8Array();
+      const mpfSegment = app2("MPF\0", [0x4d, 0x4d, 0, 0x2a]);
+      const data = new Uint8Array([...inserted(lossless, 2, mpfSegment), 9, 9, 9]);
+      const sniffed = sniffImage(data, 1000);
+      if (!sniffed.ok) throw new Error(sniffed.message);
+      expect(sniffed.info.colourData).toEqual([
+        { start: 2, end: 2 + mpfSegment.length },
+        { start: lossless.length + mpfSegment.length, end: data.length },
+      ]);
+      const copy = plainColourImage(data, sniffed.info);
+      expect([...copy]).toEqual([...lossless]);
+      expect(sniffImage(copy, 1000).ok).toBe(true);
     });
 
     test("without a gain map segment the bytes after EOI stay", () => {
