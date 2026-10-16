@@ -221,7 +221,7 @@ A folder holds, per section, `<section>.json` and its dark twin `<section>.dark.
   font asset that has them and list it in the `fallback` of the design's fonts
   ([design format](design-format.md#assets)), and mind the size budget below. A dropped emoji takes no space, so
   what follows a text in `pinscreen` (the status bar: separator, "last push", the ticker) is placed by the layout
-  after the text as drawn. Whatever follows the width of a text that may hold any character is bound to its drawn
+  after the text as drawn. The `pinscreen` bar follows the branch as drawn (at least 80 px, wider for a long branch name), and without a GitHub status it closes up: the last push and its separator start right after the branch. Whatever follows the width of a text that may hold any character is bound to its drawn
   width (`textWidth`, `truncateWidth`, [expressions](expressions.md#filters)), so a dropped emoji moves nothing: the
   `horizon` name's font size, the slots of the `horizon` commit ticker and worked-with band, the `pinscreen`
   contact underline and stack parentheses, the `horizon` and `year-ring` contact pills, the contacts cut to their

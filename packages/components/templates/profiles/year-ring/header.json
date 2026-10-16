@@ -1047,7 +1047,7 @@
                 },
                 {
                   "type": "text",
-                  "x": 18,
+                  "x": 0,
                   "y": 214.924,
                   "content": "No recent push yet.",
                   "font": "reg",
