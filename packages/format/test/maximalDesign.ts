@@ -141,7 +141,15 @@ export const maximalDesign = {
         mode: { type: "enum", values: ["a", "b"], default: "a" },
         items: { type: "array", default: [1, "x", true] },
       },
-      layers: [{ type: "rect", width: 40, height: 16, fill: "{{props.tint}}" }],
+      layers: [
+        {
+          type: "rect",
+          let: { tone: "{{props.tint}}" },
+          width: 40,
+          height: 16,
+          fill: "{{tone}}",
+        },
+      ],
     },
   },
   animation: { duration: 2000, loop: false },
@@ -150,6 +158,11 @@ export const maximalDesign = {
       type: "group",
       id: "group",
       ...common,
+      let: {
+        total: "{{ items | length }}",
+        half: "{{ total / 2 }}",
+        label: "{{ half }} of {{ total }}",
+      },
       animate: transforms,
       width: 100,
       height: 100,

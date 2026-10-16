@@ -15,6 +15,7 @@ export type { ValueRange, ValueRangeName } from "./ValueRanges.js";
 export { applyDesignProps } from "./applyDesignProps.js";
 export { designLocales } from "./designLocales.js";
 export { DesignLimits } from "./DesignLimits.js";
+export { LocalNames } from "./LocalNames.js";
 export { designJsonSchema } from "./designJsonSchema.js";
 export { DESIGN_FORMAT_VERSION } from "./designMigrations.js";
 export { migrateDesign } from "./migrateDesign.js";

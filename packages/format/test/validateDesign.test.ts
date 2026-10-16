@@ -517,3 +517,202 @@ describe("prop messages and literal defaults (RM-50)", () => {
     );
   });
 });
+
+describe("local bindings (let, RM-118)", () => {
+  const withLayers = (...layers: unknown[]) => ({ ...base(), layers });
+  const codes = (value: unknown) =>
+    issuesOf(value).issues.map(({ path, code }) => ({ path, code }));
+  const valid = (value: unknown) => {
+    expect(validateDesign(value)).toEqual({ ok: true, value });
+  };
+  const font = { family: "F", src: "f.ttf", licence: { embedding: "allowed" } };
+  const kinds: readonly (readonly [string, Record<string, unknown>])[] = [
+    ["group", { type: "group", children: [] }],
+    ["rect", rect()],
+    ["ellipse", { type: "ellipse", width: 1, height: 1 }],
+    ["path", { type: "path", d: "M0 0" }],
+    ["text", { type: "text", content: "{{ n }}", font: "f" }],
+    ["image", { type: "image", asset: "i", width: 1, height: 1 }],
+    ["component", { type: "component", ref: "c" }],
+  ];
+
+  test.each(kinds)("a %s layer may bind locals", (_kind, layer) => {
+    valid({
+      ...base(),
+      assets: { fonts: { f: font }, images: { i: { src: "i.png" } } },
+      components: { c: { layers: [] } },
+      layers: [{ ...layer, let: { n: "{{ 1 }}", m: "{{ n }} and {{ n }}" } }],
+    });
+  });
+
+  test.each(["a-1", "1a", "a b", "a-", "é"])("the name %j is a pattern issue", (key) => {
+    const result = issuesOf(withLayers(rect({ let: { [key]: "{{ 1 }}" } })));
+    expect(result.issues).toEqual([
+      {
+        path: `/layers/0/let/${key}`,
+        code: "pattern",
+        message: `property name ${JSON.stringify(key)} is not a local name (a letter or _, then letters, digits, _ and - before a letter or _; at most 64)`,
+      },
+    ]);
+  });
+
+  test("a name of 64 characters is valid, of 65 a pattern issue reported at the let", () => {
+    valid(withLayers(rect({ let: { ["n".repeat(64)]: "{{ 1 }}" } })));
+    expect(codes(withLayers(rect({ let: { ["n".repeat(65)]: "{{ 1 }}" } })))).toEqual([
+      { path: "/layers/0/let", code: "pattern" },
+    ]);
+  });
+
+  test("64 entries are valid, 65 a count issue at the let", () => {
+    const entries = (count: number) =>
+      Object.fromEntries(Array.from({ length: count }, (_, i) => [`n${String(i)}`, "{{ 1 }}"]));
+    valid(withLayers(rect({ let: entries(DesignLimits.maxLetEntries) })));
+    expect(issuesOf(withLayers(rect({ let: entries(65) }))).issues).toEqual([
+      { path: "/layers/0/let", code: "count", message: "must have at most 64 entries" },
+    ]);
+  });
+
+  test("a value must be a binding", () => {
+    expect(codes(withLayers(rect({ let: { a: 3, b: "abc", c: "{{ 1 }}" } })))).toEqual([
+      { path: "/layers/0/let/a", code: "type" },
+      { path: "/layers/0/let/b", code: "pattern" },
+    ]);
+  });
+
+  test.each(["props", "true", "false", "null"])("%s is a reserved name", (name) => {
+    expect(issuesOf(withLayers(rect({ let: { [name]: "{{ 1 }}" } }))).issues).toEqual([
+      {
+        path: `/layers/0/let/${name}`,
+        code: "reserved-name",
+        message: `"${name}" is reserved and cannot be a let name`,
+      },
+    ]);
+  });
+
+  test("a let name bound by the layer's own repeat, default or named, is a duplicate", () => {
+    const repeat = { each: "{{ [1] }}" };
+    expect(codes(withLayers(rect({ repeat, let: { item: "{{ 1 }}" } })))).toEqual([
+      { path: "/layers/0/let/item", code: "duplicate-name" },
+    ]);
+    const named = { each: "{{ [1] }}", as: "row", index: "i" };
+    expect(
+      issuesOf(withLayers(rect({ repeat: named, let: { i: "{{ 1 }}", index: "{{ 2 }}" } }))).issues,
+    ).toEqual([
+      {
+        path: "/layers/0/let/i",
+        code: "duplicate-name",
+        message: 'let name "i" is already bound by the repeat at /layers/0/repeat/index',
+      },
+    ]);
+  });
+
+  test("a child let reusing an enclosing let or repeat name is a duplicate", () => {
+    const design = withLayers({
+      type: "group",
+      repeat: { each: "{{ [1] }}", as: "row" },
+      let: { n: "{{ 1 }}" },
+      children: [rect({ let: { n: "{{ 2 }}", row: "{{ 3 }}", fresh: "{{ 4 }}" } })],
+    });
+    expect(issuesOf(design).issues).toEqual([
+      {
+        path: "/layers/0/children/0/let/n",
+        code: "duplicate-name",
+        message: 'let name "n" is already bound by the let at /layers/0/let/n',
+      },
+      {
+        path: "/layers/0/children/0/let/row",
+        code: "duplicate-name",
+        message: 'let name "row" is already bound by the repeat at /layers/0/repeat/as',
+      },
+    ]);
+  });
+
+  test("a repeat name hiding an enclosing let name is a duplicate at the name or the repeat", () => {
+    const design = withLayers({
+      type: "group",
+      let: { row: "{{ 1 }}", item: "{{ 2 }}" },
+      children: [
+        rect({ repeat: { each: "{{ [1] }}", as: "row" } }),
+        rect({ repeat: { each: "{{ [1] }}" } }),
+      ],
+    });
+    expect(issuesOf(design).issues).toEqual([
+      {
+        path: "/layers/0/children/0/repeat/as",
+        code: "duplicate-name",
+        message: 'repeat name "row" hides the let name bound at /layers/0/let/row',
+      },
+      {
+        path: "/layers/0/children/1/repeat",
+        code: "duplicate-name",
+        message: 'repeat name "item" hides the let name bound at /layers/0/let/item',
+      },
+    ]);
+  });
+
+  test("children written before the let still see its names", () => {
+    const design = withLayers({
+      type: "group",
+      children: [rect({ let: { n: "{{ 2 }}" } })],
+      let: { n: "{{ 1 }}" },
+    });
+    expect(codes(design)).toEqual([{ path: "/layers/0/children/0/let/n", code: "duplicate-name" }]);
+  });
+
+  test("siblings, nested repeats and component definitions are separate", () => {
+    valid({
+      ...base(),
+      components: { c: { layers: [rect({ let: { n: "{{ 3 }}" } })] } },
+      layers: [
+        rect({ let: { n: "{{ 1 }}" } }),
+        rect({ let: { n: "{{ 2 }}" } }),
+        {
+          type: "group",
+          repeat: { each: "{{ [1] }}" },
+          children: [rect({ repeat: { each: "{{ [2] }}" } })],
+        },
+        { type: "group", let: { n: "{{ 4 }}" }, children: [{ type: "component", ref: "c" }] },
+      ],
+    });
+  });
+
+  test("__proto__ and constructor are plain names and pollute nothing", () => {
+    const layer = JSON.parse(
+      '{"type":"rect","width":1,"height":1,"let":{"__proto__":"{{ 1 }}","constructor":"{{ 2 }}"}}',
+    ) as unknown;
+    valid(withLayers(layer));
+    expect(Object.hasOwn(Object.prototype, "0")).toBe(false);
+    expect(({} as Record<string, unknown>)["constructor"]).toBe(Object);
+  });
+
+  test("many repeated leaves under deep full lets are checked fast", () => {
+    const names = (level: number) =>
+      Object.fromEntries(
+        Array.from({ length: 64 }, (_, i) => [`l${String(level)}_${String(i)}`, "{{ 1 }}"]),
+      );
+    const leaves = Array.from({ length: 5000 }, () => rect({ repeat: { each: "{{ [1] }}" } }));
+    let layer: unknown = { type: "group", let: names(15), children: leaves };
+    for (let level = 14; level >= 0; level--) {
+      layer = { type: "group", let: names(level), children: [layer] };
+    }
+    const started = performance.now();
+    valid(withLayers(layer));
+    expect(performance.now() - started).toBeLessThan(1000 * loadScale());
+  });
+
+  test("issues come in document order across the document and the components", () => {
+    const design = {
+      ...base(),
+      components: { c: { layers: [rect({ let: { props: "{{ 1 }}" } })] } },
+      layers: [
+        rect({ let: { true: "{{ 1 }}" } }),
+        { type: "group", let: { n: "{{ 1 }}" }, children: [rect({ let: { n: "{{ 1 }}" } })] },
+      ],
+    };
+    expect(codes(design)).toEqual([
+      { path: "/layers/0/let/true", code: "reserved-name" },
+      { path: "/layers/1/children/0/let/n", code: "duplicate-name" },
+      { path: "/components/c/layers/0/let/props", code: "reserved-name" },
+    ]);
+  });
+});

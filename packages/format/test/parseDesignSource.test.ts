@@ -413,3 +413,33 @@ describe("async readers", () => {
     }
   });
 });
+
+describe("let entries in the source (RM-118)", () => {
+  const letJson = (entries: string) =>
+    `{"version": 0, "canvas": {"width": 10, "height": 10}, "layers": [\n{"type": "rect", "width": 1, "height": 1, "let": {${entries}}}]}`;
+  const letYaml = (entries: string) =>
+    `${minimalYaml.replace("layers: []", "layers:")}  - type: rect\n    width: 1\n    height: 1\n    let:\n${entries}`;
+  const order = ["zeta", "alpha", "_m", "b-c", "a1"];
+
+  function letKeys(source: string, format: "json" | "yaml"): string[] {
+    const result = parseDesign(source, { format });
+    if (!result.ok) throw new Error(JSON.stringify(result.issues));
+    return Object.keys((result.value.layers[0] as { let?: object }).let ?? {});
+  }
+
+  test("a duplicate let key is a duplicate-key issue with its line, in JSON and YAML", () => {
+    expect(issuesOf(letJson('"n": "{{ 1 }}",\n"n": "{{ 2 }}"'), "json")).toMatchObject([
+      { code: "duplicate-key", message: 'duplicate key "n"', line: 3 },
+    ]);
+    expect(issuesOf(letYaml('      n: "{{ 1 }}"\n      n: "{{ 2 }}"\n'), "yaml")).toMatchObject([
+      { code: "duplicate-key", message: 'duplicate key "n"', line: 9 },
+    ]);
+  });
+
+  test("the key order is the document order in JSON and YAML", () => {
+    const json = letJson(order.map((key) => `"${key}": "{{ 1 }}"`).join(", "));
+    expect(letKeys(json, "json")).toEqual(order);
+    const yaml = letYaml(order.map((key) => `      ${key}: "{{ 1 }}"\n`).join(""));
+    expect(letKeys(yaml, "yaml")).toEqual(order);
+  });
+});

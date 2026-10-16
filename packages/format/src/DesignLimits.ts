@@ -10,6 +10,8 @@ export const DesignLimits = Object.freeze({
   maxValues: 1_000_000,
   /** Layers of the document after expanding component instances. */
   maxLayers: 10_000,
+  /** Entries of one layer's `let`. */
+  maxLetEntries: 64,
   /** Issues reported before the result is marked truncated. */
   maxIssues: 100,
   /** YAML alias nodes in a source, checked before any alias is resolved. */
