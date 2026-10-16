@@ -187,7 +187,7 @@ Every section reads the `github.*` object of the [GitHub data source](https://gi
 missing property is `null`) and shows a plain line where they are missing, for instance when the token cannot read
 them (the Actions `GITHUB_TOKEN` may not read the status); without `github.pinned` the repository slots show
 `github.repositories`.
-[docs/components.md](https://github.com/MrLarkyy/Readmint/wiki/Components-and-templates#profile-templates) lists the fields and their shape.
+The [Components and templates](https://github.com/MrLarkyy/Readmint/wiki/Components-and-templates#profile-templates) page lists the fields and their shape.
 
 ## Motion
 
