@@ -123,6 +123,9 @@
         "$ref": "#/$defs/ComponentDefinition"
       }
     },
+    "palette": {
+      "$ref": "#/$defs/Palette"
+    },
     "animation": {
       "$ref": "#/$defs/Animation"
     }
@@ -455,6 +458,31 @@
         "$ref": "#/$defs/Binding"
       },
       "maxProperties": 64
+    },
+    "Palette": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string",
+        "maxLength": 64,
+        "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/PaletteMode"
+      },
+      "minProperties": 1,
+      "maxProperties": 16
+    },
+    "PaletteMode": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string",
+        "maxLength": 64,
+        "pattern": "^[A-Za-z_][A-Za-z0-9_]*(?:-[A-Za-z_][A-Za-z0-9_]*)*$"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/Colour"
+      },
+      "maxProperties": 256
     },
     "Layout": {
       "type": "object",

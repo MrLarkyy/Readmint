@@ -9,6 +9,7 @@ import { expandLayers } from "./expandLayers.js";
 import { letScope } from "./expressions.js";
 import { formatNumber } from "./formatNumber.js";
 import { paintAttributes, resolvePaint } from "./paint.js";
+import { paletteScope } from "./paletteScope.js";
 import { pointer } from "./pointer.js";
 import { RenderContext } from "./RenderContext.js";
 import { RenderFailure } from "./RenderFailure.js";
@@ -54,11 +55,14 @@ function render(context: RenderContext, options: RenderOptions): RenderResult {
   const budget = createBudget(steps);
   // An unvalidated editor object may carry any value here; only a string reaches the locale lookup.
   const locale = options.locale ?? (typeof design.locale === "string" ? design.locale : undefined);
-  const scope = createScope(context.data, {
-    budget,
-    measurer: createTextMeasurer(context),
-    ...(locale === undefined ? {} : { locale }),
-  });
+  const scope = paletteScope(
+    context,
+    createScope(context.data, {
+      budget,
+      measurer: createTextMeasurer(context),
+      ...(locale === undefined ? {} : { locale }),
+    }),
+  );
   const canvas = design.canvas;
   const canvasScope = canvasScopeOf(context, scope);
   const width = resolveNumber(

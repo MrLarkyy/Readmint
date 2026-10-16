@@ -12,6 +12,10 @@ export const DesignLimits = Object.freeze({
   maxLayers: 10_000,
   /** Entries of one layer's `let`. */
   maxLetEntries: 64,
+  /** Modes of the design's `palette`. */
+  maxPaletteModes: 16,
+  /** Tokens of one palette mode. */
+  maxPaletteTokens: 256,
   /** Issues reported before the result is marked truncated. */
   maxIssues: 100,
   /** YAML alias nodes in a source, checked before any alias is resolved. */

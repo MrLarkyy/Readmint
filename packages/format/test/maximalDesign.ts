@@ -82,6 +82,7 @@ export const maximalDesign = {
       stops: [
         { offset: 0, color: "#000" },
         { offset: "{{g.mid}}", color: "{{g.color}}" },
+        { offset: 1, color: "{{palette.edge}}" },
       ],
     },
   },
@@ -151,6 +152,10 @@ export const maximalDesign = {
         },
       ],
     },
+  },
+  palette: {
+    light: { edge: "#d0d7de", "edge-soft": "#d0d7de80" },
+    dark: { edge: "#30363d", "edge-soft": "#30363d80" },
   },
   animation: { duration: 2000, loop: false },
   layers: [

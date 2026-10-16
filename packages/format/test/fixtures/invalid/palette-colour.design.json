@@ -1,0 +1,19 @@
+{
+  "version": 0,
+  "canvas": {
+    "width": 10,
+    "height": 10
+  },
+  "palette": {
+    "light": {
+      "ok": "#fff",
+      "name": "red",
+      "short": "#12345",
+      "url": "url(#a)",
+      "bound": "{{ 1 }}",
+      "number": 3,
+      "object": {}
+    }
+  },
+  "layers": []
+}

@@ -120,6 +120,7 @@ one placeholder.
 | `styles`      |          | object: id -> style                            | shared by layers through `style`                                             |
 | `assets`      |          | `{ fonts?: id -> font, images?: id -> image }` |                                                                              |
 | `components`  |          | object: id -> component definition             | reusable layer groups                                                        |
+| `palette`     |          | object: id -> (local name -> colour)           | named colours per mode, see [Palette](#palette)                              |
 | `animation`   |          | `{ duration, loop? }`                          | the timeline, see [Animation](#animation)                                    |
 
 **canvas**: `width`, `height` (required, `B<integer 1..4096>`; 4096 is the PNG cap of the raster path),
@@ -311,6 +312,86 @@ and each value must match the declared type (a `color` is a colour) unless it is
 prop does not list is an `enum` issue at the prop. Components may use other
 components but never themselves, directly or through others.
 
+## Palette
+
+`palette` names each colour once per mode, so a design that has a light and a dark look writes no theme ternaries. A
+mode is an id (`light`, `dark`, `high-contrast`, ...); each mode maps the same token names to colours. Expressions read
+the tokens of the active mode as `{{ palette.<token> }}`, anywhere a binding goes: a fill, stroke or gradient stop, the
+canvas background, a `color` prop, a colour keyframe, a `let` entry or text.
+
+```json
+{
+  "version": 0,
+  "canvas": { "width": 400, "height": 120, "background": "{{ palette.bg }}" },
+  "assets": {
+    "fonts": {
+      "body": {
+        "family": "Inter",
+        "src": "fonts/Inter.woff2",
+        "licence": { "embedding": "allowed" }
+      }
+    }
+  },
+  "palette": {
+    "light": { "bg": "#ffffff", "ink": "#1f2328", "accent": "#0969da" },
+    "dark": { "bg": "#0d1117", "ink": "#e6edf3", "accent": "#2f81f7" }
+  },
+  "components": {
+    "badge": {
+      "props": { "colour": { "type": "color", "default": "#000000" } },
+      "layers": [
+        { "type": "rect", "width": 80, "height": 20, "radius": 10, "fill": "{{ props.colour }}" }
+      ]
+    },
+    "card": {
+      "props": { "theme": { "type": "enum", "values": ["light", "dark"], "default": "light" } },
+      "layers": [
+        { "type": "rect", "width": 400, "height": 4, "fill": "{{ palette.accent }}" },
+        {
+          "type": "text",
+          "y": 20,
+          "content": "Hello",
+          "font": "body",
+          "fill": "{{ palette.ink }}"
+        },
+        {
+          "type": "component",
+          "ref": "badge",
+          "y": 60,
+          "props": { "colour": "{{ palette.accent }}" }
+        }
+      ]
+    }
+  },
+  "layers": [{ "type": "component", "ref": "card", "props": { "theme": "dark" } }]
+}
+```
+
+renders exactly the bytes of the same design without `palette` that writes every colour as
+`{{ props.theme == "dark" ? "#0d1117" : "#ffffff" }}` (for the canvas and the root component; deeper components get
+the theme as a prop), in each mode.
+
+- **Active mode.** When the design has a root instance (see [Components](#components)) whose component declares a
+  `theme` prop, the mode is that prop's value: the instance's own value, or else the prop's literal `default`. A bound
+  value (`"{{ settings.theme }}"`) is evaluated over the render data before anything else, so it cannot read the
+  instance's `let` names or `palette`. A value that is not the name of a mode is a render `type` issue at the prop
+  (`/layers/0/props/theme`, or `/components/card/props/theme/default` for the default). With no root instance, no
+  `theme` prop or no value for it, the active mode is the first mode in document order. Only `theme` is resolved this
+  early; every other prop keeps its order.
+- **Names.** Modes are ids; tokens are local names (a letter or `_`, then letters, digits and `_`, with `-` only before a
+  letter or `_`, so `palette.bg-muted` is one token), at most 64 characters, not `true`, `false` or `null`
+  (`reserved-name`). Values are colours: no `none`, gradient or binding.
+- **Every mode holds every token.** A token some mode defines and another lacks is a `missing-property` issue at the
+  mode lacking it (`/palette/dark`, `missing token "accent" (defined in mode "light")`).
+- **Reads are checked.** A `palette.<token>` or `palette["<token>"]` in a binding of the design that names no token is an
+  `unknown-reference` issue at that string (`/layers/0/fill`, `unknown palette token "fg"`). The check reads the
+  placeholders lexically: text outside `{{ }}`, string literals and properties (`x.palette.y`) are not reads, and a
+  computed key (`palette[name]`) is not checked; it reads `null` when no token has that name.
+- **The name `palette`.** When the design has a palette, a `let` entry or a repeat `as` / `index` named `palette` is a
+  `reserved-name` issue, and render data with a top-level key `palette` is a render `binding` issue at `/palette`.
+  Without a palette, `palette` is an ordinary name (a data key, for example).
+- A palette has 1 to 16 modes (an empty palette or more modes is `count`), a mode at most 256 tokens (`count`).
+
 ## Animation
 
 A design has at most one timeline; layers animate on it through `animate`.
@@ -393,17 +474,19 @@ How the timeline becomes CSS animation and static frames: [renderer.md](renderer
 
 ## Limits
 
-| limit         | value                                                         | issue code        |
-| ------------- | ------------------------------------------------------------- | ----------------- |
-| source length | 4194304 UTF-16 code units, checked before parsing             | `too-large`       |
-| YAML length   | 1048576 UTF-16 code units for a YAML source, before parsing   | `too-large`       |
-| nesting       | 64 levels of objects and arrays (the root object is level 1)  | `too-deep`        |
-| values        | 1000000 values visited; a reused YAML alias counts each time  | `too-large`       |
-| layers        | 10000, counting each component instance with all its layers   | `too-many-layers` |
-| YAML aliases  | 100 alias nodes in the source, counted before any is resolved | `too-large`       |
-| `let` entries | 64 per layer                                                  | `count`           |
-| `let` names   | 64 characters                                                 | `pattern`         |
-| issues        | 100 per result, then `truncated: true`                        |                   |
+| limit          | value                                                         | issue code         |
+| -------------- | ------------------------------------------------------------- | ------------------ |
+| source length  | 4194304 UTF-16 code units, checked before parsing             | `too-large`        |
+| YAML length    | 1048576 UTF-16 code units for a YAML source, before parsing   | `too-large`        |
+| nesting        | 64 levels of objects and arrays (the root object is level 1)  | `too-deep`         |
+| values         | 1000000 values visited; a reused YAML alias counts each time  | `too-large`        |
+| layers         | 10000, counting each component instance with all its layers   | `too-many-layers`  |
+| YAML aliases   | 100 alias nodes in the source, counted before any is resolved | `too-large`        |
+| `let` entries  | 64 per layer                                                  | `count`            |
+| `let` names    | 64 characters                                                 | `pattern`          |
+| palette modes  | 1 to 16                                                       | `count`            |
+| palette tokens | 256 per mode; names as `let` names, 64 characters             | `count`, `pattern` |
+| issues         | 100 per result, then `truncated: true`                        |                    |
 
 YAML nesting is checked on the syntax tree before the document is built, so a too-deep YAML source fails at its first
 collection past the limit, with line and column, the same on every call. Code reading a design file should also cap its
@@ -449,29 +532,29 @@ interface DesignIssue {
 - A message quotes at most 64 characters of an input value, JSON-escaped. A property name longer than 64 characters or
   holding control, bidi or line-separator characters is never put into a path: the issue is reported at its parent.
 
-| code                  | meaning                                                                                               |
-| --------------------- | ----------------------------------------------------------------------------------------------------- |
-| `parse`               | invalid JSON or YAML syntax, an unknown YAML tag, several YAML documents                              |
-| `duplicate-key`       | the same key twice in one object                                                                      |
-| `too-large`           | source too long, too many values or YAML aliases                                                      |
-| `too-deep`            | nesting over the limit (also a reference cycle in an editor object)                                   |
-| `unsupported-version` | `version` newer than this reader, or negative                                                         |
-| `migration-missing`   | no migration step from the document's version                                                         |
-| `missing-property`    | a required property is absent (`animation` when a layer has `animate`)                                |
-| `unknown-property`    | a property the format does not define, or a prop the component does not declare                       |
-| `type`                | wrong kind of value (string instead of number, not finite, not an integer)                            |
-| `enum`                | not one of the allowed words, including an unknown layer `type` or a value an enum prop does not list |
-| `pattern`             | a string in the wrong shape (colour, id, asset source, path data, arcs in `draw`, a `let` name)       |
-| `range`               | a number outside its range, or a keyframe offset below the one before it                              |
-| `length`              | a string too long or empty                                                                            |
-| `count`               | an array (a prop list too) with too few or too many items, or a `let` with more than 64 entries       |
-| `duplicate-id`        | a layer id used twice in one scope                                                                    |
-| `reserved-name`       | a `let` named `props`, `true`, `false` or `null`                                                      |
-| `duplicate-name`      | a `let` name its repeat or an enclosing `let`/repeat binds already, or a repeat name hiding a `let`   |
-| `unknown-reference`   | `style`, `font`, `asset` or `ref` names nothing in the document                                       |
-| `component-cycle`     | components that contain themselves; reported at the `ref` closing the loop                            |
-| `missing-font`        | a text with neither `font` nor a style with a font                                                    |
-| `too-many-layers`     | the document expands to more than 10000 layers                                                        |
+| code                  | meaning                                                                                                               |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `parse`               | invalid JSON or YAML syntax, an unknown YAML tag, several YAML documents                                              |
+| `duplicate-key`       | the same key twice in one object                                                                                      |
+| `too-large`           | source too long, too many values or YAML aliases                                                                      |
+| `too-deep`            | nesting over the limit (also a reference cycle in an editor object)                                                   |
+| `unsupported-version` | `version` newer than this reader, or negative                                                                         |
+| `migration-missing`   | no migration step from the document's version                                                                         |
+| `missing-property`    | a required property is absent (`animation` when a layer has `animate`), a palette token a mode lacks                  |
+| `unknown-property`    | a property the format does not define, or a prop the component does not declare                                       |
+| `type`                | wrong kind of value (string instead of number, not finite, not an integer)                                            |
+| `enum`                | not one of the allowed words, including an unknown layer `type` or a value an enum prop does not list                 |
+| `pattern`             | a string in the wrong shape (colour, id, asset source, path data, arcs in `draw`, a `let` name)                       |
+| `range`               | a number outside its range, or a keyframe offset below the one before it                                              |
+| `length`              | a string too long or empty                                                                                            |
+| `count`               | an array (a prop list too) with too few or too many items, a `let` or palette with too many entries, an empty palette |
+| `duplicate-id`        | a layer id used twice in one scope                                                                                    |
+| `reserved-name`       | a `let` named `props`, `true`, `false` or `null`; `palette` as a local name; a literal as a token                     |
+| `duplicate-name`      | a `let` name its repeat or an enclosing `let`/repeat binds already, or a repeat name hiding a `let`                   |
+| `unknown-reference`   | `style`, `font`, `asset` or `ref` names nothing in the document, or a read of an unknown palette token                |
+| `component-cycle`     | components that contain themselves; reported at the `ref` closing the loop                                            |
+| `missing-font`        | a text with neither `font` nor a style with a font                                                                    |
+| `too-many-layers`     | the document expands to more than 10000 layers                                                                        |
 
 ## YAML
 
@@ -531,5 +614,9 @@ RM-118 rejects `let` as an `unknown-property` instead of drawing the design with
 step budget since then, also in designs without `let`: each repeat item costs its scope's locals plus 2 steps instead
 of 1, each component instance its scope's locals plus 1 instead of none, so a design close to `maxExpressionSteps` can
 now fail with a `budget` issue ([renderer.md](renderer.md#limits)).
+The palette (`palette`, RM-119) was added to v0 as an optional root property, with no new issue code, so no design
+needs migrating and every design without it draws the same SVG with the same step use; a reader older than RM-119
+rejects `palette` as an `unknown-property`. A design with a palette holds one more local in every scope, so each repeat
+item, `let` and component instance copies one more local and costs one more step.
 The grammar inside bindings is
 the expression language v0 of `@readmint/expr`, described in [docs/expressions.md](expressions.md).
