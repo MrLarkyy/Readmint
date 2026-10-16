@@ -249,7 +249,7 @@ props written into it are byte-identical.
 ### The examples repository
 
 [MrLarkyy/readmint-template-test](https://github.com/MrLarkyy/readmint-template-test) runs the three templates with the Action: per template its `designs/` (the
-folder above with the personal texts of `profileExampleProps` filled in, plus the fonts), the SVGs the Action wrote to
+folder above: the template designs byte for byte, the fonts, and a `settings.json` with the personal texts of `profileExampleProps`, set through the Action input `props-file`, which the pinned v0.3.0 carries), the SVGs the Action wrote to
 `readmint/`, a README with the snippet and one workflow with a step per template. To use one, copy its `designs/`
 folder and its step. The designs and READMEs there are generated, never edited by hand, from the template folders by
 `@readmint/examples` (a package of this repository, not published):
