@@ -62,20 +62,21 @@ design's own value. A value in `settings.json` wins over the same prop written i
 is ignored by the CLI and warned about by the Action, and a prop a section does not have fails the render. `theme`
 stays in the design (it is what makes the twin dark); `slot` of the repository sections may be set in either.
 
-| section  | prop              | type   | what it shows                                           | example                        |
-| -------- | ----------------- | ------ | ------------------------------------------------------- | ------------------------------ |
-| `header` | `role`            | string | first column, first line                                | `Developer`                    |
-| `header` | `roleDetail`      | string | first column, second line                               | `Tools and infrastructure`     |
-| `header` | `workingOn`       | string | second column, first line                               | `A build cache,`               |
-| `header` | `workingOnDetail` | string | second column, second line                              | `a docs site`                  |
-| `header` | `statusNote`      | string | third column, under the GitHub status, or in its place  | `Open to new projects`         |
-| `stack`  | `labels`          | array  | column headings after the languages, up to four         | `["Tools", "Data"]`            |
-| `stack`  | `items`           | array  | one text per heading, an item per line                  | `["Git\nMake", "SQLite"]`      |
-| `worked` | `items`           | array  | the names that run past; empty: the section stays blank | `["Team A", "Team B"]`         |
-| `footer` | `headline`        | string | the poster line, two lines with a line break            | `Open to new\nprojects.`       |
-| `footer` | `note`            | string | two lines with a line break                             | `Tooling and\ninfrastructure.` |
-| `footer` | `contactLabel`    | string | the label over the contact; empty: github               | `email`                        |
-| `footer` | `contactText`     | string | the contact; empty: your GitHub address                 | `hello@example.com`            |
+| section  | prop              | type   | what it shows                                                                                                                                                                                                      | example                        |
+| -------- | ----------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------ |
+| `header` | `role`            | string | first column, first line                                                                                                                                                                                           | `Developer`                    |
+| `header` | `roleDetail`      | string | first column, second line                                                                                                                                                                                          | `Tools and infrastructure`     |
+| `header` | `workingOn`       | string | second column, first line                                                                                                                                                                                          | `A build cache,`               |
+| `header` | `workingOnDetail` | string | second column, second line                                                                                                                                                                                         | `a docs site`                  |
+| `header` | `statusNote`      | string | third column, under the GitHub status, or in its place                                                                                                                                                             | `Open to new projects`         |
+| `stack`  | `languageShare`   | enum   | `bytes` (default): the languages by bytes of code; `repositories`: by the share of the repositories that use them, so one large repository does not dominate; falls back to bytes without `github.languagesByRepo` | `repositories`                 |
+| `stack`  | `labels`          | array  | column headings after the languages, up to four                                                                                                                                                                    | `["Tools", "Data"]`            |
+| `stack`  | `items`           | array  | one text per heading, an item per line                                                                                                                                                                             | `["Git\nMake", "SQLite"]`      |
+| `worked` | `items`           | array  | the names that run past; empty: the section stays blank                                                                                                                                                            | `["Team A", "Team B"]`         |
+| `footer` | `headline`        | string | the poster line, two lines with a line break                                                                                                                                                                       | `Open to new\nprojects.`       |
+| `footer` | `note`            | string | two lines with a line break                                                                                                                                                                                        | `Tooling and\ninfrastructure.` |
+| `footer` | `contactLabel`    | string | the label over the contact; empty: github                                                                                                                                                                          | `email`                        |
+| `footer` | `contactText`     | string | the contact; empty: your GitHub address                                                                                                                                                                            | `hello@example.com`            |
 
 For example, `settings.json` for the `header` section:
 
