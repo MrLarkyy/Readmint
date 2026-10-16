@@ -87,7 +87,8 @@ function pixel(data: Uint8Array): number[] {
 }
 
 describe("the gallery list", () => {
-  it("equals the starter and profile tables of docs/components.md", () => {
+  it("equals the profile, starter and calendar tables of docs/components.md", () => {
+    const calendars = rows(section(components, "Contribution calendar")).map((row) => row[0] ?? "");
     const starters = rows(section(components, "Starter templates")).map((row) => row[0] ?? "");
     const profileSection = section(components, "Profile templates");
     const tables = rows(profileSection);
@@ -95,6 +96,7 @@ describe("the gallery list", () => {
     expect(galleryTemplates.map((t) => t.name)).toEqual([
       ...profiles,
       ...starters.map((cell) => names(cell)[0]),
+      ...calendars.map((cell) => names(cell)[0]),
     ]);
     expect(galleryTemplates.filter((t) => t.kind === "profile").map((t) => t.name)).toEqual(
       profiles,
@@ -105,22 +107,25 @@ describe("the gallery list", () => {
     }
   });
 
-  it("equals the profile folders and starter design files on disk", () => {
+  it("equals the profile folders, starter and calendar design files on disk", () => {
     const profiles = readdirSync(`${templatesDir}profiles`, { withFileTypes: true })
       .filter((entry) => entry.isDirectory())
       .map((entry) => entry.name);
-    const starters = readdirSync(templatesDir)
-      .filter((file) => file.endsWith(".design.json") && !file.startsWith("calendar-"))
+    const designs = readdirSync(templatesDir)
+      .filter((file) => file.endsWith(".design.json"))
       .map((file) => file.slice(0, -".design.json".length));
+    const starters = designs.filter((name) => !name.startsWith("calendar-"));
+    const calendars = designs.filter((name) => name.startsWith("calendar-"));
     const listed = (kind: string): string[] =>
       galleryTemplates.filter((t) => t.kind === kind).map((t) => t.name);
     expect(listed("profile").sort()).toEqual(profiles.sort());
     expect(listed("starter").sort()).toEqual(starters.sort());
+    expect(listed("calendar").sort()).toEqual(calendars.sort());
   });
 
   it("equals the sections in the template folders", () => {
     for (const template of galleryTemplates) {
-      if (template.kind === "starter") {
+      if (template.kind !== "profile") {
         expect(existsSync(`${templatesDir}${template.name}.design.json`), template.name).toBe(true);
         expect(template.items).toEqual([template.name]);
         continue;
@@ -170,6 +175,36 @@ describe("the Gallery page", () => {
     expect(page.page).toContain(
       "](https://example.test/o/r/blob/main/packages/components/templates/banner.design.json)",
     );
+    for (const template of galleryTemplates.filter((t) => t.kind === "calendar")) {
+      expect(page.page).toContain(
+        `](https://example.test/o/r/blob/main/packages/components/templates/${template.name}.design.json)`,
+      );
+    }
+    expect(page.page).toContain("](Components-and-templates#contribution-calendar)");
+  });
+
+  it("shows the three calendars in light and dark, opaque on the page colour of the theme", () => {
+    const calendars = galleryTemplates.filter((t) => t.kind === "calendar");
+    expect(calendars.map((t) => t.name)).toEqual([
+      "calendar-heatmap",
+      "calendar-isometric",
+      "calendar-dots",
+    ]);
+    for (const { name, title } of calendars) {
+      for (const [theme, colour] of [
+        ["light", [255, 255, 255, 255]],
+        ["dark", [13, 17, 23, 255]],
+      ] as const) {
+        const alt = `![${title}, ${name}, ${theme}](gallery/`;
+        const start = page.page.indexOf(alt);
+        const target =
+          start < 0 ? undefined : page.page.slice(start + alt.length - 8).split(")")[0];
+        expect(target, `${name} ${theme}`).toBeDefined();
+        const image = PNG.sync.read(Buffer.from(page.files.get(target ?? "") ?? new Uint8Array()));
+        expect([...image.data.subarray(0, 4)], `${name} ${theme}`).toEqual([...colour]);
+        for (let i = 3; i < image.data.length; i += 4) expect(image.data[i]).toBe(255);
+      }
+    }
   });
 
   it("points every image at a written file", () => {

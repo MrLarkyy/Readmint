@@ -1,0 +1,34 @@
+{
+  "version": 0,
+  "canvas": {
+    "width": 10,
+    "height": 10,
+    "background": "{{ palette.bg }}"
+  },
+  "palette": {
+    "light": {
+      "bg": "#ffffff"
+    }
+  },
+  "components": {
+    "chip": {
+      "layers": [
+        {
+          "type": "rect",
+          "width": 1,
+          "height": 1,
+          "fill": "{{ palette['chip'] }}"
+        }
+      ]
+    }
+  },
+  "layers": [
+    {
+      "type": "rect",
+      "width": 1,
+      "height": 1,
+      "fill": "{{ palette.fg }}",
+      "stroke": "{{ 'palette.fg' }}"
+    }
+  ]
+}
