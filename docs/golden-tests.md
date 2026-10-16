@@ -156,3 +156,9 @@ docker run --rm -e CI=true -v "$PWD:/src:ro" mcr.microsoft.com/playwright:v1.64.
 Goldens are rendered by resvg with system fonts turned off, so they do not depend on the machine's fonts, and
 anti-aliased pixels are ignored by the comparison. They were generated on Windows and the whole suite also passes on Linux (`mcr.microsoft.com/playwright:v1.64.0-noble`, same lockfile). Chromium
 rasterization differs slightly between platforms (gradient dithering, AA), which the browser tolerance absorbs.
+
+## README images
+
+`assets/readme/year-ring-light.png` and `year-ring-dark.png`, shown at the top of the root `README.md`, are copies of
+`packages/components/test/golden/profiles-year-ring/year-light.png` and `year-dark.png`. When that golden changes
+deliberately, copy the new files over them.
