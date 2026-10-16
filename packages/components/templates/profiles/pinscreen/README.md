@@ -61,29 +61,33 @@ design's own value. A value in `settings.json` wins over the same prop written i
 is ignored by the CLI and warned about by the Action, and a prop a section does not have fails the render. `theme`
 stays in the design (it is what makes the twin dark); `slot` of the repository sections may be set in either.
 
-| section  | prop             | type   | what it shows                                                         | example                                         |
-| -------- | ---------------- | ------ | --------------------------------------------------------------------- | ----------------------------------------------- |
-| `header` | `role`           | string | the line under the name                                               | `Developer. Tools and infrastructure.`          |
-| `header` | `intro`          | string | the line under it; empty: the GitHub bio                              | `I build developer tools and write about them.` |
-| `header` | `branch`         | string | the branch in the status bar; default main                            | `main`                                          |
-| `header` | `statusBarRight` | string | the right end of the status bar                                       | `TypeScript · LF · UTF-8`                       |
-| `stack`  | `plugin`         | string | the plugins block; empty: no block                                    | `kotlin("jvm")`                                 |
-| `stack`  | `labels`         | array  | a comment per dependency line, up to four                             | `["tools", "data"]`                             |
-| `stack`  | `items`          | array  | the dependencies of each line                                         | `["git, make", "sqlite"]`                       |
-| `stack`  | `noteLabels`     | array  | comment lines at the end, up to three                                 | `["editor"]`                                    |
-| `stack`  | `noteItems`      | array  | their texts                                                           | `["Neovim"]`                                    |
-| `stack`  | `logoLabels`     | array  | a caption per card line, up to four; empty: a continued line          | `["now", "before"]`                             |
-| `stack`  | `logoLines`      | array  | the line (0 to 3) of each name, a number or its text; none: the first | `["0", "1"]`                                    |
-| `stack`  | `logoNames`      | array  | project names, each drawn as its logo or as text, in a card           | `["Example"]`                                   |
-| `stack`  | `logos`          | array  | the path data of each logo; empty: the name is drawn as text instead  | `["M0 0h14v14H0Z"]`                             |
-| `stack`  | `logosRow`       | number | the index of the note line the card follows; default -1: none         | `1`                                             |
-| `footer` | `headline`       | string | the closing line                                                      | `Open to new projects.`                         |
-| `footer` | `note`           | string | one line under it                                                     | `Tooling, infrastructure and documentation.`    |
-| `footer` | `contactLabel`   | string | the label over the contact; empty: github                             | `email`                                         |
-| `footer` | `contactText`    | string | the contact; empty: your GitHub address                               | `hello@example.com`                             |
+| section  | prop             | type   | what it shows                                                                              | example                                         |
+| -------- | ---------------- | ------ | ------------------------------------------------------------------------------------------ | ----------------------------------------------- |
+| `header` | `role`           | string | the line under the name                                                                    | `Developer. Tools and infrastructure.`          |
+| `header` | `intro`          | string | the line under it; empty: the GitHub bio                                                   | `I build developer tools and write about them.` |
+| `header` | `branch`         | string | the branch in the status bar; default main                                                 | `main`                                          |
+| `header` | `statusBarRight` | string | the right end of the status bar                                                            | `TypeScript · LF · UTF-8`                       |
+| `stack`  | `plugin`         | string | the plugins block; empty: no block                                                         | `kotlin("jvm")`                                 |
+| `stack`  | `labels`         | array  | a comment per dependency line, up to four                                                  | `["tools", "data"]`                             |
+| `stack`  | `items`          | array  | the dependencies of each line                                                              | `["git, make", "sqlite"]`                       |
+| `stack`  | `noteLabels`     | array  | comment lines at the end, up to three                                                      | `["editor"]`                                    |
+| `stack`  | `noteItems`      | array  | their texts                                                                                | `["Neovim"]`                                    |
+| `stack`  | `logoFills`      | array  | the fill of each layer, `#RRGGBB`, at the index of `logoLayers`; empty: the comment colour | `["", "#E5484D"]`                               |
+| `stack`  | `logoFillsDark`  | array  | the same for the dark design, read first; empty: `logoFills`                               | `["", "#FF6369"]`                               |
+| `stack`  | `logoLabels`     | array  | a caption per card line, up to four; empty: a continued line                               | `["now", "before"]`                             |
+| `stack`  | `logoLayers`     | array  | 4 path layers per name (name k: 4k to 4k+3), bottom to top; empty: `logos`, then the name  | `["M0 0h14v14H0Z", "", "", ""]`                 |
+| `stack`  | `logoLines`      | array  | the line (0 to 3) of each name, a number or its text; none: the first                      | `["0", "1"]`                                    |
+| `stack`  | `logoNames`      | array  | project names; each is drawn as its logo, as text, or both, in a card                      | `["Example"]`                                   |
+| `stack`  | `logoWithName`   | array  | a name per logo: any text draws the name next to it; empty: the logo replaces it           | `["1"]`                                         |
+| `stack`  | `logos`          | array  | one ink path per name (no layers), the old form; unused where `logoLayers` has an entry    | `["M0 0h14v14H0Z"]`                             |
+| `stack`  | `logosRow`       | number | the index of the note line the card follows; default -1: none                              | `1`                                             |
+| `footer` | `headline`       | string | the closing line                                                                           | `Open to new projects.`                         |
+| `footer` | `note`           | string | one line under it                                                                          | `Tooling, infrastructure and documentation.`    |
+| `footer` | `contactLabel`   | string | the label over the contact; empty: github                                                  | `email`                                         |
+| `footer` | `contactText`    | string | the contact; empty: your GitHub address                                                    | `hello@example.com`                             |
 
 The stack is as tall as its build file, up to fifteen lines, and never shorter than its languages panel, so a short
-file leaves no empty space below it. The note line named by `logosRow` keeps its label and is followed by a card of up to four code lines, each a comment with its caption from `logoLabels` (a line whose caption is empty continues the one above; with no caption at all the names start at the left) and the names whose `logoLines` entry is that line's number. A name is drawn as the path data in the same place of `logos` (one monochrome path with its origin at 0 0, 14 px tall, in the comment colour, so one path serves the light and the dark design) in place of the name, which is drawn as text only where that entry is empty. Every card line is one code line (19 at most); at most 12 names are drawn and a line is cut at the panel edge. Without `logoNames` or with `logosRow` outside the note lines the line shows its text.
+file leaves no empty space below it. The note line named by `logosRow` keeps its label and is followed by a card of up to four code lines, each a comment with its caption from `logoLabels` (a line whose caption is empty continues the one above; with no caption at all the names start at the left) and the names whose `logoLines` entry is that line's number. A name is drawn as its colour logo: `logoLayers` holds 4 path slots per name (name k at 4k to 4k+3, painted bottom to top; each path with its origin at 0 0, 14 px tall, absolute `M`/`L`/`C`/`Z`; slot 0 is the whole silhouette and each later slot what the next colour covers, so the colours leave no seam; at most 6000 characters of path data for the layers of one name), each filled with the `#RRGGBB` at the same index of `logoFills` and, in the dark design, of `logoFillsDark` first; an empty fill draws in the comment colour, so a neutral part follows the theme and a brand colour keeps its hue (keep each fill at 2:1 contrast with the panel in both designs, or give the dark design its own). A name with `logoWithName` set is drawn next to its logo (an icon); without it the logo replaces the name (a wordmark). A name without layers uses the old single ink path of `logos`, else it is drawn as text. The fills must be colours: any other text makes the render fail and writes nothing of it. Every card line is one code line (19 at most); at most 12 names are drawn and a line is cut at the panel edge. Without `logoNames` or with `logosRow` outside the note lines the line shows its text.
 
 For example, `settings.json` for the `header` section:
 
