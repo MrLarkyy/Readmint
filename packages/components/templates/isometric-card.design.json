@@ -77,6 +77,31 @@
         "level4": {
           "type": "color",
           "default": "#216e39"
+        },
+        "theme": {
+          "type": "enum",
+          "values": ["light", "dark"],
+          "default": "light"
+        },
+        "level0Dark": {
+          "type": "color",
+          "default": "#161b22"
+        },
+        "level1Dark": {
+          "type": "color",
+          "default": "#0e4429"
+        },
+        "level2Dark": {
+          "type": "color",
+          "default": "#006d32"
+        },
+        "level3Dark": {
+          "type": "color",
+          "default": "#26a641"
+        },
+        "level4Dark": {
+          "type": "color",
+          "default": "#39d353"
         }
       },
       "layers": [
@@ -101,7 +126,7 @@
             "size": "{{ props.cellSize }}",
             "radius": "{{ props.radius }}",
             "height": "{{ props.projection == \"isometric\" ? ((day.count | min(props.maxCount)) / props.maxCount * props.maxHeight | round(2)) : 0 }}",
-            "color": "{{ [props.level0, props.level1, props.level2, props.level3, props.level4][day.level] | default(props.level0) }}"
+            "color": "{{ props.theme == \"dark\" ? ([props.level0Dark, props.level1Dark, props.level2Dark, props.level3Dark, props.level4Dark][day.level] | default(props.level0Dark)) : ([props.level0, props.level1, props.level2, props.level3, props.level4][day.level] | default(props.level0)) }}"
           }
         }
       ]
@@ -215,11 +240,7 @@
             "cellSize": 9,
             "gap": 2,
             "maxHeight": 24,
-            "level0": "{{ props.theme == \"dark\" ? \"#161b22\" : \"#ebedf0\" }}",
-            "level1": "{{ props.theme == \"dark\" ? \"#0e4429\" : \"#9be9a8\" }}",
-            "level2": "{{ props.theme == \"dark\" ? \"#006d32\" : \"#40c463\" }}",
-            "level3": "{{ props.theme == \"dark\" ? \"#26a641\" : \"#30a14e\" }}",
-            "level4": "{{ props.theme == \"dark\" ? \"#39d353\" : \"#216e39\" }}"
+            "theme": "{{ props.theme }}"
           },
           "x": 24,
           "y": 56
