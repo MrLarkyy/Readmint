@@ -24,6 +24,7 @@ import { createEditorState, type EditorState } from "./EditorState.js";
 import { effectiveDesign } from "./effectiveDesign.js";
 import { exportDesign } from "./exportDesign.js";
 import { exportDesignYaml } from "./exportDesignYaml.js";
+import { exportSettings } from "./exportSettings.js";
 import { importDesign } from "./importDesign.js";
 import { IssueList } from "./IssueList.js";
 import { findLayer } from "./layerAccess.js";
@@ -42,6 +43,9 @@ import { resizeLayer } from "./resizeLayer.js";
 import { selectLayer } from "./selectLayer.js";
 import { setFontAsset } from "./setFontAsset.js";
 import { setLayerProperty } from "./setLayerProperty.js";
+import { setSettingsProp } from "./setSettingsProp.js";
+import { SettingsPanel } from "./SettingsPanel.js";
+import { withSection } from "./settingsSection.js";
 import { Toolbar } from "./Toolbar.js";
 
 /** A design file the editor hands over to be saved. */
@@ -62,6 +66,8 @@ export interface MountEditorOptions {
   readonly initial?: Design;
   /** Receives the exported design file; default a download in the browser. */
   readonly save?: (file: SavedDesign) => void;
+  /** Receives the exported settings file (`settings.json`); default a download in the browser. */
+  readonly saveSettings?: (file: SavedDesign) => void;
   /** Receives the exported image (`design.png`, `design.webp`); default a download in the browser. */
   readonly saveImage?: (file: SavedImage) => void;
   /** The raster worker; default the bundled `rasterWorker`, started for each export. */
@@ -98,6 +104,7 @@ export function mountEditor(root: HTMLElement, options: MountEditorOptions = {})
   let history: EditorHistory = createHistory();
   let previewIssues: readonly EditorIssue[] = [];
   let settingsIssues: readonly EditorIssue[] = [];
+  let settingsWarnings: readonly EditorIssue[] = [];
   let designFileName: string | undefined;
   let svg: string | undefined;
   const pending = new Set<Promise<unknown>>();
@@ -107,6 +114,7 @@ export function mountEditor(root: HTMLElement, options: MountEditorOptions = {})
   const render = (current: EditorState) => {
     const effective = effectiveDesign(current);
     settingsIssues = effective.issues;
+    settingsWarnings = effective.warnings;
     client.render({
       design: effective.design,
       data: current.data,
@@ -166,7 +174,14 @@ export function mountEditor(root: HTMLElement, options: MountEditorOptions = {})
       report("export", "a raster export is already running; wait for it to finish");
       return;
     }
-    const { design, issues } = effectiveDesign(state);
+    const { design, issues, unknownProps } = effectiveDesign(state);
+    if (unknownProps.length > 0) {
+      report(
+        "export",
+        `the ${format} export is refused: the settings section has props the design does not declare (${unknownProps.slice(0, 5).join(", ")}${unknownProps.length > 5 ? ", ..." : ""}); remove them first, as the CLI refuses them`,
+      );
+      return;
+    }
     if (issues.length > 0) {
       report(
         "export",
@@ -280,6 +295,14 @@ export function mountEditor(root: HTMLElement, options: MountEditorOptions = {})
         "the YAML export failed",
       );
     },
+    exportSettings: () => {
+      const settings = state.settings;
+      if (settings === undefined) return;
+      const file = { name: "settings.json", text: exportSettings(settings) };
+      if (options.saveSettings === undefined)
+        download(root, file.name, file.text, "application/json");
+      else options.saveSettings(file);
+    },
     exportPng: () => {
       exportImage("png");
     },
@@ -357,7 +380,15 @@ export function mountEditor(root: HTMLElement, options: MountEditorOptions = {})
         return;
       }
       track(
-        file.text().then((text) => {
+        file.arrayBuffer().then((buffer) => {
+          let text: string;
+          try {
+            // As the CLI reads it: strict UTF-8, a BOM kept so an unedited export is the file's own bytes.
+            text = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(buffer);
+          } catch {
+            report("settings", "settings file is not valid UTF-8");
+            return;
+          }
           dispatch((current) =>
             loadSettings(
               current,
@@ -433,6 +464,14 @@ export function mountEditor(root: HTMLElement, options: MountEditorOptions = {})
       dispatch((current) => refuse(current, "design", message, path));
     },
   });
+  const settingsPanel = new SettingsPanel(side, {
+    set: (prop, value) => {
+      dispatch((current) => setSettingsProp(current, prop, value));
+    },
+    invalid: (message) => {
+      report("settings", message);
+    },
+  });
   const issues = new IssueList(shell, select);
 
   const show = () => {
@@ -442,7 +481,8 @@ export function mountEditor(root: HTMLElement, options: MountEditorOptions = {})
     assets.update(state);
     canvas.update(state);
     properties.update(state);
-    issues.update([...state.issues, ...settingsIssues, ...previewIssues]);
+    settingsPanel.update(state);
+    issues.update([...state.issues, ...settingsIssues, ...settingsWarnings, ...previewIssues]);
   };
 
   const client = new PreviewClient({
@@ -510,7 +550,7 @@ function withSession(fresh: EditorState, previous: EditorState): EditorState {
     data: previous.data,
     ...(previous.settings === undefined
       ? {}
-      : { settings: { sections: previous.settings.sections } }),
+      : { settings: withSection(previous.settings, undefined) }),
   };
 }
 

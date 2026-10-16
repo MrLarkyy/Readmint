@@ -10,8 +10,10 @@ import {
   effectiveDesign,
   exportDesign,
   importDesign,
+  exportSettings,
   loadSettings,
   renderPreview,
+  setSettingsProp,
 } from "../src/index.js";
 import { editorSession, imageSession } from "./editorSession.js";
 import { settingsDesign, settingsText } from "./settingsDesign.js";
@@ -105,4 +107,34 @@ test("the preview with a settings section equals readmint render --props on the 
   });
   expect(code).toBe(ExitCode.ok);
   expect(stdout).toBe(preview.svg);
+});
+
+test("an edited and exported settings file renders in the CLI to the preview bytes and re-imports to the same state", async () => {
+  const loaded = chooseSection(
+    loadSettings(createEditorState(settingsDesign), settingsText, "header"),
+    "header",
+  );
+  const edited = setSettingsProp(loaded, "color", "#0a0b0c");
+  expect(edited.issues).toEqual([]);
+  const { design, issues } = effectiveDesign(edited);
+  expect(issues).toEqual([]);
+  const preview = renderPreview({ design, data: edited.data, sessionAssets: edited.sessionAssets });
+  expect(preview.ok).toBe(true);
+  if (!preview.ok) return;
+  const exported = exportSettings(edited.settings ?? { sections: {} });
+  await writeFile(join(folder, "header.json"), exportDesign(edited.design));
+  await writeFile(join(folder, "settings.json"), exported);
+  let stdout = "";
+  const code = await runCli(["render", "header.json", "--props", "settings.json"], {
+    cwd: folder,
+    stdout: (text) => {
+      stdout += text;
+    },
+    stderr: () => undefined,
+  });
+  expect(code).toBe(ExitCode.ok);
+  expect(stdout).toBe(preview.svg);
+  const again = loadSettings(createEditorState(settingsDesign), exported, "header");
+  expect(again.settings?.sections).toEqual(edited.settings?.sections);
+  expect(again.settings?.section).toBe("header");
 });

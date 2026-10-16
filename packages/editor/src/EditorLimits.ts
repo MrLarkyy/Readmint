@@ -6,6 +6,8 @@ export const EditorLimits = Object.freeze({
   maxFixtureBytes: 8 * 1024 * 1024,
   /** Settings file in UTF-8 bytes: three per character of the longest source the format takes, as the CLI's `--props` cap. */
   maxSettingsBytes: 3 * DesignLimits.maxSourceLength + 3,
+  /** Items of one settings prop list the form edits; the design format's cap on a literal prop list. */
+  maxSettingsListItems: 1000,
   /** One font file: the renderer's `RenderLimits.maxFontBytes`, checked before the file is parsed. */
   maxFontBytes: 4_194_304,
   /**
