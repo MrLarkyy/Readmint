@@ -157,7 +157,7 @@
                                               "type": "text",
                                               "x": 92,
                                               "y": 8.452,
-                                              "content": "{{ rp.name | upper }}",
+                                              "content": "{{ rp.name | upper | truncateWidth(540, \"xbold\", 22, 0.44) }}",
                                               "font": "xbold",
                                               "fontSize": 22,
                                               "letterSpacing": 0.44,
