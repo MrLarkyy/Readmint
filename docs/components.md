@@ -140,8 +140,8 @@ Five complete designs that show what the format can do; each is an ordinary desi
   `enum` issue. The theme sets no canvas `background` (a canvas binding could read it), so the card's rounded panel
   keeps the page around its corners.
 - **The calendar.** `isometric-card` and `profile-card` carry the `calendar` and `cell` components of the
-  calendar templates above unchanged (a test compares them); only the instance's props differ. They set
-  `level0`..`4` from the card's `theme` themselves and leave the calendar's own `theme` at `"light"`.
+  calendar templates above unchanged (a test compares them); only the instance's props differ. They pass
+  the card's `theme` to the calendar's own `theme`, so the dark levels are the calendar's `level0Dark`..`4Dark`.
 - **Fonts.** Text needs a font asset. The templates use Montserrat Medium and ExtraBold from `templates/fonts/`
   (SIL Open Font License 1.1, `OFL.txt` and the sha256 of each file beside them); their `src` is the relative path
   `fonts/Montserrat-Medium.ttf`, resolved against the design file by the CLI and the Action. The banner names its

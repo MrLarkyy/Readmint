@@ -240,11 +240,7 @@
             "cellSize": 9,
             "gap": 2,
             "maxHeight": 24,
-            "level0": "{{ props.theme == \"dark\" ? \"#161b22\" : \"#ebedf0\" }}",
-            "level1": "{{ props.theme == \"dark\" ? \"#0e4429\" : \"#9be9a8\" }}",
-            "level2": "{{ props.theme == \"dark\" ? \"#006d32\" : \"#40c463\" }}",
-            "level3": "{{ props.theme == \"dark\" ? \"#26a641\" : \"#30a14e\" }}",
-            "level4": "{{ props.theme == \"dark\" ? \"#39d353\" : \"#216e39\" }}"
+            "theme": "{{ props.theme }}"
           },
           "x": 24,
           "y": 56

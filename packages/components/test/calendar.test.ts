@@ -179,7 +179,8 @@ describe.each(calendarTemplates)("%s theme", (name) => {
     for (const colour of lightLevels) expect(svg).not.toContain(colour);
     expect(svg).toContain("#161b22");
     expect(svg).toContain("#39d353");
-    expect(svg).not.toMatch(/^<svg[^>]*><rect /u);
+    expect(svg).not.toMatch(/<\/desc><rect width=/u);
+    expect(renderCalendar({ design: loadTemplate(name), data })).toMatch(/<\/desc><rect width=/u);
   });
 
   test("the empty dark calendar draws no background", () => {
