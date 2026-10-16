@@ -203,8 +203,9 @@ cannot silently change an existing pattern. A pattern has at most 64 characters.
 A step is one expression node, plus one per 16 characters or one per item a filter or operator processes: string
 `+`, `==`, `!=` and `< <= > >=`, a string used as an index, literal text, and every filter that reads a string or
 an array. Work is
-charged and sizes are checked before the work is done, so a hostile expression stops early. A `let` copies the locals
-of its scope once and is charged one step per local it copies plus one per name it binds, for every copy of the layer. Long flat chains
+charged and sizes are checked before the work is done, so a hostile expression stops early. Copying a scope is charged
+too, for every copy: a `let` one step per local it copies plus one per name it binds, a `repeat` item one per local
+plus two (the item and the index), and the renderer's component props scope one per local plus one. Long flat chains
 (`a + b + …`, `a.b.c…`, `a | f | g …`) are evaluated by loops; only nesting counts against the depth limit.
 
 ## Errors
@@ -267,6 +268,7 @@ evaluateCondition(ifTemplate, scope); // ExprResult<boolean>, for a layer's `if`
 expandRepeat(eachTemplate, scope, { as: "repo", index: "i" }); // ExprResult<Scope[]>, one child scope per item
 scope.with({ props: { label: "Stars" } }); // a child scope with locals, e.g. component props
 scope.extend(["n", "half"], (name, inner) => valueOf(name, inner)); // ExprResult<Scope>, names bound in order
+scope.localCount; // the locals the scope holds: what copying them into a child scope costs
 template.value.names; // ReadonlySet<string>: the names the placeholders read, e.g. {"n"} for "{{ n.total / 2 }}"
 toText(value); // string | undefined: a value written as a placeholder in text is; undefined for an array or object
 ```
@@ -275,11 +277,13 @@ toText(value); // string | undefined: a value written as a placeholder in text i
 - A `Template` is frozen and reusable; compile each design string once.
 - `expandRepeat` defaults `as` to `item` and `index` to `index` (0-based); both must be names an expression can
   read (`repo-index`, not `repo-1`, `1st` or `true`) and differ, else `argument`; `null` repeats nothing, anything but an
-  array is a `type` error, more than 10000 items `too-large`. Child scopes keep the outer locals and data.
+  array is a `type` error, more than 10000 items `too-large`. With a shared budget, items x (`scope.localCount` + 2)
+  steps are charged before any child scope is made (`budget`). Child scopes keep the outer locals and data.
 - `scope.extend(names, valueOf)` (a `let`) copies the locals once and binds each name to `valueOf(name, inner)`, where
-  `inner` already holds the names before it and is valid only during that call. The copy and the names are charged to
-  the budget first (`budget`), and more than `ExpressionLimits.maxLocals` (256) locals in the result fail `too-large`
-  before anything is evaluated; the error has an empty excerpt. When `valueOf` throws, the copy is dropped.
+  `inner` already holds the names before it and is valid only during that call. Before anything is evaluated, the
+  existing locals plus the new names are checked against `ExpressionLimits.maxLocals` (256; more fail `too-large`),
+  then that many steps are charged to the budget (`budget`); either error has an empty excerpt. When `valueOf` throws,
+  the copy is dropped.
 - A `TextMeasurer` has `width(text, font, size, letterSpacing)` (pixels) and
   `truncate(text, width, font, size, letterSpacing)` (the cut text); both return `undefined` for a font id the design
   does not have. Child scopes keep it. A scope built by hand may leave `measurer` out.

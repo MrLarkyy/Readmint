@@ -66,8 +66,9 @@ apply unchanged:
 - A `let` is checked once per render before any entry is evaluated: an entry that reads itself or a later entry, or
   a name that is a top-level key of `data`, is a `binding` issue at that entry (`/layers/0/let/total`); an entry whose
   expression fails is one too. Each copy copies the locals once, charged to `maxExpressionSteps` (one step per local
-  copied and per name bound); a scope of more than 256 locals is a `binding` issue of expr code `too-large` at the
-  `let`.
+  copied and per name bound), and so is every copy below it: each repeat copy one step per local it copies plus two
+  (item and index), each component instance one per local plus one (`props`). A scope of more than 256 locals is a
+  `binding` issue of expr code `too-large` at the `let`.
 - The scope carries the renderer's text measurer, so `textWidth` and `truncateWidth`
   ([expressions](expressions.md#filters)) measure with the shaping a text layer is drawn with: the same code lays
   out a drawn text and a measured one (each paragraph on one line, the widest counts), so a measured width is the box
@@ -90,8 +91,8 @@ expression error ends the render with a `binding` issue whose message carries ex
 Drawn in document order, first at the back. Layer `id` and `name` are not emitted.
 
 - **repeat** gives one copy per item of `each` (at most 10000 items per repeat); then, per copy, the `let` names are
-  bound in key order, then `visible: false` or a falsy `if` drops it, then the layer's properties, props, animation and
-  children are resolved with those names in scope. A `let` is evaluated before `if`, so a guard against missing data
+  bound in key order, then `visible: false` or a falsy `if` drops it, then the layer's own properties (a component
+  instance's props after them), then its children and last its animation are resolved with those names in scope. A `let` is evaluated before `if`, so a guard against missing data
   goes on the parent. A dropped layer takes no slot in a stack or grid. The copies of every repeat of a render count
   toward `maxRepeatCopies` before any is dropped, so nested repeats that `if` empties still stop with `too-large` at
   the repeat that passes the limit.

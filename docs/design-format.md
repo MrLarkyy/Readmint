@@ -200,21 +200,24 @@ Every layer has `type` (required) and these optional properties:
 }
 ```
 
-renders byte for byte like its older one-item-repeat form, one empty group per name:
+A `let` of one name renders byte for byte like a one-item `repeat` on the same layer, which is how designs bound a
+local before:
+
+```json
+{ "type": "group", "let": { "total": "{{ github.contributions.total }}" }, "children": ["..."] }
+```
 
 ```json
 {
   "type": "group",
   "repeat": { "each": "{{ [github.contributions.total] }}", "as": "total" },
-  "children": [
-    {
-      "type": "group",
-      "repeat": { "each": "{{ [total / 2] }}", "as": "half" },
-      "children": ["..."]
-    }
-  ]
+  "children": ["..."]
 }
 ```
+
+A layer has one `repeat`, so the one-item-repeat form of several names needs one more wrapper group per further name
+(`half` and `label` above), and each wrapper writes its own `<g>`: that form is not the same bytes as one `let`, it
+draws the same shapes.
 
 - Keys are local names: a letter or `_`, then letters, digits and `_`, with `-` only before a letter or `_`
   (`repo-name`, not `x-1`, which reads as a subtraction), at most 64 characters; at most 64 entries per layer. Values
@@ -223,8 +226,9 @@ renders byte for byte like its older one-item-repeat form, one empty group per n
   is a render `binding` issue at that entry (`/layers/0/let/total`), reported before any entry is evaluated, so it never
   reads an outer value of the same name by accident.
 - Order on a layer: `repeat` first (each copy gets its own `let` values and can read `item` and `index`), then `let`,
-  then `visible` and `if`, then the layer's own properties, its props, its animation and its children. A `let` is
-  evaluated even when `if` then drops the copy, so a guard against missing data goes on the parent layer.
+  then `visible` and `if`, then the layer's own properties (a component instance's props after them), then its
+  children, and last its animation. A `let` is evaluated even when `if` then drops the copy, so a guard against missing
+  data goes on the parent layer.
 - The names are visible to the layer and its whole subtree, including the layers of a component the layer
   instantiates, exactly like repeat names.
 - A name may not be `props`, `true`, `false` or `null` (`reserved-name`), nor a name the same layer's repeat binds
