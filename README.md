@@ -68,10 +68,10 @@ Every input, the permissions and the errors are in the [GitHub Action](docs/acti
 The user guide is [the wiki](https://github.com/MrLarkyy/Readmint/wiki), generated from [`docs/`](docs)
 ([how it is published](docs/wiki-publishing.md)):
 
-| start                                           | design                                                                                                                  | run                                                                                           |
-| ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
-| [Getting started](docs/getting-started.md)      | [Design format](docs/design-format.md), [Expressions](docs/expressions.md), [Components and templates](docs/components.md) | [GitHub Action](docs/action.md), [CLI](docs/cli.md), [Editor](docs/editor.md)                  |
-| [Troubleshooting](docs/troubleshooting.md)      | [Fonts and licensing](docs/fonts.md), [Data sources](docs/data-sources.md), [GitHub data](docs/data-github.md)          | [Renderer](docs/renderer.md), [Output formats](docs/raster.md), [Asset loading](docs/asset-loading.md) |
+| start                                      | design                                                                                                                     | run                                                                                                    |
+| ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| [Getting started](docs/getting-started.md) | [Design format](docs/design-format.md), [Expressions](docs/expressions.md), [Components and templates](docs/components.md) | [GitHub Action](docs/action.md), [CLI](docs/cli.md), [Editor](docs/editor.md)                          |
+| [Troubleshooting](docs/troubleshooting.md) | [Fonts and licensing](docs/fonts.md), [Data sources](docs/data-sources.md), [GitHub data](docs/data-github.md)             | [Renderer](docs/renderer.md), [Output formats](docs/raster.md), [Asset loading](docs/asset-loading.md) |
 
 Contributors: [golden tests](docs/golden-tests.md) and [wiki publishing](docs/wiki-publishing.md).
 
