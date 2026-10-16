@@ -117,6 +117,19 @@ describe("resizeLayer", () => {
   });
 });
 
+describe("a layer on an orbit", () => {
+  const orbit = { center: { x: 50, y: 50 }, radius: 30, radiusY: 10, angle: "{{ 45 }}" };
+  const placed = { ...rect, orbit };
+
+  test("keeps its orbit as it is when another property is set or it is moved", () => {
+    let next = setLayerProperty(state([placed]), "/layers/0", "fill", "#ff0000");
+    next = moveLayer(next, "/layers/0", 3, -2);
+    expect(next.issues).toEqual([]);
+    expect(next.design.layers[0]).toEqual({ ...placed, x: 13, y: 8, fill: "#ff0000" });
+    expect((next.design.layers[0] as typeof placed).orbit).toBe(orbit);
+  });
+});
+
 describe("setLayerProperty", () => {
   test("sets literals and bindings, removes with undefined", () => {
     let next = setLayerProperty(state([rect]), "/layers/0", "fill", "#ff0000");
