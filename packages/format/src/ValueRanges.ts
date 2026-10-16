@@ -34,6 +34,10 @@ export const ValueRanges = Object.freeze({
   scale: range({ minimum: -100, maximum: 100 }),
   /** The y coordinates of a cubic-bezier easing; above 1 or below 0 overshoots. */
   easingY: range({ minimum: -10, maximum: 10 }),
+  /** Degrees per second along an orbit: ten turns a second either way. */
+  orbitSpeed: range({ minimum: -3600, maximum: 3600 }),
+  /** Depth on an orbit, the sine of its angle: -1 at the back, 1 at the front. */
+  depth: range({ minimum: -1, maximum: 1 }),
 });
 
 export type ValueRangeName = keyof typeof ValueRanges;
