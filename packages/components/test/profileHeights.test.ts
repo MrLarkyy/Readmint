@@ -111,6 +111,22 @@ describe("year-ring index: a wrapping logo strip", () => {
     const five = { ...rows, logoNames: logoNames.slice(0, 5), logos: logos.slice(0, 5) };
     expect(renderTwins("year-ring", "index", five, 3).height).toBe(327);
   });
+
+  test("a row the 8-row cap hides draws no strip and adds no height", () => {
+    const hidden = { ...rows, logosRow: 7, logoNames, logos };
+    expect(renderTwins("year-ring", "index", hidden, 3).height).toBe(327);
+  });
+
+  test("a fractional row draws no strip and adds no height", () => {
+    const { height, boxes } = renderTwins(
+      "year-ring",
+      "index",
+      { ...rows, logosRow: 2.5, logoNames, logos },
+      3,
+    );
+    expect(height).toBe(327);
+    expect(boxes.filter((box) => box.width === 14 && box.height === 14)).toHaveLength(0);
+  });
 });
 
 describe("pinscreen stack: a wrapping logo strip", () => {
@@ -132,6 +148,11 @@ describe("pinscreen stack: a wrapping logo strip", () => {
   test("5 logos add no line", () => {
     const five = { ...notes, logoNames: logoNames.slice(0, 5), logos: logos.slice(0, 5) };
     expect(renderTwins("pinscreen", "stack", five, 4).height).toBe(396);
+  });
+
+  test("a fractional row draws no strip and adds no line", () => {
+    const fractional = { ...notes, logosRow: 1.5, logoNames, logos };
+    expect(renderTwins("pinscreen", "stack", fractional, 4).height).toBe(396);
   });
 });
 

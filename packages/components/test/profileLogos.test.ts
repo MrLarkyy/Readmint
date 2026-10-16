@@ -5,7 +5,7 @@ import { profileExampleProps } from "@readmint/examples/props";
 import { describe, expect, test } from "vitest";
 import type { ProfileSection, ProfileTemplate } from "../src/index.js";
 import { loadProfile, profileFontAssets, type ProfileTheme } from "./profileDesigns.js";
-import { sampleProfileData } from "./sampleProfileData.js";
+import { sampleProfileData, worstCaseProfileData } from "./sampleProfileData.js";
 
 type Props = Readonly<Record<string, ComponentPropValue>>;
 
@@ -120,6 +120,24 @@ describe.each(cases)("the logo strip of %o (%s)", (strip, theme) => {
     expect(items.filter((box) => box.y === Math.min(...lines))).toHaveLength(4);
   });
 
+  test.runIf(strip.template === "year-ring")(
+    "centres a line of logos on the 18 px text height of its row, like a line of text",
+    () => {
+      const { boxes } = render(
+        strip,
+        theme,
+        withLogos(
+          strip,
+          names.map(() => square),
+        ),
+      );
+      const rowTop = 35 + 36 * (strip.row + 1);
+      const textTop = rowTop + 8.292;
+      const first = Math.min(...squares(boxes).map((box) => box.y));
+      expect(first + 7).toBeCloseTo(textTop + 9, 6);
+    },
+  );
+
   test("stays on one line below 6 items and grows the canvas only when it wraps", () => {
     const plain = render(strip, theme, {});
     const five = render(
@@ -222,11 +240,24 @@ describe.each(cases)("the logo strip of %o (%s)", (strip, theme) => {
     if (!result.ok) expect(result.issues.map((issue) => issue.code)).toContain("range");
   });
 
-  test("stays within the budget and half the limits with 12 widest paths", () => {
-    const twelve = Array.from({ length: 12 }, (_, index) => `Name ${String(index)}`);
+  test("stays within the budget and half the limits with 12 widest paths, every prop at its cap, worst-case data", () => {
+    const long = (label: string) => `${label} ${"W".repeat(200)}`;
+    const capped = (count: number, label: string) =>
+      Array.from({ length: count }, (_, index) => long(`${label}${String(index)}`));
+    const twelve = capped(12, "Name");
+    const filled: Props =
+      strip.template === "year-ring"
+        ? { labels: capped(8, "label"), values: capped(8, "value") }
+        : {
+            plugin: long("plugin"),
+            labels: capped(4, "group"),
+            items: capped(4, "item"),
+            noteLabels: capped(3, "note"),
+            noteItems: capped(3, "text"),
+          };
     const loaded: Design = loadProfile(strip.template, strip.section, theme);
     const applied = applyDesignProps(loaded, {
-      ...strip.base,
+      ...filled,
       ...withLogos(
         strip,
         twelve.map(() => widest),
@@ -235,7 +266,7 @@ describe.each(cases)("the logo strip of %o (%s)", (strip, theme) => {
     });
     if (!applied.ok) throw new Error(JSON.stringify(applied.issues));
     const result = renderSvg(applied.value, {
-      data: sampleProfileData(),
+      data: worstCaseProfileData(),
       assets: { fonts: profileFontAssets(strip.template, applied.value) },
       time: 0,
       limits: {

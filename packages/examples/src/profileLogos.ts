@@ -22,7 +22,7 @@ export interface ProfileLogo {
 const retrieved = "2026-10-16";
 const notDownloaded = "n/a: not downloaded";
 
-/** No logo is committed: none of the projects publishes a licence that allows redistributing it. */
+/** No logo is committed: for none was a licence found that allows redistributing it (see each entry). */
 export const profileLogos: readonly ProfileLogo[] = [
   {
     name: "Hoplite",
@@ -30,9 +30,8 @@ export const profileLogos: readonly ProfileLogo[] = [
     source: "https://hoplite.gg/",
     retrieved,
     sha256: notDownloaded,
-    licence:
-      "Not committed: the site answered 403 to the fetch and publishes no brand kit or terms.",
-    trademark: "Hoplite",
+    licence: "Not committed: the site is not readable (HTTP 403), no brand kit found.",
+    trademark: "unknown",
   },
   {
     name: "Minebox",
@@ -51,12 +50,12 @@ export const profileLogos: readonly ProfileLogo[] = [
     retrieved,
     sha256: notDownloaded,
     licence: "Not committed: the logo on the site is a raster image and the site states no terms.",
-    trademark: "Cobblemon Islands",
+    trademark: "unknown",
   },
   {
     name: "Mineclub",
     d: "",
-    source: "n/a: mineclub.com does not resolve; the server is play.mineclub.com",
+    source: "n/a: mineclub.com does not resolve",
     retrieved,
     sha256: notDownloaded,
     licence: "Not committed: no official source of the logo was found.",
@@ -79,7 +78,7 @@ export const profileLogos: readonly ProfileLogo[] = [
     sha256: notDownloaded,
     licence:
       "Not committed: the header logo is a vector, but the site publishes no brand kit and no permission to reuse it.",
-    trademark: "we.builders",
+    trademark: "unknown",
   },
   {
     name: "Partners",
