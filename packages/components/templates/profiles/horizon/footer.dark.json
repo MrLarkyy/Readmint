@@ -140,9 +140,9 @@
         },
         {
           "type": "rect",
-          "x": "{{ 840 - (((props.contactText || \"github.com/\" + github.login) | truncate(32) | length) * 8.4 + 16) }}",
+          "x": "{{ 840 - (((props.contactText || \"github.com/\" + github.login) | truncate(32) | textWidth(\"scm\", 18)) + 16) }}",
           "y": 99,
-          "width": "{{ ((props.contactText || \"github.com/\" + github.login) | truncate(32) | length) * 8.4 + 16 }}",
+          "width": "{{ ((props.contactText || \"github.com/\" + github.login) | truncate(32) | textWidth(\"scm\", 18)) + 16 }}",
           "height": 3,
           "fill": "{{ props.theme == \"dark\" ? \"#FF8A3D\" : \"#E8590C\" }}"
         },

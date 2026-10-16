@@ -151,9 +151,9 @@
         },
         {
           "type": "rect",
-          "x": "{{ 840 - ((props.contactText || \"github.com/\" + github.login) | truncate(34) | length) * 8.4 }}",
+          "x": "{{ 840 - ((props.contactText || \"github.com/\" + github.login) | truncate(34) | textWidth(\"mono\", 14)) }}",
           "y": 92.25,
-          "width": "{{ ((props.contactText || \"github.com/\" + github.login) | truncate(34) | length) * 8.4 }}",
+          "width": "{{ ((props.contactText || \"github.com/\" + github.login) | truncate(34) | textWidth(\"mono\", 14)) }}",
           "height": 1.5,
           "fill": "{{ props.theme == \"dark\" ? \"#FF6369\" : \"#E5484D\" }}"
         },

@@ -168,9 +168,9 @@
         },
         {
           "type": "rect",
-          "x": "{{ 840 - (((props.contactText || \"github.com/\" + github.login) | truncate(32) | length) * 9.2 + 16) }}",
+          "x": "{{ 840 - (((props.contactText || \"github.com/\" + github.login) | truncate(32) | textWidth(\"med\", 17)) + 16) }}",
           "y": 90.25,
-          "width": "{{ ((props.contactText || \"github.com/\" + github.login) | truncate(32) | length) * 9.2 + 16 }}",
+          "width": "{{ ((props.contactText || \"github.com/\" + github.login) | truncate(32) | textWidth(\"med\", 17)) + 16 }}",
           "height": 1.5,
           "fill": "{{ props.theme == \"dark\" ? \"#8C9BFF\" : \"#2B4BFF\" }}"
         },
