@@ -46,6 +46,9 @@ account the Action runs for. Status: early development.
      workflow_dispatch:
    permissions:
      contents: write
+   concurrency:
+     group: readmint
+     cancel-in-progress: false
    jobs:
      render:
        runs-on: ubuntu-latest
