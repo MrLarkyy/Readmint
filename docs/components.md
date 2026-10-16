@@ -205,10 +205,13 @@ A folder holds, per section, `<section>.json` and its dark twin `<section>.dark.
   font asset that has them and list it in the `fallback` of the design's fonts
   ([design format](design-format.md#assets)), and mind the size budget below. A dropped emoji takes no space, so
   what follows a text in `pinscreen` (the status bar: separator, "last push", the ticker) is placed by the layout
-  after the text as drawn. What follows a text's width is bound to its drawn width (`textWidth`, `truncateWidth`,
-  [expressions](expressions.md#filters)), so a dropped emoji moves nothing: the `horizon` name's font size, the
-  `pinscreen` contact underline, the `horizon` and `year-ring` contact pills, the `pinscreen` ticker's cut and the
-  `pinscreen` and `year-ring` ticker travel. Archivo has no arrow or star glyph
+  after the text as drawn. Whatever follows the width of a text that may hold any character is bound to its drawn
+  width (`textWidth`, `truncateWidth`, [expressions](expressions.md#filters)), so a dropped emoji moves nothing: the
+  `horizon` name's font size, the slots of the `horizon` commit ticker and worked-with band, the `pinscreen`
+  contact underline and stack parentheses, the `horizon` and `year-ring` contact pills, the contacts cut to their
+  box, the `pinscreen` ticker's cut and the `pinscreen` and `year-ring` ticker travel. Only texts that are ASCII
+  by nature and drawn in Geist Mono (a repository name, a login, a number, a weekday) are still placed by
+  characters times 0.6 em, which is exact there. Archivo has no arrow or star glyph
   either: the contact arrow and the worked-with stars are paths.
 
 ### Settings file
@@ -286,9 +289,9 @@ and `pinscreen` "no pushes yet" and "no commits yet"; the sections that do not r
   loop whose period is shorter than the timeline needs more keyframes than a track holds (32), so it is a few copies of
   its layer (a `repeat` over a short list with `stagger`), each playing a window of whole periods and invisible outside
   it; every period divides the timeline, so the loop is seamless.
-- **Tickers without measuring.** A ticker gives each item a slot as wide as its estimated text (characters times an
-  average advance; Geist Mono exactly 0.6 em), clipped to the slot, so the width of one run is known in the design and
-  the band moves by whole runs per timeline.
+- **Tickers by measured width.** A ticker gives each item a slot as wide as its texts as drawn (`textWidth` of the
+  repository name and message, fixed widths for the hash, date and gaps), clipped to the slot, so the width of one run
+  is known in the design and the band moves by whole runs per timeline.
 - **A 3D ring without trigonometry.** A point of an ellipse with semi-axes `R1 + R2` and `R1 - R2` is the sum of two
   counter-rotating circles. Each day is three nested groups, each only a rotation (outer `phi`, middle `-2 phi` turning
   twice as fast the other way, inner `phi` so the line stays upright), so all 365 copies share three animation rules

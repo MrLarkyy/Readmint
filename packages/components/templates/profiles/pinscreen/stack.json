@@ -250,7 +250,7 @@
                 },
                 {
                   "type": "text",
-                  "x": "{{ 44 + (19 + ((props.items[gi] | default(\"\") | truncate(40)) | length)) * 6.9 }}",
+                  "x": "{{ 44 + 19 * 6.9 + ((props.items[gi] | default(\"\") | truncate(40)) | textWidth(\"mono\", 11.5)) }}",
                   "y": "{{ 96 + (2 + (props.plugin ? 4 : 0) + gi) * 20 - 10.982 }}",
                   "content": ")",
                   "font": "mono",
@@ -259,7 +259,7 @@
                 },
                 {
                   "type": "text",
-                  "x": "{{ 44 + ((4 + 15 + (((props.items[0] | default(\"\") | truncate(40)) | length) | max((props.items[1] | default(\"\") | truncate(40)) | length) | max((props.items[2] | default(\"\") | truncate(40)) | length) | max((props.items[3] | default(\"\") | truncate(40)) | length)) + 3)) * 6.9 }}",
+                  "x": "{{ 44 + 22 * 6.9 + (((props.items[0] | default(\"\") | truncate(40)) | textWidth(\"mono\", 11.5)) | max((props.items[1] | default(\"\") | truncate(40)) | textWidth(\"mono\", 11.5)) | max((props.items[2] | default(\"\") | truncate(40)) | textWidth(\"mono\", 11.5)) | max((props.items[3] | default(\"\") | truncate(40)) | textWidth(\"mono\", 11.5))) }}",
                   "y": "{{ 96 + (2 + (props.plugin ? 4 : 0) + gi) * 20 - 10.982 }}",
                   "content": "{{ \"// \" + (gl | truncate(24)) }}",
                   "font": "mono",

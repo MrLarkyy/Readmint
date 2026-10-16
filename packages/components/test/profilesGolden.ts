@@ -55,8 +55,9 @@ function emojiProfileData(): ReturnType<typeof sampleProfileData> {
 /**
  * The golden suite of one profile template: every section in both themes with the example's personal texts, the
  * long ones on worst-case data, the year on a sparse, spiky calendar, the sections with personal texts left empty,
- * the header with emoji no template font covers (dropped without a gap, in the name, bio, status and latest push),
- * and a mid frame.
+ * the header with emoji no template font covers in the name, bio, status and latest push (each emoji is dropped and
+ * takes no space; the spaces written between them stay, so the status shows "Shipping", four spaces and the keycap's
+ * "1"), and a mid frame.
  */
 export function profileGoldenSuite(template: ProfileTemplate): GoldenSuite<ProfileRender> {
   const data = sampleProfileData();

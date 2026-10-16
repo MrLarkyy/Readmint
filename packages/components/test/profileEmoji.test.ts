@@ -1,4 +1,4 @@
-import type { Design } from "@readmint/format";
+import type { ComponentPropValue, Design } from "@readmint/format";
 import { renderSvg } from "@readmint/renderer";
 import { describe, expect, test } from "vitest";
 import type { ProfileTemplate } from "../src/index.js";
@@ -7,7 +7,8 @@ import { sampleProfileData } from "./sampleProfileData.js";
 
 const rocket = "\u{1F680}";
 const party = "\u{1F389}";
-const family = "\u{1F468}‍\u{1F469}‍\u{1F467}";
+const family = "\u{1F468}\u200D\u{1F469}\u200D\u{1F467}";
+const crab = "\u{1F980}";
 
 function withStatus(message: string) {
   const data = sampleProfileData();
@@ -26,7 +27,7 @@ function slotStarts(svg: string): number[] {
 }
 
 /** A section with root props overridden, as a user sets them. */
-function withProps(design: Design, props: Record<string, string>): Design {
+function withProps(design: Design, props: Record<string, ComponentPropValue>): Design {
   const [root, ...rest] = design.layers;
   if (root?.type !== "component") throw new Error("the section has no root component");
   return { ...design, layers: [{ ...root, props: { ...root.props, ...props } }, ...rest] };
@@ -70,6 +71,27 @@ function longestCut(width: (text: string) => number, text: string, max: number):
   return best;
 }
 
+/** The text layer boxes of a render with `x` and `width` (a text box of the template), each with its height. */
+function textBoxes(template: ProfileTemplate, design: Design, data: Record<string, unknown>) {
+  const result = renderSvg(design, {
+    data,
+    assets: { fonts: profileFontAssets(template, design) },
+    time: 0,
+    layerBoxes: true,
+  });
+  if (!result.ok) throw new Error(JSON.stringify(result.issues));
+  return result.layerBoxes ?? [];
+}
+
+/** The widths of the clip rectangles of the SVG (`<clipPath><rect width=...>`): a ticker's slots. */
+function clipWidths(svg: string): number[] {
+  return [...svg.matchAll(/<clipPath id="[^"]+"><rect width="([\d.]+)"/gu)].map((match) =>
+    Number(match[1]),
+  );
+}
+
+const rounded = (value: number) => Math.round(value * 1000) / 1000;
+
 /** Every px translation of the CSS keyframes. */
 function translations(svg: string): number[] {
   return [...svg.matchAll(/translate\((-?[\d.]+)px,0px\)/gu)].map((match) => Number(match[1]));
@@ -111,23 +133,29 @@ describe("emoji no template font covers", () => {
     expect(slotStarts(svg)).toContain(118);
   });
 
-  test("the horizon name fills the 840 px line as drawn, emoji and all", () => {
+  test("the horizon name fills the 840 px line as drawn, emoji and all, and never passes it", () => {
     for (const name of [
       `Ada ${rocket} Lovelace`,
       `${family}Grace Hopper${party}`,
       "Sample Developer",
+      "Maximilian Alexander von Humboldt-Stein",
+      "Wolfgang Amadeus Theophilus Mozart WWW",
+      "Yuki Tanaka-Watanabe _ Tomasz Wójcik",
     ]) {
       const design = loadProfile("horizon", "header");
       const svg = renderProfile({
         template: "horizon",
         design,
         data: withGitHub({ name }),
-        expectWarnings: name.includes("Sample") ? [] : ["missing-glyph"],
+        expectWarnings: /\p{Extended_Pictographic}/u.test(name) ? ["missing-glyph"] : [],
       });
       const size = Number(/font-weight="800" font-size="([\d.]+)"/u.exec(svg)?.[1]);
-      const drawn = drawnWidth("horizon", design, "xb", size, name.toUpperCase(), -size * 0.01);
-      if (size < 124) expect(Math.abs(drawn - 840)).toBeLessThan(0.5);
-      else expect(drawn).toBeLessThanOrEqual(840);
+      const upper = name.toUpperCase();
+      const drawn = drawnWidth("horizon", design, "xb", size, upper, -size * 0.01);
+      const unit = drawnWidth("horizon", design, "xb", 1, upper, -0.01);
+      // The size is floored to 0.1: the name ends at most 0.1 x its width at size 1 short of the edge.
+      expect(drawn).toBeLessThanOrEqual(840);
+      if (size < 124) expect(840 - drawn).toBeLessThan(0.1 * unit + 0.01);
     }
   });
 
@@ -226,4 +254,100 @@ describe("emoji no template font covers", () => {
       expect(svg).not.toContain(rocket);
     },
   );
+  test.each([
+    ["horizon", "scm", 18, 564, 260, 99, 16],
+    ["year-ring", "med", 17, 524, 300, 90.25, 16],
+    ["pinscreen", "mono", 14, 540, 300, 92.25, 0],
+  ] as const)(
+    "the %s contact is cut to its box on one line and its pill or underline follows the cut",
+    (template, font, size, boxX, boxWidth, y, pad) => {
+      for (const theme of ["light", "dark"] as const) {
+        for (const contact of [
+          "github.com/sample-developer-name",
+          `linkedin.com/in/${rocket}ada-lovelace-18`,
+        ]) {
+          const design = withProps(loadProfile(template, "footer", theme), {
+            contactText: contact,
+          });
+          const data = sampleProfileData();
+          const svg = renderProfile({
+            template,
+            design,
+            data,
+            expectWarnings: contact.includes(rocket) ? ["missing-glyph"] : [],
+          });
+          const width = (text: string) => drawnWidth(template, design, font, size, text);
+          const cut = longestCut(width, contact, boxWidth);
+          const box = textBoxes(template, design, data).find(
+            (candidate) => candidate.x === boxX && candidate.width === boxWidth,
+          );
+          expect(box?.height).toBeCloseTo(size * 1.2, 6);
+          const pill = rounded(width(cut) + pad);
+          expect(rectAt(svg, y)).toEqual({ x: rounded(840 - pill), width: pill });
+        }
+      }
+    },
+  );
+
+  test("the horizon ticker slot follows the drawn repository name and message", () => {
+    const design = loadProfile("horizon", "ticker");
+    const sample = sampleProfileData().github.pushes;
+    const message = `Fix ${rocket} in the parser ${party} and ${family} more`;
+    const pushes = sample.map((push, index) =>
+      index === 0 ? { ...push, repository: "wwwwmmmm", message } : push,
+    );
+    const svg = renderProfile({
+      template: "horizon",
+      design,
+      data: withGitHub({ pushes }),
+      time: 0,
+      expectWarnings: ["missing-glyph"],
+    });
+    const slot =
+      64 +
+      drawnWidth("horizon", design, "xbold", 16, "WWWWMMMM") +
+      9.6 +
+      drawnWidth("horizon", design, "sc", 15, message) +
+      9 +
+      43 +
+      13.5 +
+      6 +
+      28;
+    expect(clipWidths(svg).some((width) => Math.abs(width - slot) < 0.0015)).toBe(true);
+  });
+
+  test("the horizon worked-with slots follow the drawn items", () => {
+    const design = withProps(loadProfile("horizon", "worked"), {
+      items: [`${crab} Rust`, "Kotlin"],
+    });
+    const svg = renderProfile({
+      template: "horizon",
+      design,
+      data: sampleProfileData(),
+      time: 0,
+      expectWarnings: ["missing-glyph"],
+    });
+    for (const item of [`${crab} RUST`, "KOTLIN"]) {
+      const slot = drawnWidth("horizon", design, "xbold", 34, item) + 80;
+      expect(clipWidths(svg).some((width) => Math.abs(width - slot) < 0.0015)).toBe(true);
+    }
+  });
+
+  test("the pinscreen stack closes each item and aligns the comments after the drawn items", () => {
+    const design = withProps(loadProfile("pinscreen", "stack"), {
+      items: [`serde ${crab}`, "tokio"],
+      labels: ["serialization", "async"],
+    });
+    const svg = renderProfile({
+      template: "pinscreen",
+      design,
+      data: sampleProfileData(),
+      expectWarnings: ["missing-glyph"],
+    });
+    const parens = [...svg.matchAll(/<tspan x="([\d.]+)" y="[\d.]+">\)<\/tspan>/gu)].map((match) =>
+      Number(match[1]),
+    );
+    expect(parens).toEqual([rounded(44 + 19 * 6.9 + 6 * 6.9), rounded(44 + 19 * 6.9 + 5 * 6.9)]);
+    expect(svg).toContain(`<tspan x="${String(rounded(44 + 22 * 6.9 + 6 * 6.9))} `);
+  });
 });

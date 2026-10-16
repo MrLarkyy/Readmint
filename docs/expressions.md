@@ -106,7 +106,9 @@ written as `String(n)` (`1e+21`). `-0` and values that round to zero are written
 
 `textWidth` and `truncateWidth` measure a text as the renderer draws it, so a design can size or place something by
 the drawn width of a bound text instead of guessing from `length`. The renderer gives the scope its measurer (see API);
-without one both are `unknown-filter` errors. `font` is the id of a font asset of the design (any other value, an
+without one both are `unknown-filter` errors. That is so wherever an expression is evaluated before or outside a
+render: the `src` binding of a remote image, which the CLI and the Action evaluate to fetch the image, cannot measure
+(the image is refused with `image-binding`, saying the filter needs a renderer). `font` is the id of a font asset of the design (any other value, an
 unknown id included, is an `argument` error), `size` is above 0 and at most 1000, `letterSpacing` from -100 to 100.
 The width is that of a text layer with this font, size and letter spacing and no `width`: its fallbacks apply, a
 character no font has takes no space, a line break starts a new line and the widest line counts. A layer's

@@ -6,10 +6,10 @@ import { RenderContext } from "../src/RenderContext.js";
 import { fontAssets } from "./testAssets.js";
 
 const rocket = "\u{1F680}";
-const family = "\u{1F468}‍\u{1F469}‍\u{1F467}";
-const star = "★";
+const family = "\u{1F468}\u200D\u{1F469}\u200D\u{1F467}";
+const star = "\u2605";
 const diamond = "\u{1F536}";
-const arabic = "العربية لا";
+const arabic = "\u0627\u0644\u0639\u0631\u0628\u064A\u0629 \u0644\u0627";
 
 const fonts: Record<string, FontAsset> = {
   m: { ...fontAssets.medium, fallback: ["s"] },
@@ -55,7 +55,7 @@ describe("textWidth is the width a text layer draws", () => {
     ["right to left", arabic, "n", 18, 0],
     ["a trailing space", "abc ", "m", 16, 0],
     ["a fallback font", `a${star}b${diamond}c`, "m", 16, 0],
-    ["XML-invalid characters", "a\u0001b￾c", "m", 16, 0],
+    ["XML-invalid characters", "a\u0001b\uFFFEc", "m", 16, 0],
   ] as const)("%s", (_name, text, font, size, spacing) => {
     const { drawn, measured } = drawnAndMeasured(text, font, size, spacing);
     expect(drawn).toBeGreaterThan(0);
