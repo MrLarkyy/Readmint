@@ -49,7 +49,8 @@ when it comes from data.
 high (swapped when `orientation` is `"vertical"`), the isometric one `(w + 5) * p + 2 * cellSize + 16` by
 `(w + 5) * p / 2 + cellSize + maxHeight + 16` (`16` is twice the margin of 8). At the defaults that is
 `min(weeks, 53) * 14 + 13` by `111` and `(min(weeks, 53) + 5) * 14 + 38` by `(min(weeks, 53) + 5) * 7 + 51`. Setting
-`cellSize`, `gap`, `weeks`, `maxHeight` or `orientation` on the instance resizes the canvas with it.
+`cellSize`, `gap`, `weeks`, `maxHeight` or `orientation` on the instance resizes the canvas with it; a fractional size
+is rounded up to whole pixels (`| ceil`) and kept within the canvas range 1 to 4096 (`| clamp(1, 4096)`).
 
 **Projections.** Flat: a cell sits at `column * pitch`, `weekday * pitch` (swapped when vertical); `height` is 0.
 Isometric: a cell sits at `x = (column - weekday + 6) * pitch`, `y = (column + weekday) * pitch / 2 + maxHeight`, and

@@ -77,6 +77,9 @@ test.each([
     (53 + 5) * 11 + 16 + 16,
     319 + 8 + 10 + 16,
   ],
+  // Fractional sizes round up to whole pixels: 252.5 high, then 728.5 by 107.5.
+  ["calendar-isometric", { gap: 2, weeks: 26 }, (26 + 5) * 13 + 22 + 16, 253],
+  ["calendar-heatmap", { cellSize: 10.5 }, 729, 108],
 ] as const)("the %s canvas follows the calendar props %j", (name, props, width, height) => {
   const data = contributionsYear();
   const bound = renderCalendar({ design: withCalendar(loadTemplate(name), props), data });
