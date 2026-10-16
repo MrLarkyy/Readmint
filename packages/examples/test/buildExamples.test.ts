@@ -304,6 +304,7 @@ describe("runExamples", () => {
     const { code, err } = run(...argv);
     expect(code).toBe(2);
     expect(err).toContain("usage: readmint-examples");
+    expect(err).toContain(defaultActionRef);
   });
 
   it("writes, then reports in sync with exit 0", () => {
@@ -334,11 +335,11 @@ describe("runExamples", () => {
   });
 
   it("writes the pinned default Action reference without --action", () => {
-    expect(defaultActionRef).toBe("MrLarkyy/Readmint@v0.3.0");
+    expect(defaultActionRef).toMatch(/^MrLarkyy\/Readmint@v\d+\.\d+\.\d+$/);
     const out = temp();
     expect(run(templatesDir, out).code).toBe(0);
     const workflow = readFileSync(join(out, ".github", "workflows", "readmint.yml"), "utf8");
-    expect(workflow).toContain("uses: MrLarkyy/Readmint@v0.3.0");
+    expect(workflow).toContain(`uses: ${defaultActionRef}`);
   });
 
   it("reports a failure as exit 1 with its message", () => {

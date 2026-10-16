@@ -219,6 +219,7 @@ not in the main branch. The `Release Action` workflow
 pushes a new tag that points there. It never moves or overwrites a tag, so a tag always runs the same code. The
 Action is version 0: an added input or output is compatible, a renamed or removed one is a new major version.
 
-After a release, bump `defaultActionRef` (`packages/examples/src/defaultActionRef.ts`) to the new tag, add any filter the release introduced to `filterIntroducedIn`
-(`packages/examples/src/requiredActionVersion.ts`), run
-`pnpm examples <clone>` and push the clone: the generated example workflows pin that tag.
+After a release, bump `defaultActionRef` (`packages/examples/src/defaultActionRef.ts`) to the new tag and the literal
+in [components](components.md#the-examples-repository) ("by default"), add any filter the release introduced to
+`filterIntroducedIn` (`packages/examples/src/assertActionSupportsDesigns.ts`), run `pnpm examples <clone>` and push the
+clone: the generated example workflows pin that tag.
