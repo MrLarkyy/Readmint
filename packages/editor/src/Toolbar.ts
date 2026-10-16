@@ -1,4 +1,5 @@
 import type { NewLayerType } from "./addLayer.js";
+import type { EditorSettings } from "./EditorSettings.js";
 import { element, takeFile } from "./dom.js";
 
 /** What the toolbar asks the editor to do. */
@@ -15,6 +16,8 @@ export interface ToolbarActions {
   uploadFont(file: File): void;
   uploadImage(file: File): void;
   loadFixture(file: File): void;
+  loadSettings(file: File): void;
+  chooseSection(section: string | undefined): void;
   zoom(zoom: number): void;
 }
 
@@ -22,13 +25,15 @@ const layerTypes: readonly NewLayerType[] = ["rect", "ellipse", "text", "group"]
 const zooms = [0.5, 1, 2, 4];
 
 /**
- * New, import, undo, redo, export (JSON, YAML, PNG, WebP), add a layer, upload a font or an image, load fixture data,
- * zoom.
+ * New, import, undo, redo, export (JSON, YAML, PNG, WebP), add a layer, upload a font or an image, load fixture data, load a settings file and
+ * pick its section, zoom.
  */
 export class Toolbar {
   readonly root: HTMLElement;
   private readonly undoButton: HTMLButtonElement;
   private readonly redoButton: HTMLButtonElement;
+  private readonly sectionSelect: HTMLSelectElement;
+  private sectionsKey: string | undefined;
 
   constructor(parent: Element, actions: ToolbarActions) {
     this.root = element(parent, "div", {
@@ -73,6 +78,17 @@ export class Toolbar {
     this.file("Load fixture data", "load-fixture", ".json,application/json", (file) => {
       actions.loadFixture(file);
     });
+    this.file("Load settings", "load-settings", ".json,application/json", (file) => {
+      actions.loadSettings(file);
+    });
+    const sectionLabel = element(this.root, "label", { text: "Settings section " });
+    this.sectionSelect = element(sectionLabel, "select", {
+      attributes: { "data-action": "settings-section" },
+    });
+    this.sectionSelect.addEventListener("change", () => {
+      actions.chooseSection(this.sectionSelect.value === "" ? undefined : this.sectionSelect.value);
+    });
+    this.setSections(undefined);
     const label = element(this.root, "label", { text: "Zoom " });
     const zoom = element(label, "select", { attributes: { "data-action": "zoom" } });
     for (const value of zooms) {
@@ -89,6 +105,22 @@ export class Toolbar {
   update(canUndo: boolean, canRedo: boolean): void {
     this.undoButton.disabled = !canUndo;
     this.redoButton.disabled = !canRedo;
+  }
+
+  /** Lists the sections of the loaded settings file and shows the applied one; without a file the list is disabled. */
+  setSections(settings: EditorSettings | undefined): void {
+    const select = this.sectionSelect;
+    const names = Object.keys(settings?.sections ?? {});
+    const key = JSON.stringify(names);
+    // Rebuilt only when the list changes, so an open dropdown survives a refresh.
+    if (key !== this.sectionsKey) {
+      this.sectionsKey = key;
+      select.replaceChildren();
+      element(select, "option", { text: "No section" }).value = "";
+      for (const name of names) element(select, "option", { text: name }).value = name;
+    }
+    select.value = settings?.section ?? "";
+    select.disabled = settings === undefined;
   }
 
   private button(text: string, action: string, run: () => void): HTMLButtonElement {
