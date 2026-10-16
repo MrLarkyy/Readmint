@@ -86,6 +86,22 @@ describe("hostile expressions are bounded in time and memory", () => {
     expectBounded("{{ list | join }}", { list: new Array<number>(1_000_000).fill(1) }, "budget");
   });
 
+  test("max over 200000 items exhausts the budget before scanning", () => {
+    expectBounded("{{ list | max }}", { list: new Array<number>(200_000).fill(1) }, "budget");
+  });
+
+  test("min charges one step per item", () => {
+    const budget = createBudget();
+    const template = compileTemplate("{{ list | min }}");
+    if (!template.ok) expect.fail(template.error.message);
+    const list = new Array<number>(1000).fill(2);
+    expect(template.value.evaluate(createScope({ list }, { budget }))).toEqual({
+      ok: true,
+      value: 2,
+    });
+    expect(budget.used).toBeGreaterThanOrEqual(1000);
+  });
+
   test("padStart to a billion is too-large before allocating", () => {
     expectBounded("{{ 'x' | padStart(1000000000) }}", {}, "too-large");
     expectBounded("{{ 'x' | padStart(100001) }}", {}, "too-large");

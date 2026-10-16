@@ -92,6 +92,8 @@ describe("parseExpression", () => {
     ["{{ a | hasOwnProperty }}", "unknown-filter", 7, "unknown filter hasOwnProperty"],
     ["{{ a | round(1, 2) }}", "argument", 7, "round takes 0 to 1 argument(s)"],
     ["{{ a | clamp(1) }}", "argument", 7, "clamp takes 2 argument(s)"],
+    ["{{ a | sqrt(1) }}", "argument", 7, "sqrt takes 0 argument(s)"],
+    ["{{ a | max(1, 2) }}", "argument", 7, "max takes 0 to 1 argument(s)"],
     ["{{ a | default }}", "argument", 7, "default takes 1 argument(s)"],
     ["{{ a | upper(1, 2, 3, 4, 5) }}", "argument", 25, "at most 4 arguments"],
   ])("%s fails with %s at %i", (text, code, start, message) => {

@@ -1,4 +1,5 @@
 import {
+  budgetFailure,
   failure,
   integerArgument,
   localeArgument,
@@ -10,6 +11,8 @@ import type { FilterContext, FilterDefinition, FilterOutcome } from "./FilterDef
 import { formatCompact, formatNumber, formatPercent } from "./formatNumber.js";
 import type { ExprValue } from "./ExprValue.js";
 import type { LocaleData } from "./LocaleData.js";
+import { readProperty } from "./readProperty.js";
+import { typeName } from "./typeName.js";
 
 const maxDecimals = 20;
 
@@ -55,20 +58,45 @@ function math(name: string, operation: (value: number) => number): FilterDefinit
   };
 }
 
-function bound(
+/** `n | min(b)` bounds a number; `list | min` (no argument) is the extremum of an array. */
+function boundOrExtremum(
   name: string,
   operation: (value: number, limit: number) => number,
 ): FilterDefinition {
   return {
-    minArgs: 1,
+    minArgs: 0,
     maxArgs: 1,
-    apply(input: ExprValue, args: readonly ExprValue[]): FilterOutcome {
-      const value = numberInput(name, input);
-      if (!value.ok) return value;
+    apply(input: ExprValue, args: readonly ExprValue[], context: FilterContext): FilterOutcome {
+      if (Array.isArray(input)) return extremum(name, operation, input, args, context);
+      if (typeof input !== "number") {
+        return failure("type", `${name} needs a number or an array, got ${typeName(input)}`);
+      }
+      if (args.length === 0) return failure("argument", `${name}: argument 1 is required`);
       const limit = numberArgument(name, args, 0);
-      return limit.ok ? success(operation(value.value, limit.value)) : limit;
+      return limit.ok ? success(operation(input, limit.value)) : limit;
     },
   };
+}
+
+function extremum(
+  name: string,
+  operation: (value: number, limit: number) => number,
+  input: readonly ExprValue[],
+  args: readonly ExprValue[],
+  context: FilterContext,
+): FilterOutcome {
+  if (args.length > 0) return failure("argument", `${name}: an array takes no argument`);
+  if (!context.charge(input.length)) return budgetFailure();
+  let result: number | null = null;
+  for (let index = 0; index < input.length; index++) {
+    const item = readProperty(input, index);
+    if (!item.ok) return failure("invalid-data", `${name}: an item is not a JSON value`);
+    if (typeof item.value !== "number") {
+      return failure("type", `${name}: items must be numbers, got ${typeName(item.value)}`);
+    }
+    result = result === null ? item.value : operation(result, item.value);
+  }
+  return success(result);
 }
 
 export const numberFilters: Readonly<Record<string, FilterDefinition>> = {
@@ -90,8 +118,19 @@ export const numberFilters: Readonly<Record<string, FilterDefinition>> = {
   floor: math("floor", Math.floor),
   ceil: math("ceil", Math.ceil),
   abs: math("abs", Math.abs),
-  min: bound("min", Math.min),
-  max: bound("max", Math.max),
+  sqrt: {
+    minArgs: 0,
+    maxArgs: 0,
+    apply(input: ExprValue): FilterOutcome {
+      const value = numberInput("sqrt", input);
+      if (!value.ok) return value;
+      // -0 is not below zero: Math.sqrt(-0) is -0, written 0.
+      if (value.value < 0) return failure("not-finite", "sqrt: the input is negative");
+      return success(Math.sqrt(value.value));
+    },
+  },
+  min: boundOrExtremum("min", Math.min),
+  max: boundOrExtremum("max", Math.max),
   clamp: {
     minArgs: 2,
     maxArgs: 2,
