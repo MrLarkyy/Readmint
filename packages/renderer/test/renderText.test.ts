@@ -136,6 +136,22 @@ describe("renderText", () => {
     expect(svg.match(/@font-face/gu)).toHaveLength(2);
   });
 
+  test("an upright fallback in italic text says normal, and no other tspan gains a style", () => {
+    const tspanOf = (main: FontAsset, fallback: FontAsset): string => {
+      const { svg } = render([{ type: "text", content: "a★b", font: "m" }], {
+        m: { ...main, fallback: ["s"] },
+        s: fallback,
+      });
+      return spans(svg)[1]?.attributes ?? "";
+    };
+    const italic = { ...fontAssets.medium, style: "italic" as const };
+    expect(tspanOf(italic, fontAssets.symbols)).toContain('font-style="normal"');
+    expect(tspanOf(fontAssets.medium, fontAssets.symbols)).not.toContain("font-style");
+    expect(tspanOf(fontAssets.medium, { ...fontAssets.symbols, style: "italic" })).toContain(
+      'font-style="italic"',
+    );
+  });
+
   test("a character above the BMP gets a tspan of its own with a single x", () => {
     const { svg } = render([{ type: "text", content: "\u{1f536}\u{1f536}", font: "m" }], {
       m: { ...fontAssets.medium, fallback: ["s"] },

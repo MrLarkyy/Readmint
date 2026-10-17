@@ -234,6 +234,26 @@ describe("faces of one family", () => {
     expect(picked([normal, italic, oblique], "oblique")).toBe("530");
   });
 
+  test("a tspan saying normal inside italic text takes the upright face", () => {
+    const face = (style: string, inside: number) => ({
+      family: "Brand",
+      bytes: atWeight(fontBytes, inside),
+      weight: 500,
+      style,
+    });
+    const svg = facesSvg(
+      [face("normal", 510), face("italic", 520)],
+      word(
+        `font-family="'Brand'" font-weight="500" font-style="italic"`,
+        `a<tspan font-style="normal">b</tspan>`,
+      ),
+    );
+    const [text, tspan] =
+      matchFontFamilies(svg, rasterFonts(svg)).match(/<t(?:ext|span)\b[^>]*>/g) ?? [];
+    expect(/font-weight="(\d+)"/.exec(text ?? "")?.[1]).toBe("520");
+    expect(/font-weight="(\d+)"/.exec(tspan ?? "")?.[1]).toBe("510");
+  });
+
   test("a tspan whose family no font carries is a raster-font error", async () => {
     const svg = facesSvg(
       [medium],

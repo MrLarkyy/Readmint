@@ -37,14 +37,17 @@ export function renderText(writer: SvgWriter, node: TextNode, extra = ""): void 
  * Family, weight and the face's own style, matching its @font-face rule; without the style an italic face would
  * draw as the regular one.
  */
-function fontAttributes(font: LoadedFont): string {
+function fontAttributes(font: LoadedFont, parent?: LoadedFont): string {
   const family = escapeAttribute(`'${escapeCssString(font.family)}'`);
-  const style = font.style === "italic" ? ' font-style="italic"' : "";
+  // A tspan inherits the text's italic, so an upright fallback in italic text has to say so.
+  const upright = parent?.style === "italic" && font.style !== "italic";
+  const style =
+    font.style === "italic" ? ' font-style="italic"' : upright ? ' font-style="normal"' : "";
   return ` font-family="${family}" font-weight="${escapeAttribute(String(font.weight))}"${style}`;
 }
 
 function runSpans(node: TextNode, run: TextRun, baseline: number): string {
-  const font = run.font === node.font ? "" : fontAttributes(run.font);
+  const font = run.font === node.font ? "" : fontAttributes(run.font, node.font);
   const spans: string[] = [];
   let pending: PlacedGlyph[] = [];
   const flush = () => {
