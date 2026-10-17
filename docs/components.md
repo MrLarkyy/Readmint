@@ -358,9 +358,9 @@ seconds of work for each export format.
   bouncing every 9 s) is one cycle of a few keyframes with `cycles` ([design-format.md](design-format.md#animation)):
   `duration` is the period and `cycles` the periods in the run, and a cycle that ends where it starts joins the next
   without a duplicate keyframe; every period divides the timeline, so the loop is seamless. The rewrite from unrolled
-  tracks and layer copies to cycles (RM-143) took the 26 files with such a pulse from 19042 to 13014 lines: Horizon
-  header 671 to 434 and year 995 to 758, Pinscreen header 904 to 578, log 714 to 536 and year 540 to 493, Year Ring
-  header 900 to 574, year 831 to 590 and each repository card 661 to 424 (light and dark alike). A loop is never shortened to suit the raster export:
+  tracks and layer copies to cycles (RM-143) took the 26 files with such a pulse from 19042 to 12934 lines: Horizon
+  header 671 to 430 and year 995 to 754, Pinscreen header 904 to 574, log 714 to 536 and year 540 to 493, Year Ring
+  header 900 to 570, year 831 to 590 and each repository card 661 to 420 (light and dark alike). A loop is never shortened to suit the raster export:
   it samples a long loop at a lower rate instead (above).
 - **Tickers by measured width.** A ticker gives each item a slot as wide as its texts as drawn (`textWidth` of the
   repository name and message, fixed widths for the hash, date and gaps), clipped to the slot, so the width of one run

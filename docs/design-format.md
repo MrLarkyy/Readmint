@@ -544,7 +544,8 @@ default 1), `easing` (default `linear`).
   Where the keyframe ending a cycle and the one starting the next fall on the same moment with equal values, only the
   later one is kept (its easing leads on), so a cycle that ends where it starts joins the next seamlessly; different
   values jump, like two equal offsets. A binding, a fraction or a value outside 1..1000 fails (`type` for a binding
-  or a fraction, `range` outside the bounds, at `.../cycles`). Every cycle counts against the renderer's keyframe limit:
+  or a fraction, `range` outside the bounds, at `.../cycles`). At 100 % of the timeline only the later of two keyframes
+  stays, so a run that ends at the timeline end should not end with a jump. Every cycle counts against the renderer's keyframe limit:
   the track charges `keyframes x cycles` before any keyframe is resolved ([renderer.md](renderer.md#limits)).
 - A track that runs past the end of the timeline is cut there: its last keyframe becomes the value it has at that
   moment, and the render warns `animation-cut` once per track. Copy counts come from data, so this is a warning, not a
@@ -559,8 +560,9 @@ default 1), `easing` (default `linear`).
   outside the placeholders is checked here; an arc the placeholders give is a `range` issue at the track when rendering.
 
 A pulse repeats one short cycle instead of writing out every beat: a ring that grows and fades every 2 s, all minute
-long (the keyframes ending a cycle and starting the next both hold opacity 0 and scale 1, so the cycles join, and the
-jump from opacity 0 to 0.7 at each start is two equal offsets).
+long (opacity ends a cycle at 0 and the scale at 2.5, and each cycle starts again at 0 and 1, so the scale jumps back at
+the boundary; the jump from opacity 0 to 0.7 at each start is two equal offsets). The scale track does not end with a
+jump back to 1: the run reaches the end of the timeline, where only the later of two keyframes stays.
 
 ```json
 {
@@ -585,8 +587,7 @@ jump from opacity 0 to 0.7 at each start is two equal offsets).
         "scale": {
           "keyframes": [
             { "offset": 0, "value": 1 },
-            { "offset": 1, "value": 2.5 },
-            { "offset": 1, "value": 1 }
+            { "offset": 1, "value": 2.5 }
           ],
           "duration": 2000,
           "cycles": 30

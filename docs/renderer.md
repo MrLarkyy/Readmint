@@ -630,7 +630,8 @@ span. A track with `cycles` is expanded into one keyframe list before this mappi
 same keyframes: each cycle's keyframes at `start + i x duration + offset x duration`, a hold of the last value at a
 cycle's end when its last offset is below 1 and of the first value at the next cycle's start when its first offset is
 above 0, and of a keyframe ending a cycle and one starting the next at the same moment with equal values only the later
-one (a cycle that ends where it starts joins the next; different values jump). Bindings and easings are evaluated once
+one (a cycle that ends where it starts joins the next; different values jump); at 100 % of the timeline likewise only the
+later of two keyframes stays, so a run that ends at the timeline end should not end with a jump. Bindings and easings are evaluated once
 per track, not per cycle. Keyframe positions are percentages of the timeline rounded to 3
 decimals; keyframes landing on the same rounded position keep their order one step (0.001 %) apart. Values are rounded
 as written (numbers to 3 decimals, colour channels to integers), and the frames sample these rounded keyframes with the

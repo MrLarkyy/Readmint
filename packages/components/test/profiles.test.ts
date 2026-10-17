@@ -134,6 +134,8 @@ describe.each(cases)("%s %s", (template, section) => {
   test("plays a periodic motion as one short cycle: no long track, no layer copied for the keyframe cap", () => {
     const long: string[] = [];
     const copied: string[] = [];
+    const jumpAtEnd: string[] = [];
+    const timelineEnd = loadProfile(template, section).animation?.duration ?? 0;
     const visit = (layers: readonly Layer[] | undefined, path: string) => {
       layers?.forEach((layer, index) => {
         const at = `${path}/${String(index)}`;
@@ -142,6 +144,10 @@ describe.each(cases)("%s %s", (template, section) => {
         const tracks = Object.entries(animate ?? {});
         for (const [property, track] of tracks) {
           if ((track?.keyframes.length ?? 0) > 8) long.push(`${at} ${property}`);
+          const offsets = track?.keyframes.map((keyframe) => keyframe.offset) ?? [];
+          const runsToEnd = (track?.duration ?? 0) * (track?.cycles ?? 1) >= timelineEnd;
+          if (track?.cycles !== undefined && runsToEnd && offsets.slice(-2).join() === "1,1")
+            jumpAtEnd.push(`${at} ${property}`);
         }
         if (layer.repeat?.as === "loopCopy") copied.push(at);
         if (layer.type === "group") visit(layer.children, `${at}/children`);
@@ -153,6 +159,7 @@ describe.each(cases)("%s %s", (template, section) => {
       visit(component.layers, `/components/${name}/layers`);
     expect(long).toEqual([]);
     expect(copied).toEqual([]);
+    expect(jumpAtEnd).toEqual([]);
   });
 
   test("has a reader-facing title and description", () => {

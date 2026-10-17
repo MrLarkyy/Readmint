@@ -171,4 +171,41 @@ describe("cycles (RM-143)", () => {
     for (const time of [0, 125, 250, 300, 999, 1000])
       expect(svgOf(short, { time })).toBe(svgOf(long, { time }));
   });
+
+  test("a pulse that ends at the timeline end still grows in its last cycle", () => {
+    const design: Design = {
+      version: 0,
+      canvas: { width: 100, height: 100 },
+      animation: { duration: 60000 },
+      layers: [
+        {
+          type: "ellipse",
+          width: 8,
+          height: 8,
+          animate: {
+            opacity: {
+              keyframes: [
+                { offset: 0, value: 0 },
+                { offset: 0, value: 0.7 },
+                { offset: 1, value: 0 },
+              ],
+              duration: 2000,
+              cycles: 30,
+            },
+            scale: {
+              keyframes: [
+                { offset: 0, value: 1 },
+                { offset: 1, value: 2.5 },
+              ],
+              duration: 2000,
+              cycles: 30,
+            },
+          },
+        },
+      ],
+    };
+    const scaleAt = (time: number) => svgOf(design, { time }).match(/scale\(([\d.]+)\)/u)?.[1];
+    expect(scaleAt(1000)).toBe("1.75");
+    expect(scaleAt(59000)).toBe("1.75");
+  });
 });
