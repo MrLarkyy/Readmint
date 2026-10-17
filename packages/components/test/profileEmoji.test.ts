@@ -63,7 +63,10 @@ function drawnWidth(
   return result.layerBoxes?.[0]?.width ?? Number.NaN;
 }
 
-/** The longest start of whole clusters plus "…" that a probe draws within `width`: the cut the ticker must make. */
+/**
+ * The longest start of whole clusters, minus the whitespace it ends on, plus "…" that a probe draws within `width`: the
+ * cut the ticker must make.
+ */
 function longestCut(width: (text: string) => number, text: string, max: number): string {
   if (width(text) <= max) return text;
   const clusters = [...new Intl.Segmenter("en", { granularity: "grapheme" }).segment(text)].map(
@@ -71,7 +74,7 @@ function longestCut(width: (text: string) => number, text: string, max: number):
   );
   let best = "";
   for (let count = 0; count < clusters.length; count++) {
-    const cut = `${clusters.slice(0, count).join("")}…`;
+    const cut = `${clusters.slice(0, count).join("").trimEnd()}…`;
     if (width(cut) <= max) best = cut;
   }
   return best;

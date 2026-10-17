@@ -50,7 +50,7 @@ export function shapeLines(
       const own = paragraph.text.slice(line.start, line.end);
       const cut =
         width === undefined
-          ? own + ellipsis
+          ? own.trimEnd() + ellipsis
           : cutToWidth(shaper, own, width, (part) => shaper.measure(part, direction), true);
       lines.push(shaper.layout(cut, shaper.paragraph(cut, direction), 0, cut.length));
       text = content.slice(0, offset + line.start) + cut;
