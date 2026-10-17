@@ -72,6 +72,6 @@ async function loadInput(
   if (variant === undefined) return loadRenderInput(plain, options);
   if (twin === undefined) return loadRenderInput(plain, { ...options, variant });
   const input = await loadRenderInput({ ...plain, design: twin }, options);
-  const note = `using ${quoteForLog(path.relative(io.cwd, twin))} next to ${quoteForLog(args.design)} instead of the ${variant.name} variant`;
+  const note = `using ${quoteForLog(twin)} next to ${quoteForLog(args.design)} instead of the ${variant.name} variant`;
   return { ...input, warnings: [note, ...(input.warnings ?? [])] };
 }

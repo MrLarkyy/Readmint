@@ -110,6 +110,17 @@ describe("the variant input", () => {
     );
   });
 
+  test("a design that does not load is reported once, not again for its variant", async () => {
+    const missing = await tree.run({ ...dry, designs: "gone.json", variant: "dark" });
+    expect(missing.code).toBe(1);
+    expect(missing.log.match(/::error::/g)).toHaveLength(1);
+    expect(missing.log).not.toContain("(dark variant)");
+    await tree.file("card.json", "{ not json");
+    const broken = await tree.run({ ...dry, variant: "dark" });
+    expect(broken.code).toBe(1);
+    expect(broken.log).not.toContain("(dark variant)");
+  });
+
   test("an unknown name is an input error that does not echo it", async () => {
     const run = await tree.run({ ...dry, variant: "zzTOP" });
     expect(run.code).toBe(1);

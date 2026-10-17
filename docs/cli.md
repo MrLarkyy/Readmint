@@ -179,9 +179,12 @@ section and the prop (never the value).
 
 A `card.dark.json` next to the design wins: it is rendered instead, and stderr says `using "card.dark.json" next to
 "card.json" instead of the dark variant`. A design that already is the `.dark` file is rendered with the variant applied.
-A design with no top-level component declaring `theme`, or whose prop takes no `dark` (not in the enum, another type), exits
-with 1 and `card.json: error unknown-property at /theme: variant dark: no top-level component of the design has the
-prop "theme"`; no value is echoed. An unknown variant name, and `--variant` on `validate` or `preview`, exit with 2. The
+A design the variant does not fit exits with 1, one line per case, never a value: no top-level component declares
+`theme` (`card.json: error unknown-property at /theme: variant dark: no top-level component of the design has the prop
+"theme"`); the prop does not accept `dark` (`card.json: error enum at /theme: variant dark: the value is not one of the
+prop's allowed values`, or `card.json: error type at /theme: variant dark: the value has the wrong type for the
+prop`); the design has no top-level component layer (`card.json: error unknown-property at /: variant dark: the design
+has no top-level component layer`). An unknown variant name, and `--variant` on `validate` or `preview`, exit with 2. The
 Action takes the same variant as [`variant`](action.md#inputs).
 
 ## Live GitHub data
@@ -343,7 +346,7 @@ A port in use, or one the system refuses, is exit code 3.
 
 ## Programmatic use
 
-`@readmint/cli` re-exports `RenderVariant`, `renderVariants`, `renderVariant(name)` and `applyRenderVariant(design, variant)` of `@readmint/format` (the table behind `--variant`, [Variants](#variants)), exports `variantTwin(design, variant, cwd)` (the `<stem>.<variant><ext>` file next to a design that wins over the variant, if there is one; `RenderInputOptions.variant` applies a variant, `RenderInput.warnings` carries the settings-override note), and `runCli(argv, io)` (returns the exit code, never throws; `CliIo.openUrl` opens the `preview --open` address (with `--github`, `--data-json` or `--data-feed` the one-time launch address), the platform's opener when absent; `CliIo.env` is the environment `--github` takes its token
+`@readmint/cli` re-exports `RenderVariant`, `renderVariants`, `renderVariant(name)` and `applyRenderVariant(design, variant)` of `@readmint/format` (the table behind `--variant`, [Variants](#variants)), exports `RenderInputOptions.variant` (applies a variant) and `RenderInput.warnings` (the settings-override note), and `runCli(argv, io)` (returns the exit code, never throws; `CliIo.openUrl` opens the `preview --open` address (with `--github`, `--data-json` or `--data-feed` the one-time launch address), the platform's opener when absent; `CliIo.env` is the environment `--github` takes its token
 from, `bin` passes `process.env`), `ExitCode`, `CliError`, `CliIo`,
 `escapeForLog`, `quoteForLog`, `formatIssue`, `localeProblem(locale)` (why a tag cannot be the `--locale`, `undefined` when it can; the Action's `locale` input uses it too), `outputFormats` and `outputExtension(format)` (the `OutputFormat`s and their file extension, `apng` → `png`), and the loaders the commands share: `loadDesignFile`, `loadDesignAssets`,
 `loadFixtureData` (with `maxFixtureBytes`, its size cap), `loadDesignProps(file, cwd, options?)` (the `--props` settings file, not confined; with `{ confinedTo }`, as the Action's `props-file`, a relative path staying inside that folder; a `DesignProps` of `@readmint/format`; whose `props` in `RenderInputOptions` stands in for `--props`) and `propsSection(fileName)` (the section a design file takes; it lives in `@readmint/format`, which the editor uses too), `loadLiveData` (the `--github` load: `LiveDataOptions` with

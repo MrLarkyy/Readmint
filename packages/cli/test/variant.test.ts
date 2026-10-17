@@ -71,6 +71,16 @@ describe("render --variant dark", () => {
     );
   });
 
+  test("the twin note names the files with / as typed, in a subfolder", async () => {
+    await tree.file("sub/card.json", themed());
+    await tree.file("sub/card.dark.json", themed("dark"));
+    const run = await tree.run(["render", "sub/card.json", "--variant", "dark"]);
+    expect(run.code).toBe(ExitCode.ok);
+    expect(run.stderr).toBe(
+      'using "sub/card.dark.json" next to "sub/card.json" instead of the dark variant\n',
+    );
+  });
+
   test("a design that already is the twin is not applied twice or replaced", async () => {
     await tree.file("card.dark.json", themed("light"));
     const run = await tree.run(["render", "card.dark.json", "--variant", "dark"]);

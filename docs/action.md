@@ -108,8 +108,10 @@ variant is applied to the design first, then the `props-file` section, so the re
 exist with the same settings), and the snippet is the one of a design with a twin. A real `card.dark.<ext>` next to the
 design, listed or not, wins: it is rendered as always and the log says `"card.dark.json" next to "card.json" wins over
 the dark variant`. Every listed design without a twin must have a top-level component that declares the prop `theme`,
-else the run fails with `<design> (dark variant): error unknown-property at /theme: variant dark: ...` and nothing is
-written. Without the input nothing changes: no extra file, no log line, the same snippet.
+else the run fails and nothing is written. The lines are those of the CLI [Variants](cli.md#variants), the design name
+followed by `(dark variant)`: `card.json (dark variant): error unknown-property at /theme: variant dark: no top-level
+component of the design has the prop "theme"`, likewise `error enum` or `error type` when the prop does not accept
+`dark`, and `error unknown-property at /: variant dark: the design has no top-level component layer`. Without the input nothing changes: no extra file, no log line, the same snippet.
 
 Outputs of designs you remove from the list are not deleted.
 

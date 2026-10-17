@@ -29,7 +29,6 @@ export {
   liveDataAuthoredMarginMs,
   liveDataTimeout,
 } from "./loadLiveData.js";
-export { variantTwin } from "./variantTwin.js";
 export { loadRenderInput, type RenderInput, type RenderInputOptions } from "./loadRenderInput.js";
 export { localeProblem } from "./localeProblem.js";
 export { type OutputFormat, outputExtension, outputFormats } from "./OutputFormat.js";

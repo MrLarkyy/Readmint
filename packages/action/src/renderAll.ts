@@ -59,7 +59,10 @@ export async function renderAll(
   const notes: string[] = [];
   const problems: string[] = [];
   for (const entry of plan) {
+    let lightLoaded = true;
     for (const planned of entry.dark === undefined ? [entry.light] : [entry.light, entry.dark]) {
+      // A variant of a design that did not load only repeats the light failure.
+      if (planned.variant !== undefined && !lightLoaded) continue;
       try {
         const input = await loadRenderInput(
           { design: planned.design },
@@ -99,6 +102,7 @@ export async function renderAll(
         });
       } catch (error) {
         if (!(error instanceof CliError)) throw error;
+        if (planned === entry.light) lightLoaded = false;
         const { variant } = planned;
         problems.push(
           ...(variant === undefined
