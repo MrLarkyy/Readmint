@@ -62,7 +62,7 @@ function lines(svg: string): { y: string; xs: number[]; text: string }[] {
   return [...byY.values()];
 }
 
-/** The lines `shapeLines` keeps of a text in font `m` at 14 px, with the text they draw. */
+/** A shaper of a font asset at 14 px, with the shaping budget of a text of `length` units. */
 function shaper(font = "m", length = 10_000) {
   const context = new RenderContext(design([]), {});
   const primary = selectFont(context, font, undefined, "/layers/0/font");
@@ -77,6 +77,7 @@ function shaper(font = "m", length = 10_000) {
   return new TextShaper(context, options, ShapingBudget.forText(64 * length));
 }
 
+/** The lines `shapeLines` keeps of a text in font `m` at 14 px, with the text they draw. */
 function shaped(content: string, width: number | undefined, maxLines?: number) {
   const context = new RenderContext(design([]), {});
   const primary = selectFont(context, "m", undefined, "/layers/0/font");

@@ -703,7 +703,8 @@ the canvas background and the layers.
 
 The output size is counted while the SVG is written (a shared definition once, when its first use writes it), and
 every layer reserves the least markup of its kind before it is built (a path also its data, a template `d` once
-evaluated, a text its filled-in content, before either is measured), so a huge or nested `repeat` stops early instead of building everything. Font
+evaluated, a text its filled-in content, before either is measured (a text with `maxLines` its drawn text, once laid
+out)), so a huge or nested `repeat` stops early instead of building everything. Font
 subsets are written once every text is laid out and count like any markup; text drawn as paths checks its path data
 against the budget glyph by glyph while it is built.
 Animation CSS counts toward `maxOutputBytes` like any markup, and every animated transform reserves its group (a
