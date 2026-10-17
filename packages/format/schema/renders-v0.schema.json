@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/MrLarkyy/Readmint/main/packages/format/schema/renders-v0.schema.json",
+  "title": "Readmint render manifest v0",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "maxLength": 512
+    },
+    "renders": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 64,
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
+          },
+          "design": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1024,
+            "pattern": "^(?![A-Za-z]:)[^/\\u005c:*?\"<>|\\u0000-\\u001f][^\\u005c:*?\"<>|\\u0000-\\u001f]*[.](?:[Jj][Ss][Oo][Nn]|[Yy][Aa]?[Mm][Ll])$"
+          },
+          "props": {
+            "type": "object",
+            "maxProperties": 64,
+            "propertyNames": {
+              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
+            },
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "boolean"
+                    }
+                  ]
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          },
+          "variants": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "enum": [
+                "dark"
+              ]
+            }
+          }
+        },
+        "required": [
+          "name",
+          "design"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "renders"
+  ],
+  "additionalProperties": false
+}

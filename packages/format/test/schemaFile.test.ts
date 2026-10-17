@@ -2,7 +2,7 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { expect, test } from "vitest";
 import { designSchemaV0 } from "../src/designSchemaV0.js";
-import { designJsonSchema } from "../src/index.js";
+import { designJsonSchema, renderManifestJsonSchema } from "../src/index.js";
 import { toJsonSchema } from "../src/schema/toJsonSchema.js";
 
 const packageDir = join(import.meta.dirname, "..");
@@ -45,4 +45,28 @@ test("the package exports the schema file", () => {
   const target = manifest.exports["./schema/design-v0.schema.json"];
   expect(target).toBe("./schema/design-v0.schema.json");
   expect(existsSync(join(packageDir, String(target)))).toBe(true);
+});
+
+const rendersFile = join(packageDir, "schema", "renders-v0.schema.json");
+const rendersEmitted = `${JSON.stringify(renderManifestJsonSchema, null, 2)}
+`;
+
+test("the committed render manifest schema equals the emitted schema byte for byte", () => {
+  if (import.meta.env.MODE === "schema-update") {
+    if ((process.env["CI"] ?? "") !== "")
+      throw new Error("pnpm schema:update is refused when CI is set; update the schema locally");
+    writeFileSync(rendersFile, rendersEmitted);
+  }
+  expect(readFileSync(rendersFile, "utf8"), "run pnpm schema:update").toBe(rendersEmitted);
+});
+
+test("the package exports the render manifest schema file, and the schema object is frozen", () => {
+  const manifest = JSON.parse(readFileSync(join(packageDir, "package.json"), "utf8")) as {
+    exports: Record<string, unknown>;
+  };
+  expect(manifest.exports["./schema/renders-v0.schema.json"]).toBe(
+    "./schema/renders-v0.schema.json",
+  );
+  expect(Object.isFrozen(renderManifestJsonSchema)).toBe(true);
+  expect(Object.isFrozen(renderManifestJsonSchema["properties"])).toBe(true);
 });
