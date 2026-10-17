@@ -1,0 +1,39 @@
+import type { TextShaper } from "./TextShaper.js";
+
+export const ellipsis = "…";
+
+/**
+ * The longest prefix of whole clusters of `text` that, followed by `…`, is at most `width` wide by `measure`. A text
+ * that fits keeps its own form unless `forced` (a line cap always marks the lines it leaves out); an ellipsis wider
+ * than the width alone gives "". Lays out at most `cutProbes(text.length)` texts.
+ */
+export function cutToWidth(
+  shaper: TextShaper,
+  text: string,
+  width: number,
+  measure: (part: string) => number,
+  forced: boolean,
+): string {
+  if (forced) {
+    if (measure(text + ellipsis) <= width) return text + ellipsis;
+  } else if (measure(text) <= width) {
+    return text;
+  }
+  if (measure(ellipsis) > width) return "";
+  const clusters = shaper.clusters(text);
+  const prefix = (count: number) => clusters.slice(0, count).join("") + ellipsis;
+  // Bisection over whole clusters: `fits` holds a count that fits, `over` one that does not (the whole text).
+  let fits = 0;
+  let over = clusters.length;
+  while (over - fits > 1) {
+    const middle = Math.floor((fits + over) / 2);
+    if (measure(prefix(middle)) <= width) fits = middle;
+    else over = middle;
+  }
+  return prefix(fits);
+}
+
+/** Texts a cut lays out: the whole text, the ellipsis, one per halving of its clusters, one spare. */
+export function cutProbes(length: number): number {
+  return 35 - Math.clz32(length);
+}

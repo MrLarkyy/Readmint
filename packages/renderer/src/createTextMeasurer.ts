@@ -3,11 +3,10 @@ import { ShapingBudget } from "@readmint/fonts";
 import { selectFont } from "./loadFont.js";
 import { ownEntry } from "./ownEntry.js";
 import type { RenderContext } from "./RenderContext.js";
+import { cutProbes, cutToWidth, ellipsis } from "./cutToWidth.js";
 import { shapeLines } from "./shapeLines.js";
 import { stripXmlInvalid } from "./stripXmlInvalid.js";
 import { TextShaper } from "./TextShaper.js";
-
-const ellipsis = "…";
 
 /**
  * Measures text for `textWidth` and `truncateWidth` exactly as a text layer of the font, size and letter spacing
@@ -51,29 +50,14 @@ export function createTextMeasurer(context: RenderContext): TextMeasurer {
       const key = JSON.stringify(["truncate", font, size, letterSpacing, width, text]);
       return cached(key, () => {
         const content = stripXmlInvalid(text);
-        const units = (content.length + ellipsis.length) * probes(content.length);
+        const units = (content.length + ellipsis.length) * cutProbes(content.length);
         const shaping = shaper(font, size, letterSpacing, units);
         if (shaping === undefined) return undefined;
         const measure = (part: string) => shapeLines(shaping, part, undefined).widest;
-        if (measure(content) <= width) return text;
-        if (measure(ellipsis) > width) return "";
-        const clusters = shaping.clusters(content);
-        const prefix = (count: number) => clusters.slice(0, count).join("") + ellipsis;
-        // Bisection over whole clusters: `fits` holds a count that fits, `over` one that does not (the whole text).
-        let fits = 0;
-        let over = clusters.length;
-        while (over - fits > 1) {
-          const middle = Math.floor((fits + over) / 2);
-          if (measure(prefix(middle)) <= width) fits = middle;
-          else over = middle;
-        }
-        return prefix(fits);
+        const cut = cutToWidth(shaping, content, width, measure, false);
+        // A text that fits is returned as given (its XML-invalid characters are removed where it is drawn).
+        return cut === content ? text : cut;
       });
     },
   };
-}
-
-/** Texts a truncation lays out: the whole text, the ellipsis, one per halving of its clusters, one spare. */
-function probes(length: number): number {
-  return 35 - Math.clz32(length);
 }

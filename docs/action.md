@@ -294,5 +294,8 @@ fails after the tag was pushed, the run is red and the tag stays: create the Rel
 After a release, bump `defaultActionRef` (`packages/examples/src/defaultActionRef.ts`) to the new tag, the literal
 in [components](components.md#the-examples-repository) ("by default") and the pin in
 `packages/examples/test/buildExamples.test.ts`, add any filter the release introduced to
-`filterIntroducedIn` (`packages/examples/src/assertActionSupportsDesigns.ts`), run `pnpm examples <clone>` and push the
-clone: the generated example workflows pin that tag.
+`filterIntroducedIn` (`packages/examples/src/assertActionSupportsDesigns.ts`; a design property goes into
+`propertyIntroducedIn` there with the change that adds it to the format), check that every
+`propertyIntroducedIn` version names a tag actually cut (`maxLines`: v0.4.0; correct it if that release got another
+number), remove the "need the v0.4.0 tag" passage of [components](components.md#the-examples-repository) once the
+default reaches it, run `pnpm examples <clone>` and push the clone: the generated example workflows pin that tag.

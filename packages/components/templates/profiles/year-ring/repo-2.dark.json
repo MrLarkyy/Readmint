@@ -84,7 +84,7 @@
                           "type": "text",
                           "x": 0,
                           "y": 12.254,
-                          "content": "{{ rs[props.slot].name }}",
+                          "content": "{{ rs[props.slot].name | truncate(100) | truncateWidth(300, \"med\", 19) }}",
                           "font": "med",
                           "fontSize": 19,
                           "fill": "{{ props.theme == \"dark\" ? \"#ECEEF2\" : \"#15171C\" }}"
@@ -142,6 +142,7 @@
                           "type": "text",
                           "x": 0,
                           "width": 400,
+                          "maxLines": 2,
                           "y": 61.991,
                           "content": "{{ rs[props.slot].description | truncate(140) }}",
                           "font": "reg",

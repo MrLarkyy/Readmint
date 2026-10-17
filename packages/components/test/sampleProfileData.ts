@@ -324,3 +324,46 @@ export function longLocationProfileData(location: string): ProfileData {
   const data = sampleProfileData();
   return { github: { ...data.github, location } };
 }
+
+/**
+ * The sample data with realistic long texts (RM-123): long repository names in the first three pushes, a long push
+ * message, and a first repository whose 54-character name and three-line description overflow its card.
+ */
+export function longTextProfileData(): ProfileData {
+  const data = sampleProfileData();
+  const longName = "a-very-long-repository-name-that-keeps-going-and-going";
+  const names = [
+    longName,
+    "repo_with_underscores_and_numbers_1234567890",
+    "ěščřžýáié-čeština-repo",
+  ];
+  const [first, ...rest] = data.github.repositories;
+  const repositories =
+    first === undefined
+      ? rest
+      : [
+          {
+            ...first,
+            name: longName,
+            nameWithOwner: `readmint-sample/${longName}`,
+            description:
+              "Renders GitHub profile cards from plain JSON designs: themes, embedded webfonts, animated charts and a preview that matches the output.",
+          },
+          ...rest,
+        ];
+  return {
+    github: {
+      ...data.github,
+      repositories,
+      pinned: repositories,
+      pushes: data.github.pushes.map((push, index) => ({
+        ...push,
+        repository: names[index] ?? push.repository,
+        message:
+          index === 0
+            ? "Rework the incremental build cache so renamed files keep their history and stale entries are evicted early"
+            : push.message,
+      })),
+    },
+  };
+}

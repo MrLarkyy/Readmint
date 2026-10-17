@@ -213,6 +213,7 @@ export const maximalDesign = {
           ...common,
           content: "{{item.name}}",
           width: 80,
+          maxLines: 2,
           fill: "#fff",
           font: "body",
           fontSize: 10,

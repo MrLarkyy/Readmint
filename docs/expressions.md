@@ -133,7 +133,9 @@ or a ligature) and finds the cut by bisection; where negative letter spacing or 
 the cut it finds fits but may not be the longest that would. A text of more than 10000 UTF-16 code units is
 `too-large`. Each measurement is charged the steps of its text, `truncateWidth` once per text it lays out (the whole
 text, the ellipsis, one per bit of the text's length); the renderer also counts the shaping against its own bound.
-Measuring draws nothing: it embeds no font and never warns `missing-glyph`.
+Measuring draws nothing: it embeds no font and never warns `missing-glyph`. `truncateWidth` cuts one line; a text that
+wraps is capped at a number of lines by the text layer's `maxLines` ([design format](design-format.md#layers)), which
+cuts its last drawn line the same way.
 
 ## Locales
 
