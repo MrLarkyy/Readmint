@@ -146,7 +146,7 @@ Five complete designs that show what the format can do; each is an ordinary desi
   (SIL Open Font License 1.1, `OFL.txt` and the sha256 of each file beside them); their `src` is the relative path
   `fonts/Montserrat-Medium.ttf`, resolved against the design file by the CLI and the Action. The banner names its
   headline font `display`: replace its `src`, `family` and `licence` (keep `embedding: "allowed"` only for a font
-  you may embed) to set the banner in your own font. Montserrat has no CJK, Arabic, Devanagari or emoji glyphs: a name or bio in those is not drawn and the render warns `missing-glyph`. Add a font asset that has them and list it in the `fallback` of `body`, `bold` and `display` ([design format](design-format.md#assets)), and mind the size budget below.
+  you may embed) to set the banner in your own font. Montserrat has no CJK, Arabic, Devanagari or emoji glyphs and of Greek only Δ, Ω, μ and π: a name or bio in those is not drawn and the render warns `missing-glyph`. Add a font asset that has them and list it in the `fallback` of `body`, `bold` and `display` ([design format](design-format.md#assets)), and mind the size budget below.
 - **Long and missing data.** Names are cut with `truncate`, counts shortened with `compact`, the language list shows
   six rows (`repeat` with `if: {{ i < 6 }}`; a dropped copy takes no slot) or a "No language data yet." line, and a
   streak of 0 days shows "No streak". In `year-ring`, the repository names and push messages of recent work and the
@@ -238,12 +238,16 @@ A folder holds, per section, `<section>.json` and its dark twin `<section>.dark.
   variable axes, so the prototype's Archivo widths are the static width instances: stretch 62-70 % is ExtraCondensed,
   90 % SemiCondensed, 108-116 % SemiExpanded, 100 % the normal width. Only the files a template names are in its
   folder, with the licence text beside them.
-  **Script coverage.** `year-ring` and `horizon` set their text in Archivo, which covers Latin, Latin Extended and
-  Vietnamese but no Cyrillic or Greek; every Archivo font asset lists a Noto Sans file (the weight and, in `horizon`,
-  the width of the Archivo file) as its `fallback`, so Cyrillic and Greek names, descriptions and messages are drawn
-  from Noto Sans in those two templates. The `horizon` code and label text in Geist Mono and `pinscreen`'s Geist and
-  Geist Mono cover Latin, Latin Extended and Cyrillic (the Slavic languages, not every historic letter), but of Greek
-  only Λ, Ω, λ, μ, π (and ω in Geist): other Greek letters in a Geist or Geist Mono text are not drawn there. No
+  **Script coverage.** `year-ring` and `horizon` set their text in Archivo, which covers Latin, Latin Extended-A and
+  Vietnamese, no Cyrillic and of Greek only Δ, Ω, μ and π (in all ten Archivo files); every Archivo font asset lists a
+  Noto Sans file of its weight as its `fallback`, so Cyrillic and the other Greek letters of names, descriptions and
+  messages are drawn from Noto Sans in those two templates. In `year-ring` the Noto Sans files are the normal width; in
+  `horizon` the ExtraCondensed Archivo falls back to ExtraCondensed Noto Sans, and both the SemiCondensed and the
+  normal-width Archivo (`reg`) to SemiCondensed Noto Sans (the template carries no normal-width Noto Sans). The
+  `horizon` code and label text in Geist Mono and `pinscreen`'s Geist and Geist Mono cover Latin, most of Latin
+  Extended-A (not Ĕ ĕ Ĭ ĭ ĸ Ŀ ŀ ŉ Ŏ ŏ ſ, nor Ĳ ĳ in Geist Mono), Vietnamese and Cyrillic (the Slavic languages, not
+  every historic letter), but of Greek only Λ, Ω, λ, μ, π (and ω in Geist): other Greek letters in a Geist or Geist
+  Mono text are not drawn there. No
   template font has emoji or CJK glyphs: such a name or commit message is not drawn, takes no space, and the render
   warns `missing-glyph` ([renderer](renderer.md)). To cover more, add a font asset that has the script and list it in
   the `fallback` of the design's fonts ([design format](design-format.md#assets);
@@ -427,31 +431,33 @@ seconds of work for each export format.
 
 ### Bytes per section
 
-UTF-8 bytes of the animated SVG of the files as published, on the sample data of the tests and on the worst-case data
-(1024-character texts, counts of 10^15, 600 pushes, a 54-column calendar at 1000000 a day); every section is within
-the budget below. The repository slots weigh alike; `work` is 5 to 7 KB.
+UTF-8 bytes (KB of 1000) of the animated SVG of the files as published (both themes weigh alike), on the sample data
+of the tests and on the worst-case data (1024-character texts, counts of 10^15, 600 pushes, a 54-column calendar at
+1000000 a day), the larger of it in Latin and with the long texts in Cyrillic and Greek (every letter of U+0400..045F
+and U+0386..03CE, which embeds the most glyphs of the fallback fonts); every section is within the budget below. The
+repository slots weigh alike; `work` is 5 to 7 KB.
 
 | template    | section | sample | worst case |
 | ----------- | ------- | ------ | ---------- |
-| `year-ring` | header  | 151 KB | 162 KB     |
-| `year-ring` | year    | 168 KB | 184 KB     |
+| `year-ring` | header  | 149 KB | 188 KB     |
+| `year-ring` | year    | 167 KB | 184 KB     |
 | `year-ring` | index   | 10 KB  | 7 KB       |
-| `year-ring` | recent  | 28 KB  | 88 KB      |
-| `year-ring` | repo-1  | 16 KB  | 26 KB      |
-| `year-ring` | footer  | 10 KB  | 10 KB      |
-| `horizon`   | header  | 16 KB  | 24 KB      |
-| `horizon`   | ticker  | 34 KB  | 31 KB      |
-| `horizon`   | year    | 121 KB | 112 KB     |
-| `horizon`   | repo-1  | 45 KB  | 53 KB      |
+| `year-ring` | recent  | 29 KB  | 34 KB      |
+| `year-ring` | repo-1  | 16 KB  | 27 KB      |
+| `year-ring` | footer  | 10 KB  | 13 KB      |
+| `horizon`   | header  | 15 KB  | 24 KB      |
+| `horizon`   | ticker  | 34 KB  | 42 KB      |
+| `horizon`   | year    | 98 KB  | 92 KB      |
+| `horizon`   | repo-1  | 45 KB  | 54 KB      |
 | `horizon`   | stack   | 10 KB  | 9 KB       |
 | `horizon`   | worked  | 3 KB   | 3 KB       |
-| `horizon`   | footer  | 8 KB   | 8 KB       |
-| `pinscreen` | header  | 23 KB  | 30 KB      |
-| `pinscreen` | year    | 184 KB | 198 KB     |
-| `pinscreen` | repo-1  | 12 KB  | 12 KB      |
-| `pinscreen` | log     | 27 KB  | 27 KB      |
+| `horizon`   | footer  | 8 KB   | 11 KB      |
+| `pinscreen` | header  | 21 KB  | 41 KB      |
+| `pinscreen` | year    | 169 KB | 182 KB     |
+| `pinscreen` | repo-1  | 12 KB  | 15 KB      |
+| `pinscreen` | log     | 24 KB  | 29 KB      |
 | `pinscreen` | stack   | 13 KB  | 13 KB      |
-| `pinscreen` | footer  | 5 KB   | 5 KB       |
+| `pinscreen` | footer  | 5 KB   | 7 KB       |
 
 The ring of the Year Ring prototype was about 390 KB; sharing the turn rules between the days brought it to 241 KB with
 a dot for every day without commits, and drawing each day on an orbit (six groups instead of nine, no keyframes per

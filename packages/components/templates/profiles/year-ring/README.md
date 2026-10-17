@@ -1,6 +1,6 @@
 # Year Ring
 
-A calm, cobalt profile set in Archivo. The year is a slowly turning 3D ring with a line for every day, as tall as the square root of its commits, the longest streak (a run of two or more days) marked along its base and the total counted up in its middle. The row under the ring names only what is drawn: no busiest weekday for a year without contributions, no streak for a single day, no legend for a calendar without days. The repositories draw their own 52-week lines. Archivo covers Latin, Latin Extended and Vietnamese and Noto Sans, its fallback, Cyrillic and Greek; emoji and CJK are not drawn.
+A calm, cobalt profile set in Archivo. The year is a slowly turning 3D ring with a line for every day, as tall as the square root of its commits, the longest streak (a run of two or more days) marked along its base and the total counted up in its middle. The row under the ring names only what is drawn: no busiest weekday for a year without contributions, no streak for a single day, no legend for a calendar without days. The repositories draw their own 52-week lines. Archivo covers Latin, Latin Extended-A and Vietnamese (of Greek only Δ, Ω, μ and π) and Noto Sans, its fallback, Cyrillic and Greek; emoji and CJK are not drawn.
 
 Every section is a design of the public design format, drawn in a light and a dark variant (`<section>.json` and
 `<section>.dark.json`, which differ only in the root prop `theme`). Nothing in them names a person: the data comes
