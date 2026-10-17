@@ -367,3 +367,35 @@ export function longTextProfileData(): ProfileData {
     },
   };
 }
+
+/** Names GitHub really uses as the top three of an account (the fourth is not drawn as a label). */
+export const longLanguageNames: readonly string[] = [
+  "Jupyter Notebook",
+  "Visual Basic .NET",
+  "Objective-C++",
+  "Other",
+];
+
+/** The sample data with the given language names and shares (default 40, 20, 20 and 20 %), every language list alike. */
+export function longLanguageProfileData(
+  names: readonly string[] = longLanguageNames,
+  shares: readonly number[] = [0.4, 0.2, 0.2, 0.2],
+): ProfileData {
+  const data = sampleProfileData();
+  const listed = names.map((name, index) => ({
+    name,
+    color: "#3572a5",
+    share: shares[index] ?? 0,
+  }));
+  return {
+    github: {
+      ...data.github,
+      languages: listed.map((entry) => ({ ...entry, bytes: Math.round(entry.share * 1_000_000) })),
+      languagesByRepo: listed.map((entry) => ({ ...entry, repositories: 5 })),
+      languagesAuthored: listed.map((entry) => ({
+        ...entry,
+        additions: Math.round(entry.share * 10_000),
+      })),
+    },
+  };
+}

@@ -421,7 +421,7 @@ the budget below. The repository slots weigh alike; `work` is 5 to 7 KB.
 | ----------- | ------- | ------ | ---------- |
 | `year-ring` | header  | 151 KB | 162 KB     |
 | `year-ring` | year    | 168 KB | 184 KB     |
-| `year-ring` | index   | 10 KB  | 34 KB      |
+| `year-ring` | index   | 10 KB  | 7 KB       |
 | `year-ring` | recent  | 28 KB  | 88 KB      |
 | `year-ring` | repo-1  | 16 KB  | 26 KB      |
 | `year-ring` | footer  | 10 KB  | 10 KB      |

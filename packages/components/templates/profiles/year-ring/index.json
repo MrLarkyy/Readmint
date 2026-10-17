@@ -291,6 +291,23 @@
                   "type": "group",
                   "x": 170,
                   "y": 0,
+                  "let": {
+                    "ln0": "{{ langs[0].name | default(\"\") | truncate(40) }}",
+                    "ln1": "{{ langs[1].name | default(\"\") | truncate(40) }}",
+                    "ln2": "{{ langs[2].name | default(\"\") | truncate(40) }}",
+                    "lp0": "{{ \" \" + (langs[0].share | default(0) | round(2) | percent) }}",
+                    "lp1": "{{ \" \" + (langs[1].share | default(0) | round(2) | percent) }}",
+                    "lp2": "{{ \" \" + (langs[2].share | default(0) | round(2) | percent) }}",
+                    "lw0": "{{ langs[0] ? (ln0 | textWidth(\"reg\", 15)) : 0 }}",
+                    "lw1": "{{ langs[1] ? (ln1 | textWidth(\"reg\", 15)) : 0 }}",
+                    "lw2": "{{ langs[2] ? (ln2 | textWidth(\"reg\", 15)) : 0 }}",
+                    "lq0": "{{ langs[0] ? ((ln0 + lp0) | textWidth(\"reg\", 15)) - lw0 : 0 }}",
+                    "lq1": "{{ langs[1] ? ((ln1 + lp1) | textWidth(\"reg\", 15)) - lw1 : 0 }}",
+                    "lq2": "{{ langs[2] ? ((ln2 + lp2) | textWidth(\"reg\", 15)) - lw2 : 0 }}",
+                    "la": "{{ 342 - 22 * ((langs | length | min(3)) - 1) - (lq0 + lq1 + lq2) }}",
+                    "lfit": "{{ lw0 + lw1 + lw2 <= la }}",
+                    "lcap": "{{ [la / 3, (la - lw0) / 2, (la - lw1) / 2, (la - lw2) / 2, la - lw0 - lw1, la - lw0 - lw2, la - lw1 - lw2, 0] | max }}"
+                  },
                   "layout": {
                     "type": "stack",
                     "direction": "row",
@@ -309,7 +326,7 @@
                           "type": "text",
                           "x": 0,
                           "y": 8.292,
-                          "content": "{{ lang.name }} {{ lang.share * 100 | round }}%",
+                          "content": "{{ lfit ? (lang.name | truncate(40)) : (lang.name | truncate(40) | truncateWidth(lcap, \"reg\", 15)) }} {{ lang.share * 100 | round }}%",
                           "font": "reg",
                           "fontSize": 15,
                           "fill": "{{ props.theme == \"dark\" ? \"#ECEEF2\" : \"#15171C\" }}"
