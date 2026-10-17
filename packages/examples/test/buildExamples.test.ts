@@ -359,8 +359,7 @@ describe("runExamples", () => {
     expect(err).toContain(defaultActionRef);
   });
 
-  // The real profile templates use maxLines, let and orbit, which the default pin predates until its release
-  // (docs/action.md#releases).
+  // A fixed pin keeps these tests independent of the default, which every Action release bumps (docs/action.md#releases).
   const pin = ["--action", options.actionRef];
 
   it("writes, then reports in sync with exit 0", () => {
@@ -391,32 +390,18 @@ describe("runExamples", () => {
   });
 
   it("writes the pinned default Action reference without --action", () => {
-    expect(defaultActionRef).toBe("MrLarkyy/Readmint@v0.3.0");
-    // The templates as the pinned release accepts them: without the layer properties it predates.
-    const dir = temp();
-    cpSync(templatesDir, dir, { recursive: true });
-    const profiles = join(dir, "profiles");
-    for (const folder of readdirSync(profiles, { withFileTypes: true }).filter((entry) =>
-      entry.isDirectory(),
-    )) {
-      const root = join(profiles, folder.name);
-      for (const file of readdirSync(root).filter((name) => name.endsWith(".json"))) {
-        const design = JSON.parse(readFileSync(join(root, file), "utf8")) as unknown;
-        if (withoutNewLayerProperties(design))
-          writeFileSync(join(root, file), `${JSON.stringify(design, null, 2)}\n`);
-      }
-    }
+    expect(defaultActionRef).toBe("MrLarkyy/Readmint@v0.4.0");
     const out = temp();
-    expect(run(dir, out).code).toBe(0);
+    expect(run(templatesDir, out).code).toBe(0);
     const workflow = readFileSync(join(out, ".github", "workflows", "readmint.yml"), "utf8");
     expect(workflow).toContain(`uses: ${defaultActionRef}`);
   });
 
-  it("refuses the default pin over the real templates until the release that brings maxLines, let and orbit", () => {
-    const { code, err } = run(templatesDir, temp());
+  it("refuses an Action pin older than the layer properties the real templates use", () => {
+    const { code, err } = run(templatesDir, temp(), "--action", "MrLarkyy/Readmint@v0.3.0");
     expect(code).toBe(1);
     expect(err).toMatch(
-      /@v0\.3\.0 predates (maxLines|let|orbit) \(Action v0\.4\.0\), which (horizon|pinscreen|year-ring)\/[a-z0-9-]+(\.dark)?\.json uses/,
+      /@v0\.3\.0 predates (maxLines|let|orbit|palette) \(Action v0\.4\.0\), which (horizon|pinscreen|year-ring)\/[a-z0-9-]+(\.dark)?\.json uses/,
     );
   });
 
@@ -426,18 +411,3 @@ describe("runExamples", () => {
     expect(err).toContain("nowhere");
   });
 });
-
-/** Removes `maxLines`, `let` and `orbit` from every layer of a design, in place; whether any was there. */
-function withoutNewLayerProperties(node: unknown): boolean {
-  if (Array.isArray(node)) return node.map(withoutNewLayerProperties).some(Boolean);
-  if (node === null || typeof node !== "object") return false;
-  const record = node as Record<string, unknown>;
-  let removed = false;
-  if (typeof record["type"] === "string") {
-    removed = "maxLines" in record || "let" in record || "orbit" in record;
-    delete record["maxLines"];
-    delete record["let"];
-    delete record["orbit"];
-  }
-  return Object.values(record).map(withoutNewLayerProperties).some(Boolean) || removed;
-}
