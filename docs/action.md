@@ -372,5 +372,5 @@ in [components](components.md#the-examples-repository) ("by default") and the pi
 `packages/examples/test/buildExamples.test.ts`, add any filter the release introduced to
 `filterIntroducedIn` (`packages/examples/src/assertActionSupportsDesigns.ts`; a layer property goes into
 `propertyIntroducedIn`, a key of the document into `documentKeyIntroducedIn` there, with the change that adds it to the format), check that every
-`propertyIntroducedIn` and `documentKeyIntroducedIn` version names a tag actually cut (`maxLines`, `let`, `orbit` and the root `palette`: v0.4.0; correct it if that release got another
+`filterIntroducedIn`, `propertyIntroducedIn` and `documentKeyIntroducedIn` version names a tag actually cut (`maxLines`, `let`, `orbit` and the root `palette`: v0.4.0; the filters `exclude` and `sum`: v0.5.0; correct it if that release got another
 number), run `pnpm examples <clone>` and push the clone: the generated example workflows pin that tag.

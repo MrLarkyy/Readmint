@@ -65,6 +65,43 @@ describe("assertActionSupportsDesigns", () => {
   });
 });
 
+describe("list filters", () => {
+  const hiding = JSON.stringify({
+    layers: [
+      {
+        type: "group",
+        let: { langs: '{{ github.languages | exclude("name", props.languagesHide) }}' },
+        children: [{ type: "text", content: '{{ langs | sum("share") }}' }],
+      },
+    ],
+  });
+
+  it.each([
+    [JSON.stringify({ a: '{{ list | exclude("name", []) }}' }), "exclude"],
+    [JSON.stringify({ a: "{{ list |sum }}" }), "sum"],
+    [JSON.stringify({ a: '{{ list | sum("share") }}' }), "sum"],
+  ])("throws for a pinned release older than the filter (%#)", (text, filter) => {
+    expect(() => {
+      assertActionSupportsDesigns("owner/action@v0.4.0", design(text));
+    }).toThrow(
+      `owner/action@v0.4.0 predates ${filter} (Action v0.5.0), which t/header.json uses; pin v0.5.0 or newer`,
+    );
+  });
+
+  it.each(["@v0.5.0", "@v1.0.0", "@main", "@v0"])("accepts exclude and sum with %s", (ref) => {
+    expect(() => {
+      assertActionSupportsDesigns(`owner/action${ref}`, design(hiding));
+    }).not.toThrow();
+  });
+
+  it("ignores a longer filter name and the words outside a pipe", () => {
+    const mentions = JSON.stringify({ sum: 1, exclude: [], a: "{{ x | summary }} sum exclude" });
+    expect(() => {
+      assertActionSupportsDesigns("owner/action@v0.4.0", design(mentions));
+    }).not.toThrow();
+  });
+});
+
 describe("layer properties", () => {
   const orbiting = JSON.stringify({
     components: {

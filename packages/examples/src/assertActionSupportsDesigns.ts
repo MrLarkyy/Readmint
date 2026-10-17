@@ -4,6 +4,8 @@ import { isPinnedOlderThan } from "./isPinnedOlderThan.js";
 const filterIntroducedIn: Readonly<Record<string, string>> = {
   textWidth: "0.3.0",
   truncateWidth: "0.3.0",
+  exclude: "0.5.0",
+  sum: "0.5.0",
 };
 
 /**
