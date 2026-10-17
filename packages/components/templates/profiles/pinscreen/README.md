@@ -50,6 +50,8 @@ jobs:
 
 The repository cards show `github.pinned` in the order the data gives, or `github.repositories` where the data has no pinned list (the loader fills `github.pinned`). Change which repository a card shows by changing the root prop `slot` of its design (0 to 5).
 
+The sections `header`, `log`, `repo-1` to `repo-6`, `stack` and `year` bind values with the layer property `let`, which needs the Action v0.4.0 or newer; an older Action refuses them with `unknown-property`.
+
 ## Your texts
 
 The personal texts are set once, in `settings.json` next to the designs: an object with one entry per section (the
