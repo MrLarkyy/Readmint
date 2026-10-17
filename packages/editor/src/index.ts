@@ -61,6 +61,7 @@ export { resizeLayer, type LayerResize } from "./resizeLayer.js";
 export { selectLayer } from "./selectLayer.js";
 export { setFontAsset, type FontAssetChange } from "./setFontAsset.js";
 export { setLayerProperty } from "./setLayerProperty.js";
+export { setVariant } from "./setVariant.js";
 export { setSettingsProp } from "./setSettingsProp.js";
 export { settingsFields, type SettingsField } from "./settingsFields.js";
 export { type FontFile, uploadFont } from "./uploadFont.js";

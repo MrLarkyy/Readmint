@@ -37,6 +37,8 @@ workspace and no UI framework: the DOM views are small classes that dispatch com
 
   "Export settings" (enabled once a file is loaded) saves `settings.json` in the format `--props` and `props-file` read. The text of the loaded file is kept: with no edit the export is exactly the loaded file, and an edit replaces only the value of the edited section (two-space indented at its key's indent), so every other section stays byte for byte, BOM and line ends included. A settings file is read as strict UTF-8 as the CLI does (otherwise refused with "settings file is not valid UTF-8") and its BOM is kept. New, Import and loading keep the loaded text. Importing the export gives the same sections, and `readmint render --props` renders the same image as the preview.
 
+- **Variant**: the "Variant" list switches the preview and the PNG and WebP export between Light (the design as it is) and `dark`, the render variant of `@readmint/format` (`renderVariants`): `theme: dark` set on the root component layers, as `readmint render --variant dark`. The design must declare a `theme` prop on a root component; otherwise the list is disabled and says why ("no top-level component declares `theme`"). The variant is applied first and the settings section after it, as the CLI does, so a section that sets `theme` wins, with a warning naming the section and the prop; with a variant chosen the settings form shows the variant's value, greyed, for a prop the section lacks. A variant that does not fit the design (an enum without `dark`, another type) is listed as a `variant` issue by its pointer, never with a value; the preview then shows the design without it and the PNG and WebP export is refused. The variant is an input of the session, like fixture data: never part of the design, its history or any export, and switching it is not an undo step (undo and redo keep it). Import keeps it when the imported design declares `theme` and drops it otherwise; New clears it. Importing a `card.dark.json` twin still picks the `card` settings section, as before.
+
 - **Import and export**: import a JSON or YAML design file (validated with the format's limits); export the design as
   `design.json` (two-space JSON, a final line feed, the same bytes for the same design), as `design.yaml` (YAML 1.2,
   keys in the design's own order, no anchors; refused with an `export` issue naming both lengths when it would pass the
@@ -87,7 +89,7 @@ warnings are listed under the editor with their design pointer; one inside a lay
 render fails, the image keeps showing the last good render, but clicking the canvas selects nothing until a render
 succeeds (the layer tree still does): the old boxes may no longer match the design.
 
-Exporting the design and rendering it with `readmint render design.json --data <fixture>` (and `--props <settings>` when a section is chosen; the design file's name picks the section) gives the preview's bytes;
+Exporting the design and rendering it with `readmint render design.json --data <fixture>` (and `--props <settings>` when a section is chosen, `--variant dark` when the dark variant is; the design file's name picks the section) gives the preview's bytes;
 a golden suite (`packages/editor/test/editor-session.golden.ts`, Node and Chromium) and a CLI test pin it.
 
 ## Raster export
@@ -96,7 +98,7 @@ The toolbar's "Export PNG" and "Export WebP" make the image the CLI makes for th
 `readmint render design.json --data data.json --format png|webp` with its defaults (scale 2, lossless WebP). The export
 is `renderSvg(design, { data, assets, time })` for each frame, as the CLI renders it, passed to `exportRaster` of
 `@readmint/raster/browser` ([raster.md](raster.md#in-the-browser)): a still design gives a still image, a design with a
-timeline an animated WebP (a PNG of its first frame). The files are `design.png` and `design.webp`.
+timeline an animated WebP (a PNG of its first frame). The files are `design.png` and `design.webp`, and `design.dark.png` and `design.dark.webp` with the dark variant chosen.
 
 It runs in a module Web Worker started for the export and terminated when it ends: the worker fetches the two
 WebAssembly files from the app's own origin, exports, and answers with the bytes. Nothing of raster export is in the
@@ -228,7 +230,7 @@ import {
 const editor = mountEditor(document.getElementById("app")!, {
   initial: design, // optional, default an empty canvas
   save: ({ name, text }) => store(name, text), // optional, default a download (design.json, design.yaml)
-  saveImage: ({ name, mimeType, bytes }) => store(name, bytes), // optional, default a download (design.png, design.webp)
+  saveImage: ({ name, mimeType, bytes }) => store(name, bytes), // optional, default a download (design.png, design.webp, design.dark.png, design.dark.webp)
   saveSettings: ({ name, text }) => store(name, text), // optional, default a download (settings.json)
 });
 editor.dispatch((state) => moveLayer(state, "/layers/0", 10, 0));
@@ -236,10 +238,10 @@ editor.dispatch((state) => uploadImage(state, { name: "logo.png", bytes })); // 
 editor.undo(); // as Ctrl+Z; editor.redo() as Ctrl+Shift+Z
 ```
 
-The state (`EditorState`: design, selection, fixture data, settings, session assets, font checks, issues) is immutable; every
+The state (`EditorState`: design, selection, fixture data, settings, variant, session assets, font checks, issues) is immutable; every
 command (`addLayer`, `moveLayer`, `resizeLayer`, `setLayerProperty`, `reorderLayer`, `removeLayer`, `selectLayer`,
-`uploadFont`, `uploadImage`, `setFontAsset`, `attachAsset`, `loadFixture`, `loadSettings`, `chooseSection`, `setSettingsProp`) is a pure function returning a new state
-whose design passes `validateDesign`, or the same design with the issues saying why not. `setSettingsProp(state, prop, value)` sets or (with `undefined`) removes a prop of the chosen settings section and changes no design; `exportSettings(settings)` is the text "Export settings" saves and `settingsFields(state)` the fields of the form. `effectiveDesign(state)` returns, besides the design and its `issues`, `warnings` (an `EditorIssue` with `severity: "warning"`, shown as `warning: ...`) and `unknownProps`. `readImageFile(bytes)` is
+`uploadFont`, `uploadImage`, `setFontAsset`, `attachAsset`, `loadFixture`, `loadSettings`, `chooseSection`, `setSettingsProp`, `setVariant`) is a pure function returning a new state
+whose design passes `validateDesign`, or the same design with the issues saying why not. `setVariant(state, name)` chooses the variant `name` (or none with `undefined`) and changes no design; an unknown name or a design without `theme` is refused with a `variant` issue (`EditorIssue` source `variant`). `settingsFields` reports `from: "variant"` for a value the variant gives. `setSettingsProp(state, prop, value)` sets or (with `undefined`) removes a prop of the chosen settings section and changes no design; `exportSettings(settings)` is the text "Export settings" saves and `settingsFields(state)` the fields of the form. `effectiveDesign(state)` returns, besides the design and its `issues`, `warnings` (an `EditorIssue` with `severity: "warning"`, shown as `warning: ...`) and `unknownProps`. `readImageFile(bytes)` is
 the check an upload runs. The history (`EditorHistory`) is an immutable value of its own, kept by `mountEditor` beside
 the state: `recordEdit(history, before, after)` records a design change, `undo(history, state)` and `redo(...)` return
 the next history and state (undefined when there is nothing to step to), `canUndo` and `canRedo` say whether there is.

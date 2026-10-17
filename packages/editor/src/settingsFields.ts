@@ -8,8 +8,8 @@ export interface SettingsField {
   readonly definition: ComponentPropDefinition;
   /** What renders: the section's value, else the layer's own, else the definition's default; none when in none. */
   readonly value?: ComponentPropValue;
-  /** Where `value` comes from: the section, the top-level component layer's own props, the definition's default, or nowhere. */
-  readonly from: "settings" | "layer" | "default" | "none";
+  /** Where `value` comes from: the section, the chosen variant (which sits under the section), the top-level component layer's own props, the definition's default, or nowhere. */
+  readonly from: "settings" | "variant" | "layer" | "default" | "none";
 }
 
 /**
@@ -29,6 +29,10 @@ export function settingsFields(state: EditorState): {
   const fields: SettingsField[] = [];
   for (const [name, definition] of declared) {
     const own = layerValue(state.design, name);
+    const variantValue =
+      state.variant !== undefined && Object.hasOwn(state.variant.props, name)
+        ? state.variant.props[name]
+        : undefined;
     if (Object.hasOwn(section, name)) {
       fields.push({
         name,
@@ -36,6 +40,8 @@ export function settingsFields(state: EditorState): {
         value: section[name] as ComponentPropValue,
         from: "settings",
       });
+    } else if (variantValue !== undefined) {
+      fields.push({ name, definition, value: variantValue, from: "variant" });
     } else if (own !== undefined) {
       fields.push({ name, definition, value: own, from: "layer" });
     } else if (definition.default !== undefined) {

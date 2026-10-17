@@ -1,4 +1,10 @@
-import { DesignLimits, propsSection, type Design } from "@readmint/format";
+import {
+  DesignLimits,
+  propsSection,
+  renderVariants,
+  type Design,
+  type RenderVariant,
+} from "@readmint/format";
 import { addLayer, type NewLayerType } from "./addLayer.js";
 import { AssetPanel } from "./AssetPanel.js";
 import { attachAsset } from "./attachAsset.js";
@@ -44,9 +50,11 @@ import { selectLayer } from "./selectLayer.js";
 import { setFontAsset } from "./setFontAsset.js";
 import { setLayerProperty } from "./setLayerProperty.js";
 import { setSettingsProp } from "./setSettingsProp.js";
+import { setVariant } from "./setVariant.js";
 import { SettingsPanel } from "./SettingsPanel.js";
 import { withSection } from "./settingsSection.js";
 import { Toolbar } from "./Toolbar.js";
+import { variantReason } from "./variantDesign.js";
 
 /** A design file the editor hands over to be saved. */
 export interface SavedDesign {
@@ -68,7 +76,7 @@ export interface MountEditorOptions {
   readonly save?: (file: SavedDesign) => void;
   /** Receives the exported settings file (`settings.json`); default a download in the browser. */
   readonly saveSettings?: (file: SavedDesign) => void;
-  /** Receives the exported image (`design.png`, `design.webp`); default a download in the browser. */
+  /** Receives the exported image (`design.png`, `design.webp`; `design.dark.png` with the dark variant); default a download in the browser. */
   readonly saveImage?: (file: SavedImage) => void;
   /** The raster worker; default the bundled `rasterWorker`, started for each export. */
   readonly createRasterWorker?: () => RasterWorker;
@@ -130,6 +138,7 @@ export function mountEditor(root: HTMLElement, options: MountEditorOptions = {})
       state.design !== before.design ||
       state.data !== before.data ||
       state.settings !== before.settings ||
+      state.variant !== before.variant ||
       state.sessionAssets !== before.sessionAssets
     ) {
       render(state);
@@ -175,6 +184,15 @@ export function mountEditor(root: HTMLElement, options: MountEditorOptions = {})
       return;
     }
     const { design, issues, unknownProps } = effectiveDesign(state);
+    const variant = state.variant;
+    const variantIssues = issues.filter((issue) => issue.source === "variant");
+    if (variant !== undefined && variantIssues.length > 0) {
+      report(
+        "export",
+        `the ${format} export needs the ${variant.name} variant to apply; choose Light or fix the design (${variantIssues.map((issue) => issue.message).join("; ")})`,
+      );
+      return;
+    }
     if (unknownProps.length > 0) {
       report(
         "export",
@@ -195,7 +213,7 @@ export function mountEditor(root: HTMLElement, options: MountEditorOptions = {})
         switch (outcome.kind) {
           case "exported": {
             const image = {
-              name: `design.${format}`,
+              name: variant === undefined ? `design.${format}` : `design.${variant.name}.${format}`,
               mimeType: outcome.file.mimeType,
               bytes: outcome.file.bytes,
             };
@@ -404,6 +422,9 @@ export function mountEditor(root: HTMLElement, options: MountEditorOptions = {})
     chooseSection: (section) => {
       dispatch((current) => chooseSection(current, section));
     },
+    chooseVariant: (name) => {
+      dispatch((current) => setVariant(current, name));
+    },
     zoom: (zoom) => {
       canvas.setZoom(zoom);
     },
@@ -477,6 +498,10 @@ export function mountEditor(root: HTMLElement, options: MountEditorOptions = {})
   const show = () => {
     toolbar.update(canUndo(history), canRedo(history));
     toolbar.setSections(state.settings);
+    toolbar.setVariant(
+      state.variant,
+      variantReason(state.design, renderVariants[0] as RenderVariant),
+    );
     tree.update(state);
     assets.update(state);
     canvas.update(state);
@@ -543,11 +568,18 @@ export function mountEditor(root: HTMLElement, options: MountEditorOptions = {})
   };
 }
 
-/** A fresh state that keeps the session inputs of `previous`: fixture data and the settings file, with no section chosen. */
+/**
+ * A fresh state that keeps the session inputs of `previous`: fixture data, the settings file with no section chosen,
+ * and the variant when the fresh design declares what it sets.
+ */
 function withSession(fresh: EditorState, previous: EditorState): EditorState {
+  const variant = previous.variant;
   return {
     ...fresh,
     data: previous.data,
+    ...(variant === undefined || variantReason(fresh.design, variant) !== undefined
+      ? {}
+      : { variant }),
     ...(previous.settings === undefined
       ? {}
       : { settings: withSection(previous.settings, undefined) }),

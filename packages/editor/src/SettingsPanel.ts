@@ -109,7 +109,10 @@ export class SettingsPanel {
     };
     const mark = (next: SettingsField) => {
       unset.disabled = next.from !== "settings";
-      row.classList.toggle("rm-default", next.from === "default" || next.from === "layer");
+      row.classList.toggle(
+        "rm-default",
+        next.from === "default" || next.from === "layer" || next.from === "variant",
+      );
       row.classList.toggle("rm-unset", next.from === "none");
     };
     if (definition.type === "array") return this.list(row, field, set, mark);
