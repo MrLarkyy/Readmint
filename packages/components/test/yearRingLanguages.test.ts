@@ -24,13 +24,14 @@ interface Drawn {
 }
 
 /** The Languages row of the index: each drawn label's text and the right edge of its box on the canvas. */
-function draw(data: ProfileData, theme: ProfileTheme = "light", limits = {}): Drawn {
+function draw(data: ProfileData, theme: ProfileTheme = "light", limits = {}, locale = "en"): Drawn {
   const design = loadExampleProfile("year-ring", "index", theme);
   const result = renderSvg(design, {
     data,
     assets: { fonts: profileFontAssets("year-ring", design) },
     layerBoxes: true,
     limits,
+    locale,
   });
   if (!result.ok) throw new Error(JSON.stringify(result.issues));
   const texts = [...result.svg.matchAll(/<tspan[^>]*>([^<]*)<\/tspan>/gu)]
@@ -119,6 +120,31 @@ describe("year ring index languages fit left of the bar (RM-125)", () => {
         ),
       ].map((match) => [match[1], match[2]]);
     expect(glyphs("dark")).toEqual(glyphs("light"));
+  });
+
+  for (const locale of ["de", "fr"]) {
+    test(`${locale}: the labels equal the English ones, cut and uncut`, () => {
+      const cut = named(longLanguageNames);
+      expect(draw(cut, "light", {}, locale).labels).toEqual(draw(cut).labels);
+      let widest = 0;
+      for (let length = 1; length <= 20; length += 1) {
+        const names = ["n".repeat(length), "n".repeat(length), "n".repeat(length)];
+        if (draw(named(names)).labels.some((label) => label.text.includes("…"))) break;
+        widest = length;
+      }
+      expect(widest).toBeGreaterThan(1);
+      const names = ["n".repeat(widest), "n".repeat(widest), "n".repeat(widest)];
+      expect(draw(named(names), "light", {}, locale).labels).toEqual(draw(named(names)).labels);
+    });
+  }
+
+  test("a share of 99.5 % is measured as drawn (100 %) and stays inside", () => {
+    const names = ["W".repeat(20), "W".repeat(20), "W".repeat(20)];
+    for (const locale of ["en", "de"]) {
+      const { labels } = draw(named(names, [0.995, 0.003, 0.002]), "light", {}, locale);
+      expect(labels[0]?.text.endsWith(" 100%")).toBe(true);
+      for (const label of labels) expect(label.right).toBeLessThanOrEqual(limit);
+    }
   });
 
   test("the worst case (34-character names) stays within half the work limits", () => {

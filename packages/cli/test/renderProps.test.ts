@@ -221,7 +221,9 @@ describe("--props with a shipped template", () => {
     const plain = await tree.run(args, io);
     const merged = await tree.run([...args, "--props", "settings.json"], io);
     expect(plain.code).toBe(ExitCode.invalid);
-    expect(plain.stderr).toMatch(/round needs a number, got string at column \d+ \(type\)/);
+    expect(plain.stderr).toMatch(
+      /\* needs two numbers, got string and number at column \d+ \(type\)/,
+    );
     expect(merged).toEqual(plain);
   });
 });
