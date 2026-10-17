@@ -572,7 +572,8 @@ describe.each(cases)("the example card of %o (%s)", (strip, theme) => {
       );
     }
     for (const box of boxes) expect(bottom(box)).toBeLessThanOrEqual(height);
-    for (let g = 0; g < 4; g++) {
+    const lines = Math.max(...profileLogos.map((logo) => logo.line)) + 1;
+    for (let g = 0; g < lines; g++) {
       const line = boxes.filter(
         (box) =>
           box.x >= strip.start.none &&
