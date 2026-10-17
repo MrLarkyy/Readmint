@@ -782,17 +782,17 @@ describe("the year sections on a sparse, spiky calendar", () => {
 const personalTexts: Readonly<Record<ProfileTemplate, Partial<Record<ProfileSection, string>>>> = {
   "year-ring": {
     header: "Backend engineer working in Kotlin",
-    index: ">Backend systems and internal tooling<",
+    index: ">Backend services, APIs and internal tooling<",
     footer: ">Open to long-term collaborations.<",
   },
   horizon: {
-    header: ">Messaging systems,<",
+    header: ">Backend services,<",
     stack: ">RabbitMQ<",
     worked: ">HOPLITE<",
     footer: ">COLLABORATIONS.<",
   },
   pinscreen: {
-    header: ">Backend engineer. Kotlin, the JVM and messaging systems.<",
+    header: ">Backend engineer. Kotlin, Java and the JVM.<",
     stack: ">redis, rabbitmq, nats<",
     footer: ">Open to long-term collaborations.<",
   },
@@ -848,7 +848,7 @@ describe("profile example props", () => {
   test("the horizon worked-with line lists the delivery partners and every item is drawn", () => {
     const items = profileExampleProps["horizon"]?.["worked"]?.["items"];
     expect(items).toEqual(expect.arrayContaining(["SWN Moravia", "we.builders", "Partners"]));
-    expect(items).toHaveLength(10);
+    expect(items).toHaveLength(7);
     const svg = renderProfile({
       template: "horizon",
       design: loadExampleProfile("horizon", "worked"),
