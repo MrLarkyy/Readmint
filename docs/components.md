@@ -354,9 +354,13 @@ seconds of work for each export format.
 - **One timeline per design.** The heading strips and footers are static. A section whose motion never ends (the
   turning ring, a ticker, a pulsing dot, the ripple, a blinking caret) loops (`loop: true`, 60000 ms; the Pinscreen year
   54000 ms, six ripples), and its one-shots play again once per loop; every other section plays once, `loop: false`. A
-  loop whose period is shorter than the timeline needs more keyframes than a track holds (32), so it is a few copies of
-  its layer (a `repeat` over a short list with `stagger`), each playing a window of whole periods and invisible outside
-  it; every period divides the timeline, so the loop is seamless. A loop is never shortened to suit the raster export:
+  loop whose period is shorter than the timeline (a ping every 2 s, a caret blinking every second, the Pinscreen pins
+  bouncing every 9 s) is one cycle of a few keyframes with `cycles` ([design-format.md](design-format.md#animation)):
+  `duration` is the period and `cycles` the periods in the run, and a cycle that ends where it starts joins the next
+  without a duplicate keyframe; every period divides the timeline, so the loop is seamless. The rewrite from unrolled
+  tracks and layer copies to cycles (RM-143) took the 26 files with such a pulse from 19042 to 13014 lines: Horizon
+  header 671 to 434 and year 995 to 758, Pinscreen header 904 to 578, log 714 to 536 and year 540 to 493, Year Ring
+  header 900 to 574, year 831 to 590 and each repository card 661 to 424 (light and dark alike). A loop is never shortened to suit the raster export:
   it samples a long loop at a lower rate instead (above).
 - **Tickers by measured width.** A ticker gives each item a slot as wide as its texts as drawn (`textWidth` of the
   repository name and message, fixed widths for the hash, date and gaps), clipped to the slot, so the width of one run

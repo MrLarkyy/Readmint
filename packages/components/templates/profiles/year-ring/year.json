@@ -269,11 +269,6 @@
                   "fill": "none",
                   "stroke": "{{ props.theme == \"dark\" ? \"#8C9BFF\" : \"#2B4BFF\" }}",
                   "strokeWidth": 0.5,
-                  "repeat": {
-                    "each": "{{ [0, 1] }}",
-                    "as": "loopCopy",
-                    "index": "loopIndex"
-                  },
                   "animate": {
                     "opacity": {
                       "keyframes": [
@@ -286,262 +281,26 @@
                           "value": 0.8
                         },
                         {
-                          "offset": 0.066667,
-                          "value": 0
-                        },
-                        {
-                          "offset": 0.066667,
-                          "value": 0.8
-                        },
-                        {
-                          "offset": 0.133333,
-                          "value": 0
-                        },
-                        {
-                          "offset": 0.133333,
-                          "value": 0.8
-                        },
-                        {
-                          "offset": 0.2,
-                          "value": 0
-                        },
-                        {
-                          "offset": 0.2,
-                          "value": 0.8
-                        },
-                        {
-                          "offset": 0.266667,
-                          "value": 0
-                        },
-                        {
-                          "offset": 0.266667,
-                          "value": 0.8
-                        },
-                        {
-                          "offset": 0.333333,
-                          "value": 0
-                        },
-                        {
-                          "offset": 0.333333,
-                          "value": 0.8
-                        },
-                        {
-                          "offset": 0.4,
-                          "value": 0
-                        },
-                        {
-                          "offset": 0.4,
-                          "value": 0.8
-                        },
-                        {
-                          "offset": 0.466667,
-                          "value": 0
-                        },
-                        {
-                          "offset": 0.466667,
-                          "value": 0.8
-                        },
-                        {
-                          "offset": 0.533333,
-                          "value": 0
-                        },
-                        {
-                          "offset": 0.533333,
-                          "value": 0.8
-                        },
-                        {
-                          "offset": 0.6,
-                          "value": 0
-                        },
-                        {
-                          "offset": 0.6,
-                          "value": 0.8
-                        },
-                        {
-                          "offset": 0.666667,
-                          "value": 0
-                        },
-                        {
-                          "offset": 0.666667,
-                          "value": 0.8
-                        },
-                        {
-                          "offset": 0.733333,
-                          "value": 0
-                        },
-                        {
-                          "offset": 0.733333,
-                          "value": 0.8
-                        },
-                        {
-                          "offset": 0.8,
-                          "value": 0
-                        },
-                        {
-                          "offset": 0.8,
-                          "value": 0.8
-                        },
-                        {
-                          "offset": 0.866667,
-                          "value": 0
-                        },
-                        {
-                          "offset": 0.866667,
-                          "value": 0.8
-                        },
-                        {
-                          "offset": 0.933333,
-                          "value": 0
-                        },
-                        {
-                          "offset": 0.933333,
-                          "value": 0.8
-                        },
-                        {
-                          "offset": 1,
-                          "value": 0
-                        },
-                        {
                           "offset": 1,
                           "value": 0
                         }
                       ],
-                      "duration": 30000,
-                      "stagger": 30000
+                      "duration": 2000,
+                      "cycles": 30
                     },
                     "scale": {
                       "keyframes": [
                         {
                           "offset": 0,
-                          "value": 1
-                        },
-                        {
-                          "offset": 0,
-                          "value": 0.67
-                        },
-                        {
-                          "offset": 0.066667,
-                          "value": 4.3
-                        },
-                        {
-                          "offset": 0.066667,
-                          "value": 0.67
-                        },
-                        {
-                          "offset": 0.133333,
-                          "value": 4.3
-                        },
-                        {
-                          "offset": 0.133333,
-                          "value": 0.67
-                        },
-                        {
-                          "offset": 0.2,
-                          "value": 4.3
-                        },
-                        {
-                          "offset": 0.2,
-                          "value": 0.67
-                        },
-                        {
-                          "offset": 0.266667,
-                          "value": 4.3
-                        },
-                        {
-                          "offset": 0.266667,
-                          "value": 0.67
-                        },
-                        {
-                          "offset": 0.333333,
-                          "value": 4.3
-                        },
-                        {
-                          "offset": 0.333333,
-                          "value": 0.67
-                        },
-                        {
-                          "offset": 0.4,
-                          "value": 4.3
-                        },
-                        {
-                          "offset": 0.4,
-                          "value": 0.67
-                        },
-                        {
-                          "offset": 0.466667,
-                          "value": 4.3
-                        },
-                        {
-                          "offset": 0.466667,
-                          "value": 0.67
-                        },
-                        {
-                          "offset": 0.533333,
-                          "value": 4.3
-                        },
-                        {
-                          "offset": 0.533333,
-                          "value": 0.67
-                        },
-                        {
-                          "offset": 0.6,
-                          "value": 4.3
-                        },
-                        {
-                          "offset": 0.6,
-                          "value": 0.67
-                        },
-                        {
-                          "offset": 0.666667,
-                          "value": 4.3
-                        },
-                        {
-                          "offset": 0.666667,
-                          "value": 0.67
-                        },
-                        {
-                          "offset": 0.733333,
-                          "value": 4.3
-                        },
-                        {
-                          "offset": 0.733333,
-                          "value": 0.67
-                        },
-                        {
-                          "offset": 0.8,
-                          "value": 4.3
-                        },
-                        {
-                          "offset": 0.8,
-                          "value": 0.67
-                        },
-                        {
-                          "offset": 0.866667,
-                          "value": 4.3
-                        },
-                        {
-                          "offset": 0.866667,
-                          "value": 0.67
-                        },
-                        {
-                          "offset": 0.933333,
-                          "value": 4.3
-                        },
-                        {
-                          "offset": 0.933333,
                           "value": 0.67
                         },
                         {
                           "offset": 1,
                           "value": 4.3
-                        },
-                        {
-                          "offset": 1,
-                          "value": 1
                         }
                       ],
-                      "duration": 30000,
-                      "stagger": 30000
+                      "duration": 2000,
+                      "cycles": 30
                     }
                   }
                 }

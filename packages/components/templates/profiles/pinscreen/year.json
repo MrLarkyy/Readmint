@@ -183,59 +183,11 @@
                                                                                           "value": 0
                                                                                         },
                                                                                         {
-                                                                                          "offset": 0.006667,
+                                                                                          "offset": 0.033333,
                                                                                           "value": "{{ 0 - lf[qd] }}"
                                                                                         },
                                                                                         {
-                                                                                          "offset": 0.016667,
-                                                                                          "value": 0
-                                                                                        },
-                                                                                        {
-                                                                                          "offset": 0.2,
-                                                                                          "value": 0
-                                                                                        },
-                                                                                        {
-                                                                                          "offset": 0.206667,
-                                                                                          "value": "{{ 0 - lf[qd] }}"
-                                                                                        },
-                                                                                        {
-                                                                                          "offset": 0.216667,
-                                                                                          "value": 0
-                                                                                        },
-                                                                                        {
-                                                                                          "offset": 0.4,
-                                                                                          "value": 0
-                                                                                        },
-                                                                                        {
-                                                                                          "offset": 0.406667,
-                                                                                          "value": "{{ 0 - lf[qd] }}"
-                                                                                        },
-                                                                                        {
-                                                                                          "offset": 0.416667,
-                                                                                          "value": 0
-                                                                                        },
-                                                                                        {
-                                                                                          "offset": 0.6,
-                                                                                          "value": 0
-                                                                                        },
-                                                                                        {
-                                                                                          "offset": 0.606667,
-                                                                                          "value": "{{ 0 - lf[qd] }}"
-                                                                                        },
-                                                                                        {
-                                                                                          "offset": 0.616667,
-                                                                                          "value": 0
-                                                                                        },
-                                                                                        {
-                                                                                          "offset": 0.8,
-                                                                                          "value": 0
-                                                                                        },
-                                                                                        {
-                                                                                          "offset": 0.806667,
-                                                                                          "value": "{{ 0 - lf[qd] }}"
-                                                                                        },
-                                                                                        {
-                                                                                          "offset": 0.816667,
+                                                                                          "offset": 0.083333,
                                                                                           "value": 0
                                                                                         },
                                                                                         {
@@ -243,8 +195,9 @@
                                                                                           "value": 0
                                                                                         }
                                                                                       ],
-                                                                                      "duration": 45000,
-                                                                                      "delay": "{{ qd * 85 }}"
+                                                                                      "duration": 9000,
+                                                                                      "delay": "{{ qd * 85 }}",
+                                                                                      "cycles": 5
                                                                                     }
                                                                                   },
                                                                                   "children": [

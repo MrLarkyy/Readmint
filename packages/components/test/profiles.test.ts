@@ -3,7 +3,7 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { defaultNodeTolerance } from "@readmint/golden";
 import { comparePng, rasterizeSvg } from "@readmint/golden/node";
-import { validateDesign, type Design } from "@readmint/format";
+import { validateDesign, type AnimationTrack, type Design, type Layer } from "@readmint/format";
 import { renderSvg, RenderLimits } from "@readmint/renderer";
 import { describe, expect, test } from "vitest";
 import { profileTemplates, type ProfileSection, type ProfileTemplate } from "../src/index.js";
@@ -129,6 +129,29 @@ describe.each(cases)("%s %s", (template, section) => {
       ...light,
       layers: [{ ...root, props: { ...root.props, theme: "dark" } }, ...light.layers.slice(1)],
     });
+  });
+
+  test("plays a periodic motion as one short cycle: no long track, no layer copied for the keyframe cap", () => {
+    const long: string[] = [];
+    const copied: string[] = [];
+    const visit = (layers: readonly Layer[] | undefined, path: string) => {
+      layers?.forEach((layer, index) => {
+        const at = `${path}/${String(index)}`;
+        const animate: Readonly<Record<string, AnimationTrack<unknown>>> =
+          "animate" in layer ? (layer.animate ?? {}) : {};
+        for (const [property, track] of Object.entries(animate)) {
+          if (track.keyframes.length > 8) long.push(`${at} ${property}`);
+        }
+        if (layer.repeat?.as === "loopCopy") copied.push(at);
+        if (layer.type === "group") visit(layer.children, `${at}/children`);
+      });
+    };
+    const design = loadProfile(template, section);
+    visit(design.layers, "/layers");
+    for (const [name, component] of Object.entries(design.components ?? {}))
+      visit(component.layers, `/components/${name}/layers`);
+    expect(long).toEqual([]);
+    expect(copied).toEqual([]);
   });
 
   test("has a reader-facing title and description", () => {
