@@ -102,7 +102,7 @@ describe("year ring index languages fit left of the bar (RM-125)", () => {
     const { labels } = draw(named(longLanguageNames));
     expect(labels.map((label) => label.text)).toEqual([
       "Jupyter… 40%",
-      "Visual … 20%",
+      "Visual… 20%",
       "Objecti… 20%",
     ]);
   });
