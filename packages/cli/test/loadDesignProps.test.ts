@@ -2,6 +2,7 @@ import { symlink } from "node:fs/promises";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import { CliError, ExitCode, loadDesignProps } from "../src/index.js";
+import { quoteForLog } from "../src/quoteForLog.js";
 import { type CliTree, makeCliTree } from "./cliTree.js";
 
 let tree: CliTree;
@@ -75,9 +76,9 @@ describe("with confinedTo", () => {
     const outside = await tree.file("out.json", { header: { w: "s3cret-word" } });
     const error = await confinedFailure(outside);
     expect(error.exitCode).toBe(ExitCode.input);
-    expect(error.message).toMatch(/^settings file ".*" /);
+    expect(error.message).toBe(`settings file ${quoteForLog(outside)} is not a relative path`);
     expect(error.message).not.toContain("s3cret-word");
-    expect(error.message).not.toContain("ws");
+    expect(error.message).not.toContain(join(tree.root, "ws"));
   });
 
   test("a link leading outside is refused", async (context) => {

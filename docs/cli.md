@@ -160,7 +160,7 @@ is. A design whose section the file lacks is
 rendered as it is, and a section no design names is ignored. The output is the same as rendering the design with the
 props written into its root layer; the design format is not involved (no `$schema`, no version).
 
-The file is JSON, UTF-8, at most 4 MiB of text; section and prop names are ids (a letter, then letters, digits, `_` or
+The file is JSON, UTF-8, at most 4 Mi characters of text; section and prop names are ids (a letter, then letters, digits, `_` or
 `-`, at most 64); a value is a string, a number, a boolean or an array of those. Like `--data` it is the user's own
 file and may lie anywhere; the Action's `props-file` is confined to the workspace instead. A file that cannot be read exits with code 3, one whose content is invalid with code 1; the
 message names the file and the pointer, not the content. `preview` watches the file and re-renders when it changes.
