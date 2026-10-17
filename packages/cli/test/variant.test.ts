@@ -59,7 +59,7 @@ describe("render --variant dark", () => {
 
   test("a card.dark.json next to the design wins, with one stderr line", async () => {
     await tree.file("card.dark.json", {
-      ...(themed("dark") as object),
+      ...themed("dark"),
       canvas: { width: 41, height: 24 },
     });
     const run = await tree.run(["render", "card.json", "--variant", "dark"]);

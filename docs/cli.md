@@ -41,6 +41,7 @@ data it fails `image-binding`.
 | `--root <dir>`                                     | all                  | the folder the design file must lie in; default the current folder                                                                                                                                                                                                                                                                                                                     |
 | `--data <file>`                                    | all                  | fixture data (below)                                                                                                                                                                                                                                                                                                                                                                   |
 | `--props <file>`                                   | all                  | settings: root component props by section, merged into the design ([Settings file](#settings-file))                                                                                                                                                                                                                                                                                    |
+| `--variant <name>`                                 | `render`             | renders a named variant of the design: `dark` sets its root prop `theme` to `dark` ([Variants](#variants))                                                                                                                                                                                                                                                                             |
 | `--locale <tag>`                                   | all                  | BCP 47 language tag for the `number`, `compact`, `percent` and `date` filters; default the design's `locale`, else `en`; a tag the expression tables lack (`en`, `de`, `fr`, `es`, `cs`, or a region tag of one) is a usage error                                                                                                                                                      |
 | `--time <ms>`                                      | `render`, `validate` | renders that frame of the animation as a static SVG (or a still raster image), in 0..86400000                                                                                                                                                                                                                                                                                          |
 | `--out <file>`                                     | `render`             | writes the output to this file (its folder must exist) instead of standard output; written only once the whole output is made, so a failed raster export leaves it as it was                                                                                                                                                                                                           |
@@ -73,7 +74,7 @@ whose message never shows the value. There is no host option: the preview listen
 | ---- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | 0    | `ok`       | done; warnings (such as `animation-cut`) may have been printed                                                                                                                                                                                                                                   |
 | 1    | `invalid`  | the design is invalid (parse, schema, references, not UTF-8, too large), an asset was refused, the render failed, or a raster export failed (a limit in [raster.md](raster.md))                                                                                                                  |
-| 2    | `usage`    | unknown command or option, missing or extra argument, bad option value                                                                                                                                                                                                                           |
+| 2    | `usage`    | unknown command or option, missing or extra argument, bad option value (`--variant` other than `dark`, or on `validate` or `preview`)                                                                                                                                                            |
 | 3    | `input`    | a file, folder or port cannot be used: design file missing or outside `--root`, fixture data unreadable or invalid, a fixture key equal to a `--data-json` or `--data-feed` namespace, `--out` or standard output not writable, port in use                                                      |
 | 4    | `data`     | `--github` without a token in `GH_TOKEN` or `GITHUB_TOKEN`, the GitHub data could not be loaded (`GitHub data (<code>): <message>`), a `--data-json` source could not be loaded (`JSON data <ns> (<code>): <message>`), or a `--data-feed` feed could not (`Feed data <ns> (<code>): <message>`) |
 | 70   | `internal` | a bug in Readmint                                                                                                                                                                                                                                                                                |
@@ -164,8 +165,24 @@ The file is JSON, UTF-8, at most 4 Mi characters of text; section and prop names
 `-`, at most 64); a value is a string, a number, a boolean or an array of those. Like `--data` it is the user's own
 file and may lie anywhere; the Action's `props-file` is confined to the workspace instead. A file that cannot be read exits with code 3, one whose content is invalid with code 1; the
 message names the file and the pointer, not the content. `preview` watches the file and re-renders when it changes.
-The Action takes the same file as [`props-file`](action.md#inputs). The profile templates ship one, see
+With `--variant` the section is the same one, applied after the variant ([Variants](#variants)). The Action takes the same file as [`props-file`](action.md#inputs). The profile templates ship one, see
 [components.md](components.md#profile-templates).
+
+## Variants
+
+`readmint render card.json --variant dark` renders the same file with the root prop `theme` set to `dark`, so one
+design with an enum prop `theme` gives the light and the dark picture. The only variant is `dark`; its props are a table
+in `@readmint/format` (`renderVariants`) that the Action and the editor share. The variant is applied to the design
+first and `--props` after it, so the output is the bytes of the `card.dark.json` that would hold the literal `"dark"`,
+with the same settings. A settings section that sets `theme` itself wins over the variant, and one stderr line names the
+section and the prop (never the value).
+
+A `card.dark.json` next to the design wins: it is rendered instead, and stderr says `using "card.dark.json" next to
+"card.json" instead of the dark variant`. A design that already is the `.dark` file is rendered with the variant applied.
+A design with no top-level component declaring `theme`, or whose prop takes no `dark` (not in the enum, another type), exits
+with 1 and `card.json: error unknown-property at /theme: variant dark: no top-level component of the design has the
+prop "theme"`; no value is echoed. An unknown variant name, and `--variant` on `validate` or `preview`, exit with 2. The
+Action takes the same variant as [`variant`](action.md#inputs).
 
 ## Live GitHub data
 
@@ -326,7 +343,7 @@ A port in use, or one the system refuses, is exit code 3.
 
 ## Programmatic use
 
-`@readmint/cli` exports `runCli(argv, io)` (returns the exit code, never throws; `CliIo.openUrl` opens the `preview --open` address (with `--github`, `--data-json` or `--data-feed` the one-time launch address), the platform's opener when absent; `CliIo.env` is the environment `--github` takes its token
+`@readmint/cli` re-exports `RenderVariant`, `renderVariants`, `renderVariant(name)` and `applyRenderVariant(design, variant)` of `@readmint/format` (the table behind `--variant`, [Variants](#variants)), exports `variantTwin(design, variant, cwd)` (the `<stem>.<variant><ext>` file next to a design that wins over the variant, if there is one; `RenderInputOptions.variant` applies a variant, `RenderInput.warnings` carries the settings-override note), and `runCli(argv, io)` (returns the exit code, never throws; `CliIo.openUrl` opens the `preview --open` address (with `--github`, `--data-json` or `--data-feed` the one-time launch address), the platform's opener when absent; `CliIo.env` is the environment `--github` takes its token
 from, `bin` passes `process.env`), `ExitCode`, `CliError`, `CliIo`,
 `escapeForLog`, `quoteForLog`, `formatIssue`, `localeProblem(locale)` (why a tag cannot be the `--locale`, `undefined` when it can; the Action's `locale` input uses it too), `outputFormats` and `outputExtension(format)` (the `OutputFormat`s and their file extension, `apng` → `png`), and the loaders the commands share: `loadDesignFile`, `loadDesignAssets`,
 `loadFixtureData` (with `maxFixtureBytes`, its size cap), `loadDesignProps(file, cwd, options?)` (the `--props` settings file, not confined; with `{ confinedTo }`, as the Action's `props-file`, a relative path staying inside that folder; a `DesignProps` of `@readmint/format`; whose `props` in `RenderInputOptions` stands in for `--props`) and `propsSection(fileName)` (the section a design file takes; it lives in `@readmint/format`, which the editor uses too), `loadLiveData` (the `--github` load: `LiveDataOptions` with
