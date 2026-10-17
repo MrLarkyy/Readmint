@@ -307,7 +307,7 @@ describe.each(names)("%s fonts", (template) => {
       expect(existsSync(file), src).toBe(true);
       expect(readme, src).toContain(sha256(readFileSync(file)));
       expect(family).toMatch(
-        /^(Archivo|Archivo SemiExpanded|Archivo SemiCondensed|Archivo ExtraCondensed|Noto Sans|Geist|Geist Mono)$/u,
+        /^(Archivo|Archivo SemiExpanded|Archivo SemiCondensed|Archivo ExtraCondensed|Noto Sans|Noto Sans Mono|Geist|Geist Mono)$/u,
       );
     }
     for (const theme of themes) {

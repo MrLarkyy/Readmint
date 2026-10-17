@@ -17,7 +17,6 @@ import {
 
 const themes: readonly ProfileTheme[] = ["light", "dark"];
 const names = Object.keys(profileTemplates) as ProfileTemplate[];
-const archivoTemplates = ["year-ring", "horizon"] as const;
 
 const cyrillicName = "Привет-мир";
 const greekDescription = "Ωμέγα: κάρτες προφίλ";
@@ -46,69 +45,63 @@ function missing(warnings: readonly { code: string; message: string }[]): string
     .flatMap((warning) => [...warning.message.matchAll(/U\+[0-9A-F]{4,6}/gu)].map(([hit]) => hit));
 }
 
-describe.each(archivoTemplates)(
-  "%s names a Noto Sans fallback for every Archivo font",
-  (template) => {
-    const cases = profileTemplates[template].flatMap((section) =>
-      themes.map((theme) => [section, theme] as const),
-    );
+/** The family a font's fallback must be: Archivo and Geist draw Noto Sans, Geist Mono draws Noto Sans Mono. */
+function fallbackFamily(family: string): string | undefined {
+  if (family === "Geist Mono") return "Noto Sans Mono";
+  return family.startsWith("Archivo") || family === "Geist" ? "Noto Sans" : undefined;
+}
 
-    test.each(cases)(
-      "%s (%s) draws Cyrillic and Greek from the fallback of each font",
-      (section, theme) => {
-        const design = loadProfile(template, section, theme);
-        const fonts = design.assets?.fonts ?? {};
-        const archivo = Object.entries(fonts).filter(([, font]) =>
-          font.family.startsWith("Archivo"),
-        );
-        expect(archivo.length).toBeGreaterThan(0);
-        for (const [id, font] of archivo) {
-          const [fallbackId] = font.fallback ?? [];
-          expect(fallbackId, `${id} has a fallback`).toBeDefined();
-          expect(fonts[String(fallbackId)]?.family, id).toBe("Noto Sans");
-        }
-        const probe = renderSvg(
-          {
-            version: 0,
-            canvas: { width: 400, height: 40 * archivo.length },
-            assets: { fonts },
-            layers: archivo.map(([id], index) => ({
-              type: "text" as const,
-              y: index * 40,
-              content: "ПриветмирАБВ αβγΩ",
-              font: id,
-              fontSize: 20,
-            })),
-          },
-          { assets: { fonts: profileFontAssets(template, design) } },
-        );
-        expect(probe.ok).toBe(true);
-        if (probe.ok) expect(probe.warnings).toEqual([]);
-      },
-    );
-  },
-);
+describe.each(names)("%s names a Noto fallback for every Archivo and Geist font", (template) => {
+  const cases = profileTemplates[template].flatMap((section) =>
+    themes.map((theme) => [section, theme] as const),
+  );
+
+  test.each(cases)(
+    "%s (%s) draws Cyrillic, Greek and Latin Extended-A from the fallback of each font",
+    (section, theme) => {
+      const design = loadProfile(template, section, theme);
+      const fonts = design.assets?.fonts ?? {};
+      const covered = Object.entries(fonts).filter(
+        ([, font]) => fallbackFamily(font.family) !== undefined,
+      );
+      expect(covered.length).toBeGreaterThan(0);
+      for (const [id, font] of covered) {
+        const [fallbackId] = font.fallback ?? [];
+        expect(fallbackId, `${id} has a fallback`).toBeDefined();
+        const fallback = fonts[String(fallbackId)];
+        expect(fallback?.family, id).toBe(fallbackFamily(font.family));
+        expect(fallback?.weight, id).toBe(font.weight);
+      }
+      const probe = renderSvg(
+        {
+          version: 0,
+          canvas: { width: 400, height: 40 * covered.length },
+          assets: { fonts },
+          layers: covered.map(([id], index) => ({
+            type: "text" as const,
+            y: index * 40,
+            content: "ΑΒΓαβγΩμέγα ĔĳŉſПривет",
+            font: id,
+            fontSize: 20,
+          })),
+        },
+        { assets: { fonts: profileFontAssets(template, design) } },
+      );
+      expect(probe.ok).toBe(true);
+      if (probe.ok) expect(probe.warnings).toEqual([]);
+    },
+  );
+});
 
 describe.each(names)("%s with a Cyrillic repository name and a Greek description", (template) => {
-  test.each(themes)("%s: Cyrillic is drawn, Greek only where the font lacks it", (theme) => {
+  test.each(themes)("%s: Cyrillic and Greek are both drawn with no warning", (theme) => {
     const result = render(
       template,
       "repo-1",
       theme,
       repositoryTextsProfileData(cyrillicName, greekDescription),
     );
-    const lacking = missing(result.warnings);
-    if (template === "pinscreen") {
-      expect(result.warnings.filter((warning) => warning.code === "missing-glyph")).toHaveLength(1);
-      expect(lacking.length).toBeGreaterThan(0);
-      for (const point of lacking) {
-        const code = Number.parseInt(point.slice(2), 16);
-        expect(code, point).toBeGreaterThanOrEqual(0x370);
-        expect(code, point).toBeLessThanOrEqual(0x3ff);
-      }
-    } else {
-      expect(result.warnings).toEqual([]);
-    }
+    expect(result.warnings).toEqual([]);
   });
 
   test("the CJK name still warns missing-glyph and names only CJK code points", () => {
@@ -155,6 +148,20 @@ describe("the pinscreen repository line follows the drawn width of the name", ()
       expect(xOf(cjk.svg, ":")).toBeCloseTo(40 + 8 * 6.9 + 5 * 6.9, 2);
     },
   );
+});
+
+describe("a Greek repository name in pinscreen", () => {
+  test.each(themes)("%s: keeps the 0.6 em column of the code grid", (theme) => {
+    const greek = render(
+      "pinscreen",
+      "repo-1",
+      theme,
+      repositoryTextsProfileData("Ωμέγα-greek", "d"),
+    );
+    expect(greek.warnings).toEqual([]);
+    const hit = /<tspan[^>]* x="([^" ]+)[^"]*"[^>]*>:<\/tspan>/u.exec(greek.svg);
+    expect(Number(hit?.[1])).toBeCloseTo(40 + 8 * 6.9 + 11 * 6.9, 2);
+  });
 });
 
 describe("Cyrillic and Greek names stay inside their boxes", () => {
@@ -223,23 +230,26 @@ describe("Cyrillic and Greek names stay inside their boxes", () => {
   );
 });
 
-describe("Cyrillic and Greek texts of 1024 characters (RM-128)", () => {
+describe("Cyrillic and Greek texts of 1024 characters (RM-128, RM-154)", () => {
   const sizeBudget = 524_288;
   const halved = {
     maxExpressionSteps: RenderLimits.maxExpressionSteps / 2,
     maxRepeatCopies: RenderLimits.maxRepeatCopies / 2,
   };
-  const cases = archivoTemplates.flatMap((template) =>
-    profileTemplates[template].map((section) => [template, section] as const),
+  const orders = ["cyrillic-first", "greek-first"] as const;
+  const cases = names.flatMap((template) =>
+    profileTemplates[template].flatMap((section) =>
+      orders.map((order) => [template, section, order] as const),
+    ),
   );
 
   test.each(cases)(
-    "%s %s draws every letter with no warning, within 512 KiB and half the work limits",
-    (template, section) => {
+    "%s %s (%s cycle) draws every letter with no warning, within 512 KiB and half the work limits",
+    (template, section, order) => {
       const svg = renderProfile({
         template,
         design: loadProfile(template, section),
-        data: worstCaseScriptsProfileData(),
+        data: worstCaseScriptsProfileData(order),
         limits: halved,
       });
       expect(new TextEncoder().encode(svg).length).toBeLessThanOrEqual(sizeBudget);

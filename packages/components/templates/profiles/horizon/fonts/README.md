@@ -33,4 +33,12 @@ Copyright 2024 The Geist Project Authors (https://github.com/vercel/geist-font).
 | ----------------------- | ------------------------------------------------------------------ |
 | `GeistMono-Regular.ttf` | `42d8ad2e610238e64e8abfcde3037c63f7850a73928742b7ab7229d897bcb155` |
 
+## Noto Sans Mono (SIL Open Font License 1.1, `OFL-Noto.txt`, shared with Noto Sans above)
+
+Copyright 2022 The Noto Project Authors (https://github.com/notofonts/latin-greek-cyrillic). The file is an unmodified copy of the unhinted static instance from the notofonts/latin-greek-cyrillic release NotoSansMono-v2.014 (https://github.com/notofonts/latin-greek-cyrillic/releases/tag/NotoSansMono-v2.014), `NotoSansMono/unhinted/ttf/`; version 2.014, 388,660 bytes. It is the `fallback` of every Geist Mono font asset: it draws the Latin Extended-A, Cyrillic and Greek letters Geist Mono lacks, on the same 0.6 em advance as Geist Mono, and nothing else is drawn from it while Geist Mono has the glyph. Emoji, CJK and the scripts of other writing systems are in none of the fonts and are dropped with a `missing-glyph` warning.
+
+| file                       | sha256                                                             |
+| -------------------------- | ------------------------------------------------------------------ |
+| `NotoSansMono-Regular.ttf` | `87f8ce0522a6c99b743ee5fc75b4073cfdd575639119672828b7b9944b65b4f4` |
+
 A test checks that every font a section names is a file here, declares `embedding: "allowed"` and `OFL-1.1`, and that its sha256 is listed in this file. To set a template in your own font, replace the `src`, `family` and `licence` of the font assets with a file you may embed.
