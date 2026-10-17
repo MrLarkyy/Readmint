@@ -531,8 +531,9 @@ the timeline's), `delay` and `stagger` (`B<integer 0..60000>` ms, default 0), `c
 default 1), `easing` (default `linear`).
 
 - `offset` is a literal unit: the share of the track's `duration` at which the keyframe's value is reached. Offsets
-  never decrease (a decreasing one is `range` at that offset); two equal offsets make a jump. Before its first keyframe
-  a track holds the first value, after its last one the last value.
+  never decrease (a decreasing one is `range` at that offset); two equal offsets make a jump. A frame at the moment of
+  a jump shows the later value (at time 0 the first: the static state). Before its first keyframe a track holds the
+  first value, after its last one the last value.
 - A track starts at `delay + stagger x index`, where `index` is the copy's position in the layer's own `repeat` (0
   without one). Nested repeats, such as weeks and days of a calendar, bind the delay instead:
   `"delay": "{{ (week * 7 + day) * 8 }}"` with `index: "week"` and `index: "day"` on the two repeats.

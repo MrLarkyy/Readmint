@@ -1,6 +1,6 @@
-import type { AnimationTrack, Design, Layer, LayerAnimation } from "@readmint/format";
+import type { Animation, AnimationTrack, Design, Layer, LayerAnimation } from "@readmint/format";
 import { describe, expect, test } from "vitest";
-import { renderSvg, type RenderOptions } from "../src/index.js";
+import { frameTimes, renderSvg, type RenderOptions } from "../src/index.js";
 import { animationDesigns } from "./animationDesigns.js";
 import { renderFixture } from "./renderFixture.js";
 
@@ -35,6 +35,41 @@ function svgOf(design: Design, options: RenderOptions = {}): string {
   if (!result.ok) throw new Error(JSON.stringify(result.issues));
   return result.svg;
 }
+
+const pulseTimeline: Animation = { duration: 60000 };
+
+/** The pulse of design-format.md: a scale that jumps back to 1 and an opacity that jumps to 0.7 every 2000 ms. */
+const pulse: Design = {
+  version: 0,
+  canvas: { width: 100, height: 100 },
+  animation: pulseTimeline,
+  layers: [
+    {
+      type: "ellipse",
+      width: 8,
+      height: 8,
+      animate: {
+        opacity: {
+          keyframes: [
+            { offset: 0, value: 0 },
+            { offset: 0, value: 0.7 },
+            { offset: 1, value: 0 },
+          ],
+          duration: 2000,
+          cycles: 30,
+        },
+        scale: {
+          keyframes: [
+            { offset: 0, value: 1 },
+            { offset: 1, value: 2.5 },
+          ],
+          duration: 2000,
+          cycles: 30,
+        },
+      },
+    },
+  ],
+};
 
 const opacities = (svg: string) =>
   [...svg.matchAll(/ opacity="([\d.]+)"/gu)].map((match) => Number(match[1]));
@@ -173,39 +208,34 @@ describe("cycles (RM-143)", () => {
   });
 
   test("a pulse that ends at the timeline end still grows in its last cycle", () => {
-    const design: Design = {
-      version: 0,
-      canvas: { width: 100, height: 100 },
-      animation: { duration: 60000 },
-      layers: [
-        {
-          type: "ellipse",
-          width: 8,
-          height: 8,
-          animate: {
-            opacity: {
-              keyframes: [
-                { offset: 0, value: 0 },
-                { offset: 0, value: 0.7 },
-                { offset: 1, value: 0 },
-              ],
-              duration: 2000,
-              cycles: 30,
-            },
-            scale: {
-              keyframes: [
-                { offset: 0, value: 1 },
-                { offset: 1, value: 2.5 },
-              ],
-              duration: 2000,
-              cycles: 30,
-            },
-          },
-        },
-      ],
-    };
-    const scaleAt = (time: number) => svgOf(design, { time }).match(/scale\(([\d.]+)\)/u)?.[1];
+    const scaleAt = (time: number) => svgOf(pulse, { time }).match(/scale\(([\d.]+)\)/u)?.[1];
     expect(scaleAt(1000)).toBe("1.75");
     expect(scaleAt(59000)).toBe("1.75");
+  });
+
+  test("a frame at a seam draws the cycle that starts there, at every frame rate (RM-147)", () => {
+    const seams = new Set<number>();
+    for (let rate = 1; rate <= 60; rate++) {
+      for (const time of frameTimes(pulseTimeline, rate))
+        if (time > 0 && time % 2000 === 0) seams.add(time);
+    }
+    expect(seams.size).toBe(29);
+    const frame = (time: number) => {
+      const svg = svgOf(pulse, { time });
+      const scale = Number(svg.match(/scale\(([\d.]+)\)/u)?.[1]);
+      return { svg, scale, opacity: opacities(svg)[0] ?? Number.NaN };
+    };
+    const start = frame(2000);
+    expect(start.scale).toBe(1);
+    expect(start.opacity).toBe(0.7);
+    for (const seam of seams) {
+      expect(frame(seam).svg).toBe(start.svg);
+      const after = frame(seam + 1000 / 60);
+      expect(after.opacity).toBeGreaterThan(0);
+      expect(after.opacity).toBeLessThan(0.7);
+      expect(after.scale).toBeGreaterThan(1);
+      expect(after.scale).toBeLessThan(1.1);
+      expect(frame(seam - 1000 / 60).scale).toBeGreaterThan(2.4);
+    }
   });
 });

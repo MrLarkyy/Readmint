@@ -89,10 +89,13 @@ describe.each(animationDesigns.map((entry) => [entry.name, entry] as const))(
         document.body.append(host);
         const animations = document.getAnimations();
         expect(animations.length).toBeGreaterThan(0);
-        for (const animation of animations) {
-          animation.pause();
-          animation.currentTime = time;
-        }
+        const play = (at: number) => {
+          for (const animation of animations) {
+            animation.pause();
+            animation.currentTime = at;
+          }
+        };
+        play(time);
         const frame = new DOMParser().parseFromString(
           renderFixture({ ...input, time }),
           "image/svg+xml",
@@ -104,15 +107,33 @@ describe.each(animationDesigns.map((entry) => [entry.name, entry] as const))(
         expect(played.map((element) => element.localName)).toEqual(
           drawn.map((element) => element.localName),
         );
-        let checked = 0;
-        played.forEach((element, index) => {
+        const pairs = played.flatMap((element, index) => {
           const counterpart = drawn[index];
-          if (!element.hasAttribute("class") || counterpart === undefined) return;
+          if (!element.hasAttribute("class") || counterpart === undefined) return [];
           expect(counterpart.hasAttribute("class")).toBe(false);
-          compare(element, counterpart, `${element.localName} ${String(index)}`);
-          checked++;
+          return [{ element, counterpart, where: `${element.localName} ${String(index)}` }];
         });
-        expect(checked).toBeGreaterThan(0);
+        expect(pairs.length).toBeGreaterThan(0);
+        const mismatches = pairs.flatMap((pair) => {
+          try {
+            compare(pair.element, pair.counterpart, pair.where);
+            return [];
+          } catch (error) {
+            return [{ ...pair, error }];
+          }
+        });
+        if (mismatches.length === 0) return;
+        // A frame at a jump draws the later value from half a step before it; a browser reaches that value only at the
+        // end of the run, 3 steps covering a run of up to three keyframes at one moment. The time-0 rule is checked
+        // by sampleAnimation.test.ts and the profile frame-0 tests, not here.
+        play(time + (3 * duration) / 100_000);
+        for (const { element, counterpart, where, error } of mismatches) {
+          try {
+            compare(element, counterpart, where);
+          } catch {
+            throw error;
+          }
+        }
       },
     );
   },
