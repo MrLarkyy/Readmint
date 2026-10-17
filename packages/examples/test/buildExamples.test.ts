@@ -359,7 +359,8 @@ describe("runExamples", () => {
     expect(err).toContain(defaultActionRef);
   });
 
-  // The real templates use maxLines, which the default pin predates until its release (docs/action.md#releases).
+  // The real templates use maxLines, let and orbit, which the default pin predates until its release
+  // (docs/action.md#releases).
   const pin = ["--action", options.actionRef];
 
   it("writes, then reports in sync with exit 0", () => {
@@ -391,13 +392,14 @@ describe("runExamples", () => {
 
   it("writes the pinned default Action reference without --action", () => {
     expect(defaultActionRef).toBe("MrLarkyy/Readmint@v0.3.0");
-    // The templates as the pinned release accepts them: without the line cap it predates.
+    // The templates as the pinned release accepts them: without the layer properties it predates.
     const dir = temp();
     cpSync(templatesDir, dir, { recursive: true });
     const yearRing = join(dir, "profiles", "year-ring");
     for (const file of readdirSync(yearRing).filter((name) => name.endsWith(".json"))) {
-      const design = readFileSync(join(yearRing, file), "utf8");
-      writeFileSync(join(yearRing, file), design.replace(/\n\s*"maxLines": \d+,/g, ""));
+      const design = JSON.parse(readFileSync(join(yearRing, file), "utf8")) as unknown;
+      if (withoutNewLayerProperties(design))
+        writeFileSync(join(yearRing, file), `${JSON.stringify(design, null, 2)}\n`);
     }
     const out = temp();
     expect(run(dir, out).code).toBe(0);
@@ -405,11 +407,11 @@ describe("runExamples", () => {
     expect(workflow).toContain(`uses: ${defaultActionRef}`);
   });
 
-  it("refuses the default pin over the real templates until the release that brings maxLines", () => {
+  it("refuses the default pin over the real templates until the release that brings maxLines, let and orbit", () => {
     const { code, err } = run(templatesDir, temp());
     expect(code).toBe(1);
     expect(err).toMatch(
-      /@v0\.3\.0 predates maxLines \(Action v0\.4\.0\), which year-ring\/repo-1(\.dark)?\.json uses/,
+      /@v0\.3\.0 predates (maxLines|let|orbit) \(Action v0\.4\.0\), which year-ring\/[a-z0-9-]+(\.dark)?\.json uses/,
     );
   });
 
@@ -419,3 +421,18 @@ describe("runExamples", () => {
     expect(err).toContain("nowhere");
   });
 });
+
+/** Removes `maxLines`, `let` and `orbit` from every layer of a design, in place; whether any was there. */
+function withoutNewLayerProperties(node: unknown): boolean {
+  if (Array.isArray(node)) return node.map(withoutNewLayerProperties).some(Boolean);
+  if (node === null || typeof node !== "object") return false;
+  const record = node as Record<string, unknown>;
+  let removed = false;
+  if (typeof record["type"] === "string") {
+    removed = "maxLines" in record || "let" in record || "orbit" in record;
+    delete record["maxLines"];
+    delete record["let"];
+    delete record["orbit"];
+  }
+  return Object.values(record).map(withoutNewLayerProperties).some(Boolean) || removed;
+}

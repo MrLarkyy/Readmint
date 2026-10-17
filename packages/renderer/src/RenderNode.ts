@@ -1,6 +1,7 @@
 import type { LoadedFont } from "./loadFont.js";
 import type { LoadedImage } from "./loadImage.js";
 import type { NodeAnimation } from "./NodeAnimation.js";
+import type { NodeOrbit } from "./NodeOrbit.js";
 import type { Paint } from "./paint.js";
 import type { TextLine } from "./TextLine.js";
 
@@ -18,6 +19,8 @@ export interface NodeBase {
   readonly rotation: number | undefined;
   /** Tracks on the design's timeline; never changes the layout. */
   readonly animation?: NodeAnimation;
+  /** Places the node's coordinates on an orbit, around everything else the node draws. */
+  readonly orbit?: NodeOrbit;
 }
 
 export interface ShapeStyle {

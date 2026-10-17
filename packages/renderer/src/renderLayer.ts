@@ -4,6 +4,7 @@ import type { RenderContext } from "./RenderContext.js";
 import type { RenderNode } from "./RenderNode.js";
 import { renderGroup } from "./renderGroup.js";
 import { isSharedImage, renderImage } from "./renderImage.js";
+import { renderOrbit } from "./renderOrbit.js";
 import { renderEllipse, renderPath, renderRect } from "./renderShape.js";
 import { renderText } from "./renderText.js";
 import { renderTextPaths } from "./renderTextPaths.js";
@@ -20,6 +21,15 @@ export function renderLayer(context: RenderContext, node: RenderNode): void {
   ) {
     return;
   }
+  const orbit = node.orbit;
+  if (orbit === undefined) drawPlayed(context, node);
+  else
+    renderOrbit(context, orbit, () => {
+      drawPlayed(context, node);
+    });
+}
+
+function drawPlayed(context: RenderContext, node: RenderNode): void {
   if (node.animation === undefined) drawNode(context, node, "");
   else renderAnimated(context, node, node.animation, drawNode);
 }

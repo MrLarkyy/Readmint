@@ -540,3 +540,24 @@ test("a file that cannot be read is an issue, never an unhandled rejection", asy
     read.mockRestore();
   }
 });
+
+test("the properties of a layer on an orbit show the orbit read-only and keep it on edits", async () => {
+  const orbit = { center: { x: 200, y: 100 }, radius: 80, radiusY: 30, angle: 30 };
+  await remount({
+    version: 0,
+    canvas: { width: 400, height: 200 },
+    layers: [{ type: "rect", width: 20, height: 10, fill: "#0969da", orbit }],
+  });
+  await click('[data-pointer="/layers/0"] [data-action="select"]');
+  const field = find('[aria-label="Properties"] [name="orbit"]') as HTMLInputElement;
+  expect(field.readOnly).toBe(true);
+  expect(field.value).toBe(JSON.stringify(orbit));
+  await setField("width", "30");
+  expect(editor.state.design.layers[0]).toEqual({
+    type: "rect",
+    width: 30,
+    height: 10,
+    fill: "#0969da",
+    orbit,
+  });
+});

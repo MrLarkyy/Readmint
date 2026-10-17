@@ -97,4 +97,41 @@ describe("layerDelta: a canvas drag in the layer's x/y coordinates", () => {
     const after = placeBox(childBox(design(10 + Math.round(delta.x), 10 + Math.round(delta.y))));
     expect(close({ x: after.cx - before.cx, y: after.cy - before.cy })).toEqual({ x: 12, y: -5 });
   });
+
+  test.each([true, false])(
+    "moves a layer on an orbit (upright %s) with the pointer: its box follows the drag",
+    (upright) => {
+      const design = (x: number, y: number) => ({
+        design: {
+          version: 0 as const,
+          canvas: { width: 200, height: 200 },
+          layers: [
+            {
+              type: "rect" as const,
+              x,
+              y,
+              width: 10,
+              height: 6,
+              orbit: { center: { x: 100, y: 100 }, radius: 60, radiusY: 20, angle: 70, upright },
+            },
+          ],
+        },
+        data: {},
+        sessionAssets: {},
+      });
+      const boxOf = (input: ReturnType<typeof design>) => {
+        const result = renderPreview(input);
+        const found = result.ok ? result.layerBoxes?.[0] : undefined;
+        if (found === undefined) throw new Error("no box");
+        return found;
+      };
+      const start = boxOf(design(-5, -3));
+      const delta = layerDelta(start, 12, -5);
+      const before = placeBox(start);
+      const after = placeBox(boxOf(design(-5 + Math.round(delta.x), -3 + Math.round(delta.y))));
+      expect(Math.hypot(after.cx - before.cx - 12, after.cy - before.cy + 5)).toBeLessThan(1);
+      // upright, its box keeps the canvas axes in all; not upright, it turns by the angle
+      expect(before.degrees).toBeCloseTo(upright ? 0 : 70, 9);
+    },
+  );
 });

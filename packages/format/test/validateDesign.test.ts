@@ -1037,6 +1037,156 @@ describe("palette (RM-119)", () => {
   });
 });
 
+describe("orbit (RM-111)", () => {
+  const orbit = (extra: Record<string, unknown> = {}) => ({
+    center: { x: 5, y: 5 },
+    radius: 4,
+    angle: 30,
+    ...extra,
+  });
+  const timeline = { animation: { duration: 1000 } };
+  const withLayers = (layers: unknown[], extra: Record<string, unknown> = timeline) => ({
+    ...base(),
+    ...extra,
+    layers,
+  });
+  const issues = (value: unknown) => {
+    const result = validateDesign(value);
+    return result.ok ? [] : result.issues.map(({ path, code }) => ({ path, code }));
+  };
+
+  test("a literal and a bound orbit are valid on every layer kind", () => {
+    const bound = orbit({
+      center: { x: "{{ 5 }}", y: 5 },
+      radius: "{{ 4 }}",
+      radiusY: 2,
+      angle: "{{ 45 }}",
+      speed: "{{ -6 }}",
+      upright: "{{ false }}",
+      fade: { from: -0.5, to: 0.5 },
+    });
+    const layers = [
+      rect({ orbit: orbit() }),
+      { type: "path", d: "M0 0 L1 1", orbit: bound },
+      { type: "group", children: [rect()], orbit: orbit({ speed: 10 }) },
+      { type: "ellipse", width: 1, height: 1, orbit: orbit({ upright: false }) },
+    ];
+    expect(issues(withLayers(layers))).toEqual([]);
+  });
+
+  test.each([
+    [{ radius: -1 }, "/layers/0/orbit/radius", "range"],
+    [{ radiusY: 100_001 }, "/layers/0/orbit/radiusY", "range"],
+    [{ angle: 361 }, "/layers/0/orbit/angle", "range"],
+    [{ speed: 3601 }, "/layers/0/orbit/speed", "range"],
+    [{ fade: { from: 0, to: 1.5 } }, "/layers/0/orbit/fade/to", "range"],
+    [{ fade: { from: "{{ 0 }}", to: 1 } }, "/layers/0/orbit/fade/from", "type"],
+    [{ upright: "yes" }, "/layers/0/orbit/upright", "type"],
+    [{ tilt: 10 }, "/layers/0/orbit/tilt", "unknown-property"],
+    [{ center: { x: 1 } }, "/layers/0/orbit/center/y", "missing-property"],
+    [{ center: { x: 1, y: 1, z: 1 } }, "/layers/0/orbit/center/z", "unknown-property"],
+  ])("orbit %j fails at %s with %s", (extra, path, code) => {
+    expect(issues(withLayers([rect({ orbit: orbit(extra) })]))).toEqual([{ path, code }]);
+  });
+
+  test.each([42, "x", null, [1, 2]])("an orbit %j that is no object is a type issue", (value) => {
+    expect(issues(withLayers([rect({ orbit: value })]))).toEqual([
+      { path: "/layers/0/orbit", code: "type" },
+    ]);
+  });
+
+  test("radius and angle are required", () => {
+    expect(issues(withLayers([rect({ orbit: { center: { x: 1, y: 1 } } })]))).toEqual([
+      { path: "/layers/0/orbit/radius", code: "missing-property" },
+      { path: "/layers/0/orbit/angle", code: "missing-property" },
+    ]);
+  });
+
+  test.each(["stack", "grid"])("an orbit is refused as a direct child of a %s group", (type) => {
+    const layout = type === "stack" ? { type, direction: "row" } : { type, columns: 2 };
+    const inner = { type: "group", children: [rect({ orbit: orbit() })] };
+    const group = { type: "group", layout, children: [rect(), rect({ orbit: orbit() }), inner] };
+    expect(issues(withLayers([group]))).toEqual([
+      { path: "/layers/0/children/1/orbit", code: "type" },
+    ]);
+  });
+
+  test("an orbit in an absolute group or a component definition is valid", () => {
+    const design = withLayers(
+      [
+        { type: "group", layout: { type: "absolute" }, children: [rect({ orbit: orbit() })] },
+        { type: "component", ref: "dot" },
+      ],
+      { ...timeline, components: { dot: { layers: [rect({ orbit: orbit({ speed: 1 }) })] } } },
+    );
+    expect(issues(design)).toEqual([]);
+  });
+
+  test("a speed without a timeline is reported once at /animation", () => {
+    const layers = [rect({ orbit: orbit({ speed: 5 }) }), rect({ orbit: orbit({ speed: 6 }) })];
+    expect(issues(withLayers(layers, {}))).toEqual([
+      { path: "/animation", code: "missing-property" },
+    ]);
+    // a static orbit needs no timeline
+    expect(issues(withLayers([rect({ orbit: orbit() })], {}))).toEqual([]);
+  });
+
+  test("a speed and an animate without a timeline give one /animation issue", () => {
+    const animate = {
+      x: {
+        keyframes: [
+          { offset: 0, value: 0 },
+          { offset: 1, value: 1 },
+        ],
+      },
+    };
+    const layers = [rect({ animate }), rect({ orbit: orbit({ speed: 5 }) })];
+    expect(issues(withLayers(layers, {}))).toEqual([
+      { path: "/animation", code: "missing-property" },
+    ]);
+  });
+
+  test("a fade with equal depths is a range issue at to", () => {
+    expect(issues(withLayers([rect({ orbit: orbit({ fade: { from: 0.2, to: 0.2 } }) })]))).toEqual([
+      { path: "/layers/0/orbit/fade/to", code: "range" },
+    ]);
+  });
+
+  test("a fade and an opacity track on one layer are refused at the fade", () => {
+    const animate = {
+      opacity: {
+        keyframes: [
+          { offset: 0, value: 0 },
+          { offset: 1, value: 1 },
+        ],
+      },
+    };
+    const layer = rect({ animate, orbit: orbit({ speed: 1, fade: { from: 0, to: 1 } }) });
+    expect(issues(withLayers([layer]))).toEqual([{ path: "/layers/0/orbit/fade", code: "type" }]);
+    // a fade next to other tracks is fine
+    const moving = rect({
+      animate: { x: animate.opacity },
+      orbit: orbit({ fade: { from: 0, to: 1 } }),
+    });
+    expect(issues(withLayers([moving]))).toEqual([]);
+  });
+
+  test("the published schema describes the orbit with the shared ranges", () => {
+    const defs = designJsonSchema["$defs"] as Record<string, Record<string, unknown>>;
+    const properties = defs["Orbit"]?.["properties"] as Record<string, unknown>;
+    expect(Object.keys(properties)).toEqual([
+      "center",
+      "radius",
+      "radiusY",
+      "angle",
+      "speed",
+      "upright",
+      "fade",
+    ]);
+    expect(defs["Orbit"]?.["additionalProperties"]).toBe(false);
+  });
+});
+
 describe("a text layer's line cap (maxLines, RM-123)", () => {
   const text = (extra: Record<string, unknown>) => ({ type: "text", content: "a", ...extra });
 

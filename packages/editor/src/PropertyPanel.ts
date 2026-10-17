@@ -80,6 +80,11 @@ export class PropertyPanel {
       attributes: { name: field.key },
     });
     input.value = fieldText(value);
+    if (field.readOnly === true) {
+      input.readOnly = true;
+      input.classList.add("rm-read-only");
+      return;
+    }
     if (typeof value === "string" && /^\{\{[\s\S]+\}\}$/u.test(value)) {
       input.classList.add("rm-bound");
     }

@@ -127,6 +127,34 @@ export const hostileFixtures: { name: string; input: RenderFixture }[] = [
       } as unknown as Design,
     },
   },
+  {
+    name: "texts on a moving orbit bound to data",
+    input: {
+      design: {
+        version: 0,
+        canvas: { width: 200, height: 100 },
+        assets: { fonts: { f: fontAssets.medium } },
+        animation: { duration: 1000 },
+        layers: [
+          {
+            type: "text",
+            content: "{{ item }}",
+            font: "f",
+            repeat: { each: "{{ labels }}", index: "k" },
+            orbit: {
+              center: { x: "{{ cx }}", y: 50 },
+              radius: "{{ r }}",
+              radiusY: 20,
+              angle: "{{ k * 90 }}",
+              speed: "{{ s }}",
+              fade: { from: -1, to: 1 },
+            },
+          },
+        ],
+      },
+      data: { labels: [attack, "</text></g></svg>", xmlInvalid], cx: 100, r: 60, s: -90 },
+    },
+  },
 ];
 
 /** A design the format refuses but the renderer may still be handed (an editor object): it must stay inert. */

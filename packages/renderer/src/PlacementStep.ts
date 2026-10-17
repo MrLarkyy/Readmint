@@ -1,5 +1,6 @@
 import type { Bounds } from "./pathBounds.js";
 import type { SampledTransforms } from "./sampleAnimation.js";
+import type { OrbitStep } from "./sampleOrbit.js";
 import { turnInterval, type Interval } from "./turnInterval.js";
 
 /**
@@ -86,6 +87,25 @@ export function placeThrough(
     if (step !== undefined) placed = placeBounds(placed, step);
   }
   return placed;
+}
+
+/**
+ * The steps of the groups `renderOrbit` wraps around a node, outermost first. In the animated SVG (`animated`) the CSS
+ * turns a spin group, so its step is unknown and nothing inside is known to stay off the canvas.
+ */
+export function orbitSteps(orbit: readonly OrbitStep[], animated: boolean): PlacementStep[] {
+  return orbit.map((step): PlacementStep => {
+    switch (step.kind) {
+      case "move":
+        return { kind: "translate", x: step.x, y: step.y };
+      case "turn":
+        return { kind: "turn", degrees: step.degrees, cx: 0, cy: 0 };
+      case "spin":
+        return animated
+          ? { kind: "unknown" }
+          : { kind: "turn", degrees: step.degrees, cx: 0, cy: 0 };
+    }
+  });
 }
 
 /** The steps of the groups `renderAnimated` wraps around a node for its sampled transforms, outermost first. */
