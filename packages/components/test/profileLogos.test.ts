@@ -71,7 +71,7 @@ const strips: readonly Strip[] = [
       plugin: 'kotlin("jvm")',
       labels: ["a", "b", "c", "d"],
       items: ["a", "b", "c", "d"],
-      noteLabels: ["tools", "shipped for", "creators"],
+      noteLabels: ["tools", "shipped for", "extras"],
       noteItems: ["x", "Joined names", "y"],
     },
   },
@@ -90,7 +90,7 @@ const contrast = (a: string, b: string) => {
 const themes: readonly ProfileTheme[] = ["light", "dark"];
 const names = ["Alpha", "Bravo", "Charlie", "Delta", "Echo", "Foxtrot", "Golf"];
 const lineOfName = ["0", "1", "1", "2", "2", "3", "3"];
-const captions = ["Now", "Before", "", "Creators"];
+const captions = ["Now", "Before", "", "Other"];
 const cases = strips.flatMap((strip) => themes.map((theme) => [strip, theme] as const));
 
 interface Rendered {
@@ -572,7 +572,8 @@ describe.each(cases)("the example card of %o (%s)", (strip, theme) => {
       );
     }
     for (const box of boxes) expect(bottom(box)).toBeLessThanOrEqual(height);
-    for (let g = 0; g < 4; g++) {
+    const lines = Math.max(...profileLogos.map((logo) => logo.line)) + 1;
+    for (let g = 0; g < lines; g++) {
       const line = boxes.filter(
         (box) =>
           box.x >= strip.start.none &&
@@ -703,10 +704,22 @@ describe("profileLogos", () => {
     }
   });
 
-  test("gives the creators no logo", () => {
-    for (const name of ["MrBeast", "SpeedSilver", "DiamondXR"]) {
-      expect(profileLogos.find((logo) => logo.name === name)?.layers).toEqual([]);
+  test("keeps the creators out of the logo records and the example props", () => {
+    const creators = /MrBeast|SpeedSilver|DiamondXR/u;
+    expect(profileLogos.map((logo) => logo.name).join(" ")).not.toMatch(creators);
+    expect(Math.max(...profileLogos.map((logo) => logo.line))).toBeLessThanOrEqual(2);
+    const lines = Math.max(...profileLogos.map((logo) => logo.line)) + 1;
+    for (const props of [
+      profileExampleProps["year-ring"]?.index,
+      profileExampleProps.pinscreen?.stack,
+    ]) {
+      const count = (props?.logoLabels as readonly string[]).length;
+      expect(count).toBeGreaterThanOrEqual(1);
+      expect(count).toBeLessThanOrEqual(lines);
     }
+    expect(JSON.stringify(profileExampleProps)).not.toMatch(
+      /MrBeast|SpeedSilver|DiamondXR|Minecraft|Discord|TypeScript/iu,
+    );
   });
 
   test("passes the layers of every logo to the example props, padded to 4 per project", () => {

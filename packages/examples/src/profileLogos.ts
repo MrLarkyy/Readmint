@@ -48,8 +48,6 @@ export interface ProfileLogo {
 }
 
 const retrieved = "2026-10-16";
-const notDownloaded = "n/a: not downloaded";
-const notTraced = "n/a: no logo committed, the name is drawn as text";
 const note =
   "Shown on the author's own profile; nominative use, the author's responsibility (user decision 2026-10-16).";
 
@@ -276,49 +274,6 @@ export const profileLogos: readonly ProfileLogo[] = [
     licence:
       "None found: mineclub.com does not resolve and https://mineclub.net/ answered HTTP 403, so no terms could be read.",
     owner: "unknown: neither mineclub.com (no DNS) nor mineclub.net (HTTP 403) could be read",
-    note,
-  },
-  {
-    name: "MrBeast",
-    line: 3,
-    withName: false,
-    layers: [],
-    trace: notTraced,
-    page: "https://mrbeast.com/",
-    source:
-      "n/a: https://mrbeast.com/ could not be fetched (expired TLS certificate); a channel avatar is not a mark",
-    retrieved,
-    sha256: notDownloaded,
-    licence: "Not committed: no mark published by the creator was found.",
-    owner: "unknown",
-    note,
-  },
-  {
-    name: "SpeedSilver",
-    line: 3,
-    withName: false,
-    layers: [],
-    trace: notTraced,
-    page: "https://www.youtube.com/@SpeedSilver",
-    source: "n/a: the channel page shows an avatar, not a mark the creator publishes",
-    retrieved,
-    sha256: notDownloaded,
-    licence: "Not committed: no mark published by the creator was found.",
-    owner: "unknown",
-    note,
-  },
-  {
-    name: "DiamondXR",
-    line: 3,
-    withName: false,
-    layers: [],
-    trace: notTraced,
-    page: "https://www.youtube.com/@DiamondXR",
-    source: "n/a: the channel page shows an avatar, not a mark the creator publishes",
-    retrieved,
-    sha256: notDownloaded,
-    licence: "Not committed: no mark published by the creator was found.",
-    owner: "unknown",
     note,
   },
 ];
