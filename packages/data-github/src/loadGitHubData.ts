@@ -29,7 +29,11 @@ import { parseProfileResponse } from "./parseProfileResponse.js";
 import { parseRepositoriesPage } from "./parseRepositoriesPage.js";
 import { parseViewerResponse } from "./parseViewerResponse.js";
 import { parseWeeksResponse } from "./parseWeeksResponse.js";
-import { postGraphQL, type RequestStats } from "./postGraphQL.js";
+import { parseStoredAdditions } from "./commitAdditionsCache.js";
+import { loadAuthoredLanguages, type AuthoredLoad } from "./loadAuthoredLanguages.js";
+import { OPTIONAL_MISSES } from "./optionalMisses.js";
+import { postGraphQL } from "./postGraphQL.js";
+import { newRequestStats, type RequestStats } from "./requestGitHub.js";
 import { resolveSourceOptions, type ResolvedSourceOptions } from "./resolveSourceOptions.js";
 import { selectPinned } from "./selectPinned.js";
 
@@ -45,7 +49,7 @@ import { selectPinned } from "./selectPinned.js";
  */
 export async function loadGitHubData(options: GitHubSourceOptions): Promise<GitHubLoadResult> {
   const resolved = resolveSourceOptions(options);
-  const stats: RequestStats = { requests: 0, lastRateLimit: null };
+  const stats = newRequestStats();
   const rateLimits: (RateLimitRecord | null)[] = [];
   const partial: PartialPart[] = [];
 
@@ -59,9 +63,10 @@ export async function loadGitHubData(options: GitHubSourceOptions): Promise<GitH
         "The token belongs to an app, not a user; pass the login to load.",
       );
     }
-  } else if (cache !== null) {
+  } else if (cache !== null || resolved.languageCommitCap > 0) {
     // The cache key needs the owner even when the login is given: GitHub's answer about
-    // contributions depends on who asks. Without a usable owner the load runs uncached.
+    // contributions depends on who asks, and private repositories are read for their owner only.
+    // Without a usable owner the load runs uncached.
     viewer = await lookUpOwner(resolved, stats, rateLimits).catch((error: unknown) => {
       if (isOwnerLookupMiss(error)) return null;
       throw error;
@@ -81,11 +86,15 @@ export async function loadGitHubData(options: GitHubSourceOptions): Promise<GitH
           pageSize: resolved.pageSize,
           maxRepositories: resolved.maxRepositories,
           excludeRepositories: resolved.excludeRepositories,
+          languageCommitCap: resolved.languageCommitCap,
         });
   if (cache !== null && key !== null) {
     const stored = await readCache(cache, key);
-    const data = stored === undefined ? null : readStoredLoad(stored, login, resolved);
-    if (data !== null) return { data, meta: loadMeta(stats, rateLimits, true, partial) };
+    const hit = stored === undefined ? null : readStoredLoad(stored, login, resolved);
+    if (hit !== null) {
+      if (hit.capped) partial.push("authored-cap");
+      return { data: hit.data, meta: loadMeta(stats, rateLimits, true, partial) };
+    }
   }
 
   const profileData = await postGraphQL(profileQuery, { login }, resolved, stats);
@@ -144,6 +153,25 @@ export async function loadGitHubData(options: GitHubSourceOptions): Promise<GitH
     rateLimits.push(weeksLoad?.record.rateLimit ?? null);
   }
 
+  let authored: AuthoredLoad | null = null;
+  if (resolved.languageCommitCap > 0) {
+    authored = await loadAuthoredLanguages(
+      {
+        login,
+        viewer,
+        authorId: profile.id,
+        excludeRepositories: resolved.excludeRepositories,
+        commitCap: resolved.languageCommitCap,
+        cache,
+      },
+      resolved,
+      stats,
+      rateLimits,
+    );
+    if (authored.stopped) partial.push("authored");
+    if (authored.capped) partial.push("authored-cap");
+  }
+
   const data = buildGitHubData(
     profile,
     pages,
@@ -151,14 +179,24 @@ export async function loadGitHubData(options: GitHubSourceOptions): Promise<GitH
     resolved.excludeRepositories,
     activityLoad?.record ?? null,
     weeksLoad?.record ?? null,
+    authored?.sums,
   );
   // A degraded load is not stored: a retry would otherwise serve the gap until the entry expires.
-  if (cache !== null && key !== null && partial.length === 0) {
+  // A capped one is complete for its cap and is stored with that fact.
+  if (cache !== null && key !== null && partial.every((part) => part === "authored-cap")) {
     const stored = JSON.stringify({
       profile: profileData,
       pages: pageData,
       activity: activityLoad?.raw ?? null,
       weeks: weeksLoad?.raw ?? null,
+      ...(authored === null
+        ? {}
+        : {
+            authored: {
+              sums: Object.fromEntries(authored.sums),
+              capped: authored.capped,
+            },
+          }),
     });
     await writeCache(cache, key, stored, resolved.cacheTtlSeconds);
   }
@@ -180,17 +218,6 @@ function weekIds(
   );
   return [...new Set(wanted)];
 }
-
-// Answers about these queries only. A token, rate-limit, network or abort failure would fail the
-// profile request just the same, so those still end the load.
-const OPTIONAL_MISSES: ReadonlySet<GitHubDataErrorCode> = new Set([
-  "graphql",
-  "forbidden",
-  "http",
-  "invalid-response",
-  "not-found",
-  "too-large",
-]);
 
 async function loadOptional<T>(
   part: PartialPart,
@@ -254,6 +281,12 @@ async function writeCache(
   }
 }
 
+interface StoredLoad {
+  readonly data: GitHubData;
+  /** The stored load left commits out because of `languageCommitCap`. */
+  readonly capped: boolean;
+}
+
 /**
  * Rebuilds the data object from a cache entry through the same validation as a fresh load;
  * an entry that fails it, or belongs to another login, is a miss.
@@ -262,7 +295,7 @@ function readStoredLoad(
   stored: string,
   login: string,
   options: ResolvedSourceOptions,
-): GitHubData | null {
+): StoredLoad | null {
   try {
     const parsed: unknown = JSON.parse(stored);
     if (!isJsonRecord(parsed)) return null;
@@ -285,14 +318,20 @@ function readStoredLoad(
     const ids = weekIds(activity, pages, options.maxRepositories, options.excludeRepositories);
     if (ids.length > 0 !== (storedWeeks !== null)) return null;
     const weeks = storedWeeks === null ? null : parseWeeksResponse(storedWeeks, ids);
-    return buildGitHubData(
-      profile,
-      pages,
-      options.maxRepositories,
-      options.excludeRepositories,
-      activity,
-      weeks,
-    );
+    const authored = options.languageCommitCap > 0 ? readStoredAuthored(parsed) : null;
+    if (options.languageCommitCap > 0 && authored === null) return null;
+    return {
+      data: buildGitHubData(
+        profile,
+        pages,
+        options.maxRepositories,
+        options.excludeRepositories,
+        activity,
+        weeks,
+        authored?.sums,
+      ),
+      capped: authored?.capped ?? false,
+    };
   } catch (error) {
     if (error instanceof SyntaxError || error instanceof GitHubDataError) return null;
     throw error;
@@ -308,11 +347,24 @@ function loadMeta(
   const reported = rateLimits.filter((rateLimit) => rateLimit !== null);
   const lastReported = reported.at(-1);
   return {
-    requests: stats.requests,
+    requests: stats.requests + stats.restRequests,
     cost: reported.reduce((total, rateLimit) => total + rateLimit.cost, 0),
     rateLimitRemaining: stats.lastRateLimit?.remaining ?? lastReported?.remaining ?? null,
     resetAt: stats.lastRateLimit?.resetAt ?? lastReported?.resetAt ?? null,
     fromCache,
     partial: [...partial],
   };
+}
+
+// The sums as stored by a load with a commit cap; anything else is a miss.
+function readStoredAuthored(
+  stored: JsonRecord,
+): { sums: Map<string, number>; capped: boolean } | null {
+  const authored = ownField(stored, "authored");
+  if (!isJsonRecord(authored)) return null;
+  const capped = ownField(authored, "capped");
+  const sums = ownField(authored, "sums");
+  if (typeof capped !== "boolean" || !isJsonRecord(sums)) return null;
+  const parsed = parseStoredAdditions(JSON.stringify({ additions: sums }));
+  return parsed === null ? null : { sums: parsed, capped };
 }

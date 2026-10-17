@@ -42,6 +42,12 @@ export interface GitHubData {
   readonly languagesByRepo: readonly GitHubLanguageWeight[];
   /** How many of the loaded non-fork repositories use each language, most first. */
   readonly languageRepositories: readonly GitHubLanguageRepositories[];
+  /**
+   * Languages by the lines the user added in their own newest non-merge commits on the default
+   * branch of the non-fork repositories they committed to, share order. Empty unless the loader
+   * option `languageCommitCap` is above 0 and the user committed to a file of a known language.
+   */
+  readonly languagesAuthored: readonly GitHubLanguageAuthored[];
   readonly contributions: GitHubContributions;
 }
 
@@ -95,6 +101,13 @@ export interface GitHubLanguageWeight extends GitHubLanguage {
 export interface GitHubLanguageRepositories extends GitHubLanguage {
   /** Repositories that list the language. */
   readonly repositories: number;
+}
+
+export interface GitHubLanguageAuthored extends GitHubLanguage {
+  /** `additions` over the added lines of all languages, 0 to 1. */
+  readonly share: number;
+  /** Lines the user added in files of the language. */
+  readonly additions: number;
 }
 
 export interface GitHubContributions {

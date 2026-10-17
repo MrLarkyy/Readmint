@@ -7,8 +7,13 @@ export interface GitHubLoadResult {
   readonly meta: GitHubLoadMeta;
 }
 
-/** A part of the data GitHub refused: `activity` (status, pushes, pins) or `weeks` (`weeklyCommits`). */
-export type GitHubPartialPart = "activity" | "weeks";
+/**
+ * A part of the data that is missing or incomplete: `activity` (status, pushes, pins) or `weeks`
+ * (`weeklyCommits`) GitHub refused; `authored` (`languagesAuthored`) stopped early by the rate
+ * limit, a network failure or a refused request; `authored-cap` (`languagesAuthored`) counts
+ * only the newest commits because `languageCommitCap` left others out.
+ */
+export type GitHubPartialPart = "activity" | "weeks" | "authored" | "authored-cap";
 
 export interface GitHubLoadMeta extends DataSourceLoadMeta {
   /** GraphQL rate-limit points the queries cost. */
@@ -18,7 +23,8 @@ export interface GitHubLoadMeta extends DataSourceLoadMeta {
   readonly resetAt: string | null;
   /**
    * Parts GitHub refused or answered unusably, so their fields are empty: `activity` (status,
-   * pushes, the pinned repositories) and `weeks` (`weeklyCommits`). Empty after a complete load.
+   * pushes, the pinned repositories) and `weeks` (`weeklyCommits`); or incomplete:
+   * `authored` and `authored-cap` (`languagesAuthored`). Empty after a complete load.
    */
   readonly partial: readonly GitHubPartialPart[];
 }

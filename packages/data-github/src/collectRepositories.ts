@@ -2,6 +2,7 @@ import { compareText } from "./compareText.js";
 import { copyRepository } from "./copyRepository.js";
 import type { GitHubRepository } from "./GitHubData.js";
 import type { RepositoriesPageRecord } from "./GitHubRecords.js";
+import { isExcludedRepository } from "./isExcludedRepository.js";
 
 export interface CollectedRepositories {
   /** Unique repositories by stars, then name, before the cap. */
@@ -29,9 +30,7 @@ export function collectRepositories(
   const repositories = loaded
     .slice(0, maxRepositories)
     .filter(
-      (repository) =>
-        !excluded.has(repository.name.toLowerCase()) &&
-        !excluded.has(repository.nameWithOwner.toLowerCase()),
+      (repository) => !isExcludedRepository(repository.name, repository.nameWithOwner, excluded),
     );
   return { loaded, repositories, ids };
 }

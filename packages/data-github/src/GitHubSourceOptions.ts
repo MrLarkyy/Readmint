@@ -43,6 +43,21 @@ export const GitHubLimits = Object.freeze({
   weeklyCommitWeeks: 52,
   /** Days of `pushes`, the last one included. */
   recentDays: 7,
+  /** Own commits read for `languagesAuthored` at most (REST requests); 0 turns it off. */
+  maxLanguageCommitCap: 2000,
+  defaultLanguageCommitCap: 0,
+  /** Repositories listed as contributed to (GitHub's page maximum). */
+  maxContributedRepositories: 100,
+  /** Newest own commits listed per repository. */
+  languageCommitsPerRepository: 100,
+  /** Repositories per history request. */
+  authoredHistoryRepositoriesPerRequest: 10,
+  /** Files GitHub lists on one commit; the rest of a larger commit is not counted. */
+  maxCommitFiles: 300,
+  /** The reading of commits stops when the REST rate limit reports fewer requests left. */
+  restRateLimitFloor: 100,
+  /** REST API version header. */
+  restApiVersion: "2022-11-28",
 });
 
 export type GitHubLimits = typeof GitHubLimits;
@@ -64,6 +79,11 @@ export interface GitHubSourceOptions extends DataSourceLoadOptions {
    * most 100. Explicit profile pins are not affected.
    */
   readonly excludeRepositories?: readonly string[];
+  /**
+   * Own commits read, newest first, to count the added lines per language into
+   * `languagesAuthored`, 0 to 2000 (default 0 = off). Each commit costs one REST request.
+   */
+  readonly languageCommitCap?: number;
   /** Per request, 1000 to 120000 ms (default 30000). */
   readonly requestTimeoutMs?: number;
   /** Longest secondary rate-limit wait accepted, 0 to 900 s (default 60). */

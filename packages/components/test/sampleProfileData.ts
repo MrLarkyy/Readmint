@@ -290,6 +290,10 @@ export function otherProfileData(): ProfileData {
         { name: "Java", color: "#b07219", repositories: 6 },
         { name: "Kotlin", color: "#a97bff", repositories: 4 },
       ],
+      languagesAuthored: [
+        { name: "Kotlin", color: "#a97bff", share: 0.7, additions: 7000 },
+        { name: "Java", color: "#b07219", share: 0.3, additions: 3000 },
+      ],
       repositories: pinned,
       pinned,
       status: { emoji: null, message: "Reading papers" },

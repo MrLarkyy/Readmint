@@ -23,9 +23,10 @@ The main entry imports no `node:` module; `FileCache` lives in the `./node` subp
 "github", dataVersion: 0, load }`), frozen; `load` is `loadGitHubData`.
 - `loadGitHubData(options): Promise<GitHubLoadResult>` — resolves to `{ data, meta }`. `data` is the data object below.
   `meta` describes the load and is kept out of `data`, so the same GitHub state gives the same object:
-  `requests` (HTTP requests including retries), `cost` (GraphQL rate-limit points), `rateLimitRemaining` and
-  `resetAt` (from the last response, `null` when unknown), `fromCache` and `partial` (the parts GitHub refused,
-  see [Pinned repositories, pushes and status](#pinned-repositories-pushes-and-status)).
+  `requests` (HTTP requests including retries, GraphQL and REST), `cost` (GraphQL rate-limit points), `rateLimitRemaining` and
+  `resetAt` (from the last response, `null` when unknown), `fromCache` and `partial` (the parts GitHub refused or the load only partly counted,
+  see [Pinned repositories, pushes and status](#pinned-repositories-pushes-and-status) and
+  [Languages from your own commits](#languages-from-your-own-commits)).
 - `GitHubDataError` — every failure; it extends `DataSourceError` with `source` `"github"`; `code` is a `GitHubDataErrorCode` (see [Errors](#errors)), with `status`,
   `resetAt`, `retryAfterSeconds` or `causeCode` when they apply.
 - `GitHubCache` — the `DataSourceCache` interface: `get(key)` resolves to the stored text or `undefined`, `set(key, value,
@@ -37,20 +38,21 @@ ttlSeconds)` stores it.
 
 ### Options
 
-| option                | default    | range           | meaning                                                                                                            |
-| --------------------- | ---------- | --------------- | ------------------------------------------------------------------------------------------------------------------ |
-| `token`               | (required) | visible ASCII   | the user's token; sent only in the `Authorization` header                                                          |
-| `login`               | the viewer | GitHub login    | the user to load; without it the token's owner is loaded. Required with an app or Actions token (`GITHUB_TOKEN`)   |
-| `excludeRepositories` | none       | up to 100 names | repositories left out of every aggregate, as `name` or `owner/name`, case-insensitive; see [Languages](#languages) |
-| `pageSize`            | 100        | 1–100           | repositories per request                                                                                           |
-| `maxRepositories`     | 300        | 1–1000          | repositories loaded at most                                                                                        |
-| `requestTimeoutMs`    | 30000      | 1000–120000     | per request, body included                                                                                         |
-| `maxRetryWaitSeconds` | 60         | 0–900           | the longest secondary rate-limit wait accepted                                                                     |
-| `cacheTtlSeconds`     | 3600       | 1–604800        | lifetime of a cache entry                                                                                          |
-| `cache`               | none       |                 | a `GitHubCache`                                                                                                    |
-| `fetch`               | `fetch`    |                 | `(url, init) => Promise<Response>`, injectable for tests                                                           |
-| `sleep`               | timer      |                 | `(milliseconds) => Promise<void>` for retry waits; the default ends on abort                                       |
-| `signal`              | none       |                 | an `AbortSignal` that cancels the load, retry waits included (as `timeout`)                                        |
+| option                | default    | range           | meaning                                                                                                                                  |
+| --------------------- | ---------- | --------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `token`               | (required) | visible ASCII   | the user's token; sent only in the `Authorization` header                                                                                |
+| `login`               | the viewer | GitHub login    | the user to load; without it the token's owner is loaded. Required with an app or Actions token (`GITHUB_TOKEN`)                         |
+| `excludeRepositories` | none       | up to 100 names | repositories left out of every aggregate, as `name` or `owner/name`, case-insensitive; see [Languages](#languages)                       |
+| `languageCommitCap`   | 0 (off)    | 0–2000          | own commits read for `languagesAuthored`, one REST request each; see [Languages from your own commits](#languages-from-your-own-commits) |
+| `pageSize`            | 100        | 1–100           | repositories per request                                                                                                                 |
+| `maxRepositories`     | 300        | 1–1000          | repositories loaded at most                                                                                                              |
+| `requestTimeoutMs`    | 30000      | 1000–120000     | per request, body included                                                                                                               |
+| `maxRetryWaitSeconds` | 60         | 0–900           | the longest secondary rate-limit wait accepted                                                                                           |
+| `cacheTtlSeconds`     | 3600       | 1–604800        | lifetime of a cache entry                                                                                                                |
+| `cache`               | none       |                 | a `GitHubCache`                                                                                                                          |
+| `fetch`               | `fetch`    |                 | `(url, init) => Promise<Response>`, injectable for tests                                                                                 |
+| `sleep`               | timer      |                 | `(milliseconds) => Promise<void>` for retry waits; the default ends on abort                                                             |
+| `signal`              | none       |                 | an `AbortSignal` that cancels the load, retry waits included (as `timeout`)                                                              |
 
 A value outside its range fails with `invalid-option` before any request.
 
@@ -148,6 +150,11 @@ as GitHub returns them. Array items are written `[]` below.
 | `languageRepositories`                 | array             | how many repositories use each language                                                                                                                                                                                    |
 | `languageRepositories[].name`          | string            | language name                                                                                                                                                                                                              |
 | `languageRepositories[].color`         | string \| null    | `#rrggbb` or `null`                                                                                                                                                                                                        |
+| `languagesAuthored`                    | array             | the lines you added per language in your own commits, see [Languages from your own commits](#languages-from-your-own-commits); `[]` while `languageCommitCap` is 0                                                         |
+| `languagesAuthored[].name`             | string            | language name                                                                                                                                                                                                              |
+| `languagesAuthored[].color`            | string            | null                                                                                                                                                                                                                       | `#rrggbb` or `null` |
+| `languagesAuthored[].share`            | number            | `additions` over the added lines of all languages, 0-1                                                                                                                                                                     |
+| `languagesAuthored[].additions`        | number            | lines you added in files of the language                                                                                                                                                                                   |
 | `languageRepositories[].repositories`  | number            | repositories that list the language                                                                                                                                                                                        |
 | `languages[].share`                    | number            | `bytes` over the bytes of all languages, 0–1 (0 when there are none)                                                                                                                                                       |
 | `contributions`                        | object            | the contribution calendar GitHub shows on the profile                                                                                                                                                                      |
@@ -187,7 +194,7 @@ byte-identical object:
 - `pinned`: in the order the user pinned them; without pins by `stars` descending, then `nameWithOwner`.
 - `pushes`: newest `date` first, then `nameWithOwner`, then the full commit id.
 - `repositories[].languages` and `languages`: by `bytes` descending, then `name`.
-- `languagesByRepo`: by `share` descending, then `repositories` descending, then `name`; `languageRepositories`: by `repositories` descending, then `name`.
+- `languagesByRepo`: by `share` descending, then `repositories` descending, then `name`; `languageRepositories`: by `repositories` descending, then `name`; `languagesAuthored`: by `additions` descending, then `name` (the shares are divided only after the integer sums are ordered).
 - Names compare by UTF-16 code units, not by locale.
 - A repository GitHub returns on two pages (its stars changed while loading) appears once.
 
@@ -211,6 +218,43 @@ exclusion, so `repositoriesTruncated` still describes the load. An entry that is
 more than 100 entries or a value that is not a list fails with `invalid-option`; the message names the position of
 the entry, never its text. A non-empty list is part of the [cache](#cache) key, an empty one is not, so existing
 entries stay valid.
+
+### Languages from your own commits
+
+`languagesAuthored` measures what you wrote, not what the repositories hold: repository bytes include other people's
+code, vendored and generated files and code you no longer touch. With `languageCommitCap` above 0 the loader reads your
+newest commits and sums the lines each of them added, per language.
+
+- **Which commits.** The non-merge commits (one parent) authored by the loaded user on the **default branch** of the
+  non-fork repositories GitHub lists as contributed to with commits (the first 100, most recently pushed first), at most
+  100 per repository, newest first over all repositories (ties by repository, then commit id); the first
+  `languageCommitCap` of them are read. Forks and repositories in `excludeRepositories` add nothing. Work that is
+  not on a default branch, and commits beyond the 100 newest of a repository, are not counted.
+- **Which files.** Each commit is read from the REST API (`GET /repos/{owner}/{repo}/commits/{sha}`, one request per
+  commit); GitHub lists at most 300 files of a commit, and only these are counted. A file counts for the language its
+  name or extension has in the committed table (`authoredLanguageTable.ts`: Kotlin, Java, TypeScript, JavaScript,
+  Python, Go, Rust, C, C++, C#, Swift, Ruby, PHP, Scala, Groovy, Gradle, Shell, PowerShell, HTML, CSS, SCSS, Vue,
+  Svelte, Lua, Dart, Dockerfile, Makefile; names and colours follow GitHub Linguist, MIT). An unknown extension, and
+  data or prose such as JSON, YAML or Markdown, is ignored, never guessed (`.h` is C or C++ and so is not counted).
+  Generated and vendored files are excluded by a committed list: the directories `node_modules`, `dist`, `build`,
+  `out`, `target`, `vendor`, `third_party`, `.gradle`, `__snapshots__`, `golden` and `generated` at any depth; lock
+  files (`*.lock`, `package-lock.json`, `pnpm-lock.yaml`, `gradle-wrapper*`); `*.min.*`, `*.map`, `*.snap`,
+  `*.d.ts`; images, fonts and `.svg`. A change to the table or the list bumps `AUTHORED_TABLE_VERSION`, which is part of
+  the cache keys.
+- **Shares.** `additions` are integer sums; `share` is `additions` over the sum of all languages. A load without a
+  counted line gives `[]`, and the profile templates then fall back to `languages`.
+- **Privacy.** A private repository is read only when the token's owner is the loaded user; for any other login only
+  public repositories are read. No repository name is in the result, only language names and sums.
+- **Budget.** At most `languageCommitCap` REST requests plus 12 GraphQL requests (the viewer, the contributed
+  repositories and at most 10 history requests of 10 repositories each), sequential, on top of the 7 to 14 of the rest
+  of the load. Allow about 0.3 to 0.6 seconds per commit: 300 commits take about 2 to 3 minutes, 2000 about 10 to 20.
+  The CLI allows 600 ms per commit on top of its 5 minutes. Reading stops without failing when the REST rate limit
+  reports fewer than 100 requests left or GitHub refuses a request for a rate limit, a network problem or a timeout;
+  what was counted is kept. Commits that a refused request (`graphql`, `forbidden`, `http`, `not-found`,
+  `invalid-response`, `too-large`) cannot read are skipped. `unauthorized` and an abort still fail the load.
+- **Partial parts.** `"authored"` in `meta.partial`: the reading stopped early, the sums count fewer commits than
+  asked for. `"authored-cap"`: commits were left out because of `languageCommitCap`; the result is complete for its
+  cap. The CLI and the Action print a warning line for each.
 
 ### Calendar, dates and streaks
 
@@ -239,7 +283,7 @@ whatever the token can read, so a personal access token with private access expo
 Repositories are loaded in pages of `pageSize`, in GitHub's order (stars descending), until there is no next page or
 `maxRepositories` is reached; `repositoriesTruncated` is then `true`. A next page without a cursor, or a cursor GitHub
 returns twice, fails with `invalid-response` instead of looping. Requests run one after another: the viewer (without
-`login`, or with a `cache`), the profile with the calendar, then the repository pages, the activity and the weekly commits.
+`login`, or with a `cache` or a `languageCommitCap`), the profile with the calendar, then the repository pages, the activity and the weekly commits.
 
 ### Pinned repositories, pushes and status
 
@@ -269,7 +313,7 @@ at its fallback, the weeks request leaves `weeklyCommits` `null`, and `meta.part
 `"weeks"`). A token that may not read these fields (the Actions `GITHUB_TOKEN` or a fine-grained token, depending on its
 permissions) ends up here. Failures that
 would fail the profile request just the same still fail the load: `unauthorized`, rate limits, `network` and
-`timeout` (an abort too). A load with a non-empty `meta.partial` is not cached. The CLI and the Action each print one warning line naming the
+`timeout` (an abort too). A load with `activity`, `weeks` or `authored` in `meta.partial` is not cached. The CLI and the Action each print one warning line naming the
 parts and the fields they leave empty.
 
 ## Errors
@@ -313,7 +357,9 @@ Strings are otherwise kept as GitHub returns them; the renderer escapes them.
   weekly commits of an account without repositories), plus retries: 7 with the defaults, 14 at most with `pageSize` 100.
   The activity request costs about 1 point. GitHub's estimate for the weekly-commit request is 3 points for 6
   repositories (52 `history` counts each); it grows with the number of repositories asked for, at most 6, `meta.cost`
-  reports what GitHub charged.
+  reports what GitHub charged. With a `languageCommitCap`, [Languages from your own commits](#languages-from-your-own-commits)
+  states the extra budget; the REST requests count in `meta.requests`, while `rateLimitRemaining` and `resetAt` stay
+  those of the GraphQL limit. GitHub's REST limit is separate; reading stops when it reports fewer than 100 left.
 
 ## Cache
 
@@ -326,7 +372,7 @@ An entry belongs to a pair of token owner and login. GitHub answers about contri
 owner (see [Repositories and privacy](#repositories-and-privacy)), so the owner is resolved with the viewer request
 even when `login` is given, and a load with another user's token never reads the owner's entry. The key is the
 SHA-256 hex digest of the namespace (`github`), the data version, a hash of the query text, the viewer and the login (both lowercased),
-`pageSize`, `maxRepositories` and, only when not empty, `excludeRepositories`. It never covers the token, so two tokens of the same owner share an entry. The key is built by
+`pageSize`, `maxRepositories` and, only when not empty or above 0, `excludeRepositories`, `languageCommitCap` and the table version. It never covers the token, so two tokens of the same owner share an entry. The key is built by
 `dataSourceCacheKey` of `@readmint/data`; since the namespace joined it, entries written by earlier versions miss once
 and are refilled.
 
@@ -343,7 +389,9 @@ and a failed write is ignored, so a read-only or full cache directory never fail
 `0o700` when it creates it, files with mode `0o600`, through a temporary file and a rename. A file over 16 MiB, a
 corrupt file or an expired entry is a miss.
 
-A load with a non-empty `meta.partial` is not written, so a retry asks GitHub again instead of serving the gap until the
+With a `languageCommitCap` the entry also holds the summed lines and whether the cap left commits out; an entry without them misses. Each commit read is cached on its own (namespace `github-commit`, keyed by the viewer, repository, commit id and table version, 604800 seconds, since a commit never changes), also by a load that stopped early, so a retry or a larger cap sends no request for a commit already read. A load with `authored-cap` is stored; a hit reports it again.
+
+A load with `activity`, `weeks` or `authored` in `meta.partial` is not written, so a retry asks GitHub again instead of serving the gap until the
 entry expires. The key covers the query text, so entries of the format before the activity and weekly commits miss.
 
 ## Token

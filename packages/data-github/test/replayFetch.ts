@@ -4,7 +4,12 @@ import type { GitHubFetch } from "../src/index.js";
 
 /** One recorded GitHub exchange; a string `body` is sent as is, anything else as JSON. */
 export interface Exchange {
-  readonly request: { readonly operation: string; readonly variables: Record<string, unknown> };
+  readonly request: {
+    readonly operation: string;
+    readonly variables: Record<string, unknown>;
+    /** Set for a REST GET, which is matched by its URL instead of operation and variables. */
+    readonly url?: string;
+  };
   readonly status: number;
   readonly headers: Record<string, string>;
   readonly body: unknown;
@@ -59,8 +64,13 @@ export function replayFetch(exchanges: readonly Exchange[]): Replay {
       headers[name] = value;
     });
     requests.push({ url, method: init.method ?? "GET", headers, body });
-    const sent = JSON.parse(body) as { operationName?: unknown; variables?: unknown };
     const next = queue.shift();
+    if (init.method === "GET") {
+      if (next?.request.url === url) return Promise.resolve(toResponse(next));
+      failures.push(`expected ${next?.request.url ?? "nothing"}, got GET ${url}`);
+      return Promise.reject(new Error("request mismatch"));
+    }
+    const sent = JSON.parse(body) as { operationName?: unknown; variables?: unknown };
     if (next === undefined) {
       failures.push(`unexpected request ${String(sent.operationName)}`);
       return Promise.reject(new Error("unexpected request"));
