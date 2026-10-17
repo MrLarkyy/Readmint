@@ -7,7 +7,6 @@ import {
   quoteForLog,
   relabelLine,
   type RemoteImageOptions,
-  type RenderVariant,
   renderOutput,
 } from "@readmint/cli";
 import { ActionError } from "./ActionError.js";

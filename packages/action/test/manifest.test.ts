@@ -143,7 +143,7 @@ describe("the manifest input", () => {
 });
 
 describe("an invalid manifest", () => {
-  async function failing(content: unknown, extra: Record<string, string> = {}) {
+  async function failing(content: object, extra: Record<string, string> = {}) {
     await tree.file("m.json", content);
     await tree.file("a.json", {
       version: 0,

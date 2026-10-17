@@ -3,6 +3,9 @@ import { describe, expect, test } from "vitest";
 import { ActionError } from "../src/index.js";
 import { planManifest } from "../src/planManifest.js";
 
+const dark = renderVariant("dark");
+if (dark === undefined) throw new Error("no dark variant");
+
 const manifest = (...renders: { name: string; variants?: "dark"[] }[]) => ({
   label: 'manifest "m.json"',
   folder: "ws",
@@ -10,14 +13,10 @@ const manifest = (...renders: { name: string; variants?: "dark"[] }[]) => ({
     name: render.name,
     design: "ws/repo.json",
     props: { slot: index },
-    ...(render.variants === undefined
-      ? {}
-      : { variants: render.variants.map((name) => renderVariant(name)!) }),
+    ...(render.variants === undefined ? {} : { variants: render.variants.map(() => dark) }),
     at: `/renders/${String(index)}`,
   })),
 });
-
-const dark = renderVariant("dark");
 
 describe("planManifest", () => {
   test("names outputs after the renders, in order, with the entry and the root", () => {
