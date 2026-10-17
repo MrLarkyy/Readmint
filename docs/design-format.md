@@ -155,15 +155,15 @@ Every layer has `type` (required) and these optional properties:
 | `animate`  | property -> track                        | see [Animation](#animation); needs `animation`           |
 | `orbit`    | an orbit                                 | places the layer on an ellipse, see [Orbit](#orbit)      |
 
-| `type`      | required                                    | optional                                                                                                     |
-| ----------- | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| `group`     | `children` (layers)                         | `width`, `height` (`B<size>`), `clip` (`B<boolean>`), `layout`                                               |
-| `rect`      | `width`, `height` (`B<size>`)               | `radius` (`B<length>`), `fill`, `stroke` (paint), `strokeWidth` (`B<0..1000>`)                               |
-| `ellipse`   | `width`, `height` (`B<size>`)               | `fill`, `stroke`, `strokeWidth`                                                                              |
-| `path`      | `d`                                         | `fill`, `stroke`, `strokeWidth`                                                                              |
-| `text`      | `content`                                   | `width` (`B<size>`, wraps), `fill`, `font`, `fontSize`, `fontWeight`, `lineHeight`, `letterSpacing`, `align` |
-| `image`     | `asset` (id), `width`, `height` (`B<size>`) | `fit` (`contain` \| `cover` \| `fill`), `alt` (string, at most 500)                                          |
-| `component` | `ref` (id of a component)                   | `width`, `height` (`B<size>`), `props` (prop name -> string, number, boolean or binding)                     |
+| `type`      | required                                    | optional                                                                                                                                        |
+| ----------- | ------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `group`     | `children` (layers)                         | `width`, `height` (`B<size>`), `clip` (`B<boolean>`), `layout`                                                                                  |
+| `rect`      | `width`, `height` (`B<size>`)               | `radius` (`B<length>`), `fill`, `stroke` (paint), `strokeWidth` (`B<0..1000>`)                                                                  |
+| `ellipse`   | `width`, `height` (`B<size>`)               | `fill`, `stroke`, `strokeWidth`                                                                                                                 |
+| `path`      | `d`                                         | `fill`, `stroke`, `strokeWidth`                                                                                                                 |
+| `text`      | `content`                                   | `width` (`B<size>`, wraps), `maxLines` (`B<integer 1..1000>`), `fill`, `font`, `fontSize`, `fontWeight`, `lineHeight`, `letterSpacing`, `align` |
+| `image`     | `asset` (id), `width`, `height` (`B<size>`) | `fit` (`contain` \| `cover` \| `fill`), `alt` (string, at most 500)                                                                             |
+| `component` | `ref` (id of a component)                   | `width`, `height` (`B<size>`), `props` (prop name -> string, number, boolean or binding)                                                        |
 
 - `layout` of a group: `{ "type": "absolute" }` (the default: children use their own `x`/`y`),
   `{ "type": "stack", "direction": "row" | "column", gap?: B<length>, align?: "start" | "center" | "end" }` or
@@ -181,6 +181,12 @@ Every layer has `type` (required) and these optional properties:
   font size that makes it fill a line, an underline, a ticker's travel, a cut to fit a slot) binds to its measured
   width with `textWidth` and `truncateWidth` ([expressions](expressions.md#filters)), not to `length`, which counts
   characters a font may not draw.
+- `maxLines` of a text: the most lines it draws, counted after wrapping to `width` and after hard line breaks. When
+  lines are left out, the last drawn line is its own text followed by `…`, cut between character clusters (as
+  `truncateWidth` cuts) so that line and `…` fit `width`; without a `width` the `…` is appended. The cut line keeps
+  its paragraph's direction. The box is as high
+  as the lines drawn, and the text's `aria-label`, where it has one, names only the drawn text. A text within `maxLines` draws
+  the same SVG as without it. It is a property of the layer, not of a `style`.
 - A text needs a font: its own `font` or one from its `style`.
 
 ### Orbit
@@ -689,5 +695,8 @@ The palette (`palette`, RM-119) was added to v0 as an optional root property, wi
 needs migrating and every design without it draws the same SVG with the same step use; a reader older than RM-119
 rejects `palette` as an `unknown-property`. A design with a palette holds one more local in every scope, so each repeat
 item, `let` and component instance copies one more local and costs one more step.
+The line cap of a text (`maxLines`, RM-123) was added to v0 as an optional text-layer property, with no new issue
+code, so no design needs migrating and every design without it draws the same SVG; a reader older than RM-123 (Action
+v0.3.0 and older) rejects `maxLines` as an `unknown-property`.
 The grammar inside bindings is
 the expression language v0 of `@readmint/expr`, described in [docs/expressions.md](expressions.md).

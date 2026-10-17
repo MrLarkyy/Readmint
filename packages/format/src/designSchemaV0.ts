@@ -263,6 +263,7 @@ const defs = new Map<string, SchemaNode>([
       layer("text", "TextAnimation", {
         content: string("text", { maxLength: 10_000 }),
         "width?": size,
+        "maxLines?": bindable(numberIn(ValueRanges.maxLines)),
         "fill?": paint,
         ...fontText,
       }),

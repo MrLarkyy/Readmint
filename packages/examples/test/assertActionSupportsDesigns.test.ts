@@ -35,6 +35,26 @@ describe("assertActionSupportsDesigns", () => {
     }).not.toThrow();
   });
 
+  it("throws for a pinned release older than a used design property", () => {
+    const capped = design('{"layers": [{"type": "text", "maxLines": 2}]}');
+    expect(() => {
+      assertActionSupportsDesigns("owner/action@v0.3.0", capped);
+    }).toThrow(
+      "owner/action@v0.3.0 predates maxLines (Action v0.4.0), which t/header.json uses; pin v0.4.0 or newer",
+    );
+    for (const ref of ["@v0.4.0", "@main"]) {
+      expect(() => {
+        assertActionSupportsDesigns(`owner/action${ref}`, capped);
+      }).not.toThrow();
+    }
+  });
+
+  it("ignores a property name that is not a key", () => {
+    expect(() => {
+      assertActionSupportsDesigns("owner/action@v0.3.0", design('{"content": "maxLines"}'));
+    }).not.toThrow();
+  });
+
   it("ignores the word outside a pipe", () => {
     expect(() => {
       assertActionSupportsDesigns(

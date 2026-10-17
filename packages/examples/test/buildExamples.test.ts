@@ -359,16 +359,16 @@ describe("runExamples", () => {
     expect(err).toContain(defaultActionRef);
   });
 
-  // The templates set layer properties of the next release (let, orbit: Action v0.4.0): until that release moves the
-  // default pin, the real templates are written against the Action's main branch.
-  const next = ["--action", "MrLarkyy/Readmint@main"];
+  // The real templates use maxLines, let and orbit, which the default pin predates until its release
+  // (docs/action.md#releases).
+  const pin = ["--action", options.actionRef];
 
   it("writes, then reports in sync with exit 0", () => {
     const out = temp();
-    const written = run(templatesDir, out, ...next);
+    const written = run(templatesDir, out, ...pin);
     expect(written.code).toBe(0);
     expect(written.out).toMatch(/^wrote \d+ files to .*, removed 0\n$/);
-    expect(run(templatesDir, out, "--check", ...next)).toEqual({
+    expect(run(templatesDir, out, "--check", ...pin)).toEqual({
       code: 0,
       out: "the examples repository is in sync\n",
       err: "",
@@ -377,12 +377,12 @@ describe("runExamples", () => {
 
   it("lists missing, differing and stale files with --check and exits 1", () => {
     const out = temp();
-    run(templatesDir, out, ...next);
+    run(templatesDir, out, ...pin);
     const template = templates[0] ?? "";
     rmSync(join(out, "README.md"));
     writeFileSync(join(out, template, "designs", "header.json"), "{}\n");
     writeFileSync(join(out, template, "designs", "stale.json"), "{}\n");
-    const { code, out: lines, err } = run(templatesDir, out, "--check", ...next);
+    const { code, out: lines, err } = run(templatesDir, out, "--check", ...pin);
     expect(code).toBe(1);
     expect(lines).toBe(
       `missing: README.md\ndiffers: ${template}/designs/header.json\nstale: ${template}/designs/stale.json\n`,
@@ -390,19 +390,29 @@ describe("runExamples", () => {
     expect(err).toContain("3 files out of sync");
   });
 
-  it("checks the real templates against the pinned default Action reference without --action", () => {
+  it("writes the pinned default Action reference without --action", () => {
     expect(defaultActionRef).toBe("MrLarkyy/Readmint@v0.3.0");
-    // the default pin predates let and orbit, which the templates set: it is refused until the release moves it
-    const { code, err } = run(templatesDir, temp());
-    expect(code).toBe(1);
-    expect(err).toMatch(/MrLarkyy\/Readmint@v0\.3\.0 predates (let|orbit) \(Action v0\.4\.0\)/);
+    // The templates as the pinned release accepts them: without the layer properties it predates.
+    const dir = temp();
+    cpSync(templatesDir, dir, { recursive: true });
+    const yearRing = join(dir, "profiles", "year-ring");
+    for (const file of readdirSync(yearRing).filter((name) => name.endsWith(".json"))) {
+      const design = JSON.parse(readFileSync(join(yearRing, file), "utf8")) as unknown;
+      if (withoutNewLayerProperties(design))
+        writeFileSync(join(yearRing, file), `${JSON.stringify(design, null, 2)}\n`);
+    }
+    const out = temp();
+    expect(run(dir, out).code).toBe(0);
+    const workflow = readFileSync(join(out, ".github", "workflows", "readmint.yml"), "utf8");
+    expect(workflow).toContain(`uses: ${defaultActionRef}`);
   });
 
-  it("writes the Action reference it is given into the workflow", () => {
-    const out = temp();
-    expect(run(templatesDir, out, ...next).code).toBe(0);
-    const workflow = readFileSync(join(out, ".github", "workflows", "readmint.yml"), "utf8");
-    expect(workflow).toContain("uses: MrLarkyy/Readmint@main");
+  it("refuses the default pin over the real templates until the release that brings maxLines, let and orbit", () => {
+    const { code, err } = run(templatesDir, temp());
+    expect(code).toBe(1);
+    expect(err).toMatch(
+      /@v0\.3\.0 predates (maxLines|let|orbit) \(Action v0\.4\.0\), which year-ring\/[a-z0-9-]+(\.dark)?\.json uses/,
+    );
   });
 
   it("reports a failure as exit 1 with its message", () => {
@@ -411,3 +421,20 @@ describe("runExamples", () => {
     expect(err).toContain("nowhere");
   });
 });
+
+/** Removes `maxLines`, `let` and `orbit` from every layer of a design, in place; whether any was there. */
+function withoutNewLayerProperties(node: unknown): boolean {
+  if (Array.isArray(node)) return node.map(withoutNewLayerProperties).some(Boolean);
+  if (node === null || typeof node !== "object") return false;
+  const record = node as Record<string, unknown>;
+  let removed = false;
+  if (typeof record["type"] === "string") {
+    for (const key of ["maxLines", "let", "orbit"]) {
+      if (key in record) {
+        delete record[key];
+        removed = true;
+      }
+    }
+  }
+  return Object.values(record).map(withoutNewLayerProperties).some(Boolean) || removed;
+}

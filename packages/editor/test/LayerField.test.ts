@@ -55,6 +55,12 @@ test("every layer type has its own fields, from Design.ts", () => {
     "fontSize",
   );
   expect(
+    layerFields({ type: "text", content: "" }, sources).find((field) => field.key === "maxLines"),
+  ).toEqual({ key: "maxLines", kind: "number" });
+  expect(
+    layerFields({ type: "rect", width: 1, height: 1 }, sources).map((field) => field.key),
+  ).not.toContain("maxLines");
+  expect(
     layerFields({ type: "image", asset: "i", width: 1, height: 1 }, sources).find(
       (field) => field.key === "asset",
     ),

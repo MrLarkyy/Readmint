@@ -1179,3 +1179,37 @@ describe("orbit (RM-111)", () => {
     expect(defs["Orbit"]?.["additionalProperties"]).toBe(false);
   });
 });
+
+describe("a text layer's line cap (maxLines, RM-123)", () => {
+  const text = (extra: Record<string, unknown>) => ({ type: "text", content: "a", ...extra });
+
+  const issuesAt = (maxLines: unknown) => {
+    const result = validateDesign({ ...base(), layers: [text({ maxLines })] });
+    return result.ok ? [] : result.issues.filter((issue) => issue.path === "/layers/0/maxLines");
+  };
+
+  test.each([1, 1000, "{{ props.lines }}"])("%j is valid", (maxLines) => {
+    expect(issuesAt(maxLines)).toEqual([]);
+  });
+
+  test.each([
+    [0, "range"],
+    [1.5, "type"],
+    [1001, "range"],
+    ["2", "type"],
+  ])("%j is a %s issue at the property", (maxLines, code) => {
+    expect(issuesAt(maxLines)).toMatchObject([{ code }]);
+  });
+
+  test("it is not a style property and not on other layers", () => {
+    const result = issuesOf({
+      ...base(),
+      styles: { body: { maxLines: 2 } },
+      layers: [rect({ maxLines: 2 })],
+    });
+    expect(result.issues.map(({ path, code }) => ({ path, code }))).toEqual([
+      { path: "/layers/0/maxLines", code: "unknown-property" },
+      { path: "/styles/body/maxLines", code: "unknown-property" },
+    ]);
+  });
+});

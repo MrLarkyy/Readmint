@@ -265,6 +265,16 @@ Drawn in document order, first at the back. Layer `id` and `name` are not emitte
   wider than the line breaks between clusters, never inside one (a ligature, a letter with its marks, a conjunct). Word widths include kerning inside the word; kerning across a space
   is left out of the wrapping decision (it is in the final positions). The space at a soft break is dropped, every
   other space is kept (`xml:space="preserve"`).
+- `maxLines` keeps at most that many lines, soft-wrapped and hard. When lines are left out, the last kept line becomes
+  its own text followed by `…`, cut between clusters by the same bisection as `truncateWidth` so that line and `…` fit
+  the `width` (without a `width` the `…` is appended; an ellipsis wider than the width leaves the line empty). That
+  line is measured and laid out as a paragraph of its own with its paragraph's direction (a left-to-right paragraph's
+  cut stays left-to-right even when it starts with Arabic, a right-to-left one's stays right-to-left when it starts
+  with Latin, so it is placed and aligned as the line it replaces), and never wrapped again: wrapping sums word
+  widths, so a kerned line that fits could break anew. A text with `maxLines` reserves its drawn text in the output
+  budget once it is laid out, not its whole content, so dropped lines cost no output. Lines are counted, glyphs recorded for the subset and missing glyphs warned only for the drawn
+  lines, and the accessible name (`aria-label`) is the drawn text: the content up to the last kept line, then its cut.
+  A text within `maxLines` lays out exactly as without it.
 - The box is the `width` (or the widest line) by `lines x lineHeight x fontSize` (`lineHeight` default 1.2). The
   first baseline sits half the leading plus the ascender below the box top (the ascender and descender of `hhea`, or of
   `OS/2` when the font sets USE_TYPO_METRICS), of the font the text names.
@@ -348,7 +358,7 @@ Drawn in document order, first at the back. Layer `id` and `name` are not emitte
   lookup; feature selection visits each feature once and reads at most 4096 lookup indices; an extension lookup may
   not point to another extension; a context rule or ligature names at most 64 glyphs; lookups nest at most 8 deep;
   shaping one text (every word measured and every line laid out, together) spends at most max(16384, 128 x the text's
-  length) operations (a `textWidth` measurement the same, a `truncateWidth` one more: see Expressions) (a subtable tried, a glyph stepped over, a rule, ligature or lookup entry compared, glyphs
+  length) operations, a text with `maxLines` that plus what a `truncateWidth` of its length gets for the cut (a `textWidth` measurement the same, a `truncateWidth` one more: see Expressions) (a subtable tried, a glyph stepped over, a rule, ligature or lookup entry compared, glyphs
   moved; the Devanagari probes for reph and below-base forms included, each answered once per font); one shaping call
   grows its buffer to at most max(4096, 8 x its characters) glyphs; a mark finds its base by searching back only to
   where the last search stopped (HarfBuzz's last base), and a cluster holds at most 32 code points, so long runs of
@@ -715,7 +725,8 @@ the canvas background and the layers.
 
 The output size is counted while the SVG is written (a shared definition once, when its first use writes it), and
 every layer reserves the least markup of its kind before it is built (a path also its data, a template `d` once
-evaluated, a text its filled-in content, before either is measured), so a huge or nested `repeat` stops early instead of building everything. Font
+evaluated, a text its filled-in content, before either is measured (a text with `maxLines` its drawn text, once laid
+out)), so a huge or nested `repeat` stops early instead of building everything. Font
 subsets are written once every text is laid out and count like any markup; text drawn as paths checks its path data
 against the budget glyph by glyph while it is built.
 Animation CSS counts toward `maxOutputBytes` like any markup, and every animated transform reserves its group (a
@@ -723,7 +734,7 @@ Animation CSS counts toward `maxOutputBytes` like any markup, and every animated
 is written only once every track is built, so `maxAnimationKeyframes` bounds that work: each track charges its
 keyframes before any is resolved. Fixed limits: 10000 items per `repeat` (expr, `binding` at
 `repeat/each`) and 64 levels of nested component instances (`too-large`). Shaping is bounded twice by counts (see Fonts, untrusted fonts):
-each text by its own budget, max(16384, 128 x its length) operations, which fails as `asset-format` at the font (a
+each text by its own budget, max(16384, 128 x its length) operations (with `maxLines` plus the cut's, see Fonts), which fails as `asset-format` at the font (a
 `textWidth` or `truncateWidth` measurement by its own budget too, see Expressions); and the whole render by 4000000
 shaping operations, every text and measurement together (an internal bound like the outline work, not a
 `RenderLimits` field), which fails as `asset-too-large` at the content of the text that crossed it, or at the

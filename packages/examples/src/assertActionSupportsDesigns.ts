@@ -6,8 +6,12 @@ const filterIntroducedIn: Readonly<Record<string, string>> = {
   truncateWidth: "0.3.0",
 };
 
-/** The Action version that introduced each layer property the templates may use; add a property here when a release adds one. */
+/**
+ * The Action version that accepts each layer property format v0 gained after a release; an older Action refuses a
+ * design using it as `unknown-property`. Add a property here in the change that adds it to the format.
+ */
 const propertyIntroducedIn: Readonly<Record<string, string>> = {
+  maxLines: "0.4.0",
   let: "0.4.0",
   orbit: "0.4.0",
 };

@@ -231,6 +231,8 @@ export interface TextLayer extends LayerBase {
   /** May hold `{{...}}` placeholders anywhere. */
   readonly content: string;
   readonly width?: Bindable<number>;
+  /** At most this many lines are drawn; the last drawn line of a longer text ends with an ellipsis. */
+  readonly maxLines?: Bindable<number>;
   readonly fill?: Paint;
   readonly font?: string;
   readonly fontSize?: Bindable<number>;
