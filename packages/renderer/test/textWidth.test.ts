@@ -137,7 +137,10 @@ describe("truncateWidth", () => {
       expect(text.startsWith(kept)).toBe(true);
       const count = clusters.findIndex((_, index) => clusters.slice(0, index).join("") === kept);
       expect(count).toBeGreaterThanOrEqual(0);
-      const next = `${clusters.slice(0, count + 1).join("").trimEnd()}…`;
+      const next = `${clusters
+        .slice(0, count + 1)
+        .join("")
+        .trimEnd()}…`;
       // A dropped cluster takes no space, so it is kept as long as the next drawn one does not fit.
       const nextWidth = measure.width(next, "m", 14, 0) ?? 0;
       if (nextWidth > (measure.width(cut, "m", 14, 0) ?? 0)) expect(nextWidth).toBeGreaterThan(max);
