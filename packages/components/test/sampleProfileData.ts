@@ -219,6 +219,54 @@ export function sparseProfileData(): ProfileData {
   };
 }
 
+type CalendarDay = ProfileData["github"]["contributions"]["days"][number];
+
+function withCalendar(counts: readonly number[]): ProfileData {
+  const sample = sampleProfileData();
+  const dayMs = 86_400_000;
+  const first = Date.UTC(2025, 9, 15) - (counts.length - 1) * dayMs;
+  const startWeekday = new Date(first).getUTCDay();
+  const days: CalendarDay[] = counts.map((count, index) => {
+    const date = new Date(first + index * dayMs);
+    return {
+      date: date.toISOString().slice(0, 10),
+      count,
+      level: level(count),
+      weekday: date.getUTCDay(),
+      week: Math.floor((startWeekday + index) / 7),
+    };
+  });
+  const last = days.at(-1);
+  return {
+    github: {
+      ...sample.github,
+      contributions: {
+        ...sample.github.contributions,
+        total: counts.reduce((sum, count) => sum + count, 0),
+        from: days[0]?.date ?? sample.github.contributions.from,
+        weeks: last === undefined ? 0 : last.week + 1,
+        days,
+        streaks: streaksOf(days),
+      },
+    },
+  };
+}
+
+/** The sample with a year of 369 days and no contribution on any of them. */
+export function zeroYearProfileData(): ProfileData {
+  return withCalendar(Array.from({ length: 369 }, () => 0));
+}
+
+/** The sample with a calendar that has no days at all. */
+export function noDaysProfileData(): ProfileData {
+  return withCalendar([]);
+}
+
+/** The sample with a year of 369 days of which only the one third from the end (a Monday) has contributions. */
+export function oneDayStreakProfileData(): ProfileData {
+  return withCalendar(Array.from({ length: 369 }, (_, index) => (index === 366 ? 3 : 0)));
+}
+
 const long = (length: number, char = "W") => char.repeat(length);
 
 /** The data a profile section must stay within budget on: 1024-character texts, 10^15 counts, 600 pushes. */
