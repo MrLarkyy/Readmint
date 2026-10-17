@@ -148,7 +148,8 @@ export const fakeSource: DataSource<FakeOptions, FakeData> = Object.freeze({
 the CLI `--data-json` ([cli.md](cli.md#json-data)) and the Action `data-json` input ([action.md](action.md#json-data))
 load. Its main entry is browser-safe (global `fetch`, no `node:` module, no `process`); files are read through a reader
 the host passes, and `@readmint/data-json/node` has the Node one, `workspaceFileReader(root)`. It has no dependency but
-`@readmint/data`.
+`@readmint/data`. A namespace the host chooses must not equal a `let` name of the design (a `let` never hides a data
+name, [design-format.md](design-format.md#local-bindings-let)); the CLI checks it before loading.
 
 ```ts
 import { jsonDataSource, loadJsonData } from "@readmint/data-json";

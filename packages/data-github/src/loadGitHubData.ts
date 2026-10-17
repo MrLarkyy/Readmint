@@ -80,6 +80,7 @@ export async function loadGitHubData(options: GitHubSourceOptions): Promise<GitH
           login,
           pageSize: resolved.pageSize,
           maxRepositories: resolved.maxRepositories,
+          excludeRepositories: resolved.excludeRepositories,
         });
   if (cache !== null && key !== null) {
     const stored = await readCache(cache, key);
@@ -124,7 +125,12 @@ export async function loadGitHubData(options: GitHubSourceOptions): Promise<GitH
   });
   rateLimits.push(activityLoad?.record.rateLimit ?? null);
 
-  const ids = weekIds(activityLoad?.record ?? null, pages, resolved.maxRepositories);
+  const ids = weekIds(
+    activityLoad?.record ?? null,
+    pages,
+    resolved.maxRepositories,
+    resolved.excludeRepositories,
+  );
   let weeksLoad: { raw: JsonRecord; record: WeeksRecord } | null = null;
   if (ids.length > 0) {
     const weekVariables: Record<string, string | readonly string[]> = { ids, author: profile.id };
@@ -142,6 +148,7 @@ export async function loadGitHubData(options: GitHubSourceOptions): Promise<GitH
     profile,
     pages,
     resolved.maxRepositories,
+    resolved.excludeRepositories,
     activityLoad?.record ?? null,
     weeksLoad?.record ?? null,
   );
@@ -165,8 +172,9 @@ function weekIds(
   activity: ActivityRecord | null,
   pages: readonly RepositoriesPageRecord[],
   maxRepositories: number,
+  exclude: readonly string[],
 ): string[] {
-  const { repositories, ids } = collectRepositories(pages, maxRepositories);
+  const { repositories, ids } = collectRepositories(pages, maxRepositories, exclude);
   const wanted = selectPinned(activity, repositories, ids).flatMap((entry) =>
     entry.id === null ? [] : [entry.id],
   );
@@ -274,10 +282,17 @@ function readStoredLoad(
       return null;
     }
     const activity = parseActivityResponse(storedActivity);
-    const ids = weekIds(activity, pages, options.maxRepositories);
+    const ids = weekIds(activity, pages, options.maxRepositories, options.excludeRepositories);
     if (ids.length > 0 !== (storedWeeks !== null)) return null;
     const weeks = storedWeeks === null ? null : parseWeeksResponse(storedWeeks, ids);
-    return buildGitHubData(profile, pages, options.maxRepositories, activity, weeks);
+    return buildGitHubData(
+      profile,
+      pages,
+      options.maxRepositories,
+      options.excludeRepositories,
+      activity,
+      weeks,
+    );
   } catch (error) {
     if (error instanceof SyntaxError || error instanceof GitHubDataError) return null;
     throw error;

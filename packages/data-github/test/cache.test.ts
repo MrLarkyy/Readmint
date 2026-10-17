@@ -238,6 +238,14 @@ describe("cache key", () => {
     );
   });
 
+  test("an empty exclusion list leaves the key unchanged, a list changes it", async () => {
+    const key = await cacheKey(base);
+    expect(await cacheKey({ ...base, excludeRepositories: [] })).toBe(key);
+    const listed = await cacheKey({ ...base, excludeRepositories: ["readmint"] });
+    expect(listed).not.toBe(key);
+    expect(await cacheKey({ ...base, excludeRepositories: ["other"] })).not.toBe(listed);
+  });
+
   test("changes with the viewer, the login, the paging options and the query text", async () => {
     const key = await cacheKey(base);
     const changedQueries = allQueries.map((query) =>

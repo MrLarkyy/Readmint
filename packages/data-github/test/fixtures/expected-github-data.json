@@ -308,6 +308,76 @@
       "share": 0.013114754098360656
     }
   ],
+  "languagesByRepo": [
+    {
+      "name": "TypeScript",
+      "color": "#3178c6",
+      "share": 0.37530864197530867,
+      "repositories": 2
+    },
+    {
+      "name": "HTML",
+      "color": "#e34c26",
+      "share": 0.19999999999999998,
+      "repositories": 1
+    },
+    {
+      "name": "Shell",
+      "color": "#89e051",
+      "share": 0.19999999999999998,
+      "repositories": 1
+    },
+    {
+      "name": "Lua",
+      "color": "#000080",
+      "share": 0.13333333333333333,
+      "repositories": 1
+    },
+    {
+      "name": "Fixture Lang",
+      "color": null,
+      "share": 0.06666666666666667,
+      "repositories": 1
+    },
+    {
+      "name": "CSS",
+      "color": "#663399",
+      "share": 0.024691358024691357,
+      "repositories": 1
+    }
+  ],
+  "languageRepositories": [
+    {
+      "name": "TypeScript",
+      "color": "#3178c6",
+      "repositories": 2
+    },
+    {
+      "name": "CSS",
+      "color": "#663399",
+      "repositories": 1
+    },
+    {
+      "name": "Fixture Lang",
+      "color": null,
+      "repositories": 1
+    },
+    {
+      "name": "HTML",
+      "color": "#e34c26",
+      "repositories": 1
+    },
+    {
+      "name": "Lua",
+      "color": "#000080",
+      "repositories": 1
+    },
+    {
+      "name": "Shell",
+      "color": "#89e051",
+      "repositories": 1
+    }
+  ],
   "contributions": {
     "total": 1308,
     "commits": 812,

@@ -1,6 +1,7 @@
 import { applyDesignProps, type DesignProps } from "@readmint/format";
 import type { RenderAssets } from "@readmint/renderer";
 import type { DesignArgs } from "./CliCommand.js";
+import { checkDataNamespaces } from "./checkDataNamespaces.js";
 import { CliError } from "./CliError.js";
 import { ExitCode } from "./ExitCode.js";
 import { fetchBoundImages } from "./fetchBoundImages.js";
@@ -65,6 +66,9 @@ export async function loadRenderInput(
   const { file, mask } = props === undefined ? { file: loaded } : withProps(loaded, props);
   options.onDesignFile?.(file);
   const fileAssets = await loadDesignAssets(file);
+  if (options.data === undefined) {
+    checkDataNamespaces(file, args.dataJson ?? [], args.dataFeed ?? []);
+  }
   const data = options.data ?? (await loadData(args, options));
   const assets = await withBoundImages(file, fileAssets, data, options.images);
   return {

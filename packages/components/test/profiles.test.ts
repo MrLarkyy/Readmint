@@ -799,7 +799,9 @@ describe.each(names)("%s personal texts", (template) => {
               ? 2
               : name === "logosRow"
                 ? -1
-                : undefined;
+                : name === "languageShare"
+                  ? "bytes"
+                  : undefined;
         if (fallback !== undefined) expect(prop.default, name).toBe(fallback);
         else expect(prop.default, `${section} ${name}`).toEqual(prop.type === "array" ? [] : "");
       }

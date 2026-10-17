@@ -38,8 +38,21 @@ test.each([["render"], ["validate"], ["preview"]])("%s takes --github and --logi
   expect(parseCliArgs([name, "a.json"])).not.toHaveProperty("github");
 });
 
+test("--exclude-repositories is a trimmed comma list", () => {
+  expect(
+    parseCliArgs(["render", "a.json", "--github", "--exclude-repositories", " Readmint, a/b ,,"]),
+  ).toMatchObject({ excludeRepositories: ["Readmint", "a/b"] });
+  expect(
+    parseCliArgs(["render", "a.json", "--github", "--exclude-repositories", " , "]),
+  ).not.toHaveProperty("excludeRepositories");
+});
+
 test.each([
   [["render", "a.json", "--login", "octocat"], "option --login needs --github"],
+  [
+    ["render", "a.json", "--exclude-repositories", "x"],
+    "option --exclude-repositories needs --github",
+  ],
   [["render", "a.json", "--github", "--data", "d.json"], "--github and --data exclude each other"],
   [
     ["render", "a.json", "--github", "--login", "a", "--login", "b"],
