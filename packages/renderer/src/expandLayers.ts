@@ -16,6 +16,7 @@ import type { GroupNode, RenderNode } from "./RenderNode.js";
 import { resolveAnimation } from "./resolveAnimation.js";
 import { resolveBase } from "./resolveBase.js";
 import { resolveImage } from "./resolveImage.js";
+import { resolveOrbit } from "./resolveOrbit.js";
 import { resolveProps } from "./resolveProps.js";
 import { resolveEllipse, resolvePath, resolveRect } from "./resolveShape.js";
 import { resolveText } from "./resolveText.js";
@@ -101,7 +102,12 @@ function addLayer(
   context.writer.reserve(minimumNodeBytes[layer.type]);
   const node = resolveLayer(context, layer, path, local);
   const animation = resolveAnimation(context, layer, node, path, local, copy);
-  out.push(animation === undefined ? node : { ...node, animation });
+  const placed = resolveOrbit(context, layer, node, animation, path, local);
+  if (placed === undefined) out.push(animation === undefined ? node : { ...node, animation });
+  else {
+    const { orbit, opacity, animation: played } = placed;
+    out.push({ ...node, orbit, opacity, ...(played === undefined ? {} : { animation: played }) });
+  }
 }
 
 /** The layer's scope with its `let` names; the root instance's was built for the canvas already and is reused. */
@@ -165,6 +171,14 @@ function resolveGroup(
       : resolveBoolean(context, layer.clip, pointer(path, "clip"), scope);
   const layout = resolveLayout(context, layer.layout, pointer(path, "layout"), scope);
   const children = expandLayers(context, layer.children, pointer(path, "children"), scope);
+  const orbiting = layout.type === "absolute" ? undefined : children.find((child) => child.orbit);
+  if (orbiting !== undefined) {
+    context.fail(
+      pointer(orbiting.path, "orbit"),
+      "type",
+      "an orbit places its layer itself, so the layer cannot be in a stack or grid group",
+    );
+  }
   const content = placeChildren(layout, children, { width, height });
   return {
     kind: "group",

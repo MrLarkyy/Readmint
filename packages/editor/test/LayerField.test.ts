@@ -69,3 +69,14 @@ test("every layer type has its own fields, from Design.ts", () => {
     "width",
   );
 });
+
+test("an orbit is listed read-only, only on a layer that has one", () => {
+  const sources = { fonts: [], images: [], components: [] };
+  const orbit = { center: { x: 1, y: 2 }, radius: 3, angle: 4 };
+  const fields = layerFields({ type: "ellipse", width: 1, height: 1, orbit }, sources);
+  expect(fields.at(-1)).toEqual({ key: "orbit", kind: "text", readOnly: true });
+  expect(fieldText(orbit)).toBe('{"center":{"x":1,"y":2},"radius":3,"angle":4}');
+  expect(
+    layerFields({ type: "ellipse", width: 1, height: 1 }, sources).map((field) => field.key),
+  ).not.toContain("orbit");
+});

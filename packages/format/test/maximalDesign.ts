@@ -253,5 +253,21 @@ export const maximalDesign = {
         },
       ],
     },
+    {
+      type: "ellipse",
+      id: "orbiter",
+      width: 2,
+      height: 2,
+      orbit: {
+        center: { x: 50, y: "{{ size.height / 2 }}" },
+        radius: 40,
+        radiusY: "{{ 12 }}",
+        angle: "{{ index * 30 }}",
+        speed: -6,
+        upright: false,
+        fade: { from: -0.2, to: 0.6 },
+      },
+      animate: { x: transforms.x },
+    },
   ],
 } as const satisfies Design;

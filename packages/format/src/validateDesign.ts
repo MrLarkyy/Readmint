@@ -1,5 +1,6 @@
 import { checkAnimation } from "./checkAnimation.js";
 import { checkLocalNames } from "./checkLocalNames.js";
+import { checkOrbit } from "./checkOrbit.js";
 import { checkPalette } from "./checkPalette.js";
 import { checkReferences } from "./checkReferences.js";
 import type { Design } from "./Design.js";
@@ -12,7 +13,7 @@ import { validateNode } from "./schema/validateNode.js";
 
 /**
  * Checks an already parsed design (the editor path): bounds, migration to the current version,
- * structure, then references, local names, the palette and animation. The returned value is the input itself unless a migration ran.
+ * structure, then references, local names, the palette, animation and orbits. The returned value is the input itself unless a migration ran.
  */
 export function validateDesign(value: unknown): DesignResult<Design> {
   const bounds = measureValue(value);
@@ -27,6 +28,7 @@ export function validateDesign(value: unknown): DesignResult<Design> {
     checkLocalNames(migrated.value as unknown as Design, issues);
     checkPalette(migrated.value as unknown as Design, issues);
     checkAnimation(migrated.value as unknown as Design, issues);
+    checkOrbit(migrated.value as unknown as Design, issues);
   }
   if (!issues.isEmpty) return { ok: false, issues: issues.issues, truncated: issues.truncated };
   const design = migrated.value as unknown as Design;
