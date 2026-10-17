@@ -28,6 +28,10 @@ Options:
   --github            Load live GitHub data as { github } instead of --data, with the token
                       from GH_TOKEN, else GITHUB_TOKEN
   --login <login>     GitHub login --github loads (default: the token's owner)
+  --exclude-repositories <names>
+                      Comma separated repositories (name or owner/name) --github leaves out of
+                      the repository list, stars, forks, languages and the pinned fallback; the
+                      repository total, pushes and the contribution calendar still include them
   --data-json [<ns>=]<source>
                       Load a JSON document as { <ns>: { version: 0, document } } (default ns json):
                       a file inside --root (path relative to --root) or an https URL; repeatable, at most 8, added to

@@ -202,6 +202,24 @@ describe("render and validate --github", () => {
     expect(run.stderr).toMatch(/^GitHub data \(unauthorized\): .*\n$/);
   });
 
+  test("--exclude-repositories loads, and an invalid name fails without echoing it", async () => {
+    const replay = githubReplay();
+    const run = await tree.run(
+      ["render", "bound/design.json", "--github", "--exclude-repositories", "readmint,x/y"],
+      { env: { GH_TOKEN: CANARY }, fetch: replay.fetch },
+    );
+    expect(run).toMatchObject({ code: ExitCode.ok, stderr: "" });
+    const bad = githubReplay();
+    const failed = await tree.run(
+      ["render", "bound/design.json", "--github", "--exclude-repositories", "secret repo"],
+      { env: { GH_TOKEN: CANARY }, fetch: bad.fetch },
+    );
+    expect(failed.code).toBe(ExitCode.data);
+    expect(failed.stderr).toMatch(/^GitHub data \(invalid-option\): /);
+    expect(failed.stderr).not.toContain("secret");
+    expect(bad.requests).toEqual([]);
+  });
+
   test("an invalid --login exits with 4 invalid-option before any request", async () => {
     const replay = githubReplay();
     const run = await tree.run(

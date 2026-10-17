@@ -105,6 +105,16 @@ describe("readInputs", () => {
     expect(readInputs(env({ ...base, formats: "gif", "frame-rate": "50" })).frameRate).toBe(50);
   });
 
+  test("exclude-repositories takes commas and lines, and not a data-file", () => {
+    expect(readInputs(env(base))).not.toHaveProperty("excludeRepositories");
+    expect(
+      readInputs(env({ ...base, "exclude-repositories": "a, b/c\n d\n\n" })).excludeRepositories,
+    ).toEqual(["a", "b/c", "d"]);
+    expect(problems({ ...base, "data-file": "d.json", "exclude-repositories": "a" })).toEqual([
+      "input exclude-repositories applies to GitHub data only; it cannot go with data-file",
+    ]);
+  });
+
   test("quality is read for webp output and absent by default", () => {
     expect(readInputs(env(base))).not.toHaveProperty("quality");
     expect(readInputs(env({ ...base, formats: "svg, webp", quality: "80" }))).toMatchObject({
@@ -256,6 +266,24 @@ describe("props-file", () => {
       propsFile: "readmint/settings.json",
     });
     expect(readInputs(env(base))).not.toHaveProperty("propsFile");
+  });
+});
+
+describe("data-file", () => {
+  test.each([
+    ["../x.json", "leaves the workspace (..)"],
+    ["/tmp/x.json", "is not a relative path"],
+    ["C:\\x.json", "is not a relative path"],
+  ])("%s is refused naming the input", (dataFile, reason) => {
+    expect(problems({ ...base, "data-file": dataFile })).toEqual([
+      `input data-file ${JSON.stringify(dataFile)} ${reason}`,
+    ]);
+  });
+
+  test("a relative path is kept", () => {
+    expect(readInputs(env({ ...base, "data-file": "fixtures/d.json" })).dataFile).toBe(
+      "fixtures/d.json",
+    );
   });
 });
 

@@ -35,6 +35,13 @@ export interface GitHubData {
   /** True when the account owns more public repositories than were loaded. */
   readonly repositoriesTruncated: boolean;
   readonly languages: readonly GitHubLanguageShare[];
+  /**
+   * The same languages weighted by repository instead of bytes, so one large repository does not
+   * dominate: each non-fork repository counts equally, by its own language shares. Share order.
+   */
+  readonly languagesByRepo: readonly GitHubLanguageWeight[];
+  /** How many of the loaded non-fork repositories use each language, most first. */
+  readonly languageRepositories: readonly GitHubLanguageRepositories[];
   readonly contributions: GitHubContributions;
 }
 
@@ -76,6 +83,18 @@ export interface GitHubRepositoryLanguage extends GitHubLanguage {
 export interface GitHubLanguageShare extends GitHubRepositoryLanguage {
   /** `bytes` over all language bytes of the loaded non-fork repositories, 0 to 1. */
   readonly share: number;
+}
+
+export interface GitHubLanguageWeight extends GitHubLanguage {
+  /** Mean of the language's share within each counted repository, 0 to 1; all shares sum to 1. */
+  readonly share: number;
+  /** Repositories that list the language. */
+  readonly repositories: number;
+}
+
+export interface GitHubLanguageRepositories extends GitHubLanguage {
+  /** Repositories that list the language. */
+  readonly repositories: number;
 }
 
 export interface GitHubContributions {

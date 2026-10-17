@@ -16,6 +16,8 @@ export interface LiveDataOptions {
   readonly token: string;
   /** GitHub login to load; the token's owner when absent. */
   readonly login?: string;
+  /** Repositories left out of every aggregate, as `name` or `owner/name`. */
+  readonly excludeRepositories?: readonly string[];
   /** The global `fetch` when absent. */
   readonly fetch?: GitHubFetch;
   /** Ends the load early, besides the `liveDataTimeoutMs` limit. */
@@ -35,6 +37,9 @@ export async function loadLiveData(options: LiveDataOptions): Promise<Record<str
     const result = await loadGitHubData({
       token: options.token,
       ...(options.login === undefined ? {} : { login: options.login }),
+      ...(options.excludeRepositories === undefined
+        ? {}
+        : { excludeRepositories: options.excludeRepositories }),
       signal: options.signal === undefined ? timeout : AbortSignal.any([timeout, options.signal]),
       ...(options.fetch === undefined ? {} : { fetch: options.fetch }),
     });

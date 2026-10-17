@@ -19,6 +19,8 @@ export interface DesignArgs {
   readonly github?: boolean;
   /** `--login`: the GitHub login `--github` loads; the token's owner when absent. */
   readonly login?: string;
+  /** `--exclude-repositories`: repository names `--github` leaves out of every aggregate. */
+  readonly excludeRepositories?: readonly string[];
   /**
    * `--data-json` with its `--data-json-header` headers: JSON documents loaded live, each under its namespace, added
    * to `--data` or `--github` data.

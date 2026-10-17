@@ -6,7 +6,7 @@ import type { RepositoriesPageRecord } from "./GitHubRecords.js";
 export interface CollectedRepositories {
   /** Unique repositories by stars, then name, before the cap. */
   readonly loaded: readonly GitHubRepository[];
-  /** The first `maxRepositories` of `loaded`. */
+  /** The first `maxRepositories` of `loaded`, without the excluded ones. */
   readonly repositories: readonly GitHubRepository[];
   /** GraphQL node id by `nameWithOwner`. */
   readonly ids: ReadonlyMap<string, string>;
@@ -16,6 +16,7 @@ export interface CollectedRepositories {
 export function collectRepositories(
   pages: readonly RepositoriesPageRecord[],
   maxRepositories: number,
+  exclude: readonly string[],
 ): CollectedRepositories {
   const loaded = uniqueRepositories(
     pages.flatMap((page) => page.repositories.map(copyRepository)).sort(byStars),
@@ -24,7 +25,15 @@ export function collectRepositories(
   for (const page of pages) {
     for (const [name, id] of page.ids) ids.set(name, id);
   }
-  return { loaded, repositories: loaded.slice(0, maxRepositories), ids };
+  const excluded = new Set(exclude);
+  const repositories = loaded
+    .slice(0, maxRepositories)
+    .filter(
+      (repository) =>
+        !excluded.has(repository.name.toLowerCase()) &&
+        !excluded.has(repository.nameWithOwner.toLowerCase()),
+    );
+  return { loaded, repositories, ids };
 }
 
 // Stars can change between page requests and shift a repository onto two pages; the sorted

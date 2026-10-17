@@ -12,6 +12,7 @@
     "statusBarRight": ""
   },
   "stack": {
+    "languageShare": "bytes",
     "plugin": "",
     "labels": [],
     "items": [],
