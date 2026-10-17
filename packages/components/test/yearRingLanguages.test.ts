@@ -133,7 +133,14 @@ describe("year ring index languages fit left of the bar (RM-125)", () => {
         widest = length;
       }
       expect(widest).toBeGreaterThan(1);
-      const names = ["n".repeat(widest), "n".repeat(widest), "n".repeat(widest)];
+      const base = "n".repeat(widest);
+      let names = [base, base, base];
+      for (let extra = 1; extra <= 20; extra += 1) {
+        const grown = [base, base, base + "i".repeat(extra)];
+        if (draw(named(grown)).labels.some((label) => label.text.includes("…"))) break;
+        names = grown;
+      }
+      expect(names[2]?.length).toBeGreaterThan(widest);
       expect(draw(named(names), "light", {}, locale).labels).toEqual(draw(named(names)).labels);
     });
   }
