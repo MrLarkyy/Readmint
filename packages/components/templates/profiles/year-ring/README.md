@@ -48,8 +48,9 @@ jobs:
           props-file: readmint/designs/year-ring/settings.json
 ```
 
-The repository cards cap their description at two lines with the text property `maxLines`, which needs the Action
-v0.4.0 or newer; an older Action refuses `repo-1` to `repo-6` with `unknown-property`.
+The repository cards cap their description at two lines with the text property `maxLines`, and the sections bind
+values with the layer property `let` (`header`, `index`, `recent`, `repo-1` to `repo-6`, `year`) or draw with `orbit`
+(`header`, `year`); all need the Action v0.4.0 or newer, an older Action refuses them with `unknown-property`.
 
 The repository slots show `github.pinned` in the order the data gives, or `github.repositories` where the data has no pinned list (the loader fills `github.pinned`). Change which repository a slot shows by changing the root prop `slot` of its design (0 to 5).
 
