@@ -60,10 +60,11 @@ export function timelinePosition(animation: NodeAnimation, time: number): number
  * The value of a track at `position`, as a browser plays the CSS of the same keyframes: the segment's own easing
  * over its share of the timeline, then clamped and rounded like the written keyframes.
  *
- * A segment one step wide is a jump: `buildTimeline` makes one of keyframes at one moment (or under two steps apart,
- * at most 1.2 ms: below a frame at any rate). A position inside it, or within half a step before it, takes the value after it, the last keyframe of a run
- * of such segments, so a frame at the moment of a jump never draws a value halfway through it. A position below half a
- * step keeps the first keyframe instead: the frame at time 0 is the static state.
+ * A segment one step wide is a jump: keyframes that rounding leaves one step apart (at one moment, or under two steps
+ * after the keyframe before them) form one jump, a run; with many keyframes at one offset the run grows by one step
+ * each. A position inside the run, or within half a step before it, takes the value of its last keyframe, so a frame
+ * at the moment of a jump never draws a value halfway through it. A position below half a step keeps the first
+ * keyframe instead: the frame at time 0 is the static state.
  */
 export function sampleTrack(track: TrackTimeline, position: number): number[] {
   const keyframes = track.keyframes;

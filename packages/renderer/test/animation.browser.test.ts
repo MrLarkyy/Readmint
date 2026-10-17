@@ -123,7 +123,9 @@ describe.each(animationDesigns.map((entry) => [entry.name, entry] as const))(
           }
         });
         if (mismatches.length === 0) return;
-        // A frame at a jump draws the later value; a browser draws it one ramp (0.001 %) later.
+        // A frame at a jump draws the later value from half a step before it; a browser reaches that value only at the
+        // end of the run, 3 steps covering a run of up to three keyframes at one moment. The time-0 rule is checked
+        // by sampleAnimation.test.ts and the profile frame-0 tests, not here.
         play(time + (3 * duration) / 100_000);
         for (const { element, counterpart, where, error } of mismatches) {
           try {

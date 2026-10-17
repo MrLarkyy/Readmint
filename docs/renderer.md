@@ -636,11 +636,12 @@ per track, not per cycle. Keyframe positions are percentages of the timeline rou
 decimals; keyframes landing on the same rounded position keep their order one step (0.001 %) apart. A frame at the
 moment of such a jump (within half a step before it, or inside its one-step ramp) draws the value after it, the last of
 the keyframes at that moment, whether the time falls on a whole step or not; a frame at time 0 draws the first keyframe,
-as the static attributes do. Keyframes whose positions round to neighbouring steps (under two steps apart, at most
-1.2 ms on a 60000 ms timeline) are sampled as a jump too. The playing CSS keeps the ramp, so a browser shows the later
-value one step (0.001 %) after the moment. Values are rounded
-as written (numbers to 3 decimals, colour channels to integers), and the frames sample these rounded keyframes with the
-same curves CSS uses: `easing` from a keyframe to the next is written as that keyframe's `animation-timing-function`,
+as the static attributes do. Keyframes that rounding leaves one step apart (at one moment, or under two steps after the
+keyframe before them) form one jump, a run; with many keyframes at one offset the run grows by one step each. The
+playing CSS keeps the ramp, so a browser shows the later value at the end of the run, one step (0.001 %) after the
+moment for a jump of two keyframes. Values are rounded as written (numbers to 3 decimals, colour channels to integers),
+and the frames sample these rounded keyframes with the same curves CSS uses: `easing` from a keyframe to the next is
+written as that keyframe's `animation-timing-function`,
 and the frames solve the cubic-bezier with a fixed number of bisection steps using `+ - * /` only. Opacity, colours and
 paint opacities are clamped like CSS clamps them when an easing overshoots; transforms and the dash offset are not.
 
