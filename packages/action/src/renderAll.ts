@@ -63,6 +63,7 @@ export async function renderAll(
     for (const planned of entry.dark === undefined ? [entry.light] : [entry.light, entry.dark]) {
       // A variant of a design that did not load only repeats the light failure.
       if (planned.variant !== undefined && !lightLoaded) continue;
+      let loaded = false;
       try {
         const input = await loadRenderInput(
           { design: planned.design },
@@ -74,6 +75,7 @@ export async function renderAll(
             ...(images === undefined ? {} : { images }),
           },
         );
+        loaded = true;
         const name =
           planned.variant === undefined
             ? input.file.name
@@ -102,7 +104,7 @@ export async function renderAll(
         });
       } catch (error) {
         if (!(error instanceof CliError)) throw error;
-        if (planned === entry.light) lightLoaded = false;
+        if (planned === entry.light && !loaded) lightLoaded = false;
         const { variant } = planned;
         problems.push(
           ...(variant === undefined

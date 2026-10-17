@@ -121,6 +121,20 @@ describe("the variant input", () => {
     expect(broken.log).not.toContain("(dark variant)");
   });
 
+  test("a light export that fails does not hide the variant's own error", async () => {
+    await tree.file("wide.json", {
+      version: 0,
+      canvas: { width: 3000, height: 24 },
+      layers: [{ type: "rect", width: 10, height: 10, fill: "#000000" }],
+    });
+    const run = await tree.run({ ...dry, designs: "wide.json", formats: "png", variant: "dark" });
+    expect(run.code).toBe(1);
+    expect(run.log).toContain("::error::wide.json: png export failed");
+    expect(run.log).toContain(
+      "::error::wide.json (dark variant): error unknown-property at /: variant dark: the design has no top-level component layer",
+    );
+  });
+
   test("an unknown name is an input error that does not echo it", async () => {
     const run = await tree.run({ ...dry, variant: "zzTOP" });
     expect(run.code).toBe(1);
