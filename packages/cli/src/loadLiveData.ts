@@ -14,6 +14,14 @@ export const liveDataTimeoutMs = 300_000;
 /** Added to the limit for every own commit read for `languagesAuthored` (one REST request each). */
 export const liveDataTimeoutPerCommitMs = 600;
 
+/** The reading of own commits ends this long before the whole load, so the rest of the data is kept. */
+export const liveDataAuthoredMarginMs = 60_000;
+
+/** The limit for a whole load that reads `languageCommitCap` own commits. */
+export function liveDataTimeout(languageCommitCap: number): number {
+  return liveDataTimeoutMs + languageCommitCap * liveDataTimeoutPerCommitMs;
+}
+
 export interface LiveDataOptions {
   /** The user's GitHub token; only `loadGitHubData` sees it, in the `Authorization` header. */
   readonly token: string;
@@ -34,12 +42,12 @@ export interface LiveDataOptions {
 /**
  * The GitHub data of `login` bound as `{ github: data }`, the one load the CLI and the Action share. A
  * `GitHubDataError` becomes `CliError` (exit code 4) carrying only its code and redacted message, never a cause:
- * request details may hold the token. Parts GitHub refused are reported to `onPartial`, never thrown.
+ * request details may hold the token. Parts GitHub refused are reported to `onPartial`, never thrown; the reading of own commits has its own deadline
+ * and ends as a partial `authored` while the rest of the data is kept.
  */
 export async function loadLiveData(options: LiveDataOptions): Promise<Record<string, unknown>> {
-  const timeout = AbortSignal.timeout(
-    liveDataTimeoutMs + (options.languageCommitCap ?? 0) * liveDataTimeoutPerCommitMs,
-  );
+  const total = liveDataTimeout(options.languageCommitCap ?? 0);
+  const timeout = AbortSignal.timeout(total);
   try {
     const result = await loadGitHubData({
       token: options.token,
@@ -47,9 +55,12 @@ export async function loadLiveData(options: LiveDataOptions): Promise<Record<str
       ...(options.excludeRepositories === undefined
         ? {}
         : { excludeRepositories: options.excludeRepositories }),
-      ...(options.languageCommitCap === undefined
+      ...(options.languageCommitCap === undefined || options.languageCommitCap === 0
         ? {}
-        : { languageCommitCap: options.languageCommitCap }),
+        : {
+            languageCommitCap: options.languageCommitCap,
+            languageSignal: AbortSignal.timeout(total - liveDataAuthoredMarginMs),
+          }),
       signal: options.signal === undefined ? timeout : AbortSignal.any([timeout, options.signal]),
       ...(options.fetch === undefined ? {} : { fetch: options.fetch }),
     });

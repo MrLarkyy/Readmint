@@ -21,6 +21,7 @@ export interface ResolvedSourceOptions {
   /** The public option type takes no signal; a one-argument sleep simply ignores it. */
   readonly sleep: (milliseconds: number, signal?: AbortSignal) => Promise<void>;
   readonly signal: AbortSignal | null;
+  readonly languageSignal: AbortSignal | null;
 }
 
 // A repository name, optionally `owner/name`.
@@ -100,6 +101,7 @@ export function resolveSourceOptions(options: GitHubSourceOptions): ResolvedSour
     fetch: options.fetch ?? ((url, init) => globalThis.fetch(url, init)),
     sleep: options.sleep ?? defaultSleep,
     signal: options.signal ?? null,
+    languageSignal: options.languageSignal ?? null,
   };
 }
 

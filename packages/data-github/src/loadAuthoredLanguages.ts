@@ -17,6 +17,8 @@ export interface AuthoredLoadInput extends AuthoredCommitListInput {
   /** Own commits read at most; above 0. */
   readonly commitCap: number;
   readonly cache: GitHubCache | null;
+  /** The caller's own signal: its abort fails the load, any other timeout is a stop. */
+  readonly callerSignal: AbortSignal | null;
 }
 
 export interface AuthoredLoad {
@@ -53,7 +55,7 @@ export async function loadAuthoredLanguages(
   try {
     listed = await listAuthoredCommits(input, context, stats, rateLimits);
   } catch (error) {
-    if (!isStop(error, context)) throw error;
+    if (!isStop(error, input)) throw error;
     return { sums, stopped: true, capped: false };
   }
   const commits = listed.slice(0, input.commitCap);
@@ -98,12 +100,12 @@ async function readCommit(
     if (cache !== null && key !== null) await writeCommitAdditions(cache, key, additions);
     return additions;
   } catch (error) {
-    if (!isStop(error, context)) throw error;
+    if (!isStop(error, input)) throw error;
     return error instanceof GitHubDataError && OPTIONAL_MISSES.has(error.code) ? "skip" : "stop";
   }
 }
 
-function isStop(error: unknown, context: GitHubRequestContext): boolean {
+function isStop(error: unknown, input: AuthoredLoadInput): boolean {
   if (!(error instanceof GitHubDataError) || !STOPPING.has(error.code)) return false;
-  return !(error.code === "timeout" && context.signal?.aborted === true);
+  return !(error.code === "timeout" && input.callerSignal?.aborted === true);
 }

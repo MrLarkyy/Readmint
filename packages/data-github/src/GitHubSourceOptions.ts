@@ -84,6 +84,11 @@ export interface GitHubSourceOptions extends DataSourceLoadOptions {
    * `languagesAuthored`, 0 to 2000 (default 0 = off). Each commit costs one REST request.
    */
   readonly languageCommitCap?: number;
+  /**
+   * Ends only the reading of own commits for `languagesAuthored`: when it aborts, the load keeps
+   * everything else and reports `authored` in `meta.partial`. `signal` still fails the whole load.
+   */
+  readonly languageSignal?: AbortSignal;
   /** Per request, 1000 to 120000 ms (default 30000). */
   readonly requestTimeoutMs?: number;
   /** Longest secondary rate-limit wait accepted, 0 to 900 s (default 60). */

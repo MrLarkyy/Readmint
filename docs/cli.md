@@ -186,7 +186,7 @@ as `render --data` with that object.
   repository name fails `invalid-option`, reporting its position only. The CLI never prints a name from the list.
   See [Languages](data-github.md#languages) for what is left out.
 - **`--language-commit-cap`** takes a whole number from 0 to 2000; anything else is a usage error (exit code 2). The
-  limit for the whole GitHub load grows by 600 ms per commit on top of 5 minutes. See
+  limit for the whole GitHub load grows by 600 ms per commit on top of 5 minutes, and the reading of commits has a deadline 60 s before it: when it passes, the data read so far is kept and `authored` is reported. With your own token, private repositories add to the sums (language names and sums only). See
   [Languages from your own commits](data-github.md#languages-from-your-own-commits) for the budget and for the
   `authored` and `authored-cap` warnings.
 - **Order**: `render` and `validate` load the data after the design file and its assets: a design that fails to load
@@ -194,7 +194,7 @@ as `render --data` with that object.
   the data first, before it reads the design or starts serving: a missing token or a failed load exits with 4 at once,
   and a design error is then shown on the page like any later one.
 - **Requests**: a load sends the requests of [data-github.md](data-github.md#rate-limits) (at most 6 with `--login`
-  and 7 without it, plus retries; fewer for a user with fewer repositories), only to `https://api.github.com/graphql`, and takes at most 300 s in all, retries and
+  and 7 without it, plus retries; fewer for a user with fewer repositories), only to `https://api.github.com/graphql` (with `--language-commit-cap` also `https://api.github.com/repos/...`), and takes at most 300 s in all (plus 600 ms per commit read; the commit reading ends 60 s earlier with a warning instead of failing), retries and
   rate-limit waits included. There is no cache and nothing is written to disk.
 - **Incomplete data**: when GitHub refuses the activity or the weekly-commit request (a token that may not read the
   profile status or the pinned items, as the Actions `GITHUB_TOKEN` may not), the load still succeeds with those
@@ -330,7 +330,7 @@ A port in use, or one the system refuses, is exit code 3.
 from, `bin` passes `process.env`), `ExitCode`, `CliError`, `CliIo`,
 `escapeForLog`, `quoteForLog`, `formatIssue`, `localeProblem(locale)` (why a tag cannot be the `--locale`, `undefined` when it can; the Action's `locale` input uses it too), `outputFormats` and `outputExtension(format)` (the `OutputFormat`s and their file extension, `apng` → `png`), and the loaders the commands share: `loadDesignFile`, `loadDesignAssets`,
 `loadFixtureData` (with `maxFixtureBytes`, its size cap), `loadDesignProps(file, cwd)` (the `--props` settings file, a `DesignProps` of `@readmint/format`; whose `props` in `RenderInputOptions` stands in for `--props`) and `propsSection(fileName)` (the section a design file takes; it lives in `@readmint/format`, which the editor uses too), `loadLiveData` (the `--github` load: `LiveDataOptions` with
-`token`, `login`, `fetch`, `signal` and `onPartial`, at most `liveDataTimeoutMs` plus `liveDataTimeoutPerCommitMs` (600) per `languageCommitCap` commit; a failure is a `CliError` with exit code 4),
+`token`, `login`, `fetch`, `signal` and `onPartial`, at most `liveDataTimeoutMs` plus `liveDataTimeoutPerCommitMs` (600) per `languageCommitCap` commit (`liveDataTimeout(cap)`; the commit reading ends `liveDataAuthoredMarginMs`, 60 s, earlier); a failure is a `CliError` with exit code 4),
 `parseDataJsonArgs(sources, headers)` (the `--data-json` and `--data-json-header` texts as `DataJsonSpec`s, or the
 problems; at most `maxDataJsonSources`), `loadJsonArgs(specs, options)` (the `--data-json` load, `JsonArgsOptions` with
 `root`, `fetch`, `env` and `signal`; a failure is a `CliError` with exit code 4), `parseDataFeedArgs(sources, limits)` (the `--data-feed` and `--data-feed-limit` texts as `DataFeedSpec`s, or the

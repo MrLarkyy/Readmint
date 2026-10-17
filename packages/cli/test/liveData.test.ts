@@ -2,7 +2,14 @@ import { request } from "node:http";
 import { setTimeout as sleep } from "node:timers/promises";
 import { loadGitHubData } from "@readmint/data-github";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { CliError, ExitCode, loadLiveData, runCli } from "../src/index.js";
+import {
+  CliError,
+  ExitCode,
+  liveDataAuthoredMarginMs,
+  liveDataTimeout,
+  loadLiveData,
+  runCli,
+} from "../src/index.js";
 import { liveData } from "../src/liveData.js";
 import { boundDesign, type CliTree, makeCliTree, png } from "./cliTree.js";
 import { CANARY, echoing, fixtureBody, githubReplay } from "./githubFetch.js";
@@ -435,5 +442,14 @@ describe("preview --github", () => {
     expect(code).toBe(ExitCode.data);
     expect(stderr).toMatch(/^GitHub data \(unauthorized\): /);
     expect(stderr).not.toContain("preview:");
+  });
+});
+
+describe("the load limit", () => {
+  test("grows by 600 ms per commit and the commit reading ends 60 s earlier", () => {
+    expect(liveDataTimeout(0)).toBe(300_000);
+    expect(liveDataTimeout(2000)).toBe(1_500_000);
+    expect(liveDataAuthoredMarginMs).toBe(60_000);
+    expect(liveDataTimeout(1) - liveDataAuthoredMarginMs).toBeGreaterThan(0);
   });
 });

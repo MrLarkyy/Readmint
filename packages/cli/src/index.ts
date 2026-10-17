@@ -25,6 +25,8 @@ export {
   type LiveDataOptions,
   liveDataTimeoutMs,
   liveDataTimeoutPerCommitMs,
+  liveDataAuthoredMarginMs,
+  liveDataTimeout,
 } from "./loadLiveData.js";
 export { loadRenderInput, type RenderInput, type RenderInputOptions } from "./loadRenderInput.js";
 export { localeProblem } from "./localeProblem.js";

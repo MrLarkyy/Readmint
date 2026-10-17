@@ -42,7 +42,7 @@ export async function listAuthoredCommits(
     wanted.set(repository.id, repository.nameWithOwner);
   }
   const ordered = [...wanted].sort(([, left], [, right]) => compareText(left, right));
-  const commits = new Map<string, AuthoredCommitRecord>();
+  const commits: AuthoredCommitRecord[] = [];
   const size = GitHubLimits.authoredHistoryRepositoriesPerRequest;
   for (let start = 0; start < ordered.length; start += size) {
     const chunk = new Map(ordered.slice(start, start + size));
@@ -54,14 +54,15 @@ export async function listAuthoredCommits(
     );
     const history = parseAuthoredHistory(data, chunk);
     rateLimits.push(history.rateLimit);
-    for (const commit of history.commits) {
-      commits.set(`${commit.nameWithOwner}\u0000${commit.oid}`, commit);
-    }
+    commits.push(...history.commits);
   }
-  return [...commits.values()].sort(
+  commits.sort(
     (left, right) =>
       compareText(right.committedDate, left.committedDate) ||
-      compareText(left.nameWithOwner, right.nameWithOwner) ||
-      compareText(left.oid, right.oid),
+      compareText(left.oid, right.oid) ||
+      compareText(left.nameWithOwner, right.nameWithOwner),
   );
+  // The same commit in a mirror or a copy counts once, in the repository that sorts first.
+  const seen = new Set<string>();
+  return commits.filter((commit) => !seen.has(commit.oid) && Boolean(seen.add(commit.oid)));
 }

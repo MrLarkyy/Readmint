@@ -40,12 +40,14 @@ import { selectPinned } from "./selectPinned.js";
 /**
  * Loads one user's profile, public repositories, languages, contribution calendar, pinned
  * repositories with their weekly commits, recent pushes and status.
- * Requests run one after another: the token owner (without `login`, or with a cache), the profile,
+ * Requests run one after another: the token owner (without `login`, or with a cache or a
+ * `languageCommitCap`), the profile,
  * the repository pages up to `maxRepositories`, then the activity and the weekly commits. Every
  * response is validated before use. A GraphQL error in the profile or a repository page fails the
  * whole load; the activity and weekly-commit requests are best effort and, when GitHub refuses
- * them, are named in `meta.partial` (see `OPTIONAL_MISSES`). The token is sent only in the
- * `Authorization` header: no error, result or cache entry contains it.
+ * them, are named in `meta.partial` (see `OPTIONAL_MISSES`). With a `languageCommitCap` the user's own
+ * commits are read last, one REST request each; a stop there is `authored` in `meta.partial`. The token is sent only in the
+ * `Authorization` header (GraphQL and REST): no error, result or cache entry contains it.
  */
 export async function loadGitHubData(options: GitHubSourceOptions): Promise<GitHubLoadResult> {
   const resolved = resolveSourceOptions(options);
@@ -163,8 +165,9 @@ export async function loadGitHubData(options: GitHubSourceOptions): Promise<GitH
         excludeRepositories: resolved.excludeRepositories,
         commitCap: resolved.languageCommitCap,
         cache,
+        callerSignal: resolved.signal,
       },
-      resolved,
+      authoredContext(resolved),
       stats,
       rateLimits,
     );
@@ -204,6 +207,17 @@ export async function loadGitHubData(options: GitHubSourceOptions): Promise<GitH
 }
 
 type PartialPart = GitHubPartialPart;
+
+// The reading of own commits ends at its own deadline too, which is a partial result; the
+// caller's signal, kept apart in `callerSignal`, still fails the load.
+function authoredContext(options: ResolvedSourceOptions): ResolvedSourceOptions {
+  const { signal, languageSignal } = options;
+  if (languageSignal === null) return options;
+  return {
+    ...options,
+    signal: signal === null ? languageSignal : AbortSignal.any([signal, languageSignal]),
+  };
+}
 
 // The node ids to ask weekly commits for: the pinned selection, each repository once.
 function weekIds(

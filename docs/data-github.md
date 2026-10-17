@@ -60,7 +60,8 @@ Fixed caps (`GitHubLimits`): a response body of at most 8 MiB, strings of at mos
 weeks, the first 100 languages of each repository (by size; the rest are not counted), 3 attempts per request
 under a secondary rate limit, 6 pinned repositories, 10 pushes (from at most 10 repositories with at most 10 commits
 each, over 7 days), 52 weeks of weekly commits, and a commit message cut at 1024 UTF-16 units on a code point
-boundary instead of failing the load.
+boundary instead of failing the load. Own-commit reading adds: at most 2000 commits (`maxLanguageCommitCap`), 100
+commits per repository, 10 repositories per history request, 300 files per commit, 100 REST requests left as the floor.
 
 ## Data object
 
@@ -150,12 +151,12 @@ as GitHub returns them. Array items are written `[]` below.
 | `languageRepositories`                 | array             | how many repositories use each language                                                                                                                                                                                    |
 | `languageRepositories[].name`          | string            | language name                                                                                                                                                                                                              |
 | `languageRepositories[].color`         | string \| null    | `#rrggbb` or `null`                                                                                                                                                                                                        |
+| `languageRepositories[].repositories`  | number            | repositories that list the language                                                                                                                                                                                        |
 | `languagesAuthored`                    | array             | the lines you added per language in your own commits, see [Languages from your own commits](#languages-from-your-own-commits); `[]` while `languageCommitCap` is 0                                                         |
 | `languagesAuthored[].name`             | string            | language name                                                                                                                                                                                                              |
 | `languagesAuthored[].color`            | string            | null                                                                                                                                                                                                                       | `#rrggbb` or `null` |
 | `languagesAuthored[].share`            | number            | `additions` over the added lines of all languages, 0-1                                                                                                                                                                     |
 | `languagesAuthored[].additions`        | number            | lines you added in files of the language                                                                                                                                                                                   |
-| `languageRepositories[].repositories`  | number            | repositories that list the language                                                                                                                                                                                        |
 | `languages[].share`                    | number            | `bytes` over the bytes of all languages, 0–1 (0 when there are none)                                                                                                                                                       |
 | `contributions`                        | object            | the contribution calendar GitHub shows on the profile                                                                                                                                                                      |
 | `contributions.total`                  | number            | contributions in the calendar                                                                                                                                                                                              |
@@ -269,7 +270,7 @@ newest commits and sums the lines each of them added, per language.
 ### Repositories and privacy
 
 Only **public** repositories the user owns are loaded (`privacy: PUBLIC`, `ownerAffiliations: OWNER`), because a README
-is public: private repository names and languages never enter the object. GitHub computes the contribution counts from the side of the token's owner (the viewer). With the user's own token,
+is public: private repository names never enter the object, and neither do private repositories' languages, bytes or pins; the one exception is `languagesAuthored` with the user's own token and a `languageCommitCap`, which adds up lines per language over private repositories too (language names and sums only, no repository name or commit text). GitHub computes the contribution counts from the side of the token's owner (the viewer). With the user's own token,
 contributions to their private repositories are counted in the calendar and the totals like public ones, and
 `contributions.private` is 0; no repository name is involved. With another user's token, private work appears only as
 `contributions.private` and in the calendar counts, and only when the user shows private contributions on their
@@ -354,7 +355,7 @@ Strings are otherwise kept as GitHub returns them; the renderer escapes them.
 - 502, 503 and 504 are retried once after one second.
 - A full load sends 1 + ceil(`maxRepositories` / `pageSize`) requests, plus 1 for the viewer (without `login`, or with
   a `cache`), plus the activity request and, when there are repositories to count, the weekly-commit request (2 more, none for the
-  weekly commits of an account without repositories), plus retries: 7 with the defaults, 14 at most with `pageSize` 100.
+  weekly commits of an account without repositories), plus retries, and with a `languageCommitCap` the extra budget of [Languages from your own commits](#languages-from-your-own-commits) (plus retries): 7 with the defaults, 14 at most with `pageSize` 100.
   The activity request costs about 1 point. GitHub's estimate for the weekly-commit request is 3 points for 6
   repositories (52 `history` counts each); it grows with the number of repositories asked for, at most 6, `meta.cost`
   reports what GitHub charged. With a `languageCommitCap`, [Languages from your own commits](#languages-from-your-own-commits)
@@ -396,8 +397,8 @@ entry expires. The key covers the query text, so entries of the format before th
 
 ## Token
 
-The token is only ever sent in the `Authorization` header of requests to `https://api.github.com/graphql` (redirects
-are refused). It is never put in a URL, a request body, an error message, the data object, `meta`, a cache key or a
+The token is only ever sent in the `Authorization` header of requests to `https://api.github.com/graphql` and, with a `languageCommitCap`, GET requests to `https://api.github.com/repos/...` (redirects
+are refused; an empty, `.` or `..` path segment is refused before the request). It is never put in a URL, a request body, an error message, the data object, `meta`, a cache key or a
 cache entry, and errors carry no `cause`. A GitHub message that echoes a token, or anything shaped like a GitHub token
 (`ghp_`, `gho_`, `ghu_`, `ghs_`, `ghr_`, `github_pat_`), is redacted to `***`. A token with whitespace or control
 characters is refused before any request (it could inject a header). Tests check all of this with a canary token on

@@ -360,3 +360,104 @@ describe("the cache", () => {
     expect(second.result.data.languagesAuthored).toHaveLength(3);
   });
 });
+
+describe("deadline, mirrors and unsafe names", () => {
+  test("the authored step's own deadline is a partial load, the rest is kept", async () => {
+    const deadline = new AbortController();
+    const replay = replayFetch(authoredExchanges(viewerOf(FIXTURE_LOGIN)));
+    const result = await loadGitHubData({
+      token: CANARY,
+      ...base,
+      fetch: (url, init) => {
+        if (init.method === "GET") deadline.abort();
+        return replay.fetch(url, init);
+      },
+      languageSignal: deadline.signal,
+    });
+    expect(result.meta.partial).toEqual(["authored"]);
+    expect(result.data.repositories.length).toBeGreaterThan(0);
+    expect(result.data.languagesAuthored).toHaveLength(1);
+    expect(gets(replay.requests)).toHaveLength(1);
+  });
+
+  test("the caller's abort still fails the load when a deadline is set too", async () => {
+    const caller = new AbortController();
+    const replay = replayFetch(authoredExchanges(viewerOf(FIXTURE_LOGIN)));
+    const error: unknown = await loadGitHubData({
+      token: CANARY,
+      ...base,
+      fetch: (url, init) => {
+        if (init.method === "GET") caller.abort();
+        return replay.fetch(url, init);
+      },
+      signal: caller.signal,
+      languageSignal: new AbortController().signal,
+    }).catch((caught: unknown) => caught);
+    expect(error).toMatchObject({ code: "timeout" });
+  });
+
+  const history = (repositories: Parameters<typeof historyExchange>[0]) => [
+    viewerOf(FIXTURE_LOGIN),
+    ...successExchanges(),
+    contributedExchange(repositories.map(({ id, nameWithOwner }) => ({ id, nameWithOwner }))),
+    historyExchange(repositories),
+  ];
+
+  test("the same commit in two repositories is counted once, in the first by name", async () => {
+    const { result, replay } = await run([
+      ...history([
+        {
+          id: "R_a",
+          nameWithOwner: "readmint-fixture/a",
+          commits: [{ oid: oid(1), date: "2026-10-05T10:00:00Z" }],
+        },
+        {
+          id: "R_b",
+          nameWithOwner: "readmint-fixture/b",
+          commits: [{ oid: oid(1), date: "2026-10-05T10:00:00Z" }],
+        },
+      ]),
+      commitExchange("readmint-fixture/a", oid(1), [["x.kt", 7]]),
+    ]);
+    expect(replay.failures).toEqual([]);
+    expect(result.data.languagesAuthored).toMatchObject([{ name: "Kotlin", additions: 7 }]);
+  });
+
+  test("commits of the same instant are cut at the cap by commit id", async () => {
+    const date = "2026-10-05T10:00:00Z";
+    const { result, replay } = await run(
+      [
+        ...history([
+          {
+            id: "R_a",
+            nameWithOwner: "readmint-fixture/a",
+            commits: [
+              { oid: oid(9), date },
+              { oid: oid(2), date },
+            ],
+          },
+        ]),
+        commitExchange("readmint-fixture/a", oid(2), [["x.kt", 3]]),
+      ],
+      { languageCommitCap: 1 },
+    );
+    expect(replay.failures).toEqual([]);
+    expect(result.meta.partial).toEqual(["authored-cap"]);
+    expect(result.data.languagesAuthored).toMatchObject([{ name: "Kotlin", additions: 3 }]);
+  });
+
+  test.each(["..", "."])("a repository named %j sends no request and is skipped", async (name) => {
+    const { result, replay } = await run([
+      ...history([
+        {
+          id: "R_a",
+          nameWithOwner: `readmint-fixture/${name}`,
+          commits: [{ oid: oid(1), date: "2026-10-05T10:00:00Z" }],
+        },
+      ]),
+    ]);
+    expect(gets(replay.requests)).toHaveLength(0);
+    expect(result.data.languagesAuthored).toEqual([]);
+    expect(result.meta.partial).toEqual([]);
+  });
+});
