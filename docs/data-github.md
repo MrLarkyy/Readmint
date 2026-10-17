@@ -52,6 +52,7 @@ ttlSeconds)` stores it.
 | `cache`               | none       |                 | a `GitHubCache`                                                                                                                          |
 | `fetch`               | `fetch`    |                 | `(url, init) => Promise<Response>`, injectable for tests                                                                                 |
 | `sleep`               | timer      |                 | `(milliseconds) => Promise<void>` for retry waits; the default ends on abort                                                             |
+| `languageSignal`      | none       |                 | an `AbortSignal` that ends only the reading of own commits: the load keeps all other data and reports `authored` in `meta.partial`       |
 | `signal`              | none       |                 | an `AbortSignal` that cancels the load, retry waits included (as `timeout`)                                                              |
 
 A value outside its range fails with `invalid-option` before any request.
@@ -228,7 +229,7 @@ newest commits and sums the lines each of them added, per language.
 
 - **Which commits.** The non-merge commits (one parent) authored by the loaded user on the **default branch** of the
   non-fork repositories GitHub lists as contributed to with commits (the first 100, most recently pushed first), at most
-  100 per repository, newest first over all repositories (ties by repository, then commit id); the first
+  100 per repository, newest first over all repositories (ties by commit id, then repository; a commit that two repositories share counts once, in the first by name); the first
   `languageCommitCap` of them are read. Forks and repositories in `excludeRepositories` add nothing. Work that is
   not on a default branch, and commits beyond the 100 newest of a repository, are not counted.
 - **Which files.** Each commit is read from the REST API (`GET /repos/{owner}/{repo}/commits/{sha}`, one request per
@@ -249,10 +250,11 @@ newest commits and sums the lines each of them added, per language.
 - **Budget.** At most `languageCommitCap` REST requests plus 12 GraphQL requests (the viewer, the contributed
   repositories and at most 10 history requests of 10 repositories each), sequential, on top of the 7 to 14 of the rest
   of the load. Allow about 0.3 to 0.6 seconds per commit: 300 commits take about 2 to 3 minutes, 2000 about 10 to 20.
-  The CLI allows 600 ms per commit on top of its 5 minutes. Reading stops without failing when the REST rate limit
-  reports fewer than 100 requests left or GitHub refuses a request for a rate limit, a network problem or a timeout;
-  what was counted is kept. Commits that a refused request (`graphql`, `forbidden`, `http`, `not-found`,
-  `invalid-response`, `too-large`) cannot read are skipped. `unauthorized` and an abort still fail the load.
+  The CLI allows 600 ms per commit on top of its 5 minutes. Retries (a 502, 503 or 504 once, a secondary rate limit up to 3 attempts) come on top of these requests. Reading stops without failing when the REST rate limit
+  reports fewer than 100 requests left, GitHub refuses a request for a rate limit, a network problem or a timeout, or the
+  `languageSignal` deadline passes (the CLI sets it 60 s before its overall limit); what was counted is kept and
+  `authored` is reported. Commits that a refused request (`graphql`, `forbidden`, `http`, `not-found`,
+  `invalid-response`, `too-large`) cannot read are skipped. `unauthorized` and an abort of `signal` (the caller's own) still fail the load.
 - **Partial parts.** `"authored"` in `meta.partial`: the reading stopped early, the sums count fewer commits than
   asked for. `"authored-cap"`: commits were left out because of `languageCommitCap`; the result is complete for its
   cap. The CLI and the Action print a warning line for each.

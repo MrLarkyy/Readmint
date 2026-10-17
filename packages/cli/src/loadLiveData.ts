@@ -35,14 +35,14 @@ export interface LiveDataOptions {
   readonly fetch?: GitHubFetch;
   /** Ends the load early, besides the `liveDataTimeoutMs` limit. */
   readonly signal?: AbortSignal;
-  /** Called with `meta.partial` when GitHub refused a part of the data (status, pushes, weekly commits). */
+  /** Called with `meta.partial` when a part of the data is missing or incomplete (status, pushes, weekly commits, own commits). */
   readonly onPartial?: (parts: readonly GitHubPartialPart[]) => void;
 }
 
 /**
  * The GitHub data of `login` bound as `{ github: data }`, the one load the CLI and the Action share. A
  * `GitHubDataError` becomes `CliError` (exit code 4) carrying only its code and redacted message, never a cause:
- * request details may hold the token. Parts GitHub refused are reported to `onPartial`, never thrown; the reading of own commits has its own deadline
+ * request details may hold the token. Parts GitHub refused or only partly read are reported to `onPartial`, never thrown; the reading of own commits has its own deadline
  * and ends as a partial `authored` while the rest of the data is kept.
  */
 export async function loadLiveData(options: LiveDataOptions): Promise<Record<string, unknown>> {

@@ -19,7 +19,7 @@ export interface AuthoredCommitListInput {
 
 /**
  * The user's non-merge commits on the default branch of every non-fork repository they committed
- * to, newest first (ties by repository, then commit id). A private repository is read only when
+ * to, newest first (ties by commit id, then repository; a commit in two repositories counts once). A private repository is read only when
  * the token's owner is the user. Throws on any failed request; the caller decides what that means.
  */
 export async function listAuthoredCommits(
