@@ -280,8 +280,9 @@ after changing a template or `profileExampleProps`, then commit and push the clo
 account and the Action reference (`MrLarkyy` and `MrLarkyy/Readmint@v0.3.0` by default). The generator refuses an Action reference pinned to a release older than the filters the templates use
 (`textWidth`, `truncateWidth`), than the design properties they use (`maxLines` of the `year-ring` repository cards,
 v0.4.0) or than `props-file` (v0.3.0), which the generated `settings.json` needs, for the write and for `--check`.
-Until v0.4.0 is released the default reference is refused over the current templates: pass `--action` with a newer
-reference, or bump the default after the release.
+Examples that use `maxLines` need the v0.4.0 tag and refuse every earlier pin, the default included: the Action
+bundle exists only on release tags ([action](action.md#releases)), so until v0.4.0 is cut no reference runs them, and
+the examples are generated after that release with the bumped default.
 
 ### Data the templates read
 
