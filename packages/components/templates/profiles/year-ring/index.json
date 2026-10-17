@@ -98,9 +98,8 @@
       "layers": [
         {
           "type": "group",
-          "repeat": {
-            "each": "{{ [((props.logoNames | length | min(12)) > 0 && props.logosRow >= 0 && props.logosRow < (props.labels | length) && props.logosRow == (props.logosRow | floor) && (props.logosRow < props.languagesAfter ? props.logosRow : props.logosRow + ((github.languages | length | default(0)) > 0 ? 1 : 0)) < 8) ? props.logosRow : -1] }}",
-            "as": "sr"
+          "let": {
+            "sr": "{{ ((props.logoNames | length | min(12)) > 0 && props.logosRow >= 0 && props.logosRow < (props.labels | length) && props.logosRow == (props.logosRow | floor) && (props.logosRow < props.languagesAfter ? props.logosRow : props.logosRow + ((github.languages | length | default(0)) > 0 ? 1 : 0)) < 8) ? props.logosRow : -1 }}"
           },
           "children": [
             {

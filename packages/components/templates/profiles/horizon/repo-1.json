@@ -67,44 +67,38 @@
       "layers": [
         {
           "type": "group",
-          "repeat": {
-            "each": "{{ [github.pinned || github.repositories] }}",
-            "as": "rs"
+          "let": {
+            "rs": "{{ github.pinned || github.repositories }}"
           },
           "children": [
             {
               "type": "group",
-              "repeat": {
-                "each": "{{ [[(rs[0].stars | default(-1)), (rs[1].stars | default(-1)), (rs[2].stars | default(-1)), (rs[3].stars | default(-1)), (rs[4].stars | default(-1)), (rs[5].stars | default(-1))]] }}",
-                "as": "st"
+              "let": {
+                "st": "{{ [(rs[0].stars | default(-1)), (rs[1].stars | default(-1)), (rs[2].stars | default(-1)), (rs[3].stars | default(-1)), (rs[4].stars | default(-1)), (rs[5].stars | default(-1))] }}"
               },
               "children": [
                 {
                   "type": "group",
-                  "repeat": {
-                    "each": "{{ [[(st[1] > st[0] ? 1 : 0) + (st[2] > st[0] ? 1 : 0) + (st[3] > st[0] ? 1 : 0) + (st[4] > st[0] ? 1 : 0) + (st[5] > st[0] ? 1 : 0), (st[0] >= st[1] ? 1 : 0) + (st[2] > st[1] ? 1 : 0) + (st[3] > st[1] ? 1 : 0) + (st[4] > st[1] ? 1 : 0) + (st[5] > st[1] ? 1 : 0), (st[0] >= st[2] ? 1 : 0) + (st[1] >= st[2] ? 1 : 0) + (st[3] > st[2] ? 1 : 0) + (st[4] > st[2] ? 1 : 0) + (st[5] > st[2] ? 1 : 0), (st[0] >= st[3] ? 1 : 0) + (st[1] >= st[3] ? 1 : 0) + (st[2] >= st[3] ? 1 : 0) + (st[4] > st[3] ? 1 : 0) + (st[5] > st[3] ? 1 : 0), (st[0] >= st[4] ? 1 : 0) + (st[1] >= st[4] ? 1 : 0) + (st[2] >= st[4] ? 1 : 0) + (st[3] >= st[4] ? 1 : 0) + (st[5] > st[4] ? 1 : 0), (st[0] >= st[5] ? 1 : 0) + (st[1] >= st[5] ? 1 : 0) + (st[2] >= st[5] ? 1 : 0) + (st[3] >= st[5] ? 1 : 0) + (st[4] >= st[5] ? 1 : 0)]] }}",
-                    "as": "rk"
+                  "let": {
+                    "rk": "{{ [(st[1] > st[0] ? 1 : 0) + (st[2] > st[0] ? 1 : 0) + (st[3] > st[0] ? 1 : 0) + (st[4] > st[0] ? 1 : 0) + (st[5] > st[0] ? 1 : 0), (st[0] >= st[1] ? 1 : 0) + (st[2] > st[1] ? 1 : 0) + (st[3] > st[1] ? 1 : 0) + (st[4] > st[1] ? 1 : 0) + (st[5] > st[1] ? 1 : 0), (st[0] >= st[2] ? 1 : 0) + (st[1] >= st[2] ? 1 : 0) + (st[3] > st[2] ? 1 : 0) + (st[4] > st[2] ? 1 : 0) + (st[5] > st[2] ? 1 : 0), (st[0] >= st[3] ? 1 : 0) + (st[1] >= st[3] ? 1 : 0) + (st[2] >= st[3] ? 1 : 0) + (st[4] > st[3] ? 1 : 0) + (st[5] > st[3] ? 1 : 0), (st[0] >= st[4] ? 1 : 0) + (st[1] >= st[4] ? 1 : 0) + (st[2] >= st[4] ? 1 : 0) + (st[3] >= st[4] ? 1 : 0) + (st[5] > st[4] ? 1 : 0), (st[0] >= st[5] ? 1 : 0) + (st[1] >= st[5] ? 1 : 0) + (st[2] >= st[5] ? 1 : 0) + (st[3] >= st[5] ? 1 : 0) + (st[4] >= st[5] ? 1 : 0)] }}"
                   },
                   "children": [
                     {
                       "type": "group",
-                      "repeat": {
-                        "each": "{{ [(rk[0] == props.slot ? 0 : (rk[1] == props.slot ? 1 : (rk[2] == props.slot ? 2 : (rk[3] == props.slot ? 3 : (rk[4] == props.slot ? 4 : (rk[5] == props.slot ? 5 : -1))))))] }}",
-                        "as": "ix"
+                      "let": {
+                        "ix": "{{ (rk[0] == props.slot ? 0 : (rk[1] == props.slot ? 1 : (rk[2] == props.slot ? 2 : (rk[3] == props.slot ? 3 : (rk[4] == props.slot ? 4 : (rk[5] == props.slot ? 5 : -1)))))) }}"
                       },
                       "children": [
                         {
                           "type": "group",
-                          "repeat": {
-                            "each": "{{ [ix >= 0 ? rs[ix] : null] }}",
-                            "as": "rp"
+                          "let": {
+                            "rp": "{{ ix >= 0 ? rs[ix] : null }}"
                           },
                           "children": [
                             {
                               "type": "group",
-                              "repeat": {
-                                "each": "{{ [st[0] | max(st[1]) | max(st[2]) | max(st[3]) | max(st[4]) | max(st[5]) | max(1)] }}",
-                                "as": "smax"
+                              "let": {
+                                "smax": "{{ st[0] | max(st[1]) | max(st[2]) | max(st[3]) | max(st[4]) | max(st[5]) | max(1) }}"
                               },
                               "children": [
                                 {
@@ -113,16 +107,14 @@
                                   "children": [
                                     {
                                       "type": "group",
-                                      "repeat": {
-                                        "each": "{{ [rp.stars | compact] }}",
-                                        "as": "sc"
+                                      "let": {
+                                        "sc": "{{ rp.stars | compact }}"
                                       },
                                       "children": [
                                         {
                                           "type": "group",
-                                          "repeat": {
-                                            "each": "{{ [(sc | length) <= 2 ? 46 : ((sc | length) == 3 ? 38 : 28)] }}",
-                                            "as": "sz"
+                                          "let": {
+                                            "sz": "{{ (sc | length) <= 2 ? 46 : ((sc | length) == 3 ? 38 : 28) }}"
                                           },
                                           "children": [
                                             {
@@ -207,16 +199,14 @@
                                     },
                                     {
                                       "type": "group",
-                                      "repeat": {
-                                        "each": "{{ [rp.weeklyCommits] }}",
-                                        "as": "wk"
+                                      "let": {
+                                        "wk": "{{ rp.weeklyCommits }}"
                                       },
                                       "children": [
                                         {
                                           "type": "group",
-                                          "repeat": {
-                                            "each": "{{ [(wk[0] || 0) | max(wk[1] || 0) | max(wk[2] || 0) | max(wk[3] || 0) | max(wk[4] || 0) | max(wk[5] || 0) | max(wk[6] || 0) | max(wk[7] || 0) | max(wk[8] || 0) | max(wk[9] || 0) | max(wk[10] || 0) | max(wk[11] || 0) | max(wk[12] || 0) | max(wk[13] || 0) | max(wk[14] || 0) | max(wk[15] || 0) | max(wk[16] || 0) | max(wk[17] || 0) | max(wk[18] || 0) | max(wk[19] || 0) | max(wk[20] || 0) | max(wk[21] || 0) | max(wk[22] || 0) | max(wk[23] || 0) | max(wk[24] || 0) | max(wk[25] || 0) | max(wk[26] || 0) | max(wk[27] || 0) | max(wk[28] || 0) | max(wk[29] || 0) | max(wk[30] || 0) | max(wk[31] || 0) | max(wk[32] || 0) | max(wk[33] || 0) | max(wk[34] || 0) | max(wk[35] || 0) | max(wk[36] || 0) | max(wk[37] || 0) | max(wk[38] || 0) | max(wk[39] || 0) | max(wk[40] || 0) | max(wk[41] || 0) | max(wk[42] || 0) | max(wk[43] || 0) | max(wk[44] || 0) | max(wk[45] || 0) | max(wk[46] || 0) | max(wk[47] || 0) | max(wk[48] || 0) | max(wk[49] || 0) | max(wk[50] || 0) | max(wk[51] || 0) | max(1)] }}",
-                                            "as": "mv"
+                                          "let": {
+                                            "mv": "{{ (wk[0] || 0) | max(wk[1] || 0) | max(wk[2] || 0) | max(wk[3] || 0) | max(wk[4] || 0) | max(wk[5] || 0) | max(wk[6] || 0) | max(wk[7] || 0) | max(wk[8] || 0) | max(wk[9] || 0) | max(wk[10] || 0) | max(wk[11] || 0) | max(wk[12] || 0) | max(wk[13] || 0) | max(wk[14] || 0) | max(wk[15] || 0) | max(wk[16] || 0) | max(wk[17] || 0) | max(wk[18] || 0) | max(wk[19] || 0) | max(wk[20] || 0) | max(wk[21] || 0) | max(wk[22] || 0) | max(wk[23] || 0) | max(wk[24] || 0) | max(wk[25] || 0) | max(wk[26] || 0) | max(wk[27] || 0) | max(wk[28] || 0) | max(wk[29] || 0) | max(wk[30] || 0) | max(wk[31] || 0) | max(wk[32] || 0) | max(wk[33] || 0) | max(wk[34] || 0) | max(wk[35] || 0) | max(wk[36] || 0) | max(wk[37] || 0) | max(wk[38] || 0) | max(wk[39] || 0) | max(wk[40] || 0) | max(wk[41] || 0) | max(wk[42] || 0) | max(wk[43] || 0) | max(wk[44] || 0) | max(wk[45] || 0) | max(wk[46] || 0) | max(wk[47] || 0) | max(wk[48] || 0) | max(wk[49] || 0) | max(wk[50] || 0) | max(wk[51] || 0) | max(1) }}"
                                           },
                                           "children": [
                                             {
@@ -241,9 +231,8 @@
                                                       "children": [
                                                         {
                                                           "type": "group",
-                                                          "repeat": {
-                                                            "each": "{{ [(wk[jj] || 0) / mv * 24 | max(1)] }}",
-                                                            "as": "hb"
+                                                          "let": {
+                                                            "hb": "{{ (wk[jj] || 0) / mv * 24 | max(1) }}"
                                                           },
                                                           "children": [
                                                             {
@@ -322,9 +311,8 @@
                                     },
                                     {
                                       "type": "group",
-                                      "repeat": {
-                                        "each": "{{ [748 * (rp.stars | max(0)) / smax] }}",
-                                        "as": "sw"
+                                      "let": {
+                                        "sw": "{{ 748 * (rp.stars | max(0)) / smax }}"
                                       },
                                       "children": [
                                         {

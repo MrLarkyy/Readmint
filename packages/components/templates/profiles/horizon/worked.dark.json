@@ -59,23 +59,20 @@
         },
         {
           "type": "group",
-          "repeat": {
-            "each": "{{ [[(props.items[0] ? ((props.items[0] | upper | truncate(30) | textWidth(\"xbold\", 34)) + 80) : 0), (props.items[1] ? ((props.items[1] | upper | truncate(30) | textWidth(\"xbold\", 34)) + 80) : 0), (props.items[2] ? ((props.items[2] | upper | truncate(30) | textWidth(\"xbold\", 34)) + 80) : 0), (props.items[3] ? ((props.items[3] | upper | truncate(30) | textWidth(\"xbold\", 34)) + 80) : 0), (props.items[4] ? ((props.items[4] | upper | truncate(30) | textWidth(\"xbold\", 34)) + 80) : 0), (props.items[5] ? ((props.items[5] | upper | truncate(30) | textWidth(\"xbold\", 34)) + 80) : 0), (props.items[6] ? ((props.items[6] | upper | truncate(30) | textWidth(\"xbold\", 34)) + 80) : 0), (props.items[7] ? ((props.items[7] | upper | truncate(30) | textWidth(\"xbold\", 34)) + 80) : 0), (props.items[8] ? ((props.items[8] | upper | truncate(30) | textWidth(\"xbold\", 34)) + 80) : 0), (props.items[9] ? ((props.items[9] | upper | truncate(30) | textWidth(\"xbold\", 34)) + 80) : 0), (props.items[10] ? ((props.items[10] | upper | truncate(30) | textWidth(\"xbold\", 34)) + 80) : 0), (props.items[11] ? ((props.items[11] | upper | truncate(30) | textWidth(\"xbold\", 34)) + 80) : 0)]] }}",
-            "as": "sw"
+          "let": {
+            "sw": "{{ [(props.items[0] ? ((props.items[0] | upper | truncate(30) | textWidth(\"xbold\", 34)) + 80) : 0), (props.items[1] ? ((props.items[1] | upper | truncate(30) | textWidth(\"xbold\", 34)) + 80) : 0), (props.items[2] ? ((props.items[2] | upper | truncate(30) | textWidth(\"xbold\", 34)) + 80) : 0), (props.items[3] ? ((props.items[3] | upper | truncate(30) | textWidth(\"xbold\", 34)) + 80) : 0), (props.items[4] ? ((props.items[4] | upper | truncate(30) | textWidth(\"xbold\", 34)) + 80) : 0), (props.items[5] ? ((props.items[5] | upper | truncate(30) | textWidth(\"xbold\", 34)) + 80) : 0), (props.items[6] ? ((props.items[6] | upper | truncate(30) | textWidth(\"xbold\", 34)) + 80) : 0), (props.items[7] ? ((props.items[7] | upper | truncate(30) | textWidth(\"xbold\", 34)) + 80) : 0), (props.items[8] ? ((props.items[8] | upper | truncate(30) | textWidth(\"xbold\", 34)) + 80) : 0), (props.items[9] ? ((props.items[9] | upper | truncate(30) | textWidth(\"xbold\", 34)) + 80) : 0), (props.items[10] ? ((props.items[10] | upper | truncate(30) | textWidth(\"xbold\", 34)) + 80) : 0), (props.items[11] ? ((props.items[11] | upper | truncate(30) | textWidth(\"xbold\", 34)) + 80) : 0)] }}"
           },
           "children": [
             {
               "type": "group",
-              "repeat": {
-                "each": "{{ [sw[0] + sw[1] + sw[2] + sw[3] + sw[4] + sw[5] + sw[6] + sw[7] + sw[8] + sw[9] + sw[10] + sw[11] | max(1)] }}",
-                "as": "W1"
+              "let": {
+                "W1": "{{ sw[0] + sw[1] + sw[2] + sw[3] + sw[4] + sw[5] + sw[6] + sw[7] + sw[8] + sw[9] + sw[10] + sw[11] | max(1) }}"
               },
               "children": [
                 {
                   "type": "group",
-                  "repeat": {
-                    "each": "{{ [1800 / W1 | round | max(1)] }}",
-                    "as": "m"
+                  "let": {
+                    "m": "{{ 1800 / W1 | round | max(1) }}"
                   },
                   "children": [
                     {

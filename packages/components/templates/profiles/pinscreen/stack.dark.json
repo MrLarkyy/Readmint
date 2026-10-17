@@ -106,9 +106,8 @@
       "layers": [
         {
           "type": "group",
-          "repeat": {
-            "each": "{{ [((props.logoNames | length | min(12)) > 0 && props.logosRow >= 0 && props.logosRow < (props.noteLabels | length | min(3)) && props.logosRow == (props.logosRow | floor)) ? props.logosRow : -1] }}",
-            "as": "sr"
+          "let": {
+            "sr": "{{ ((props.logoNames | length | min(12)) > 0 && props.logosRow >= 0 && props.logosRow < (props.noteLabels | length | min(3)) && props.logosRow == (props.logosRow | floor)) ? props.logosRow : -1 }}"
           },
           "children": [
             {
@@ -498,9 +497,8 @@
                 },
                 {
                   "type": "group",
-                  "repeat": {
-                    "each": "{{ [176 * lang.share | max(2)] }}",
-                    "as": "bw"
+                  "let": {
+                    "bw": "{{ 176 * lang.share | max(2) }}"
                   },
                   "children": [
                     {

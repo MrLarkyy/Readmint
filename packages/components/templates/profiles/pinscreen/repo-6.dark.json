@@ -49,9 +49,8 @@
       "layers": [
         {
           "type": "group",
-          "repeat": {
-            "each": "{{ [github.pinned || github.repositories] }}",
-            "as": "rs"
+          "let": {
+            "rs": "{{ github.pinned || github.repositories }}"
           },
           "children": [
             {
@@ -71,16 +70,14 @@
               "children": [
                 {
                   "type": "group",
-                  "repeat": {
-                    "each": "{{ [rs[props.slot].name | truncate(30)] }}",
-                    "as": "rn"
+                  "let": {
+                    "rn": "{{ rs[props.slot].name | truncate(30) }}"
                   },
                   "children": [
                     {
                       "type": "group",
-                      "repeat": {
-                        "each": "{{ [rs[props.slot].isArchived ? 1 : 0] }}",
-                        "as": "sh"
+                      "let": {
+                        "sh": "{{ rs[props.slot].isArchived ? 1 : 0 }}"
                       },
                       "children": [
                         {

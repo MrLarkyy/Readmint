@@ -103,16 +103,14 @@
         },
         {
           "type": "group",
-          "repeat": {
-            "each": "{{ [(github.name || github.login) | upper | truncate(40)] }}",
-            "as": "nm"
+          "let": {
+            "nm": "{{ (github.name || github.login) | upper | truncate(40) }}"
           },
           "children": [
             {
               "type": "group",
-              "repeat": {
-                "each": "{{ [(8400 / ((nm | textWidth(\"xb\", 1, -0.01)) | max(0.01)) | floor) / 10 | min(124)] }}",
-                "as": "fs"
+              "let": {
+                "fs": "{{ (8400 / ((nm | textWidth(\"xb\", 1, -0.01)) | max(0.01)) | floor) / 10 | min(124) }}"
               },
               "children": [
                 {
