@@ -2,7 +2,7 @@ import { encodeWoff } from "@readmint/fonts";
 import { DesignLimits, type Design, type FontAsset } from "@readmint/format";
 import { RenderLimits } from "@readmint/renderer";
 import { describe, expect, test } from "vitest";
-import { loadScale } from "../../../test-support/loadScale.js";
+import { timed } from "../../../test-support/loadScale.js";
 import { readmintTestSymbols } from "../../fonts/test/readmintTestSymbols.js";
 import { readTableDirectory } from "../../fonts/src/readTableDirectory.js";
 import { SfntReader } from "../../fonts/src/SfntReader.js";
@@ -67,22 +67,26 @@ describe("checkFonts bounds the work of a design's fonts as the renderer does", 
 
   test("hundreds of copies of one font bomb decode once", async () => {
     const design = await bombDesign(1);
-    const started = performance.now();
-    const checked = checkFonts(createEditorState(design));
-    const elapsed = performance.now() - started;
+    const {
+      value: checked,
+      ms: elapsed,
+      scale,
+    } = timed(() => checkFonts(createEditorState(design)));
     expect(checked.issues).toEqual([]);
     expect(Object.keys(checked.fontChecks)).toHaveLength(
       Object.keys(design.assets?.fonts ?? {}).length,
     );
     // Before: every copy decoded (624 copies: 10.9 s, 2.4 GB); now one. The ceiling only catches a late stop.
-    expect(elapsed).toBeLessThan(2_000 * loadScale());
+    expect(elapsed).toBeLessThan(2_000 * scale);
   });
 
   test("distinct bombs stop at the font that crosses the total, before it inflates", async () => {
     const design = await bombDesign(8);
-    const started = performance.now();
-    const checked = checkFonts(createEditorState(design));
-    const elapsed = performance.now() - started;
+    const {
+      value: checked,
+      ms: elapsed,
+      scale,
+    } = timed(() => checkFonts(createEditorState(design)));
     // 3.9 MB each: four fit in 16 MiB, the fifth source (f4) crosses before it inflates.
     expect(checked.issues).toEqual([
       {
@@ -92,15 +96,17 @@ describe("checkFonts bounds the work of a design's fonts as the renderer does", 
       },
     ]);
     expect(Object.keys(checked.fontChecks)).toEqual(["f0", "f1", "f2", "f3"]);
-    expect(elapsed).toBeLessThan(2_000 * loadScale());
+    expect(elapsed).toBeLessThan(2_000 * scale);
   });
 
   test("distinct malformed bombs stop at the first one, after inflating only it", async () => {
     // Without `head` each bomb inflates its 3.9 MB and only then fails (before: 624 of them, 11.3 s, no issue).
     const design = await bombDesign(700, "head");
-    const started = performance.now();
-    const checked = checkFonts(createEditorState(design));
-    const elapsed = performance.now() - started;
+    const {
+      value: checked,
+      ms: elapsed,
+      scale,
+    } = timed(() => checkFonts(createEditorState(design)));
     expect(checked.issues).toEqual([
       {
         source: "font",
@@ -111,7 +117,7 @@ describe("checkFonts bounds the work of a design's fonts as the renderer does", 
       },
     ]);
     expect(checked.fontChecks).toEqual({});
-    expect(elapsed).toBeLessThan(2_000 * loadScale());
+    expect(elapsed).toBeLessThan(2_000 * scale);
   });
 
   test("a font that cannot be read after good ones keeps their checks and stops there", () => {

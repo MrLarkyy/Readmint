@@ -1,6 +1,6 @@
 import { brotliCompressSync } from "node:zlib";
 import { describe, expect, test } from "vitest";
-import { loadScale } from "../../../test-support/loadScale.js";
+import { timed } from "../../../test-support/loadScale.js";
 import { ByteWriter } from "../src/ByteWriter.js";
 import { parseSfnt } from "../src/index.js";
 import { mappedCodePoints, montserrat, parse, sameBytes } from "./testFonts.js";
@@ -50,12 +50,10 @@ describe("WOFF2", () => {
   });
 
   test("a Brotli stream that decompresses past the declared size is malformed", () => {
-    const started = performance.now();
-    expect(parseSfnt(woff2(new Uint8Array(5_000_000), 100))).toMatchObject({
-      ok: false,
-      kind: "malformed",
-    });
-    expect(performance.now() - started).toBeLessThan(5000 * loadScale());
+    const input = woff2(new Uint8Array(5_000_000), 100);
+    const { value, ms, scale } = timed(() => parseSfnt(input));
+    expect(value).toMatchObject({ ok: false, kind: "malformed" });
+    expect(ms).toBeLessThan(5000 * scale);
   });
 
   test("a truncated or damaged Brotli stream is malformed", () => {

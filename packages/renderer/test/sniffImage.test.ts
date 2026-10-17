@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Design } from "@readmint/format";
 import { describe, expect, test } from "vitest";
-import { loadScale } from "../../../test-support/loadScale.js";
+import { timed } from "../../../test-support/loadScale.js";
 import { renderSvg, type RenderOptions } from "../src/index.js";
 import { sniffImage } from "../src/sniffImage.js";
 import { plainColourImage } from "../src/plainColourImage.js";
@@ -622,9 +622,9 @@ describe("rendered images", () => {
 
   test("the byte cap is checked before decoding", () => {
     const huge = `data:image/png;base64,${"A".repeat(8_000_000)}`;
-    const started = performance.now();
-    expect(render(huge)).toMatchObject({ ok: false, issues: [{ code: "asset-too-large" }] });
-    expect(performance.now() - started).toBeLessThan(200 * loadScale());
+    const { value, ms, scale } = timed(() => render(huge));
+    expect(value).toMatchObject({ ok: false, issues: [{ code: "asset-too-large" }] });
+    expect(ms).toBeLessThan(200 * scale);
   });
 });
 
