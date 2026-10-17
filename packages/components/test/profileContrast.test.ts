@@ -1,6 +1,11 @@
 import { expect, test } from "vitest";
 import { profileTemplates, type ProfileSection, type ProfileTemplate } from "../src/index.js";
-import { loadProfile, renderProfile, type ProfileTheme } from "./profileDesigns.js";
+import {
+  loadExampleProfile,
+  loadProfile,
+  renderProfile,
+  type ProfileTheme,
+} from "./profileDesigns.js";
 import { stripFontData } from "./stripFontData.js";
 import { sampleProfileData } from "./sampleProfileData.js";
 
@@ -70,32 +75,41 @@ function textFills(svg: string): TextFill[] {
   );
 }
 
+/** Props: the shipped defaults, or the example's personal texts set (some sections draw text only then). */
+type PropSet = "defaults" | "example";
+const propSets: readonly PropSet[] = ["defaults", "example"];
+
 const themes: readonly ProfileTheme[] = ["light", "dark"];
 const cases = (Object.keys(profileTemplates) as ProfileTemplate[]).flatMap((template) =>
   profileTemplates[template].flatMap((section) =>
-    themes.map((theme) => [template, section, theme] as const),
+    themes.flatMap((theme) => propSets.map((props) => [template, section, theme, props] as const)),
   ),
 );
 
-/** Sections that draw no text at all (shapes only); every other section must render some. */
-const withoutText: readonly string[] = ["horizon/worked"];
-
-function render(template: ProfileTemplate, section: ProfileSection, theme: ProfileTheme): string {
+function render(
+  template: ProfileTemplate,
+  section: ProfileSection,
+  theme: ProfileTheme,
+  props: PropSet = "defaults",
+): string {
   return stripFontData(
     renderProfile({
       template,
-      design: loadProfile(template, section, theme),
+      design:
+        props === "example"
+          ? loadExampleProfile(template, section, theme)
+          : loadProfile(template, section, theme),
       data: sampleProfileData(),
     }),
   );
 }
 
 test.each(cases)(
-  "every text of %s %s %s reaches 4.5:1 against the page and the template panel",
-  (template, section, theme) => {
-    const texts = textFills(render(template, section, theme));
-    if (withoutText.includes(`${template}/${section}`)) expect(texts).toEqual([]);
-    else expect(texts.length).toBeGreaterThan(0);
+  "every text of %s %s %s (%s props) reaches 4.5:1 against the page and the template panel",
+  (template, section, theme, props) => {
+    const texts = textFills(render(template, section, theme, props));
+    // horizon/worked ships without items and draws text only once they are set
+    if (props === "example") expect(texts.length).toBeGreaterThan(0);
     const surfaces = [pageBackground[theme], panelBackground[template]?.[theme]].filter(
       (surface): surface is string => surface !== undefined,
     );

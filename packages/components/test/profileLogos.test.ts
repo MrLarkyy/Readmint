@@ -65,7 +65,7 @@ const strips: readonly Strip[] = [
     band: (g) => 96 + 20 * (12 + 1 + 1 + g) - 10.982,
     bandHeight: 14,
     shift: 80,
-    ink: { light: "#8C8C8C", dark: "#808080" },
+    ink: { light: "#6B6B6B", dark: "#888888" },
     panel: { light: "#FAFAFA", dark: "#12161D" },
     base: {
       plugin: 'kotlin("jvm")',

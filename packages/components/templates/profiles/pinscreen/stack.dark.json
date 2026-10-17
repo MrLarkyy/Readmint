@@ -410,7 +410,7 @@
                                         {
                                           "type": "path",
                                           "d": "{{ props.logoLayers[li] }}",
-                                          "fill": "{{ props.theme == \"dark\" ? (props.logoFillsDark[li] || props.logoFills[li] || \"#888888\") : (props.logoFills[li] || \"#8C8C8C\") }}"
+                                          "fill": "{{ props.theme == \"dark\" ? (props.logoFillsDark[li] || props.logoFills[li] || \"#888888\") : (props.logoFills[li] || \"#6B6B6B\") }}"
                                         }
                                       ]
                                     }
@@ -419,7 +419,7 @@
                                 {
                                   "type": "path",
                                   "d": "{{ props.logos[k] }}",
-                                  "fill": "{{ props.theme == \"dark\" ? \"#888888\" : \"#8C8C8C\" }}",
+                                  "fill": "{{ props.theme == \"dark\" ? \"#888888\" : \"#6B6B6B\" }}",
                                   "if": "{{ !props.logoLayers[4 * k] && props.logos[k] }}"
                                 },
                                 {
