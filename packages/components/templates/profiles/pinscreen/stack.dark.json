@@ -500,56 +500,51 @@
                   "let": {
                     "bw": "{{ 176 * lang.share | max(2) }}"
                   },
+                  "x": 640,
+                  "y": "{{ 139 + j * 36 }}",
+                  "width": "{{ bw }}",
+                  "height": 4,
+                  "clip": true,
                   "children": [
                     {
                       "type": "group",
-                      "x": 640,
-                      "y": "{{ 139 + j * 36 }}",
-                      "width": "{{ bw }}",
-                      "height": 4,
-                      "clip": true,
+                      "x": -640,
+                      "y": "{{ 0 - (139 + j * 36) }}",
                       "children": [
                         {
-                          "type": "group",
-                          "x": -640,
-                          "y": "{{ 0 - (139 + j * 36) }}",
-                          "children": [
-                            {
-                              "type": "rect",
-                              "x": 640,
-                              "y": "{{ 139 + j * 36 }}",
-                              "width": "{{ bw }}",
-                              "height": 4,
-                              "fill": "{{ j == 0 ? (props.theme == \"dark\" ? \"#FF6369\" : \"#E5484D\") : (props.theme == \"dark\" ? \"#C9C9CF\" : \"#3F3F46\") }}",
-                              "radius": 2,
-                              "animate": {
-                                "x": {
-                                  "keyframes": [
-                                    {
-                                      "offset": 0,
-                                      "value": 0
-                                    },
-                                    {
-                                      "offset": 0,
-                                      "value": "{{ 0 - bw }}"
-                                    },
-                                    {
-                                      "offset": 1,
-                                      "value": 0,
-                                      "easing": {
-                                        "x1": 0.2,
-                                        "y1": 0.8,
-                                        "x2": 0.3,
-                                        "y2": 1
-                                      }
-                                    }
-                                  ],
-                                  "duration": 1000,
-                                  "delay": "{{ 400 + j * 200 }}"
+                          "type": "rect",
+                          "x": 640,
+                          "y": "{{ 139 + j * 36 }}",
+                          "width": "{{ bw }}",
+                          "height": 4,
+                          "fill": "{{ j == 0 ? (props.theme == \"dark\" ? \"#FF6369\" : \"#E5484D\") : (props.theme == \"dark\" ? \"#C9C9CF\" : \"#3F3F46\") }}",
+                          "radius": 2,
+                          "animate": {
+                            "x": {
+                              "keyframes": [
+                                {
+                                  "offset": 0,
+                                  "value": 0
+                                },
+                                {
+                                  "offset": 0,
+                                  "value": "{{ 0 - bw }}"
+                                },
+                                {
+                                  "offset": 1,
+                                  "value": 0,
+                                  "easing": {
+                                    "x1": 0.2,
+                                    "y1": 0.8,
+                                    "x2": 0.3,
+                                    "y2": 1
+                                  }
                                 }
-                              }
+                              ],
+                              "duration": 1000,
+                              "delay": "{{ 400 + j * 200 }}"
                             }
-                          ]
+                          }
                         }
                       ]
                     }
