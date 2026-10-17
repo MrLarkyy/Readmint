@@ -39,7 +39,7 @@ function jsonFiles(dir: string): string[] {
 /** The paths of the layers whose `repeat.each` is a one-element array literal. */
 function oneItemRepeats(node: unknown, path = ""): string[] {
   if (Array.isArray(node))
-    return node.flatMap((child, index) => oneItemRepeats(child, `${path}/${index}`));
+    return node.flatMap((child, index) => oneItemRepeats(child, `${path}/${String(index)}`));
   if (node === null || typeof node !== "object") return [];
   const record = node as Record<string, unknown>;
   const repeat = record["repeat"];
