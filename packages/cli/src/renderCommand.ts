@@ -8,10 +8,11 @@ import { ExitCode } from "./ExitCode.js";
 import { formatIssue } from "./formatIssue.js";
 import { imageFetching } from "./imageFetching.js";
 import { liveData } from "./liveData.js";
-import { loadRenderInput } from "./loadRenderInput.js";
+import { loadRenderInput, type RenderInput } from "./loadRenderInput.js";
 import { printLines } from "./printLines.js";
 import { quoteForLog } from "./quoteForLog.js";
 import { renderOutput } from "./renderOutput.js";
+import { variantTwin } from "./variantTwin.js";
 
 /**
  * Renders the design and writes the SVG exactly as `renderSvg` returned it, to `--out` or standard output, or a
@@ -22,12 +23,9 @@ export async function renderCommand(
   args: Extract<CliCommand, { name: "render" }>,
   io: CliIo,
 ): Promise<ExitCode> {
-  const input = await loadRenderInput(args, {
-    cwd: io.cwd,
-    ...liveData(args, io),
-    ...imageFetching(args, io),
-  });
+  const input = await loadInput(args, io);
   const name = input.file.name;
+  await printLines(io.stderr, input.warnings ?? []);
   const result = await renderOutput(input, [args.format], {
     ...(args.locale === undefined ? {} : { locale: args.locale }),
     ...(args.time === undefined ? {} : { time: args.time }),
@@ -62,4 +60,18 @@ export async function renderCommand(
     });
   }
   return ExitCode.ok;
+}
+
+async function loadInput(
+  args: Extract<CliCommand, { name: "render" }>,
+  io: CliIo,
+): Promise<RenderInput> {
+  const { variant, ...plain } = args;
+  const twin = variant === undefined ? undefined : await variantTwin(args.design, variant, io.cwd);
+  const options = { cwd: io.cwd, ...liveData(args, io), ...imageFetching(args, io) };
+  if (variant === undefined) return loadRenderInput(plain, options);
+  if (twin === undefined) return loadRenderInput(plain, { ...options, variant });
+  const input = await loadRenderInput({ ...plain, design: twin }, options);
+  const note = `using ${quoteForLog(path.relative(io.cwd, twin))} next to ${quoteForLog(args.design)} instead of the ${variant.name} variant`;
+  return { ...input, warnings: [note, ...(input.warnings ?? [])] };
 }

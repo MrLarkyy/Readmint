@@ -3,7 +3,8 @@ export const packageName = "@readmint/cli";
 export { AssetPathError, type AssetPathErrorCode } from "./AssetPathError.js";
 export { checkAssetPath } from "./checkAssetPath.js";
 export type { CliCommand, DesignArgs, RenderArgs } from "./CliCommand.js";
-export type { DesignProps } from "@readmint/format";
+export type { DesignProps, RenderVariant } from "@readmint/format";
+export { applyRenderVariant, renderVariant, renderVariants } from "@readmint/format";
 export { CliError } from "./CliError.js";
 export type { CliIo } from "./CliIo.js";
 export { escapeForLog } from "./escapeForLog.js";
@@ -28,6 +29,7 @@ export {
   liveDataAuthoredMarginMs,
   liveDataTimeout,
 } from "./loadLiveData.js";
+export { variantTwin } from "./variantTwin.js";
 export { loadRenderInput, type RenderInput, type RenderInputOptions } from "./loadRenderInput.js";
 export { localeProblem } from "./localeProblem.js";
 export { type OutputFormat, outputExtension, outputFormats } from "./OutputFormat.js";
