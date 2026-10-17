@@ -183,7 +183,7 @@ Every layer has `type` (required) and these optional properties:
   characters a font may not draw.
 - `maxLines` of a text: the most lines it draws, counted after wrapping to `width` and after hard line breaks. When
   lines are left out, the last drawn line is its own text followed by `…`, cut between character clusters (as
-  `truncateWidth` cuts, dropping the whitespace the cut ends on) so that line and `…` fit `width`; without a `width` the `…` is appended. The cut line keeps
+  `truncateWidth` cuts, dropping the whitespace the cut ends on) so that line and `…` fit `width`; without a `width` the `…` is appended to the line minus the whitespace it ends on. The cut line keeps
   its paragraph's direction. The box is as high
   as the lines drawn, and the text's `aria-label`, where it has one, names only the drawn text. A text within `maxLines` draws
   the same SVG as without it. It is a property of the layer, not of a `style`.

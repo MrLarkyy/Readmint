@@ -267,7 +267,7 @@ Drawn in document order, first at the back. Layer `id` and `name` are not emitte
   other space is kept (`xml:space="preserve"`).
 - `maxLines` keeps at most that many lines, soft-wrapped and hard. When lines are left out, the last kept line becomes
   its own text followed by `…`, cut between clusters by the same bisection as `truncateWidth` (the whitespace the cut ends on is dropped, so the `…`
-  follows a word) so that line and `…` fit the `width` (without a `width` the `…` is appended; an ellipsis wider than the width leaves the line empty). That
+  follows a word) so that line and `…` fit the `width` (without a `width` the `…` is appended to the line minus the whitespace it ends on; an ellipsis wider than the width leaves the line empty). That
   line is measured and laid out as a paragraph of its own with its paragraph's direction (a left-to-right paragraph's
   cut stays left-to-right even when it starts with Arabic, a right-to-left one's stays right-to-left when it starts
   with Latin, so it is placed and aligned as the line it replaces), and never wrapped again: wrapping sums word
