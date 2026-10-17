@@ -10,7 +10,8 @@ export interface TileInk {
 
 // Anti-aliasing moves coverage between neighbouring pixels but keeps the tile's summed luma, so
 // the signed sum per tile sees a lost faint mark that a per-pixel colour threshold cannot.
-// Alpha-only changes show on the black flattening, colour-only ones on the white one.
+// Both flattenings are summed because an alpha-only change shows on one of them: a dark mark on
+// the white one, a light mark on the black one.
 export function tileInkShift(expected: PNG, actual: PNG, tile = inkTile): TileInk {
   const { width, height } = expected;
   const tilesX = Math.ceil(width / tile);

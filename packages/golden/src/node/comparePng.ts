@@ -55,8 +55,9 @@ export function comparePng(
     inkShift: ink.shift,
     diffPng: PNG.sync.write(diff),
   };
-  if (ratioOk && !inkOk) {
-    comparison.reason = `ink of the 16x16 tile at ${String(ink.x)},${String(ink.y)} changed by ${percent(ink.shift)} % (limit ${percent(tolerance.maxTileInk)} %)`;
+  if (!inkOk) {
+    const pixels = ratioOk ? "" : `; ${String(diffPixels)} of ${String(totalPixels)} pixels differ`;
+    comparison.reason = `ink of the 16x16 tile at ${String(ink.x)},${String(ink.y)} changed by ${percent(ink.shift)} % (limit ${percent(tolerance.maxTileInk)} %)${pixels}`;
   }
   return comparison;
 }

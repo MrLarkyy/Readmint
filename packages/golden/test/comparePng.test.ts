@@ -75,6 +75,21 @@ describe("comparePng", () => {
     expect(result.reason).toContain("ink");
   });
 
+  test("a faint light alpha-only mark on a transparent image fails on the black flattening", () => {
+    const golden = solidPng(16, 16, [0, 0, 0, 0]);
+    const marked = block(golden, 1, 3, [255, 255, 255, 20]);
+    const result = comparePng(golden, marked, { ...defaultNodeTolerance, maxDiffRatio: 1 });
+    expect(result.pass).toBe(false);
+    expect(result.reason).toContain("ink");
+  });
+
+  test("an ink failure names the tile also when pixels differ", () => {
+    const golden = solidPng(16, 16, white);
+    const result = comparePng(golden, block(golden, 1, 3, black), defaultNodeTolerance);
+    expect(result.reason).toContain("ink of the 16x16 tile at 0,0");
+    expect(result.reason).toContain("pixels differ");
+  });
+
   test("maxTileInk 1 turns the ink check off", () => {
     const golden = solidPng(16, 16, white);
     const faint = block(golden, 1, 3, [235, 235, 235, 255]);

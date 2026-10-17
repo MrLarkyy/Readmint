@@ -85,8 +85,8 @@ The golden rasterizer stays resvg-js 2.6.2 (native, tests only). Raster export (
 `@resvg/resvg-wasm` 2.6.2, the same resvg core, and its suite (`packages/raster/test/raster.golden.test.ts`) checks
 that: every frame of every PNG, WebP, APNG and GIF it writes is decoded and compared with `rasterizeSvg` of the
 renderer's SVG at that frame's time, within `defaultNodeTolerance` (GIF: its 1-bit alpha applied to the reference,
-threshold 0.15, 1 % of the pixels, ink check off: the 1-bit alpha moves edge ink). The decoded frames, stacked into one image per fixture and format, are the
-committed goldens in `packages/raster/test/golden/raster/` (`pnpm golden:update raster`). WebP images in a design
+threshold 0.15, 1 % of the pixels, ink check off: the 1-bit alpha moves edge ink). The decoded frames,
+stacked into one image per fixture and format, are the committed goldens in `packages/raster/test/golden/raster/` (`pnpm golden:update raster`). WebP images in a design
 are compared with the same design holding the PNG twin, since resvg-js cannot draw them.
 
 ## Animated designs
@@ -123,9 +123,10 @@ pixelmatch counts a pixel only when its colour moves by about 26 luma levels or 
 small mark can vanish without one differing pixel: the 10 px month label JAN of the Year Ring year, drawn at opacity
 0.13, changes at most 20 levels per pixel and gave 0 differing pixels with `includeAA` on or off. The Node ink check
 closes that gap. Anti-aliasing moves coverage between neighbouring pixels but keeps the tile's total, so the signed sum
-per tile is stable across platforms (0 on Linux against Windows goldens) and the dropped JAN changes its tile by 0.95 %,
+per tile is stable across platforms (a sub-pixel shift across a tile edge does move ink between tiles, and the check then
+sees it) (0 on Linux against Windows goldens) and the dropped JAN changes its tile by 0.95 %,
 nine times the limit. A failure names the tile and the change (`ink of the 16x16 tile at 240,96 changed by 0.95 %
-(limit 0.10 %)`). A mark of opacity down to about 0.014 is caught.
+(limit 0.10 %)`). For a label the size of JAN (10 px text) opacity down to about 0.014 is caught; a smaller mark needs more.
 
 Not caught: a mark moved within its tile, an equal-ink colour change below the pixel threshold, and in the browser leg
 any faint loss (Chromium and resvg differ by about 2 % ink per tile, so the check is off there). The SVG golden stays
@@ -175,7 +176,7 @@ docker run --rm -e CI=true -v "$PWD:/src:ro" mcr.microsoft.com/playwright:v1.64.
 ## Portability of goldens
 
 Goldens are rendered by resvg with system fonts turned off, so they do not depend on the machine's fonts, and
-anti-aliased pixels are ignored by the comparison. They were generated on Windows and the whole suite also passes on Linux (`mcr.microsoft.com/playwright:v1.64.0-noble`, same lockfile); the tile ink of the Year Ring year rendered on Linux against the Windows golden is 0. Chromium
+the pixel comparison ignores anti-aliased pixels (the Node ink check does not ignore them: a sub-pixel shift across a tile edge moves ink between tiles, which measured 0 here). They were generated on Windows and the whole suite also passes on Linux (`mcr.microsoft.com/playwright:v1.64.0-noble`, same lockfile); the tile ink of the Year Ring year rendered on Linux against the Windows golden is 0. Chromium
 rasterization differs slightly between platforms (gradient dithering, AA), which the browser tolerance absorbs.
 
 ## README images
