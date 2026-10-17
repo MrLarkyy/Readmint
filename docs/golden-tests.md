@@ -27,7 +27,7 @@ packages/<pkg>/test/golden/<suite>/<fixture>.svg|png  committed goldens
 
 The suite file must import the renderer through code that runs in the browser too (no `fs`, no `Buffer`).
 Suite and fixture names match `^[a-z0-9][a-z0-9-]*$`. A suite is `{ name, render(input) => svg, fixtures:
-[{ name, input, scale? }], fonts?, fontsFromSvg?, tolerance?, browserTolerance?, precision? }`; `scale` (1..4) zooms the PNG; a rendered PNG above 4096 x 4096 is a failure in every mode.
+[{ name, input, scale? }], fonts?, fontsFromSvg?, rasterCopy?, tolerance?, browserTolerance?, precision? }`; `scale` (1..4) zooms the PNG; a rendered PNG above 4096 x 4096 is a failure in every mode.
 
 Imports: `@readmint/golden` (suite types, `defineGoldenSuite`), `@readmint/golden/node` (`goldenTest`, ...),
 `@readmint/golden/browser` (`goldenBrowserTest`), `@readmint/golden/vitest`. The root `vitest.config.ts` aliases them to
@@ -60,6 +60,11 @@ Devanagari, mixed Latin and Arabic, wrapped right-to-left lines; Noto Naskh Arab
 fonts README) draws every fixture with the subsets and as paths; `renderer-shaping.cross` holds the two to zero
 differing pixels in Node, and to its `browserTolerance` (2%: Chromium antialiases each overlapping glyph of joined
 scripts on its own but a path as one shape) in Chromium.
+
+A suite whose SVGs users also get through raster export sets `rasterCopy: (svg) => svg`: resvg draws the PNG golden
+from that copy of each rendered SVG, while the SVG snapshot, `fontsFromSvg` and the browser leg keep the rendered
+SVG. The profile suites pass raster export's own font matching ([raster.md](raster.md#fonts)), so their PNG goldens
+are what the Action's PNG, WebP and APNG draw: resvg alone draws Horizon's two widths of Noto Sans with one face.
 
 resvg-js 2.6.2 does not decode WebP images: a WebP draws nothing in the Node PNG while Chromium draws it, so a fixture
 with a WebP image fails the browser leg. Cover WebP with unit tests instead.

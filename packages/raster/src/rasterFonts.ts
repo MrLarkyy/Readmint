@@ -39,7 +39,7 @@ export function rasterFonts(svg: string, extra: readonly Uint8Array[] = []): Ras
       const familyText = faceFamily.exec(rule)?.[1];
       fonts.push({
         bytes,
-        family: internalFamily(bytes, label),
+        ...fontNames(bytes, label),
         ...(familyText === undefined
           ? {}
           : {
@@ -55,7 +55,7 @@ export function rasterFonts(svg: string, extra: readonly Uint8Array[] = []): Ras
   extra.forEach((font, index) => {
     const label = `font ${String(index + 1)}`;
     const bytes = sfntOf(font, "", label);
-    fonts.push({ bytes, family: internalFamily(bytes, label) });
+    fonts.push({ bytes, ...fontNames(bytes, label) });
   });
   if (fonts.length === 0 && textElement.test(svg)) {
     throw new RasterError(
@@ -79,10 +79,41 @@ function sfntOf(bytes: Uint8Array, mime: string, label: string): Uint8Array {
   throw new RasterError("raster-font", `${label} is not a TTF, OTF or WOFF font`);
 }
 
-function internalFamily(bytes: Uint8Array, label: string): string {
+/** usWidthClass 1..9 as `font-stretch` keywords; resvg reads any other value as normal. */
+const stretches = [
+  "ultra-condensed",
+  "extra-condensed",
+  "condensed",
+  "semi-condensed",
+  "normal",
+  "semi-expanded",
+  "expanded",
+  "extra-expanded",
+  "ultra-expanded",
+];
+
+function fontNames(bytes: Uint8Array, label: string): Pick<RasterFont, "family" | "drawn"> {
   const parsed = parseSfnt(bytes);
   if (!parsed.ok) {
     throw new RasterError("raster-font", `${label} cannot be read: ${parsed.message}`);
   }
-  return parsed.font.familyName;
+  const os2 = parsed.font.table("OS/2") ?? new Uint8Array();
+  const u16 = (offset: number): number =>
+    offset + 2 <= os2.length ? ((os2[offset] ?? 0) << 8) | (os2[offset + 1] ?? 0) : 0;
+  const selection = u16(62);
+  // As resvg's font database reads it: the italic bit, else the oblique bit (OS/2 version 4 on), else normal.
+  const style =
+    (selection & 1) !== 0
+      ? "italic"
+      : u16(0) >= 4 && (selection & 0x200) !== 0
+        ? "oblique"
+        : "normal";
+  return {
+    family: parsed.font.familyName,
+    drawn: {
+      weight: parsed.font.weightClass,
+      stretch: stretches[u16(6) - 1] ?? "normal",
+      style,
+    },
+  };
 }

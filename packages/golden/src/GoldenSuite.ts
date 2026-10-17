@@ -20,6 +20,12 @@ export interface GoldenSuite<I> {
    * TTF/OTF): used instead of `fonts` when given, for text whose shaped glyphs only the subsets map.
    */
   fontsFromSvg?: (svg: string) => readonly Uint8Array[];
+  /**
+   * The copy of a rendered SVG resvg draws the PNG golden from: for a suite whose SVGs raster export prepares before
+   * resvg draws them (its font matching), so the PNG golden is what the export draws. The SVG snapshot, the fonts
+   * (`fontsFromSvg`) and the browser leg keep the rendered SVG.
+   */
+  rasterCopy?: (svg: string) => string;
   /** Decimal places kept in normalized SVG numbers, default 3. */
   precision?: number;
 }

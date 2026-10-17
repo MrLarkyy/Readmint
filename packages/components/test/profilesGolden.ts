@@ -2,6 +2,8 @@ import type { RenderIssueCode } from "@readmint/renderer";
 import { defineGoldenSuite, type GoldenSuite } from "@readmint/golden";
 import { profileTemplates, type ProfileSection, type ProfileTemplate } from "../src/index.js";
 import { embeddedFonts } from "../../renderer/test/embeddedFonts.js";
+import { matchFontFamilies } from "../../raster/src/matchFontFamilies.js";
+import { rasterFonts } from "../../raster/src/rasterFonts.js";
 import {
   loadExampleProfile,
   loadProfile,
@@ -133,6 +135,8 @@ export function profileGoldenSuite(template: ProfileTemplate): GoldenSuite<Profi
     name: `profiles-${template}`,
     render: renderProfile,
     fontsFromSvg: embeddedFonts,
+    // The Action exports these sections as PNG, WebP and APNG too: the PNG golden is what raster export draws.
+    rasterCopy: (svg) => matchFontFamilies(svg, rasterFonts(svg)),
     ...(browserTolerances[template] === undefined
       ? {}
       : { browserTolerance: browserTolerances[template] }),
