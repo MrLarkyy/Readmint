@@ -322,8 +322,8 @@ parts and the fields they leave empty.
 ## Errors
 
 Every failure is a `GitHubDataError`, a `DataSourceError` whose `source` is `github`; the codes that
-[all sources share](data-sources.md#errors) keep their meaning, and `secondary-rate-limited`, `http` and `graphql` are GitHub's own. A GraphQL `errors` entry fails the whole load: no partial data object is ever
-returned. Messages never contain the token. An `invalid-response` message names only the JSON path that failed, never
+[all sources share](data-sources.md#errors) keep their meaning, and `secondary-rate-limited`, `http` and `graphql` are GitHub's own. A GraphQL `errors` entry of the profile or a repository page fails the whole load: no partial data object is ever
+returned for it (the optional parts are the exception, see `meta.partial`). Messages never contain the token. An `invalid-response` message names only the JSON path that failed, never
 the value; a `graphql` message quotes GitHub's own error messages, redacted and shortened.
 
 | code                     | when                                                                                                                                              |
@@ -337,7 +337,7 @@ the value; a `graphql` message quotes GitHub's own error messages, redacted and 
 | `secondary-rate-limited` | a secondary rate limit outlasted the allowed wait or attempts; `retryAfterSeconds`                                                                |
 | `http`                   | any other non-2xx status (a 502, 503 or 504 after one retry)                                                                                      |
 | `network`                | the API could not be reached; `causeCode` such as `ECONNRESET` when known                                                                         |
-| `timeout`                | `requestTimeoutMs` passed, or `signal` aborted                                                                                                    |
+| `timeout`                | `requestTimeoutMs` passed, or `signal` aborted (a `languageSignal` abort is a partial `authored`, not an error)                                   |
 | `invalid-response`       | a body that is not JSON or does not match the expected shape, types or ranges                                                                     |
 | `graphql`                | GitHub answered with GraphQL errors (up to 3 types and messages, redacted, shortened)                                                             |
 | `too-large`              | a response body over 8 MiB                                                                                                                        |
