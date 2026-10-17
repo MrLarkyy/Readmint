@@ -45,7 +45,67 @@ describe("assertActionSupportsDesigns", () => {
   });
 });
 
+describe("layer properties", () => {
+  const orbiting = JSON.stringify({
+    components: {
+      card: {
+        layers: [
+          {
+            type: "group",
+            children: [{ type: "rect", orbit: { center: { x: 0, y: 0 }, radius: 1, angle: 0 } }],
+          },
+        ],
+      },
+    },
+    layers: [{ type: "component", ref: "card" }],
+  });
+  const letting = JSON.stringify({
+    layers: [{ type: "group", let: { n: "{{ 1 }}" }, children: [] }],
+  });
+
+  it.each([
+    [orbiting, "orbit"],
+    [letting, "let"],
+  ])("throws for a pinned release older than a property a layer sets (%#)", (text, property) => {
+    expect(() => {
+      assertActionSupportsDesigns("owner/action@v0.3.0", design(text));
+    }).toThrow(
+      `owner/action@v0.3.0 predates ${property} (Action v0.4.0), which t/header.json uses; pin v0.4.0 or newer`,
+    );
+  });
+
+  it.each(["@v0.4.0", "@v1.0.0", "@main", "@v0"])("accepts %s", (ref) => {
+    expect(() => {
+      assertActionSupportsDesigns(`owner/action${ref}`, design(orbiting));
+    }).not.toThrow();
+  });
+
+  it("ignores the words in texts, values and keys outside layers", () => {
+    const mentions = JSON.stringify({
+      title: "orbit",
+      layers: [{ type: "text", content: "let the orbit turn", props: { orbit: 1, let: 2 } }],
+      palette: { light: { orbit: "#000000" } },
+    });
+    expect(() => {
+      assertActionSupportsDesigns("owner/action@v0.1.0", design(mentions));
+    }).not.toThrow();
+    expect(() => {
+      assertActionSupportsDesigns("owner/action@v0.1.0", design("not json"));
+    }).not.toThrow();
+  });
+});
+
 describe("the examples generator", () => {
+  it("rejects a release older than the layer properties of the real templates", () => {
+    expect(() =>
+      buildExamples(templatesDir, {
+        login: "octo",
+        actionRef: "owner/action@v0.3.0",
+        props: profileExampleProps,
+      }),
+    ).toThrow(/predates (let|orbit) \(Action v0\.4\.0\)/);
+  });
+
   it("rejects an older Action over the real templates", () => {
     expect(() =>
       buildExamples(templatesDir, {

@@ -799,7 +799,6 @@ test.each(["font", "paths"] as const)(
     expect(elapsed).toBeLessThan(2000 * loadScale());
     if (drawAs === "paths") {
       // Some 12000 outlines of path data pass the output budget: it stops the render, not the shaping work.
-      console.log(JSON.stringify(result.ok ? 0 : result.issues));
       expect(result).toMatchObject({ ok: false, issues: [{ code: "too-large" }] });
       return;
     }

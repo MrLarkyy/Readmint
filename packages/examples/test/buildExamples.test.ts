@@ -359,12 +359,16 @@ describe("runExamples", () => {
     expect(err).toContain(defaultActionRef);
   });
 
+  // The templates set layer properties of the next release (let, orbit: Action v0.4.0): until that release moves the
+  // default pin, the real templates are written against the Action's main branch.
+  const next = ["--action", "MrLarkyy/Readmint@main"];
+
   it("writes, then reports in sync with exit 0", () => {
     const out = temp();
-    const written = run(templatesDir, out);
+    const written = run(templatesDir, out, ...next);
     expect(written.code).toBe(0);
     expect(written.out).toMatch(/^wrote \d+ files to .*, removed 0\n$/);
-    expect(run(templatesDir, out, "--check")).toEqual({
+    expect(run(templatesDir, out, "--check", ...next)).toEqual({
       code: 0,
       out: "the examples repository is in sync\n",
       err: "",
@@ -373,12 +377,12 @@ describe("runExamples", () => {
 
   it("lists missing, differing and stale files with --check and exits 1", () => {
     const out = temp();
-    run(templatesDir, out);
+    run(templatesDir, out, ...next);
     const template = templates[0] ?? "";
     rmSync(join(out, "README.md"));
     writeFileSync(join(out, template, "designs", "header.json"), "{}\n");
     writeFileSync(join(out, template, "designs", "stale.json"), "{}\n");
-    const { code, out: lines, err } = run(templatesDir, out, "--check");
+    const { code, out: lines, err } = run(templatesDir, out, "--check", ...next);
     expect(code).toBe(1);
     expect(lines).toBe(
       `missing: README.md\ndiffers: ${template}/designs/header.json\nstale: ${template}/designs/stale.json\n`,
@@ -386,12 +390,19 @@ describe("runExamples", () => {
     expect(err).toContain("3 files out of sync");
   });
 
-  it("writes the pinned default Action reference without --action", () => {
+  it("checks the real templates against the pinned default Action reference without --action", () => {
     expect(defaultActionRef).toBe("MrLarkyy/Readmint@v0.3.0");
+    // the default pin predates let and orbit, which the templates set: it is refused until the release moves it
+    const { code, err } = run(templatesDir, temp());
+    expect(code).toBe(1);
+    expect(err).toMatch(/MrLarkyy\/Readmint@v0\.3\.0 predates (let|orbit) \(Action v0\.4\.0\)/);
+  });
+
+  it("writes the Action reference it is given into the workflow", () => {
     const out = temp();
-    expect(run(templatesDir, out).code).toBe(0);
+    expect(run(templatesDir, out, ...next).code).toBe(0);
     const workflow = readFileSync(join(out, ".github", "workflows", "readmint.yml"), "utf8");
-    expect(workflow).toContain(`uses: ${defaultActionRef}`);
+    expect(workflow).toContain("uses: MrLarkyy/Readmint@main");
   });
 
   it("reports a failure as exit 1 with its message", () => {
