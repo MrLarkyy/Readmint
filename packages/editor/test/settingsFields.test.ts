@@ -1,7 +1,8 @@
 import type { Design } from "@readmint/format";
 import { expect, test } from "vitest";
 import { chooseSection, createEditorState, loadSettings, settingsFields } from "../src/index.js";
-import { settingsDesign } from "./settingsDesign.js";
+import { setVariant } from "../src/index.js";
+import { noDarkDesign, settingsDesign, themeDesign } from "./settingsDesign.js";
 
 const design: Design = {
   version: 0,
@@ -80,5 +81,31 @@ test("a layer's own value shows before the default, and the section's before bot
     ["size", "settings", 9],
     ["tags", "none", undefined],
     ["mode", "none", undefined],
+  ]);
+});
+
+test("a prop the section lacks shows the variant's value while a variant is chosen", () => {
+  const dark = setVariant(createEditorState(themeDesign), "dark");
+  const state = chooseSection(loadSettings(dark, '{"s": {"w": 9}}'), "s");
+  expect(
+    settingsFields(state).fields.map((field) => [field.name, field.from, field.value]),
+  ).toEqual([
+    ["theme", "variant", "dark"],
+    ["w", "settings", 9],
+  ]);
+  const own = chooseSection(loadSettings(dark, '{"s": {"theme": "light"}}'), "s");
+  expect(settingsFields(own).fields[0]).toMatchObject({ from: "settings", value: "light" });
+});
+
+test("a variant that does not apply to the design gives no value to the form", () => {
+  const state = chooseSection(
+    loadSettings(setVariant(createEditorState(noDarkDesign), "dark"), '{"s": {"w": 9}}'),
+    "s",
+  );
+  expect(
+    settingsFields(state).fields.map((field) => [field.name, field.from, field.value]),
+  ).toEqual([
+    ["theme", "default", "light"],
+    ["w", "settings", 9],
   ]);
 });

@@ -18,7 +18,7 @@ type Sync = (next: SettingsField) => void;
 
 /**
  * The props of the chosen settings section as a form: one field per prop the design declares, shown with the
- * section's value, else the design's default (written only once edited). A change is committed when the field
+ * section's value, else the chosen variant's, the layer's own or the design's default (written only once edited). A change is committed when the field
  * changes or Enter is pressed. Props the design does not declare are listed to remove. Hidden without a section.
  */
 export class SettingsPanel {
@@ -41,7 +41,7 @@ export class SettingsPanel {
   }
 
   update(state: EditorState): void {
-    const key = [state.settings, state.design];
+    const key = [state.settings, state.design, state.variant];
     if (key.every((item, index) => item === this.shown[index])) return;
     this.shown = key;
     const settings = state.settings;
@@ -109,7 +109,10 @@ export class SettingsPanel {
     };
     const mark = (next: SettingsField) => {
       unset.disabled = next.from !== "settings";
-      row.classList.toggle("rm-default", next.from === "default" || next.from === "layer");
+      row.classList.toggle(
+        "rm-default",
+        next.from === "default" || next.from === "layer" || next.from === "variant",
+      );
       row.classList.toggle("rm-unset", next.from === "none");
     };
     if (definition.type === "array") return this.list(row, field, set, mark);
