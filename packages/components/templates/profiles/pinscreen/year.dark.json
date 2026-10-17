@@ -203,7 +203,7 @@
                   "content": "{{ [\"S\", \"M\", \"T\", \"W\", \"T\", \"F\", \"S\"][wr] }}",
                   "font": "mono",
                   "fontSize": 10,
-                  "fill": "{{ props.theme == \"dark\" ? \"#5B5B63\" : \"#A1A1AA\" }}"
+                  "fill": "{{ props.theme == \"dark\" ? \"#7C7C86\" : \"#71717A\" }}"
                 }
               ]
             }

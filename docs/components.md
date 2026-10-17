@@ -192,6 +192,14 @@ A folder holds, per section, `<section>.json` and its dark twin `<section>.dark.
   from that prop inside the design.
 - **Links.** SVG links do not work inside an `<img>`, so a clickable element is a link around the image: the example
   `README.md` wraps each repository and the contact footer.
+- **Text contrast.** Every text of a profile design reaches a contrast of 4.5:1 (WCAG AA for small text) against the
+  page colour of its theme, `#ffffff` light and `#0d1117` dark, with no exception for decorative text: the code line
+  numbers, the weekday letters and the `/` separators of the ticker are held to it too, so the secondary greys are
+  dimmer than the body text but never fainter than 4.5:1. The footer credit, the Pinscreen code comments and the small
+  orange text (the `today` label and the push hash of Horizon) use their own text shade; the orange of lines, dots and
+  fills stays as it was. `profileContrast.test.ts` renders every section in both themes and fails on any text fill
+  below that. It reads the fill, not the opacity: the 0.15 opacity of the Year Ring `MAR`/`OCT` labels is a depth
+  cue (not part of this rule) and the animations start their text at opacity 0.
 - **Repository slots.** `repo-1` to `repo-6` are the same design with the root prop `slot` 0 to 5 (a test pins that
   they differ in nothing else). A slot reads `github.pinned` (the loader fills it, see
   [pinned repositories, pushes and status](data-github.md#pinned-repositories-pushes-and-status)), or
