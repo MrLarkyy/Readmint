@@ -633,7 +633,12 @@ above 0, and of a keyframe ending a cycle and one starting the next at the same 
 one (a cycle that ends where it starts joins the next; different values jump); at 100 % of the timeline likewise only the
 later of two keyframes stays, so a run that ends at the timeline end should not end with a jump. Bindings and easings are evaluated once
 per track, not per cycle. Keyframe positions are percentages of the timeline rounded to 3
-decimals; keyframes landing on the same rounded position keep their order one step (0.001 %) apart. Values are rounded
+decimals; keyframes landing on the same rounded position keep their order one step (0.001 %) apart. A frame at the
+moment of such a jump (within half a step before it, or inside its one-step ramp) draws the value after it, the last of
+the keyframes at that moment, whether the time falls on a whole step or not; a frame at time 0 draws the first keyframe,
+as the static attributes do. Keyframes whose positions round to neighbouring steps (under two steps apart, at most
+1.2 ms on a 60000 ms timeline) are sampled as a jump too. The playing CSS keeps the ramp, so a browser shows the later
+value one step (0.001 %) after the moment. Values are rounded
 as written (numbers to 3 decimals, colour channels to integers), and the frames sample these rounded keyframes with the
 same curves CSS uses: `easing` from a keyframe to the next is written as that keyframe's `animation-timing-function`,
 and the frames solve the cubic-bezier with a fixed number of bisection steps using `+ - * /` only. Opacity, colours and
