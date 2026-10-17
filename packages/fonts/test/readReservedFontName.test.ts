@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { loadScale } from "../../../test-support/loadScale.js";
+import { timed } from "../../../test-support/loadScale.js";
 import { ByteWriter } from "../src/ByteWriter.js";
 import { readFamilyName } from "../src/readFamilyName.js";
 import { maxNameCodeUnits, readNameStrings } from "../src/readNameStrings.js";
@@ -157,10 +157,13 @@ describe("the Reserved Font Name hint of a name table", () => {
     const bytes = table.result();
     const reader = new SfntReader(bytes);
     const name = { offset: 0, length: bytes.length };
-    const started = performance.now();
-    expect(readReservedFontName(reader, name)).toBe(false);
-    const strings = readNameStrings(reader, name, [0]);
-    expect(performance.now() - started).toBeLessThan(1000 * loadScale());
+    const { value, ms, scale } = timed(() => ({
+      reserved: readReservedFontName(reader, name),
+      strings: readNameStrings(reader, name, [0]),
+    }));
+    const { reserved, strings } = value;
+    expect(reserved).toBe(false);
+    expect(ms).toBeLessThan(1000 * scale);
     expect(strings).toHaveLength(Math.floor(maxNameCodeUnits / 32_767));
   });
 });

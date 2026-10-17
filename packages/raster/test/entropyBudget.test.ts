@@ -2,7 +2,7 @@ import { describe, expect, test } from "vitest";
 import { maxRenderEntropySteps } from "@readmint/renderer";
 import { countImagePixels } from "../src/countImagePixels.js";
 import { RasterError } from "../src/RasterError.js";
-import { loadScale } from "../../../test-support/loadScale.js";
+import { timed } from "../../../test-support/loadScale.js";
 import { costlyProgressiveVariant } from "../../renderer/test/jpegEntropyCases.js";
 import { dataUri } from "./rasterFixtures.js";
 
@@ -25,19 +25,24 @@ describe("the JPEG symbol-check budget of a raster export", () => {
   });
 
   test("many costly copies cross the budget shared by every image, quickly", () => {
-    const started = performance.now();
-    let error: unknown;
-    try {
-      countImagePixels(svgOf(24), 1);
-    } catch (caught) {
-      error = caught;
-    }
-    const elapsed = performance.now() - started;
+    const svg = svgOf(24);
+    const {
+      value: error,
+      ms: elapsed,
+      scale,
+    } = timed(() => {
+      try {
+        countImagePixels(svg, 1);
+      } catch (caught) {
+        return caught;
+      }
+      return undefined;
+    });
     expect(error).toBeInstanceOf(RasterError);
     expect(error).toMatchObject({ code: "raster-too-many-image-pixels" });
     expect((error as Error).message).toContain(
       `takes more than ${String(maxRenderEntropySteps)} decoding steps`,
     );
-    expect(elapsed).toBeLessThan(3000 * loadScale());
+    expect(elapsed).toBeLessThan(3000 * scale);
   });
 });

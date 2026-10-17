@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { loadScale } from "../../../test-support/loadScale.js";
+import { timed } from "../../../test-support/loadScale.js";
 import { ByteWriter } from "../src/ByteWriter.js";
 import { CffIndex } from "../src/CffIndex.js";
 import { MalformedFont } from "../src/MalformedFont.js";
@@ -75,11 +75,16 @@ describe("Type 2 charstrings", () => {
   });
 
   test("a subroutine that calls itself is malformed within the call depth", () => {
-    const started = performance.now();
-    expect(() =>
-      runCharstring(source([[...n(-107), callsubr, endchar]], [[...n(-107), callsubr, 11]]), 0),
-    ).toThrow(MalformedFont);
-    expect(performance.now() - started).toBeLessThan(2000 * loadScale());
+    const { value, ms, scale } = timed(() => {
+      try {
+        runCharstring(source([[...n(-107), callsubr, endchar]], [[...n(-107), callsubr, 11]]), 0);
+      } catch (error) {
+        return error;
+      }
+      return undefined;
+    });
+    expect(value).toBeInstanceOf(MalformedFont);
+    expect(ms).toBeLessThan(2000 * scale);
   });
 
   test("a charstring longer than the operation cap is malformed", () => {

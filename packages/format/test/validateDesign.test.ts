@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { loadScale } from "../../../test-support/loadScale.js";
+import { loadScale, timed } from "../../../test-support/loadScale.js";
 import { DesignLimits, designJsonSchema, PathData, validateDesign } from "../src/index.js";
 import { maximalDesign } from "./maximalDesign.js";
 
@@ -252,9 +252,9 @@ describe("limits", () => {
   });
 
   test("a long component chain closed by many refs is checked in linear time", () => {
-    const started = performance.now();
-    const result = issuesOf(componentChain(4000, 5000));
-    expect(performance.now() - started).toBeLessThan(2000 * loadScale());
+    const chain = componentChain(4000, 5000);
+    const { value: result, ms, scale } = timed(() => issuesOf(chain));
+    expect(ms).toBeLessThan(2000 * scale);
     expect(result.truncated).toBe(true);
     expect(result.issues[0]).toEqual({
       path: "/components/c3999/layers/0/ref",
@@ -264,11 +264,12 @@ describe("limits", () => {
   });
 
   test("too many layers is decided before the cycle search", () => {
-    const started = performance.now();
-    expect(issuesOf(componentChain(8000, 130_000)).issues).toEqual([
+    const chain = componentChain(8000, 130_000);
+    const { value: result, ms, scale } = timed(() => issuesOf(chain));
+    expect(result.issues).toEqual([
       expect.objectContaining({ path: "/layers", code: "too-many-layers" }),
     ]);
-    expect(performance.now() - started).toBeLessThan(2000 * loadScale());
+    expect(ms).toBeLessThan(2000 * scale);
   });
 
   test("a cyclic or massively shared object fails without hanging", () => {
@@ -327,6 +328,7 @@ describe("hostile strings", () => {
   ];
 
   test("every schema pattern runs in linear time", () => {
+    const before = loadScale();
     const patterns = collectPatterns(designJsonSchema);
     expect(patterns.length).toBeGreaterThan(6);
     for (const pattern of patterns) {
@@ -336,7 +338,7 @@ describe("hostile strings", () => {
         regex.test(value);
         const elapsed = performance.now() - started;
         // The load probe costs more than most of these runs, so it only runs for a slow one.
-        const limit = elapsed < 200 ? 200 : 200 * loadScale();
+        const limit = elapsed < 200 ? 200 : 200 * Math.max(before, loadScale());
         expect(elapsed, `${pattern} on ${value.slice(0, 20)}`).toBeLessThan(limit);
       }
     }
@@ -355,9 +357,9 @@ describe("hostile strings", () => {
           { type: "image", asset: value, width: 1, height: 1 },
         ],
       };
-      const started = performance.now();
-      expect(validateDesign(design).ok).toBe(false);
-      expect(performance.now() - started).toBeLessThan(200 * loadScale());
+      const { value: result, ms, scale } = timed(() => validateDesign(design));
+      expect(result.ok).toBe(false);
+      expect(ms).toBeLessThan(200 * scale);
     }
   });
 });
@@ -695,9 +697,11 @@ describe("local bindings (let, RM-118)", () => {
     for (let level = 14; level >= 0; level--) {
       layer = { type: "group", let: names(level), children: [layer] };
     }
-    const started = performance.now();
-    valid(withLayers(layer));
-    expect(performance.now() - started).toBeLessThan(1000 * loadScale());
+    const design = withLayers(layer);
+    const { ms, scale } = timed(() => {
+      valid(design);
+    });
+    expect(ms).toBeLessThan(1000 * scale);
   });
 
   test("issues come in document order across the document and the components", () => {
@@ -990,11 +994,12 @@ describe("palette (RM-119)", () => {
     const flood = Object.fromEntries(
       Array.from({ length: 100_000 }, (_, i) => [`token${String(i)}`, "#000"]),
     );
-    const started = performance.now();
-    expect(issuesOf(withPalette({ palette: { light: flood } })).issues).toEqual([
+    const design = withPalette({ palette: { light: flood } });
+    const { value, ms, scale } = timed(() => issuesOf(design));
+    expect(value.issues).toEqual([
       { path: "/palette/light", code: "count", message: "must have at most 256 entries" },
     ]);
-    expect(performance.now() - started).toBeLessThan(2000 * loadScale());
+    expect(ms).toBeLessThan(2000 * scale);
   });
 
   test("modes sharing one huge token object are refused before validation", () => {
@@ -1011,9 +1016,11 @@ describe("palette (RM-119)", () => {
 
   test("scanning hostile text for reads stays fast", () => {
     const content = `${"{{ palette.bg ".repeat(300)}}} {{ '${"palette.x ".repeat(450)}`;
-    const started = performance.now();
-    valid(textOf(content));
-    expect(performance.now() - started).toBeLessThan(1000 * loadScale());
+    const design = textOf(content);
+    const { ms, scale } = timed(() => {
+      valid(design);
+    });
+    expect(ms).toBeLessThan(1000 * scale);
   });
 
   test("__proto__ and constructor are plain tokens and pollute nothing", () => {

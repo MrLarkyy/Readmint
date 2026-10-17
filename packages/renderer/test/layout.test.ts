@@ -1,6 +1,6 @@
 import type { Layer } from "@readmint/format";
 import { describe, expect, test } from "vitest";
-import { loadScale } from "../../../test-support/loadScale.js";
+import { timed } from "../../../test-support/loadScale.js";
 import { renderSvg } from "../src/index.js";
 import { pathBounds } from "../src/pathBounds.js";
 
@@ -146,8 +146,8 @@ describe("path bounds", () => {
     expect(pathBounds("Z")).toBeUndefined();
     expect(pathBounds("M1 2 L")).toEqual({ minX: 1, minY: 2, maxX: 1, maxY: 2 });
     const long = `M0 0${" l1 1".repeat(20_000)}`;
-    const started = performance.now();
-    expect(pathBounds(long)).toEqual({ minX: 0, minY: 0, maxX: 20_000, maxY: 20_000 });
-    expect(performance.now() - started).toBeLessThan(1000 * loadScale());
+    const { value, ms, scale } = timed(() => pathBounds(long));
+    expect(value).toEqual({ minX: 0, minY: 0, maxX: 20_000, maxY: 20_000 });
+    expect(ms).toBeLessThan(1000 * scale);
   });
 });

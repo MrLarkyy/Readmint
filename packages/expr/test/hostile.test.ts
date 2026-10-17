@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { loadScale } from "../../../test-support/loadScale.js";
+import { timed } from "../../../test-support/loadScale.js";
 import {
   compileTemplate,
   createBudget,
@@ -20,11 +20,15 @@ function expectBounded(
   data: Readonly<Record<string, unknown>>,
   code: ExpressionErrorCode,
 ): void {
-  const started = performance.now();
   const budget = createBudget();
-  const template = compileTemplate(text);
-  const result = template.ok ? template.value.evaluate(createScope(data, { budget })) : template;
-  const elapsed = performance.now() - started;
+  const {
+    value: result,
+    ms: elapsed,
+    scale,
+  } = timed(() => {
+    const template = compileTemplate(text);
+    return template.ok ? template.value.evaluate(createScope(data, { budget })) : template;
+  });
   expect(result.ok).toBe(false);
   if (result.ok) return;
   expect(result.error.code).toBe(code);
@@ -32,7 +36,7 @@ function expectBounded(
   expect(result.error.message.length).toBeLessThan(200);
   // One overrunning charge may be large (a 20M-character string is 1.25M steps); it is never paid in work.
   expect(budget.used).toBeLessThanOrEqual(ExpressionLimits.maxSteps + 2_000_000);
-  expect(elapsed).toBeLessThan(wallClockMs * loadScale());
+  expect(elapsed).toBeLessThan(wallClockMs * scale);
 }
 
 const long = "x".repeat(60_000);
@@ -235,10 +239,11 @@ describe("hostile expressions are bounded in time and memory", () => {
   });
 
   test("a long hostile source scans in linear time", () => {
-    const started = performance.now();
-    for (const filler of ['"', "'", "a-".repeat(10), "1e", "{{", "}"]) {
-      compileTemplate(`{{ ${filler.repeat(9990 / filler.length)}`);
-    }
-    expect(performance.now() - started).toBeLessThan(wallClockMs * loadScale());
+    const { ms, scale } = timed(() => {
+      for (const filler of ['"', "'", "a-".repeat(10), "1e", "{{", "}"]) {
+        compileTemplate(`{{ ${filler.repeat(9990 / filler.length)}`);
+      }
+    });
+    expect(ms).toBeLessThan(wallClockMs * scale);
   });
 });

@@ -3,7 +3,7 @@ import { join } from "node:path";
 import type { Design, FontAsset } from "@readmint/format";
 import { parseSfnt } from "@readmint/fonts";
 import { describe, expect, test } from "vitest";
-import { loadScale } from "../../../test-support/loadScale.js";
+import { timed } from "../../../test-support/loadScale.js";
 import { expandingFont } from "../../fonts/test/buildTestCff.js";
 import { matchWeight } from "../src/loadFont.js";
 import { renderSvg, type RenderOptions } from "../src/index.js";
@@ -330,11 +330,16 @@ describe("fonts that turn out broken or costly when their glyphs are read", () =
       const content = Array.from({ length: 300 }, (_, index) =>
         String.fromCodePoint(0x4e00 + index),
       ).join("");
-      const started = performance.now();
-      const result = renderSvg(
-        design({ m: { ...pathFont("Heavy"), drawAs } }, text("m", { content })),
-        // A budget this large lets the outline work, not the output size, be what stops the render.
-        { assets: { fonts: { m: expandingFont(300) } }, limits: { maxOutputBytes: 100_000_000 } },
+      const {
+        value: result,
+        ms,
+        scale,
+      } = timed(() =>
+        renderSvg(
+          design({ m: { ...pathFont("Heavy"), drawAs } }, text("m", { content })),
+          // A budget this large lets the outline work, not the output size, be what stops the render.
+          { assets: { fonts: { m: expandingFont(300) } }, limits: { maxOutputBytes: 100_000_000 } },
+        ),
       );
       expect(result).toMatchObject({
         ok: false,
@@ -342,7 +347,7 @@ describe("fonts that turn out broken or costly when their glyphs are read", () =
       });
       // The asset-too-large is the pin (without the budget the render succeeds after many seconds); the ceiling,
       // some 10 x the time drawn as paths, only catches a budget that stops far too late.
-      expect(performance.now() - started).toBeLessThan(15_000 * loadScale());
+      expect(ms).toBeLessThan(15_000 * scale);
     },
   );
 
@@ -368,14 +373,13 @@ describe("fonts that turn out broken or costly when their glyphs are read", () =
       expect(
         renderSvg(design({ f0: fonts.f0 ?? pathFont() }, layers.slice(0, 1)), options).ok,
       ).toBe(true);
-      const started = performance.now();
-      const result = renderSvg(design(fonts, layers), options);
+      const { value: result, ms, scale } = timed(() => renderSvg(design(fonts, layers), options));
       expect(result).toMatchObject({
         ok: false,
         issues: [{ path: "/assets/fonts/f1", code: "asset-too-large" }],
       });
       expect(renderSvg(design(fonts, layers), options)).toEqual(result);
-      expect(performance.now() - started).toBeLessThan(15_000 * loadScale());
+      expect(ms).toBeLessThan(15_000 * scale);
     },
   );
 

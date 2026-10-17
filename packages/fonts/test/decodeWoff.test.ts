@@ -1,6 +1,6 @@
 import { zlibSync } from "fflate";
 import { describe, expect, test } from "vitest";
-import { loadScale } from "../../../test-support/loadScale.js";
+import { timed } from "../../../test-support/loadScale.js";
 import { ByteWriter } from "../src/ByteWriter.js";
 import { decodeWoff } from "../src/decodeWoff.js";
 import { encodeWoff, parseSfnt } from "../src/index.js";
@@ -64,9 +64,17 @@ describe("WOFF", () => {
   test("a table that inflates far past its declared size stops at the declared size", () => {
     const bomb = zlibSync(new Uint8Array(10_000_000), { level: 9, mem: 8 });
     expect(bomb.length).toBeLessThan(20_000);
-    const started = performance.now();
-    expect(() => decodeWoff(woff("head", bomb, 1024), 4_000_000)).toThrow(MalformedFont);
-    expect(performance.now() - started).toBeLessThan(5000 * loadScale());
+    const input = woff("head", bomb, 1024);
+    const { value, ms, scale } = timed(() => {
+      try {
+        decodeWoff(input, 4_000_000);
+      } catch (error) {
+        return error;
+      }
+      return undefined;
+    });
+    expect(value).toBeInstanceOf(MalformedFont);
+    expect(ms).toBeLessThan(5000 * scale);
     expect(parseSfnt(woff("head", bomb, 1024))).toMatchObject({ ok: false, kind: "malformed" });
   });
 

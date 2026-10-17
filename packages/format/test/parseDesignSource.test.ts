@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { loadScale } from "../../../test-support/loadScale.js";
+import { loadScale, timed } from "../../../test-support/loadScale.js";
 import {
   DesignLimits,
   parseDesign,
@@ -116,11 +116,11 @@ describe("YAML source", () => {
     );
     const source = [...anchors, ...aliases].join("\n");
     expect(source.length).toBeLessThanOrEqual(DesignLimits.maxYamlSourceLength);
-    const started = performance.now();
-    expect(issuesOf(source)).toEqual([
+    const { value, ms, scale } = timed(() => issuesOf(source));
+    expect(value).toEqual([
       expect.objectContaining({ code: "too-large", line: count + DesignLimits.maxAliases + 1 }),
     ]);
-    expect(performance.now() - started).toBeLessThan(2000 * loadScale());
+    expect(ms).toBeLessThan(2000 * scale);
   });
 
   test("aliases within the limit resolve", () => {
@@ -176,9 +176,9 @@ describe("YAML source", () => {
     "a YAML %s at the size limit is checked within seconds",
     (_, head, unit, tail, issue) => {
       const source = fillToYamlLimit(head, unit, tail);
-      const started = performance.now();
-      expect(issuesOf(source)[0]).toMatchObject(issue);
-      expect(performance.now() - started).toBeLessThan(linearBudget * loadScale());
+      const { value, ms, scale } = timed(() => issuesOf(source));
+      expect(value[0]).toMatchObject(issue);
+      expect(ms).toBeLessThan(linearBudget * scale);
     },
     120_000,
   );
@@ -191,7 +191,8 @@ describe("YAML source", () => {
   function compareWithTwin<T>(
     run: () => T,
     twin: () => unknown,
-  ): { ms: number; ratio: number; result: T } {
+  ): { ms: number; ratio: number; result: T; scale: number } {
+    const before = loadScale();
     let result = run();
     twin();
     const times: number[] = [];
@@ -206,7 +207,12 @@ describe("YAML source", () => {
     }
     const median = (values: number[]) =>
       values.sort((x, y) => x - y)[Math.floor(values.length / 2)] ?? 0;
-    return { ms: median(times), ratio: Math.min(...ratios), result };
+    return {
+      ms: median(times),
+      ratio: Math.min(...ratios),
+      result,
+      scale: Math.max(before, loadScale()),
+    };
   }
 
   test("a YAML sequence beside an aliased anchor full of aliases costs no more than without the alias", () => {
@@ -222,7 +228,7 @@ describe("YAML source", () => {
       path: "/b0",
       code: "unknown-property",
     });
-    expect(withAlias.ms).toBeLessThan(linearBudget * loadScale());
+    expect(withAlias.ms).toBeLessThan(linearBudget * withAlias.scale);
     // yaml's alias count walks the whole document per alias: 3x slower than the twin.
     expect(withAlias.ratio).toBeLessThan(1.5);
   }, 300_000);
@@ -236,22 +242,22 @@ describe("YAML source", () => {
     );
     expect(broken.result).toMatchObject({ ok: false, truncated: true });
     expect(!broken.result.ok && broken.result.issues).toHaveLength(DesignLimits.maxIssues);
-    expect(broken.ms).toBeLessThan(linearBudget * loadScale());
+    expect(broken.ms).toBeLessThan(linearBudget * broken.scale);
     // A stack trace per syntax error made this 6-10x slower than the valid twin.
     expect(broken.ratio).toBeLessThan(2);
   }, 300_000);
 
   test("a YAML source over its limit fails before parsing", () => {
     const source = `${minimalYaml}x: [0${",0".repeat(DesignLimits.maxYamlSourceLength)}]`;
-    const started = performance.now();
-    expect(issuesOf(source)).toEqual([
+    const { value, ms, scale } = timed(() => issuesOf(source));
+    expect(value).toEqual([
       {
         path: "",
         code: "too-large",
         message: `the YAML source is longer than ${String(DesignLimits.maxYamlSourceLength)} characters`,
       },
     ]);
-    expect(performance.now() - started).toBeLessThan(100 * loadScale());
+    expect(ms).toBeLessThan(100 * scale);
   });
 
   test("a JSON source may exceed the YAML limit", () => {
@@ -300,9 +306,9 @@ describe("YAML source", () => {
       "f: &f [*e,*e,*e,*e,*e,*e,*e,*e,*e]",
       "g: &g [*f,*f,*f,*f,*f,*f,*f,*f,*f]",
     ].join("\n");
-    const started = performance.now();
-    expect(issuesOf(bomb)).toMatchObject([{ code: "too-large" }]);
-    expect(performance.now() - started).toBeLessThan(1000 * loadScale());
+    const { value, ms, scale } = timed(() => issuesOf(bomb));
+    expect(value).toMatchObject([{ code: "too-large" }]);
+    expect(ms).toBeLessThan(1000 * scale);
   });
 
   test("a self-referencing alias ends as too-deep", () => {
