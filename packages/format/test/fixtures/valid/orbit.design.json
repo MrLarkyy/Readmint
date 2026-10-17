@@ -1,0 +1,58 @@
+{
+  "version": 0,
+  "canvas": {
+    "width": 200,
+    "height": 120
+  },
+  "animation": {
+    "duration": 12000
+  },
+  "layers": [
+    {
+      "type": "ellipse",
+      "x": -3,
+      "y": -3,
+      "width": 6,
+      "height": 6,
+      "fill": "#2b4bff",
+      "repeat": {
+        "each": "{{ [\"A\", \"B\", \"C\"] }}",
+        "index": "k"
+      },
+      "orbit": {
+        "center": {
+          "x": 100,
+          "y": "{{ 60 }}"
+        },
+        "radius": 80,
+        "radiusY": "{{ 30 }}",
+        "angle": "{{ k * 120 }}",
+        "speed": -30,
+        "upright": true,
+        "fade": {
+          "from": -0.5,
+          "to": 0.5
+        }
+      }
+    },
+    {
+      "type": "group",
+      "orbit": {
+        "center": {
+          "x": 100,
+          "y": 60
+        },
+        "radius": 20,
+        "angle": 45,
+        "upright": "{{ false }}"
+      },
+      "children": [
+        {
+          "type": "rect",
+          "width": 4,
+          "height": 4
+        }
+      ]
+    }
+  ]
+}

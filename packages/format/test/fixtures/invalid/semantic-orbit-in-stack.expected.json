@@ -1,0 +1,10 @@
+[
+  {
+    "path": "/layers/0/children/0/orbit",
+    "code": "type"
+  },
+  {
+    "path": "/animation",
+    "code": "missing-property"
+  }
+]

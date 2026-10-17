@@ -165,6 +165,10 @@ function namesProps(value: unknown, depth: number): boolean {
 function sealAnimations(context: RenderContext, nodes: readonly RenderNode[]): string | undefined {
   const visit = (list: readonly RenderNode[]) => {
     for (const node of list) {
+      for (const part of node.orbit?.parts ?? []) {
+        if (part.kind === "turn" && part.spin !== undefined)
+          context.animationCss.register(part.spin);
+      }
       if (node.animation !== undefined) context.animationCss.register(node.animation);
       if (node.kind === "group") visit(node.children);
     }

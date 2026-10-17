@@ -5,6 +5,7 @@ import calendar from "./golden/renderer-animation-svg/calendar.svg?raw";
 import drawMulti from "./golden/renderer-animation-svg/draw-multi.svg?raw";
 import draw from "./golden/renderer-animation-svg/draw.svg?raw";
 import easing from "./golden/renderer-animation-svg/easing.svg?raw";
+import orbit from "./golden/renderer-animation-svg/orbit-speed.svg?raw";
 import tracks from "./golden/renderer-animation-svg/tracks.svg?raw";
 import { renderFixture } from "./renderFixture.js";
 
@@ -13,6 +14,7 @@ const snapshots: Readonly<Record<string, string>> = {
   draw,
   "draw-multi": drawMulti,
   easing,
+  "orbit-speed": orbit,
   tracks,
 };
 

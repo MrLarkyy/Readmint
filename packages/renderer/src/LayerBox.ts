@@ -7,9 +7,10 @@ export interface LayerTurn {
 
 /**
  * Where a drawn node of the render sits on the canvas, for the editor's selection. Boxes are given in paint order
- * (later boxes are drawn over earlier ones), one per drawn node, at the node's layout position: animations do not
- * move it. The renderer does no trigonometry: a turned box is described by its turns, the reader applies them.
- * A layer the SVG leaves out because it lies wholly outside the canvas still has its box, so the editor can select it.
+ * (later boxes are drawn over earlier ones), one per drawn node, at the node's layout position (on an orbit, at its
+ * angle): animations and the motion of an orbit do not move it. The renderer does no trigonometry: a turned box is
+ * described by its turns, the reader applies them. A layer the SVG leaves out because it lies wholly outside the
+ * canvas still has its box, so the editor can select it.
  */
 export interface LayerBox {
   /**

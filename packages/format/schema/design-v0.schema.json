@@ -581,6 +581,129 @@
         }
       ]
     },
+    "Orbit": {
+      "type": "object",
+      "properties": {
+        "center": {
+          "type": "object",
+          "properties": {
+            "x": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": -100000,
+                  "maximum": 100000
+                },
+                {
+                  "$ref": "#/$defs/Binding"
+                }
+              ]
+            },
+            "y": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": -100000,
+                  "maximum": 100000
+                },
+                {
+                  "$ref": "#/$defs/Binding"
+                }
+              ]
+            }
+          },
+          "required": [
+            "x",
+            "y"
+          ],
+          "additionalProperties": false
+        },
+        "radius": {
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100000
+            },
+            {
+              "$ref": "#/$defs/Binding"
+            }
+          ]
+        },
+        "radiusY": {
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100000
+            },
+            {
+              "$ref": "#/$defs/Binding"
+            }
+          ]
+        },
+        "angle": {
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": -360,
+              "maximum": 360
+            },
+            {
+              "$ref": "#/$defs/Binding"
+            }
+          ]
+        },
+        "speed": {
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": -3600,
+              "maximum": 3600
+            },
+            {
+              "$ref": "#/$defs/Binding"
+            }
+          ]
+        },
+        "upright": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "$ref": "#/$defs/Binding"
+            }
+          ]
+        },
+        "fade": {
+          "type": "object",
+          "properties": {
+            "from": {
+              "type": "number",
+              "minimum": -1,
+              "maximum": 1
+            },
+            "to": {
+              "type": "number",
+              "minimum": -1,
+              "maximum": 1
+            }
+          },
+          "required": [
+            "from",
+            "to"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "center",
+        "radius",
+        "angle"
+      ],
+      "additionalProperties": false
+    },
     "Layer": {
       "type": "object",
       "oneOf": [
@@ -670,6 +793,9 @@
             },
             "animate": {
               "$ref": "#/$defs/LayerAnimation"
+            },
+            "orbit": {
+              "$ref": "#/$defs/Orbit"
             },
             "children": {
               "type": "array",
@@ -807,6 +933,9 @@
             },
             "animate": {
               "$ref": "#/$defs/ShapeAnimation"
+            },
+            "orbit": {
+              "$ref": "#/$defs/Orbit"
             },
             "width": {
               "anyOf": [
@@ -957,6 +1086,9 @@
             "animate": {
               "$ref": "#/$defs/ShapeAnimation"
             },
+            "orbit": {
+              "$ref": "#/$defs/Orbit"
+            },
             "width": {
               "anyOf": [
                 {
@@ -1094,6 +1226,9 @@
             "animate": {
               "$ref": "#/$defs/PathAnimation"
             },
+            "orbit": {
+              "$ref": "#/$defs/Orbit"
+            },
             "d": {
               "anyOf": [
                 {
@@ -1221,6 +1356,9 @@
             },
             "animate": {
               "$ref": "#/$defs/TextAnimation"
+            },
+            "orbit": {
+              "$ref": "#/$defs/Orbit"
             },
             "content": {
               "type": "string",
@@ -1406,6 +1544,9 @@
             "animate": {
               "$ref": "#/$defs/LayerAnimation"
             },
+            "orbit": {
+              "$ref": "#/$defs/Orbit"
+            },
             "asset": {
               "$ref": "#/$defs/Id"
             },
@@ -1540,6 +1681,9 @@
             },
             "animate": {
               "$ref": "#/$defs/LayerAnimation"
+            },
+            "orbit": {
+              "$ref": "#/$defs/Orbit"
             },
             "ref": {
               "$ref": "#/$defs/Id"

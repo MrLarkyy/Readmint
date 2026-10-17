@@ -1,0 +1,26 @@
+{
+  "version": 0,
+  "canvas": {
+    "width": 10,
+    "height": 10
+  },
+  "layers": [
+    {
+      "type": "rect",
+      "width": 1,
+      "height": 1,
+      "orbit": {
+        "center": {
+          "x": 5
+        },
+        "radius": -1,
+        "angle": 361,
+        "tilt": 10,
+        "fade": {
+          "from": 0,
+          "to": 1.5
+        }
+      }
+    }
+  ]
+}

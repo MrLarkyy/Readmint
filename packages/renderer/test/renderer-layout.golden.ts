@@ -380,5 +380,61 @@ export default defineGoldenSuite<RenderFixture>({
         },
       },
     },
+    {
+      // Labels on an ellipse stay upright; bars on a circle turn with it unless upright; a fade dims the back.
+      name: "orbit",
+      input: {
+        design: {
+          version: 0,
+          canvas: { width: 160, height: 100, background: "#ffffff" },
+          assets: { fonts: { medium: fontAssets.medium } },
+          layers: [
+            {
+              type: "ellipse",
+              x: 20,
+              y: 25,
+              width: 120,
+              height: 50,
+              fill: "none",
+              stroke: "#d0d7de",
+              strokeWidth: 1,
+            },
+            {
+              type: "text",
+              x: -8,
+              y: -6,
+              width: 16,
+              align: "middle",
+              content: "{{ item }}",
+              font: "medium",
+              fontSize: 9,
+              fill: "#0969da",
+              repeat: { each: '{{ ["N", "E", "S", "W", "x", "y"] }}', index: "k" },
+              orbit: {
+                center: { x: 80, y: 50 },
+                radius: 60,
+                radiusY: 25,
+                angle: "{{ k * 60 - 90 }}",
+                fade: { from: -1, to: 0.2 },
+              },
+            },
+            {
+              type: "group",
+              repeat: { each: "{{ [0, 1, 2, 3] }}", index: "k" },
+              orbit: {
+                center: { x: 80, y: 50 },
+                radius: 16,
+                angle: "{{ k * 90 + 30 }}",
+                upright: "{{ k % 2 == 0 }}",
+              },
+              children: [
+                { type: "rect", x: -5, y: -2, width: 10, height: 4, fill: "#bf3989" },
+                { type: "ellipse", x: -1, y: -1, width: 2, height: 2, fill: "#1a7f37" },
+              ],
+            },
+          ],
+        },
+      },
+    },
   ],
 });
