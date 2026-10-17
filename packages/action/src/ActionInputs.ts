@@ -25,6 +25,7 @@ export const ActionInputs = Object.freeze({
   "data-feed": { required: false, default: "", runnerDefault: false },
   "data-feed-limits": { required: false, default: "", runnerDefault: false },
   "props-file": { required: false, default: "", runnerDefault: false },
+  variant: { required: false, default: "", runnerDefault: false },
   locale: { required: false, default: "", runnerDefault: false },
   "commit-message": { required: false, default: "Update Readmint graphics", runnerDefault: false },
   branch: { required: false, default: "", runnerDefault: false },

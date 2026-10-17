@@ -44,9 +44,22 @@ export async function runAction(env: Env, deps: ActionDeps): Promise<number> {
       if (value !== undefined) log.mask(value);
     }
     const workspace = path.resolve(deps.cwd, nonEmpty(env.GITHUB_WORKSPACE) ?? ".");
-    const plan = await planOutputs(config.designs, config.outputDir, config.formats, (design) =>
-      entryExists(path.resolve(workspace, design)),
+    const plan = await planOutputs(
+      config.designs,
+      config.outputDir,
+      config.formats,
+      (design) => entryExists(path.resolve(workspace, design)),
+      config.variant,
     );
+    if (config.variant !== undefined) {
+      for (const entry of plan) {
+        if (entry.dark !== undefined && entry.dark.variant === undefined) {
+          log.info(
+            `${quoteForLog(entry.dark.design)} next to ${quoteForLog(entry.light.design)} wins over the ${config.variant.name} variant`,
+          );
+        }
+      }
+    }
 
     const props = await loadActionProps(config, workspace);
     if (props !== undefined) warnUnusedSections(props, plan, log);

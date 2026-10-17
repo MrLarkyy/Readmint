@@ -1,4 +1,4 @@
-import type { DataFeedSpec, DataJsonSpec, OutputFormat } from "@readmint/cli";
+import type { DataFeedSpec, DataJsonSpec, OutputFormat, RenderVariant } from "@readmint/cli";
 
 /** The inputs of one run, read and checked by `readInputs`. */
 export interface ActionConfig {
@@ -30,6 +30,8 @@ export interface ActionConfig {
   readonly dataFeed?: readonly DataFeedSpec[];
   /** Settings file merged into every design (the CLI `--props`). */
   readonly propsFile?: string;
+  /** Also render every design without a dark twin as this variant (`variant`). */
+  readonly variant?: RenderVariant;
   /** Locale override for the expression filters; absent: the design's `locale`, else `en`. */
   readonly locale?: string;
   readonly commitMessage: string;

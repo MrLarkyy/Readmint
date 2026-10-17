@@ -122,3 +122,29 @@ test("docs/action.md shows the snippet exactly as the Action prints it", () => {
     ]),
   );
 });
+
+describe("pictureSnippet with a variant", () => {
+  test("a variant entry gives the snippet of a twin entry", () => {
+    const outputs = (name: string) => [{ format: "svg" as const, output: `out/${name}.svg` }];
+    const twin = pictureSnippet([
+      {
+        stem: "card",
+        light: { design: "card.json", outputs: outputs("card") },
+        dark: { design: "card.dark.json", outputs: outputs("card.dark") },
+      },
+    ]);
+    const variant = pictureSnippet([
+      {
+        stem: "card",
+        light: { design: "card.json", outputs: outputs("card") },
+        dark: {
+          design: "card.json",
+          variant: { name: "dark", props: { theme: "dark" } },
+          outputs: outputs("card.dark"),
+        },
+      },
+    ]);
+    expect(variant).toBe(twin);
+    expect(variant).toContain("prefers-color-scheme: dark");
+  });
+});
