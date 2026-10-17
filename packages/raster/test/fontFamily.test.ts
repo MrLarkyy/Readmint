@@ -66,18 +66,28 @@ const extraBoldBytes: Uint8Array = readFileSync(
   join(dirname(fontPath), "Montserrat-ExtraBold.ttf"),
 );
 
-/** The font with its OS/2 usWidthClass set to `width` (1..9): one more face of the family at another width. */
-function atWidth(bytes: Uint8Array, width: number): Uint8Array {
+/** The font with the 16-bit OS/2 field at `offset` set to `value`. */
+function withOs2Field(bytes: Uint8Array, offset: number, value: number): Uint8Array {
   const copy = new Uint8Array(bytes);
   const view = new DataView(copy.buffer);
   for (let table = 0; table < view.getUint16(4); table++) {
     const record = 12 + table * 16;
     if (String.fromCharCode(...copy.subarray(record, record + 4)) === "OS/2") {
-      view.setUint16(view.getUint32(record + 8) + 6, width);
+      view.setUint16(view.getUint32(record + 8) + offset, value);
       return copy;
     }
   }
   throw new Error("the font has no OS/2 table");
+}
+
+/** The font with its OS/2 usWidthClass set to `width` (1..9): one more face of the family at another width. */
+function atWidth(bytes: Uint8Array, width: number): Uint8Array {
+  return withOs2Field(bytes, 6, width);
+}
+
+/** The font with its OS/2 usWeightClass set to `weight`: a face told apart by the weight inside it. */
+function atWeight(bytes: Uint8Array, weight: number): Uint8Array {
+  return withOs2Field(bytes, 4, weight);
 }
 
 interface Face {
@@ -171,6 +181,29 @@ describe("faces of one family", () => {
       "<tspan>",
       `<tspan font-family="&#39;Montserrat&#39;" font-weight="500" font-stretch="normal" font-style="normal">`,
     ]);
+  });
+
+  test("a weight or style no rule has takes the face CSS falls back to", () => {
+    // The weight inside each face (310, 510, 610, 710) tells the picked rule apart in the rewritten tag.
+    const face = (weight: number, bytes: Uint8Array) => ({
+      family: "Brand",
+      bytes: atWeight(bytes, weight + 10),
+      weight,
+    });
+    const picked = (faces: readonly Face[], weight: number, style = "normal"): string => {
+      const svg = facesSvg(
+        faces,
+        word(`font-family="'Brand'" font-weight="${String(weight)}" font-style="${style}"`),
+      );
+      const tag = /<text\s[^>]*>/.exec(matchFontFamilies(svg, rasterFonts(svg)))?.[0] ?? "";
+      return `${/font-weight="(\d+)"/.exec(tag)?.[1] ?? ""} ${/font-style="(\w+)"/.exec(tag)?.[1] ?? ""}`;
+    };
+    const three = [face(300, fontBytes), face(500, fontBytes), face(700, extraBoldBytes)];
+    expect(picked(three, 350)).toBe("310 normal");
+    expect(picked(three, 450)).toBe("510 normal");
+    expect(picked(three, 600)).toBe("710 normal");
+    expect(picked([face(300, fontBytes), face(600, extraBoldBytes)], 450)).toBe("310 normal");
+    expect(picked(three, 500, "italic")).toBe("510 normal");
   });
 
   test("a tspan whose family no font carries is a raster-font error", async () => {
