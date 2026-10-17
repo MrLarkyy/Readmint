@@ -37,7 +37,12 @@ interface RasterFixture {
 const scale = 2;
 const frameRate = 10;
 /** GIF has 256 colours a frame: the palette may move a colour slightly, never far, on a few pixels. */
-const gifTolerance: GoldenTolerance = { threshold: 0.15, maxDiffRatio: 0.01, includeAA: false };
+const gifTolerance: GoldenTolerance = {
+  threshold: 0.15,
+  maxDiffRatio: 0.01,
+  includeAA: false,
+  maxTileInk: 1,
+};
 
 let webpSrc = "";
 const pngSrc = dataUri("image/png", patternPng);
@@ -109,7 +114,7 @@ describe("golden raster", () => {
           );
           expect(
             comparison.pass,
-            `${name} frame ${String(index)} at ${String(start)} ms: ${String(comparison.diffPixels)} pixels differ`,
+            `${name} frame ${String(index)} at ${String(start)} ms: ${String(comparison.diffPixels)} pixels differ ${comparison.reason ?? ""}`,
           ).toBe(true);
           start += frame.delay * (format === "gif" ? 10 : 1);
         }

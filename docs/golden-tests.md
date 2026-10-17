@@ -85,7 +85,7 @@ The golden rasterizer stays resvg-js 2.6.2 (native, tests only). Raster export (
 `@resvg/resvg-wasm` 2.6.2, the same resvg core, and its suite (`packages/raster/test/raster.golden.test.ts`) checks
 that: every frame of every PNG, WebP, APNG and GIF it writes is decoded and compared with `rasterizeSvg` of the
 renderer's SVG at that frame's time, within `defaultNodeTolerance` (GIF: its 1-bit alpha applied to the reference,
-threshold 0.15, 1 % of the pixels). The decoded frames, stacked into one image per fixture and format, are the
+threshold 0.15, 1 % of the pixels, ink check off: the 1-bit alpha moves edge ink). The decoded frames, stacked into one image per fixture and format, are the
 committed goldens in `packages/raster/test/golden/raster/` (`pnpm golden:update raster`). WebP images in a design
 are compared with the same design holding the PNG twin, since resvg-js cannot draw them.
 
@@ -108,13 +108,29 @@ namespaces are left alone. Fixtures must not contain live data (names, counts fr
 
 ## Tolerance
 
-|                   | threshold | maxDiffRatio | includeAA |
-| ----------------- | --------- | ------------ | --------- |
-| Node (default)    | 0.1       | 0            | false     |
-| browser (default) | 0.2       | 0.01         | false     |
+|                   | threshold | maxDiffRatio | includeAA | maxTileInk |
+| ----------------- | --------- | ------------ | --------- | ---------- |
+| Node (default)    | 0.1       | 0            | false     | 0.001      |
+| browser (default) | 0.2       | 0.01         | false     | 1 (off)    |
 
-`threshold` is the pixelmatch colour distance, `maxDiffRatio` the share of differing pixels. Anti-aliased pixels are
-ignored so goldens made on one OS hold on another. PNGs above 4096 x 4096 are rejected before decoding.
+`threshold` is the pixelmatch colour distance, `maxDiffRatio` the share of differing pixels, `maxTileInk` the
+largest change of ink (luma, flattened on white and on black) in any 16 x 16 tile, as a share of the tile. Anti-aliased
+pixels are ignored so goldens made on one OS hold on another. PNGs above 4096 x 4096 are rejected before decoding.
+
+### What the PNG comparison catches
+
+pixelmatch counts a pixel only when its colour moves by about 26 luma levels or more (threshold 0.1), so a faint or
+small mark can vanish without one differing pixel: the 10 px month label JAN of the Year Ring year, drawn at opacity
+0.13, changes at most 20 levels per pixel and gave 0 differing pixels with `includeAA` on or off. The Node ink check
+closes that gap. Anti-aliasing moves coverage between neighbouring pixels but keeps the tile's total, so the signed sum
+per tile is stable across platforms (0 on Linux against Windows goldens) and the dropped JAN changes its tile by 0.95 %,
+nine times the limit. A failure names the tile and the change (`ink of the 16x16 tile at 240,96 changed by 0.95 %
+(limit 0.10 %)`). A mark of opacity down to about 0.014 is caught.
+
+Not caught: a mark moved within its tile, an equal-ink colour change below the pixel threshold, and in the browser leg
+any faint loss (Chromium and resvg differ by about 2 % ink per tile, so the check is off there). The SVG golden stays
+the exact pin of what is drawn. Where two draws of the same text legitimately differ by sub-pixel ink (glyphs from an
+embedded font against the same outlines as paths, GIF alpha), the comparison sets its own `maxTileInk`.
 
 ## Updating goldens
 
@@ -159,7 +175,7 @@ docker run --rm -e CI=true -v "$PWD:/src:ro" mcr.microsoft.com/playwright:v1.64.
 ## Portability of goldens
 
 Goldens are rendered by resvg with system fonts turned off, so they do not depend on the machine's fonts, and
-anti-aliased pixels are ignored by the comparison. They were generated on Windows and the whole suite also passes on Linux (`mcr.microsoft.com/playwright:v1.64.0-noble`, same lockfile). Chromium
+anti-aliased pixels are ignored by the comparison. They were generated on Windows and the whole suite also passes on Linux (`mcr.microsoft.com/playwright:v1.64.0-noble`, same lockfile); the tile ink of the Year Ring year rendered on Linux against the Windows golden is 0. Chromium
 rasterization differs slightly between platforms (gradient dithering, AA), which the browser tolerance absorbs.
 
 ## README images

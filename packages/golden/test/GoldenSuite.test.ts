@@ -59,4 +59,12 @@ describe("resolveTolerance", () => {
       RangeError,
     );
   });
+
+  test("rejects maxTileInk outside 0..1 and NaN", () => {
+    for (const value of [-0.1, 1.1, Number.NaN]) {
+      expect(() => resolveTolerance({ maxTileInk: value }, defaultBrowserTolerance)).toThrow(
+        RangeError,
+      );
+    }
+  });
 });

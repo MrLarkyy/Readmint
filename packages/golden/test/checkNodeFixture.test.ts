@@ -110,7 +110,7 @@ describe("checkNodeFixture", () => {
     await checkNodeFixture(suite, box, store, "update");
     const old = new Date("2001-01-01T00:00:00Z");
     utimesSync(store.pngPath("box"), old, old);
-    const withinTolerance = { ...suite, tolerance: { maxDiffRatio: 1 } };
+    const withinTolerance = { ...suite, tolerance: { maxDiffRatio: 1, maxTileInk: 1 } };
     const changed = { ...box, input: blue };
     const before = readFileSync(store.pngPath("box"));
     const result = await checkNodeFixture(

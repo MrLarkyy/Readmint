@@ -3,6 +3,7 @@ import { join } from "node:path";
 import type { Layer } from "@readmint/format";
 import { defaultNodeTolerance, resolveTolerance } from "@readmint/golden";
 import { comparePng } from "@readmint/golden/node";
+import { pathInkTolerance } from "./pathInkTolerance.js";
 import { expect, test } from "vitest";
 import { pairFixtures, type FontPair } from "./fontFixtures.js";
 import { renderFixture } from "./renderFixture.js";
@@ -24,7 +25,7 @@ test.each(shapingPairNames)(
     const comparison = comparePng(
       png("font"),
       png("paths"),
-      resolveTolerance(suite.tolerance, defaultNodeTolerance),
+      resolveTolerance({ maxTileInk: pathInkTolerance, ...suite.tolerance }, defaultNodeTolerance),
     );
     expect(comparison.reason).toBeUndefined();
     expect(comparison.diffPixels).toBe(0);

@@ -95,7 +95,9 @@ function withPatch(
 function pixelsEqual(left: string, right: string): void {
   const png = (svg: string) => rasterizeSvg(svg, 1, [], embeddedFonts(svg));
   const result = comparePng(png(left), png(right), defaultNodeTolerance);
-  expect(result.pass, `${String(result.diffPixels)} pixels differ`).toBe(true);
+  expect(result.pass, `${String(result.diffPixels)} pixels differ ${result.reason ?? ""}`).toBe(
+    true,
+  );
 }
 
 describe.each(cases)("%s %s", (template, section) => {
