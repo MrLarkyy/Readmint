@@ -15,6 +15,7 @@ import type {
   WeeksRecord,
 } from "./GitHubRecords.js";
 import { languageRepositories } from "./languageRepositories.js";
+import { languagesAuthored } from "./languagesAuthored.js";
 import { languagesByRepo } from "./languagesByRepo.js";
 import { selectPinned } from "./selectPinned.js";
 import { sortPushes } from "./sortPushes.js";
@@ -31,6 +32,7 @@ export function buildGitHubData(
   exclude: readonly string[],
   activity: ActivityRecord | null,
   weeks: WeeksRecord | null,
+  authored: ReadonlyMap<string, number> = new Map(),
 ): GitHubData {
   const { loaded, repositories, ids } = collectRepositories(pages, maxRepositories, exclude);
   const lastPage = pages.at(-1);
@@ -72,6 +74,7 @@ export function buildGitHubData(
     languages: languageShares(sources),
     languagesByRepo: languagesByRepo(sources),
     languageRepositories: languageRepositories(sources),
+    languagesAuthored: languagesAuthored(authored),
     contributions: {
       total: contributions.total,
       commits: contributions.commits,

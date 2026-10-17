@@ -11,6 +11,8 @@ export interface ResolvedSourceOptions {
   readonly maxRepositories: number;
   /** Lowercased, sorted, without duplicates. */
   readonly excludeRepositories: readonly string[];
+  /** 0 = `languagesAuthored` is not loaded. */
+  readonly languageCommitCap: number;
   readonly requestTimeoutMs: number;
   readonly maxRetryWaitSeconds: number;
   readonly cacheTtlSeconds: number;
@@ -19,10 +21,11 @@ export interface ResolvedSourceOptions {
   /** The public option type takes no signal; a one-argument sleep simply ignores it. */
   readonly sleep: (milliseconds: number, signal?: AbortSignal) => Promise<void>;
   readonly signal: AbortSignal | null;
+  readonly languageSignal: AbortSignal | null;
 }
 
 // A repository name, optionally `owner/name`.
-const REPOSITORY_PATTERN =
+export const REPOSITORY_PATTERN =
   /^(?:[A-Za-z0-9_](?:[A-Za-z0-9_]|-(?=[A-Za-z0-9_])){0,38}\/)?[A-Za-z0-9._-]{1,100}$/;
 
 // Visible ASCII only: a header value with CR/LF or other bytes could inject headers or make
@@ -66,6 +69,13 @@ export function resolveSourceOptions(options: GitHubSourceOptions): ResolvedSour
       GitHubLimits.defaultMaxRepositories,
     ),
     excludeRepositories: excludedRepositories(options.excludeRepositories),
+    languageCommitCap: integerOption(
+      "languageCommitCap",
+      options.languageCommitCap,
+      0,
+      GitHubLimits.maxLanguageCommitCap,
+      GitHubLimits.defaultLanguageCommitCap,
+    ),
     requestTimeoutMs: integerOption(
       "requestTimeoutMs",
       options.requestTimeoutMs,
@@ -91,6 +101,7 @@ export function resolveSourceOptions(options: GitHubSourceOptions): ResolvedSour
     fetch: options.fetch ?? ((url, init) => globalThis.fetch(url, init)),
     sleep: options.sleep ?? defaultSleep,
     signal: options.signal ?? null,
+    languageSignal: options.languageSignal ?? null,
   };
 }
 

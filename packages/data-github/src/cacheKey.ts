@@ -1,4 +1,5 @@
 import { dataSourceCacheKey, sha256Hex } from "@readmint/data";
+import { AUTHORED_TABLE_VERSION } from "./authoredLanguageTable.js";
 import { GITHUB_DATA_NAMESPACE, GITHUB_DATA_VERSION } from "./GitHubData.js";
 import { allQueries } from "./githubQueries.js";
 import type { GraphQLOperation } from "./postGraphQL.js";
@@ -11,6 +12,8 @@ export interface CacheKeyInput {
   readonly maxRepositories: number;
   /** Lowercased and sorted; part of the key only when not empty. */
   readonly excludeRepositories?: readonly string[];
+  /** Part of the key only when above 0. */
+  readonly languageCommitCap?: number;
 }
 
 /**
@@ -35,6 +38,9 @@ export async function cacheKey(
       ...(input.excludeRepositories === undefined || input.excludeRepositories.length === 0
         ? {}
         : { excludeRepositories: input.excludeRepositories.join(",") }),
+      ...(input.languageCommitCap === undefined || input.languageCommitCap === 0
+        ? {}
+        : { languageCommitCap: input.languageCommitCap, authoredTable: AUTHORED_TABLE_VERSION }),
     },
   );
 }

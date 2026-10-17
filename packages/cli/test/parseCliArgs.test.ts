@@ -47,8 +47,38 @@ test("--exclude-repositories is a trimmed comma list", () => {
   ).not.toHaveProperty("excludeRepositories");
 });
 
+test("--language-commit-cap is a whole number from 0 to 2000", () => {
+  expect(
+    parseCliArgs(["render", "a.json", "--github", "--language-commit-cap", "300"]),
+  ).toMatchObject({
+    languageCommitCap: 300,
+  });
+  expect(
+    parseCliArgs(["render", "a.json", "--github", "--language-commit-cap", "0"]),
+  ).toMatchObject({
+    languageCommitCap: 0,
+  });
+  expect(
+    parseCliArgs(["validate", "a.json", "--github", "--language-commit-cap", "2000"]),
+  ).toMatchObject({ languageCommitCap: 2000 });
+  expect(parseCliArgs(["render", "a.json", "--github"])).not.toHaveProperty("languageCommitCap");
+});
+
+test.each(["2001", "-1", "1.5", "abc", "", "0x10", "99999"])(
+  "--language-commit-cap %j is a usage error",
+  (value) => {
+    expect(() =>
+      parseCliArgs(["render", "a.json", "--github", "--language-commit-cap", value]),
+    ).toThrow(/--language-commit-cap/);
+  },
+);
+
 test.each([
   [["render", "a.json", "--login", "octocat"], "option --login needs --github"],
+  [
+    ["render", "a.json", "--language-commit-cap", "5"],
+    "option --language-commit-cap needs --github",
+  ],
   [
     ["render", "a.json", "--exclude-repositories", "x"],
     "option --exclude-repositories needs --github",

@@ -89,3 +89,28 @@ export interface WeeksRecord {
   readonly weeks: ReadonlyMap<string, readonly number[] | null>;
   readonly rateLimit: RateLimitRecord | null;
 }
+
+/** A repository the user committed to, before the fork, privacy and exclusion rules. */
+export interface ContributedRepositoryRecord {
+  readonly id: string;
+  readonly nameWithOwner: string;
+  readonly isFork: boolean;
+  readonly isPrivate: boolean;
+}
+
+export interface ContributedRecord {
+  readonly repositories: readonly ContributedRepositoryRecord[];
+  readonly rateLimit: RateLimitRecord | null;
+}
+
+/** One non-merge commit of the user on a default branch. */
+export interface AuthoredCommitRecord {
+  readonly nameWithOwner: string;
+  readonly oid: string;
+  readonly committedDate: string;
+}
+
+export interface AuthoredHistoryRecord {
+  readonly commits: readonly AuthoredCommitRecord[];
+  readonly rateLimit: RateLimitRecord | null;
+}

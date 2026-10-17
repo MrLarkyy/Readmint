@@ -144,6 +144,44 @@ export const weeksQuery: GraphQLOperation = {
   query: weeksQueryText(),
 };
 
+export const contributedQuery: GraphQLOperation = {
+  operationName: "ReadmintContributed",
+  query: `query ReadmintContributed($login: String!) {
+  user(login: $login) {
+    repositoriesContributedTo(
+      first: ${String(GitHubLimits.maxContributedRepositories)}
+      contributionTypes: [COMMIT]
+      includeUserRepositories: true
+      orderBy: { field: PUSHED_AT, direction: DESC }
+    ) {
+      nodes { id nameWithOwner isFork isPrivate }
+    }
+  }
+  ${RATE_LIMIT}
+}`,
+};
+
+export const authoredHistoryQuery: GraphQLOperation = {
+  operationName: "ReadmintAuthoredHistory",
+  query: `query ReadmintAuthoredHistory($ids: [ID!]!, $author: ID!) {
+  nodes(ids: $ids) {
+    ... on Repository {
+      id nameWithOwner
+      defaultBranchRef {
+        target {
+          ... on Commit {
+            history(first: ${String(GitHubLimits.languageCommitsPerRepository)}, author: { id: $author }) {
+              nodes { oid committedDate parents { totalCount } }
+            }
+          }
+        }
+      }
+    }
+  }
+  ${RATE_LIMIT}
+}`,
+};
+
 /** Every query text, in a fixed order; part of the cache key so a query change misses. */
 export const allQueries: readonly GraphQLOperation[] = [
   viewerQuery,
@@ -151,4 +189,6 @@ export const allQueries: readonly GraphQLOperation[] = [
   repositoriesQuery,
   activityQuery,
   weeksQuery,
+  contributedQuery,
+  authoredHistoryQuery,
 ];

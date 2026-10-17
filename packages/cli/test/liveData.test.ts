@@ -2,7 +2,14 @@ import { request } from "node:http";
 import { setTimeout as sleep } from "node:timers/promises";
 import { loadGitHubData } from "@readmint/data-github";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { CliError, ExitCode, loadLiveData, runCli } from "../src/index.js";
+import {
+  CliError,
+  ExitCode,
+  liveDataAuthoredMarginMs,
+  liveDataTimeout,
+  loadLiveData,
+  runCli,
+} from "../src/index.js";
 import { liveData } from "../src/liveData.js";
 import { boundDesign, type CliTree, makeCliTree, png } from "./cliTree.js";
 import { CANARY, echoing, fixtureBody, githubReplay } from "./githubFetch.js";
@@ -220,6 +227,26 @@ describe("render and validate --github", () => {
     expect(bad.requests).toEqual([]);
   });
 
+  test("--language-commit-cap reads the commits and warns when GitHub's answer is unusable", async () => {
+    const replay = githubReplay();
+    const run = await tree.run(
+      ["render", "bound/design.json", "--github", "--language-commit-cap", "3"],
+      { env: { GH_TOKEN: CANARY }, fetch: replay.fetch },
+    );
+    expect(run.code).toBe(ExitCode.ok);
+    expect(replay.graphql().map((request) => request.operation)).toContain("ReadmintContributed");
+    expect(run.stderr).toMatch(/^warning: GitHub data is incomplete \(authored\): .*\n$/);
+    expect(run.stderr).not.toContain(CANARY);
+    const plain = githubReplay();
+    await tree.run(["render", "bound/design.json", "--github"], {
+      env: { GH_TOKEN: CANARY },
+      fetch: plain.fetch,
+    });
+    expect(plain.graphql().map((request) => request.operation)).not.toContain(
+      "ReadmintContributed",
+    );
+  });
+
   test("an invalid --login exits with 4 invalid-option before any request", async () => {
     const replay = githubReplay();
     const run = await tree.run(
@@ -415,5 +442,14 @@ describe("preview --github", () => {
     expect(code).toBe(ExitCode.data);
     expect(stderr).toMatch(/^GitHub data \(unauthorized\): /);
     expect(stderr).not.toContain("preview:");
+  });
+});
+
+describe("the load limit", () => {
+  test("grows by 600 ms per commit and the commit reading ends 60 s earlier", () => {
+    expect(liveDataTimeout(0)).toBe(300_000);
+    expect(liveDataTimeout(2000)).toBe(1_500_000);
+    expect(liveDataAuthoredMarginMs).toBe(60_000);
+    expect(liveDataTimeout(1) - liveDataAuthoredMarginMs).toBeGreaterThan(0);
   });
 });

@@ -17,7 +17,11 @@ function documentedPaths(): string[] {
 test("the field table lists exactly the paths of the data object", () => {
   const documented = documentedPaths();
   expect(new Set(documented).size).toBe(documented.length);
-  expect([...documented].sort()).toEqual(keyPaths(expected).sort());
+  // The fixture user reads no commits, so `languagesAuthored` is empty there: its entries come from a sample.
+  const authored = keyPaths({
+    languagesAuthored: [{ name: "Kotlin", color: null, share: 1, additions: 1 }],
+  });
+  expect([...documented].sort()).toEqual([...new Set([...keyPaths(expected), ...authored])].sort());
 });
 
 test("the documented version is GITHUB_DATA_VERSION", () => {
