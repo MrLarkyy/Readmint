@@ -4,12 +4,15 @@ import {
   formatIssue,
   loadRenderInput,
   type OutputFormat,
+  quoteForLog,
+  relabelLine,
   type RemoteImageOptions,
   type RenderVariant,
   renderOutput,
 } from "@readmint/cli";
 import { ActionError } from "./ActionError.js";
 import type { PlannedDesign } from "./PlannedDesign.js";
+import type { PlannedFile } from "./PlannedFile.js";
 
 /** One rendered output file. */
 export interface RenderedFile {
@@ -66,9 +69,10 @@ export async function renderAll(
       let loaded = false;
       try {
         const input = await loadRenderInput(
-          { design: planned.design },
+          { design: planned.design, ...(planned.root === undefined ? {} : { root: planned.root }) },
           {
             cwd: workspace,
+            ...(planned.entry === undefined ? {} : { entry: planned.entry }),
             ...(planned.variant === undefined ? {} : { variant: planned.variant }),
             data,
             ...(props === undefined ? {} : { props }),
@@ -76,11 +80,13 @@ export async function renderAll(
           },
         );
         loaded = true;
-        const name =
-          planned.variant === undefined
-            ? input.file.name
-            : `${input.file.name} (${planned.variant.name} variant)`;
-        warnings.push(...(input.warnings ?? []));
+        const label = labelOf(planned, input.file.name);
+        const name = label ?? input.file.name;
+        warnings.push(
+          ...(input.warnings ?? []).map((line) =>
+            label === undefined ? line : relabelLine(line, input.file.name, label),
+          ),
+        );
         const result = await renderOutput(
           input,
           planned.outputs.map((output) => output.format),
@@ -105,11 +111,12 @@ export async function renderAll(
       } catch (error) {
         if (!(error instanceof CliError)) throw error;
         if (planned === entry.light && !loaded) lightLoaded = false;
-        const { variant } = planned;
+        const name = fileName(planned);
+        const label = labelOf(planned, name);
         problems.push(
-          ...(variant === undefined
+          ...(label === undefined
             ? error.lines
-            : error.lines.map((line) => labelled(line, planned.design, variant))),
+            : error.lines.map((line) => relabelLine(line, name, label))),
         );
       }
     }
@@ -118,9 +125,21 @@ export async function renderAll(
   return { files, warnings, notes };
 }
 
-/** The line of a variant render with the variant after the design file name, so it reads apart from the light one. */
-function labelled(line: string, design: string, variant: RenderVariant): string {
-  return line.startsWith(`${design}:`)
-    ? `${design} (${variant.name} variant)${line.slice(design.length)}`
-    : line;
+/** The design file as messages name it: relative to the manifest folder when there is one. */
+function fileName(planned: PlannedFile): string {
+  return planned.root === undefined || planned.root === "."
+    ? planned.design
+    : planned.design.slice(planned.root.length + 1);
+}
+
+/**
+ * How a render reads in a message so it is told apart from the others of its design: the variant after the design file
+ * name, the render name of a manifest entry; `undefined` for a plain light design.
+ */
+function labelOf(planned: PlannedFile, name: string): string | undefined {
+  const { entry, variant } = planned;
+  if (entry !== undefined) {
+    return `${name} (render ${quoteForLog(entry.name)}${variant === undefined ? "" : `, ${variant.name} variant`})`;
+  }
+  return variant === undefined ? undefined : `${name} (${variant.name} variant)`;
 }

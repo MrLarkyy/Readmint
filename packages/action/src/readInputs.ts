@@ -50,15 +50,26 @@ export function readInputs(env: Env): ActionConfig {
   };
 
   const designs = lines(value("designs"));
-  if (designs.length === 0) problems.push("input designs lists no design file");
-  if (designs.length > maxDesigns) {
-    problems.push(
-      `input designs lists ${String(designs.length)} files; at most ${String(maxDesigns)}`,
-    );
-  }
-  for (const design of designs) {
-    const reason = checkRelativePath(design);
-    if (reason !== undefined) problems.push(`design ${quoteForLog(design)} ${reason}`);
+  const manifestText = value("manifest");
+  const manifest = manifestText.replaceAll("\\", "/");
+  if (manifestText !== "" && designs.length > 0) {
+    problems.push("inputs designs and manifest are exclusive; set one");
+  } else if (manifestText !== "") {
+    const reason = checkRelativePath(manifestText);
+    if (reason !== undefined) {
+      problems.push(`input manifest ${quoteForLog(manifestText)} ${reason}`);
+    }
+  } else {
+    if (designs.length === 0) problems.push("input designs lists no design file");
+    if (designs.length > maxDesigns) {
+      problems.push(
+        `input designs lists ${String(designs.length)} files; at most ${String(maxDesigns)}`,
+      );
+    }
+    for (const design of designs) {
+      const reason = checkRelativePath(design);
+      if (reason !== undefined) problems.push(`design ${quoteForLog(design)} ${reason}`);
+    }
   }
 
   const outputText = value("output-dir");
@@ -202,6 +213,7 @@ export function readInputs(env: Env): ActionConfig {
   if (problems.length > 0) throw new ActionError("input", problems);
   return {
     designs,
+    ...(manifestText === "" ? {} : { manifest }),
     outputDir,
     formats,
     scale,

@@ -9,7 +9,8 @@ export interface ActionInput {
 
 /** The inputs of `action.yml`, by name; `actionYml.test` keeps the two equal. */
 export const ActionInputs = Object.freeze({
-  designs: { required: true, default: "", runnerDefault: false },
+  designs: { required: false, default: "", runnerDefault: false },
+  manifest: { required: false, default: "", runnerDefault: false },
   "output-dir": { required: false, default: "readmint", runnerDefault: false },
   formats: { required: false, default: "svg", runnerDefault: false },
   scale: { required: false, default: "2", runnerDefault: false },

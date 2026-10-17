@@ -3,7 +3,9 @@ import path from "node:path";
 import {
   CliError,
   type DesignProps,
+  type LoadedRenderManifest,
   loadDesignProps,
+  loadRenderManifest,
   partialDataWarning,
   propsSection,
   quoteForLog,
@@ -18,6 +20,7 @@ import { GitRepo } from "./GitRepo.js";
 import { loadActionData } from "./loadActionData.js";
 import { pictureSnippet } from "./pictureSnippet.js";
 import type { PlannedDesign } from "./PlannedDesign.js";
+import { planManifest } from "./planManifest.js";
 import { planOutputs } from "./planOutputs.js";
 import { readInputs } from "./readInputs.js";
 import { renderAll } from "./renderAll.js";
@@ -44,14 +47,22 @@ export async function runAction(env: Env, deps: ActionDeps): Promise<number> {
       if (value !== undefined) log.mask(value);
     }
     const workspace = path.resolve(deps.cwd, nonEmpty(env.GITHUB_WORKSPACE) ?? ".");
-    const plan = await planOutputs(
-      config.designs,
-      config.outputDir,
-      config.formats,
-      (design) => entryExists(path.resolve(workspace, design)),
-      config.variant,
-    );
-    if (config.variant !== undefined) {
+    const plan =
+      config.manifest === undefined
+        ? await planOutputs(
+            config.designs,
+            config.outputDir,
+            config.formats,
+            (design) => entryExists(path.resolve(workspace, design)),
+            config.variant,
+          )
+        : planManifest(
+            await loadActionManifest(config.manifest, workspace),
+            config.outputDir,
+            config.formats,
+            config.variant,
+          );
+    if (config.manifest === undefined && config.variant !== undefined) {
       for (const entry of plan) {
         if (entry.dark !== undefined && entry.dark.variant === undefined) {
           log.info(
@@ -174,15 +185,30 @@ async function loadActionProps(
   }
 }
 
+/** The manifest of the `manifest` input, loaded inside the workspace; a failure becomes `ActionError` (input) with the loader's lines. */
+async function loadActionManifest(
+  manifest: string,
+  workspace: string,
+): Promise<LoadedRenderManifest> {
+  try {
+    return await loadRenderManifest(manifest, workspace, { confinedTo: workspace });
+  } catch (error) {
+    if (error instanceof CliError) throw new ActionError("input", error.lines);
+    throw error;
+  }
+}
+
 function warnUnusedSections(
   props: DesignProps,
   plan: readonly PlannedDesign[],
   log: ActionLog,
 ): void {
-  const used = new Set(plan.map((entry) => propsSection(entry.light.design)));
+  const used = new Set(
+    plan.map((entry) => entry.light.entry?.name ?? propsSection(entry.light.design)),
+  );
   for (const section of Object.keys(props)) {
     if (!used.has(section)) {
-      log.warning(`props-file section ${quoteForLog(section)} names no listed design`);
+      log.warning(`props-file section ${quoteForLog(section)} names no listed design or render`);
     }
   }
 }

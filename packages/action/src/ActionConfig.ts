@@ -2,8 +2,10 @@ import type { DataFeedSpec, DataJsonSpec, OutputFormat, RenderVariant } from "@r
 
 /** The inputs of one run, read and checked by `readInputs`. */
 export interface ActionConfig {
-  /** Design files as listed, relative to the workspace; 1 to `maxDesigns`. */
+  /** Design files as listed, relative to the workspace; 1 to `maxDesigns`, none with a `manifest`. */
   readonly designs: readonly string[];
+  /** The render manifest instead of `designs`, relative to the workspace, `/`-separated. */
+  readonly manifest?: string;
   /** Output folder relative to the workspace, `/`-separated, never escaping it. */
   readonly outputDir: string;
   /** Each listed once, in the listed order; the first is the one the README snippet shows. */
@@ -28,9 +30,9 @@ export interface ActionConfig {
   readonly dataJson?: readonly DataJsonSpec[];
   /** Feeds of `data-feed` with the limits of `data-feed-limits`, added after the JSON sources. */
   readonly dataFeed?: readonly DataFeedSpec[];
-  /** Settings file merged into every design (the CLI `--props`). */
+  /** Settings file merged into every design (the CLI `--props`); with a manifest, a section per render name. */
   readonly propsFile?: string;
-  /** Also render every design without a dark twin as this variant (`variant`). */
+  /** Also render every design without a dark twin, and every manifest render without `variants`, as this variant. */
   readonly variant?: RenderVariant;
   /** Locale override for the expression filters; absent: the design's `locale`, else `en`. */
   readonly locale?: string;
