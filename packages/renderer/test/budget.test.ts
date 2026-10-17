@@ -1,9 +1,10 @@
-import type { AnimationTrack, Design, Layer } from "@readmint/format";
+import type { AnimationTrack, Design, Layer, Orbit } from "@readmint/format";
 import { describe, expect, test } from "vitest";
-import { loadScale } from "../../../test-support/loadScale.js";
+import { timed } from "../../../test-support/loadScale.js";
 import { RenderLimits, renderSvg } from "../src/index.js";
 import { minimumNodeBytes } from "../src/expandLayers.js";
 import type { AnimatedProperty } from "../src/NodeAnimation.js";
+import { minimumOrbitBytes } from "../src/NodeOrbit.js";
 import { minimumTrackBytes } from "../src/resolveAnimation.js";
 import { utf8Length } from "../src/utf8Length.js";
 import { fontAssets, imageAssets } from "./testAssets.js";
@@ -41,26 +42,34 @@ const hugeNestedRepeat: Design = {
 
 test("a huge nested repeat stops at the output budget before building everything", () => {
   // The copy limit lifted, only the bytes each node reserves before it is built stop the expansion.
-  const started = performance.now();
-  const result = renderSvg(hugeNestedRepeat, {
-    data: { items: hugeItems },
-    limits: { maxRepeatCopies: 1e9 },
-  });
+  const {
+    value: result,
+    ms: elapsed,
+    scale,
+  } = timed(() =>
+    renderSvg(hugeNestedRepeat, {
+      data: { items: hugeItems },
+      limits: { maxRepeatCopies: 1e9 },
+    }),
+  );
   expect(result).toMatchObject({ ok: false, issues: [{ path: "", code: "too-large" }] });
   expect(result.ok ? "" : result.issues[0]?.message).toContain("5242880 bytes");
-  expect(performance.now() - started).toBeLessThan(2000 * loadScale());
+  expect(elapsed).toBeLessThan(2000 * scale);
 });
 
 test("a huge nested repeat stops at the copy limit first by default", () => {
-  const started = performance.now();
-  const result = renderSvg(hugeNestedRepeat, { data: { items: hugeItems } });
+  const {
+    value: result,
+    ms: elapsed,
+    scale,
+  } = timed(() => renderSvg(hugeNestedRepeat, { data: { items: hugeItems } }));
   // The copy limit (10000 outer + 10000 per outer item) is passed at outer item 9, before the output budget.
   expect(result).toMatchObject({
     ok: false,
     issues: [{ path: "/layers/0/children/0/repeat", code: "too-large" }],
   });
   expect(result.ok ? "" : result.issues[0]?.message).toContain("repeat item 9");
-  expect(performance.now() - started).toBeLessThan(2000 * loadScale());
+  expect(elapsed).toBeLessThan(2000 * scale);
 });
 
 test.each([
@@ -79,9 +88,8 @@ test.each([
       },
     ],
   };
-  const started = performance.now();
-  const result = renderSvg(design, { data: { items } });
-  expect(performance.now() - started).toBeLessThan(500 * loadScale());
+  const { value: result, ms: elapsed, scale } = timed(() => renderSvg(design, { data: { items } }));
+  expect(elapsed).toBeLessThan(500 * scale);
   expect(result).toMatchObject({
     ok: false,
     issues: [{ path: "/layers/0/children/0/repeat", code: "too-large" }],
@@ -153,12 +161,14 @@ test.each([
   };
   const long = "word ".repeat(2000);
   const steps = " l1 1".repeat(19_999);
-  const started = performance.now();
-  const result = renderSvg(design, { data: { items, long, steps } });
-  const elapsed = performance.now() - started;
+  const {
+    value: result,
+    ms: elapsed,
+    scale,
+  } = timed(() => renderSvg(design, { data: { items, long, steps } }));
   // The output budget (a path reserves its data, a text its content) trips long before the copy limit.
   expect(result).toMatchObject({ ok: false, issues: [{ path: "", code: "too-large" }] });
-  expect(elapsed).toBeLessThan(500 * loadScale());
+  expect(elapsed).toBeLessThan(500 * scale);
 });
 
 test("a 10000-rect design renders in under 2 s and the report counts UTF-8 bytes", () => {
@@ -176,9 +186,8 @@ test("a 10000-rect design renders in under 2 s and the report counts UTF-8 bytes
     canvas: { width: 100, height: 100 },
     layers,
   };
-  const started = performance.now();
-  const result = renderSvg(design);
-  expect(performance.now() - started).toBeLessThan(2000 * loadScale());
+  const { value: result, ms: elapsed, scale } = timed(() => renderSvg(design));
+  expect(elapsed).toBeLessThan(2000 * scale);
   expect(result.ok).toBe(true);
   if (!result.ok) return;
   expect(result.report.bytes).toBe(utf8Length(result.svg));
@@ -329,14 +338,19 @@ test("40000 copies of a 2 MB image under a second asset id with the same bytes r
       },
     ],
   };
-  const started = performance.now();
-  const result = renderSvg(design, {
-    data: { items: new Array<number>(200).fill(0) },
-    // Separate copies of the bytes, so nothing but their content makes the two assets alike.
-    assets: { images: { first: data, second: data.slice() } },
-    limits: { maxOutputBytes: 20_000_000 },
-  });
-  expect(performance.now() - started).toBeLessThan(2000 * loadScale());
+  const {
+    value: result,
+    ms: elapsed,
+    scale,
+  } = timed(() =>
+    renderSvg(design, {
+      data: { items: new Array<number>(200).fill(0) },
+      // Separate copies of the bytes, so nothing but their content makes the two assets alike.
+      assets: { images: { first: data, second: data.slice() } },
+      limits: { maxOutputBytes: 20_000_000 },
+    }),
+  );
+  expect(elapsed).toBeLessThan(2000 * scale);
   if (!result.ok) throw new Error(JSON.stringify(result.issues));
   const dataUri = `data:image/png;base64,${Buffer.from(data).toString("base64")}`;
   expect(result.svg.split(dataUri)).toHaveLength(2);
@@ -358,9 +372,8 @@ test("1000 copies of a 1 MB image write its data once, in under 2 s", () => {
     data: { items: new Array<number>(1000).fill(0) },
     assets: { images: { big } },
   };
-  const started = performance.now();
-  const result = renderSvg(design, options);
-  expect(performance.now() - started).toBeLessThan(2000 * loadScale());
+  const { value: result, ms: elapsed, scale } = timed(() => renderSvg(design, options));
+  expect(elapsed).toBeLessThan(2000 * scale);
   if (!result.ok) throw new Error(JSON.stringify(result.issues));
   const dataUri = `data:image/png;base64,${Buffer.from(big).toString("base64")}`;
   expect(result.svg.split(dataUri)).toHaveLength(2);
@@ -416,9 +429,12 @@ test("expression work of the whole render is bounded, also for copies an if drop
       },
     ],
   };
-  const started = performance.now();
-  const result = renderSvg(design, { data: { items, s: "a".repeat(10_000) } });
-  expect(performance.now() - started).toBeLessThan(2000 * loadScale());
+  const {
+    value: result,
+    ms: elapsed,
+    scale,
+  } = timed(() => renderSvg(design, { data: { items, s: "a".repeat(10_000) } }));
+  expect(elapsed).toBeLessThan(2000 * scale);
   expect(result).toMatchObject({ ok: false, issues: [{ code: "binding" }] });
   expect(result.ok ? "" : result.issues[0]?.message).toContain("(budget)");
 });
@@ -494,49 +510,53 @@ test("a 53 x 7 staggered calendar renders in under 1 s and under 200 kB", () => 
     weeks: Array.from({ length: 53 }, (_, index) => index),
     days: ["#9be9a8", "#40c463", "#30a14e", "#216e39", "#9be9a8", "#40c463", "#30a14e"],
   };
-  const started = performance.now();
-  const result = renderSvg(design, { data });
-  expect(performance.now() - started).toBeLessThan(1000 * loadScale());
+  const { value: result, ms: elapsed, scale } = timed(() => renderSvg(design, { data }));
+  expect(elapsed).toBeLessThan(1000 * scale);
   expect(result.ok ? result.warnings : result.issues).toEqual([]);
   expect(result.ok && result.report.bytes).toBeLessThan(200_000);
   expect(result.ok && result.svg.match(/<rect /gu)).toHaveLength(371);
 });
 
 test("10000 animated copies stop at the output budget before everything is built", () => {
-  const started = performance.now();
-  const result = renderSvg(
-    {
-      version: 0,
-      canvas: { width: 100, height: 100 },
-      animation: { duration: 60_000 },
-      layers: [
-        {
-          type: "rect",
-          width: 1,
-          height: 1,
-          repeat: { each: "{{items}}" },
-          animate: {
-            opacity: fadeIn({ stagger: 5 }),
-            x: fadeIn({ stagger: 5 }),
-            y: fadeIn({ stagger: 5 }),
-            rotation: fadeIn({ stagger: 5 }),
-            scale: fadeIn({ stagger: 5 }),
-            fill: {
-              keyframes: [
-                { offset: 0, value: "#000000" },
-                { offset: 1, value: "#ffffff" },
-              ],
-              stagger: 5,
+  const {
+    value: result,
+    ms: elapsed,
+    scale,
+  } = timed(() =>
+    renderSvg(
+      {
+        version: 0,
+        canvas: { width: 100, height: 100 },
+        animation: { duration: 60_000 },
+        layers: [
+          {
+            type: "rect",
+            width: 1,
+            height: 1,
+            repeat: { each: "{{items}}" },
+            animate: {
+              opacity: fadeIn({ stagger: 5 }),
+              x: fadeIn({ stagger: 5 }),
+              y: fadeIn({ stagger: 5 }),
+              rotation: fadeIn({ stagger: 5 }),
+              scale: fadeIn({ stagger: 5 }),
+              fill: {
+                keyframes: [
+                  { offset: 0, value: "#000000" },
+                  { offset: 1, value: "#ffffff" },
+                ],
+                stagger: 5,
+              },
             },
           },
-        },
-      ],
-    },
-    // The keyframe limit (120000 here) lifted, only the bytes each track reserves stop the expansion.
-    { data: { items: hugeItems }, limits: { maxAnimationKeyframes: 1e9 } },
+        ],
+      },
+      // The keyframe limit (120000 here) lifted, only the bytes each track reserves stop the expansion.
+      { data: { items: hugeItems }, limits: { maxAnimationKeyframes: 1e9 } },
+    ),
   );
   expect(result).toMatchObject({ ok: false, issues: [{ path: "", code: "too-large" }] });
-  expect(performance.now() - started).toBeLessThan(1000 * loadScale());
+  expect(elapsed).toBeLessThan(1000 * scale);
 });
 
 test("the bytes reserved per animation track never exceed what the track adds to a frame", () => {
@@ -623,12 +643,16 @@ test.each([
   ["the animated SVG", undefined],
   ["a frame", 500],
 ] as const)("tracks over many copies stop %s at maxAnimationKeyframes fast", (_name, time) => {
-  const started = performance.now();
-  const result = renderSvg(manyKeyframes, {
-    data: manyKeyframesData,
-    ...(time === undefined ? {} : { time }),
-  });
-  const elapsed = performance.now() - started;
+  const {
+    value: result,
+    ms: elapsed,
+    scale,
+  } = timed(() =>
+    renderSvg(manyKeyframes, {
+      data: manyKeyframesData,
+      ...(time === undefined ? {} : { time }),
+    }),
+  );
   expect(result).toMatchObject({
     ok: false,
     issues: [{ path: "/layers/0/children/0/animate/stroke", code: "too-large" }],
@@ -637,7 +661,99 @@ test.each([
   expect(result.ok ? "" : result.issues[0]?.message).toBe(
     "this track brings the render to 100032 animation keyframes; at most 100000 are allowed (every repeat copy counts) (repeat item 1, repeat item 41)",
   );
-  expect(elapsed).toBeLessThan(1000 * loadScale());
+  expect(elapsed).toBeLessThan(1000 * scale);
+});
+
+describe("orbits (RM-111)", () => {
+  const orbit: Orbit = {
+    center: { x: 50, y: 50 },
+    radius: 40,
+    radiusY: 10,
+    angle: "{{ item % 360 }}",
+    speed: -6,
+    fade: { from: -0.5, to: 0.5 },
+  };
+  const design: Design = {
+    version: 0,
+    canvas: { width: 100, height: 100 },
+    animation: { duration: 60_000 },
+    layers: [
+      {
+        type: "group",
+        repeat: { each: "{{ rows }}" },
+        children: [{ type: "rect", width: 1, height: 1, repeat: { each: "{{ items }}" }, orbit }],
+      },
+    ],
+  };
+  // 10 x 10000 copies, 31 keyframes each: the keyframe limit stops the 3226th copy
+  const huge = {
+    rows: Array.from({ length: 10 }, (_, index) => index),
+    items: Array.from({ length: 10_000 }, (_, index) => index),
+  };
+
+  test.each([
+    ["the animated SVG", undefined],
+    ["a frame", 500],
+  ] as const)("100000 moving, fading copies stop %s at a limit fast", (_name, time) => {
+    const {
+      value: result,
+      ms: elapsed,
+      scale,
+    } = timed(() =>
+      renderSvg(design, {
+        data: huge,
+        ...(time === undefined ? {} : { time }),
+      }),
+    );
+    expect(result).toMatchObject({
+      ok: false,
+      issues: [{ path: "/layers/0/children/0/orbit/fade", code: "too-large" }],
+    });
+    expect(elapsed).toBeLessThan(2000 * scale);
+  });
+
+  test("each copy counts 2 keyframes per moving turn and its fade's keyframes", () => {
+    // three turns of the ellipse move: 6, the fade over 360 degrees: 25
+    const limits = { maxAnimationKeyframes: 2 * 31 };
+    expect(renderSvg(design, { data: { rows: [0], items: [1, 2] }, limits }).ok).toBe(true);
+    expect(renderSvg(design, { data: { rows: [0], items: [1, 2, 3] }, limits })).toMatchObject({
+      ok: false,
+      issues: [{ path: "/layers/0/children/0/orbit/speed", code: "too-large" }],
+    });
+  });
+
+  test("the bytes an orbit reserves never exceed what it adds, static or moving", () => {
+    const render = (layer: Layer, time?: number) => {
+      const result = renderSvg(
+        {
+          version: 0,
+          canvas: { width: 1, height: 1 },
+          animation: { duration: 1000 },
+          layers: [layer],
+        },
+        time === undefined ? {} : { time },
+      );
+      if (!result.ok) throw new Error(JSON.stringify(result.issues));
+      return result.svg.replace(/<defs>.*<\/defs>/u, "").length;
+    };
+    const plain = render({ type: "rect", width: 1, height: 1 });
+    const placed = (extra: Record<string, unknown>) =>
+      ({
+        type: "rect",
+        width: 1,
+        height: 1,
+        orbit: { center: { x: 0, y: 0 }, radius: 1, angle: 0, ...extra },
+      }) as Layer;
+    // one static group; a circle that moves adds two spin groups
+    expect(render(placed({})) - plain).toBeGreaterThanOrEqual(minimumOrbitBytes.chain);
+    for (const time of [undefined, 0, 250]) {
+      expect(render(placed({ speed: 90 }), time) - plain).toBeGreaterThanOrEqual(
+        minimumOrbitBytes.chain + 2 * minimumOrbitBytes.spin,
+      );
+    }
+    // nothing to write, nothing reserved: an orbit of 0 at its centre writes no group
+    expect(render(placed({ radius: 0 })) - plain).toBe(0);
+  });
 });
 
 test("maxAnimationKeyframes defaults to 100000 and can be overridden", () => {
@@ -705,10 +821,12 @@ test.each(["font", "paths"] as const)(
       },
       layers: [{ type: "text", content: "{{text}}", width: 680, font: "n", fontSize: 12 }],
     };
-    const started = performance.now();
-    const result = renderSvg(design, { data: { text: content } });
-    const elapsed = performance.now() - started;
-    expect(elapsed).toBeLessThan(2000 * loadScale());
+    const {
+      value: result,
+      ms: elapsed,
+      scale,
+    } = timed(() => renderSvg(design, { data: { text: content } }));
+    expect(elapsed).toBeLessThan(2000 * scale);
     if (drawAs === "paths") {
       // Some 12000 outlines of path data pass the output budget: it stops the render, not the shaping work.
       expect(result).toMatchObject({ ok: false, issues: [{ code: "too-large" }] });
@@ -743,14 +861,16 @@ describe("hostile lets (RM-118)", () => {
         },
       ],
     };
-    const started = performance.now();
-    const result = renderSvg(design, { data: { items } });
-    const elapsed = performance.now() - started;
+    const {
+      value: result,
+      ms: elapsed,
+      scale,
+    } = timed(() => renderSvg(design, { data: { items } }));
     expect(result).toMatchObject({ ok: false, issues: [{ code: "binding" }] });
     const issue = result.ok ? undefined : result.issues[0];
     expect(issue?.path).toMatch(/^\/layers\/0\/let(?:\/n\d+)?$/u);
     expect(issue?.message).toContain("(budget)");
-    expect(elapsed).toBeLessThan(2000 * loadScale());
+    expect(elapsed).toBeLessThan(2000 * scale);
   });
 
   /** Four nested 64-entry lets (256 locals) above a group of 10 copies of a 9990-copy repeat of `leaf`. */
@@ -817,12 +937,14 @@ describe("hostile lets (RM-118)", () => {
   test.each(wideLeaves)(
     "repeat copies of %s under 256 let locals are charged their copies and stop fast",
     (_name, leaf, components) => {
-      const started = performance.now();
-      const result = renderSvg(wideLetsAbove(leaf, components), { data: wideData });
-      const elapsed = performance.now() - started;
+      const {
+        value: result,
+        ms: elapsed,
+        scale,
+      } = timed(() => renderSvg(wideLetsAbove(leaf, components), { data: wideData }));
       expect(result).toMatchObject({ ok: false, issues: [{ code: "binding" }] });
       expect(result.ok ? "" : result.issues[0]?.message).toContain("(budget)");
-      expect(elapsed).toBeLessThan(2000 * loadScale());
+      expect(elapsed).toBeLessThan(2000 * scale);
     },
   );
 
@@ -866,11 +988,13 @@ describe("hostile lets (RM-118)", () => {
       canvas: { width: 10, height: 10 },
       layers: [{ type: "group", repeat: { each: "{{ items }}" }, children: [layer] }],
     };
-    const started = performance.now();
-    const result = renderSvg(design, { data: { items } });
-    const elapsed = performance.now() - started;
+    const {
+      value: result,
+      ms: elapsed,
+      scale,
+    } = timed(() => renderSvg(design, { data: { items } }));
     expect(result.ok).toBe(false);
     expect(result.ok ? "" : result.issues[0]?.message).toMatch(/\((?:too-large|budget)\)/u);
-    expect(elapsed).toBeLessThan(2000 * loadScale());
+    expect(elapsed).toBeLessThan(2000 * scale);
   });
 });

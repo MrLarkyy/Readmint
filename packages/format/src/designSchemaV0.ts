@@ -120,6 +120,7 @@ function layer(
     "repeat?": ref("Repeat"),
     "let?": ref("Let"),
     "animate?": ref(animation),
+    "orbit?": ref("Orbit"),
     ...properties,
   });
 }
@@ -216,6 +217,21 @@ const defs = new Map<string, SchemaNode>([
         "gap?": length,
       }),
     ]),
+  ],
+  [
+    "Orbit",
+    object("an orbit", {
+      center: object("an orbit centre", { x: coordinate, y: coordinate }),
+      radius: length,
+      "radiusY?": length,
+      angle: bindable(numberIn(ValueRanges.rotation)),
+      "speed?": bindable(numberIn(ValueRanges.orbitSpeed)),
+      "upright?": bindable(boolean()),
+      "fade?": object("an orbit fade", {
+        from: numberIn(ValueRanges.depth),
+        to: numberIn(ValueRanges.depth),
+      }),
+    }),
   ],
   [
     "Layer",

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { loadScale } from "../../../test-support/loadScale.js";
+import { timed } from "../../../test-support/loadScale.js";
 import { MalformedFont } from "../src/index.js";
 import { readTableDirectory } from "../src/readTableDirectory.js";
 import { SfntReader } from "../src/SfntReader.js";
@@ -133,26 +133,27 @@ const ceilingMs = 1000;
 describe("crafted kern features cost work linear in the table", () => {
   const answer = (count: number) => {
     const font = parse(withGpos(repeatedKernFeature(count)));
-    const started = performance.now();
-    let value: number | MalformedFont;
-    try {
-      value = font.kerning(font.glyphFor(0x41), font.glyphFor(0x56));
-    } catch (error) {
-      if (!(error instanceof MalformedFont)) throw error;
-      value = error;
-    }
-    return { value, ms: performance.now() - started };
+    const glyphA = font.glyphFor(0x41);
+    const glyphV = font.glyphFor(0x56);
+    return timed((): number | MalformedFont => {
+      try {
+        return font.kerning(glyphA, glyphV);
+      } catch (error) {
+        if (!(error instanceof MalformedFont)) throw error;
+        return error;
+      }
+    });
   };
 
   test("a feature listed 4000 times with 4000 lookup entries answers at once", () => {
-    const { value, ms } = answer(4000);
+    const { value, ms, scale } = answer(4000);
     expect(value).toBe(0);
-    expect(ms).toBeLessThan(ceilingMs * loadScale());
+    expect(ms).toBeLessThan(ceilingMs * scale);
   });
 
   test("32000 entries each are refused before they are read (the quadratic reader read 10^9 and answered 0)", () => {
-    const { value, ms } = answer(32_000);
+    const { value, ms, scale } = answer(32_000);
     expect(value).toBeInstanceOf(MalformedFont);
-    expect(ms).toBeLessThan(ceilingMs * loadScale());
+    expect(ms).toBeLessThan(ceilingMs * scale);
   });
 });

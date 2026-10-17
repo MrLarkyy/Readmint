@@ -38,6 +38,9 @@ inputs:
   exclude-repositories:
     description: Repositories (name or owner/name; comma or line separated) left out of every GitHub aggregate such as the languages; not with data-file.
     required: false
+  language-commit-cap:
+    description: Own commits (a whole number 0..2000; empty or 0 = off) read, one GitHub request each, to fill github.languagesAuthored with the lines you added per language; the run takes about 0.3-0.6 seconds per commit; with your own token it also counts private repositories (language names and sums only, no repository name); a slow run ends the reading early with a warning; not with data-file.
+    required: false
   data-file:
     description: Fixture data JSON file (the CLI `--data` format) used instead of loading GitHub data; a file inside the workspace.
     required: false

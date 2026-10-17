@@ -86,6 +86,7 @@ function exercise(bytes: Uint8Array): void {
 
 describe.each(Object.entries(montserrat))("mutated Montserrat %s", (name, bytes) => {
   test(`${String(rounds)} mutations give a result or a font error, each quickly`, () => {
+    const before = loadScale();
     const next = random(name.length * 7919);
     const ranges = glyphRanges(bytes);
     let slowest = 0;
@@ -99,7 +100,7 @@ describe.each(Object.entries(montserrat))("mutated Montserrat %s", (name, bytes)
       }
       slowest = Math.max(slowest, performance.now() - started);
     }
-    expect(slowest).toBeLessThan(perRoundCeilingMs * loadScale());
+    expect(slowest).toBeLessThan(perRoundCeilingMs * Math.max(before, loadScale()));
   }, 300_000);
 });
 
@@ -160,6 +161,7 @@ function mutateLayout(
 
 describe.each(layoutTexts)("mutated layout tables of %s", (bytes, name, texts) => {
   test(`${String(layoutRounds)} mutations shape or fail as a font error, within the operation budget`, () => {
+    const before = loadScale();
     const next = random(name.length * 104_729);
     const ranges = layoutRanges(bytes);
     expect(ranges.length).toBe(3);
@@ -186,6 +188,6 @@ describe.each(layoutTexts)("mutated layout tables of %s", (bytes, name, texts) =
       slowest = Math.max(slowest, performance.now() - started);
     }
     expect(failures).toBeLessThan(layoutRounds * texts.length * 2);
-    expect(slowest).toBeLessThan(perRoundCeilingMs * loadScale());
+    expect(slowest).toBeLessThan(perRoundCeilingMs * Math.max(before, loadScale()));
   }, 300_000);
 });

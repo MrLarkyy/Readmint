@@ -1,0 +1,22 @@
+[
+  {
+    "path": "/layers/0/orbit/center/y",
+    "code": "missing-property"
+  },
+  {
+    "path": "/layers/0/orbit/radius",
+    "code": "range"
+  },
+  {
+    "path": "/layers/0/orbit/angle",
+    "code": "range"
+  },
+  {
+    "path": "/layers/0/orbit/tilt",
+    "code": "unknown-property"
+  },
+  {
+    "path": "/layers/0/orbit/fade/to",
+    "code": "range"
+  }
+]

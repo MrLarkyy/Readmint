@@ -1,6 +1,6 @@
 import type { Design } from "@readmint/format";
 import { describe, expect, test } from "vitest";
-import { loadScale } from "../../../test-support/loadScale.js";
+import { timed } from "../../../test-support/loadScale.js";
 import { maxRenderEntropySteps } from "../src/EntropyBudget.js";
 import { renderSvg } from "../src/index.js";
 import { sniffImage } from "../src/sniffImage.js";
@@ -38,9 +38,7 @@ describe("the JPEG symbol-check budget of a render", () => {
   });
 
   test("many costly copies cross the budget shared by every image, quickly", () => {
-    const started = performance.now();
-    const result = renderSvg(copies(24));
-    const elapsed = performance.now() - started;
+    const { value: result, ms: elapsed, scale } = timed(() => renderSvg(copies(24)));
     expect(result.ok).toBe(false);
     const issue = result.ok ? undefined : result.issues[0];
     expect(issue?.code).toBe("asset-too-large");
@@ -48,6 +46,6 @@ describe("the JPEG symbol-check budget of a render", () => {
     expect(issue?.message).toContain(
       `takes more than ${String(maxRenderEntropySteps)} decoding steps`,
     );
-    expect(elapsed).toBeLessThan(3000 * loadScale());
+    expect(elapsed).toBeLessThan(3000 * scale);
   });
 });

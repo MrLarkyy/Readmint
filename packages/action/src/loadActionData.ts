@@ -39,6 +39,9 @@ export async function loadActionData(
             ...(config.excludeRepositories === undefined
               ? {}
               : { excludeRepositories: config.excludeRepositories }),
+            ...(config.languageCommitCap === undefined
+              ? {}
+              : { languageCommitCap: config.languageCommitCap }),
             ...(fetch === undefined ? {} : { fetch }),
             ...(onPartial === undefined ? {} : { onPartial }),
           });

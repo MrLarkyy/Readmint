@@ -52,4 +52,38 @@ describe.each(cases)("%s %s languageShare", (template, section) => {
     } as never);
     expect(svg).toBe(render(template, section, theme, {}));
   });
+
+  test.each(themes)("authored draws languagesAuthored, %s", (theme) => {
+    const { github } = sampleProfileData();
+    const data = {
+      github: {
+        ...github,
+        languagesAuthored: [
+          { name: "Haskell", color: "#5e5086", share: 0.6, additions: 600 },
+          { name: "Erlang", color: "#B83998", share: 0.3, additions: 300 },
+          { name: "Elixir", color: "#6e4a7e", share: 0.1, additions: 100 },
+        ],
+      },
+    };
+    const svg = render(template, section, theme, { languageShare: "authored" }, data);
+    expect(position(svg, "Haskell")).toBeGreaterThan(-1);
+    expect(position(svg, "Haskell")).toBeLessThan(position(svg, "Erlang"));
+    expect(svg).not.toContain("TypeScript");
+    expect(render(template, section, theme, {}, data)).not.toContain("Haskell");
+  });
+
+  test.each(themes)(
+    "authored with an empty or missing languagesAuthored draws bytes, %s",
+    (theme) => {
+      const plain = render(template, section, theme, {});
+      expect(render(template, section, theme, { languageShare: "authored" })).toBe(plain);
+      const older = Object.fromEntries(
+        Object.entries(sampleProfileData().github).filter(([key]) => key !== "languagesAuthored"),
+      );
+      const svg = render(template, section, theme, { languageShare: "authored" }, {
+        github: older,
+      } as never);
+      expect(svg).toBe(plain);
+    },
+  );
 });

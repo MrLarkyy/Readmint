@@ -32,6 +32,9 @@ Options:
                       Comma separated repositories (name or owner/name) --github leaves out of
                       the repository list, stars, forks, languages and the pinned fallback; the
                       repository total, pushes and the contribution calendar still include them
+  --language-commit-cap <n>
+                      Own commits (0..2000, default 0 = off) --github reads, one request each,
+                      to fill github.languagesAuthored with the lines you added per language
   --data-json [<ns>=]<source>
                       Load a JSON document as { <ns>: { version: 0, document } } (default ns json):
                       a file inside --root (path relative to --root) or an https URL; repeatable, at most 8, added to

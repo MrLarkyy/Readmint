@@ -120,6 +120,40 @@ export interface Animation {
   readonly loop?: boolean;
 }
 
+export interface OrbitCentre {
+  readonly x: Bindable<number>;
+  readonly y: Bindable<number>;
+}
+
+/**
+ * Opacity by depth on the orbit: depth is the sine of the angle, -1 at the back (top) to 1 at the front (bottom). The
+ * layer is invisible at depth `from` and below, fully drawn at `to` and above (the other way round when `to` is the
+ * smaller), linear in between; `from` and `to` differ.
+ */
+export interface OrbitFade {
+  readonly from: number;
+  readonly to: number;
+}
+
+/**
+ * Places the layer on an ellipse around `center`: its origin sits at (cx + radius cos t, cy + radiusY sin t), t in
+ * degrees clockwise from +x. The layer's own `x`, `y`, `rotation` and `animate` apply in a frame at that point, which
+ * stays upright unless `upright` is false (then it turns by t). Only in an absolute group.
+ */
+export interface Orbit {
+  readonly center: OrbitCentre;
+  readonly radius: Bindable<number>;
+  /** Default: `radius` (a circle). */
+  readonly radiusY?: Bindable<number>;
+  /** t at the start of the timeline, in degrees in [-360, 360]. */
+  readonly angle: Bindable<number>;
+  /** Degrees per second along the orbit on the design's timeline (needs `animation`); default 0. */
+  readonly speed?: Bindable<number>;
+  /** Default true. */
+  readonly upright?: Bindable<boolean>;
+  readonly fade?: OrbitFade;
+}
+
 export interface LayerBase {
   readonly id?: string;
   readonly name?: string;
@@ -139,6 +173,7 @@ export interface LayerBase {
   readonly let?: Readonly<Record<string, Binding>>;
   /** Needs the design's `animation`. */
   readonly animate?: LayerAnimation;
+  readonly orbit?: Orbit;
 }
 
 export type Layout =

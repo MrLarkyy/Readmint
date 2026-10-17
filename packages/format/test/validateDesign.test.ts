@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { loadScale } from "../../../test-support/loadScale.js";
+import { loadScale, timed } from "../../../test-support/loadScale.js";
 import { DesignLimits, designJsonSchema, PathData, validateDesign } from "../src/index.js";
 import { maximalDesign } from "./maximalDesign.js";
 
@@ -252,9 +252,9 @@ describe("limits", () => {
   });
 
   test("a long component chain closed by many refs is checked in linear time", () => {
-    const started = performance.now();
-    const result = issuesOf(componentChain(4000, 5000));
-    expect(performance.now() - started).toBeLessThan(2000 * loadScale());
+    const chain = componentChain(4000, 5000);
+    const { value: result, ms, scale } = timed(() => issuesOf(chain));
+    expect(ms).toBeLessThan(2000 * scale);
     expect(result.truncated).toBe(true);
     expect(result.issues[0]).toEqual({
       path: "/components/c3999/layers/0/ref",
@@ -264,11 +264,12 @@ describe("limits", () => {
   });
 
   test("too many layers is decided before the cycle search", () => {
-    const started = performance.now();
-    expect(issuesOf(componentChain(8000, 130_000)).issues).toEqual([
+    const chain = componentChain(8000, 130_000);
+    const { value: result, ms, scale } = timed(() => issuesOf(chain));
+    expect(result.issues).toEqual([
       expect.objectContaining({ path: "/layers", code: "too-many-layers" }),
     ]);
-    expect(performance.now() - started).toBeLessThan(2000 * loadScale());
+    expect(ms).toBeLessThan(2000 * scale);
   });
 
   test("a cyclic or massively shared object fails without hanging", () => {
@@ -327,6 +328,7 @@ describe("hostile strings", () => {
   ];
 
   test("every schema pattern runs in linear time", () => {
+    const before = loadScale();
     const patterns = collectPatterns(designJsonSchema);
     expect(patterns.length).toBeGreaterThan(6);
     for (const pattern of patterns) {
@@ -336,7 +338,7 @@ describe("hostile strings", () => {
         regex.test(value);
         const elapsed = performance.now() - started;
         // The load probe costs more than most of these runs, so it only runs for a slow one.
-        const limit = elapsed < 200 ? 200 : 200 * loadScale();
+        const limit = elapsed < 200 ? 200 : 200 * Math.max(before, loadScale());
         expect(elapsed, `${pattern} on ${value.slice(0, 20)}`).toBeLessThan(limit);
       }
     }
@@ -355,9 +357,9 @@ describe("hostile strings", () => {
           { type: "image", asset: value, width: 1, height: 1 },
         ],
       };
-      const started = performance.now();
-      expect(validateDesign(design).ok).toBe(false);
-      expect(performance.now() - started).toBeLessThan(200 * loadScale());
+      const { value: result, ms, scale } = timed(() => validateDesign(design));
+      expect(result.ok).toBe(false);
+      expect(ms).toBeLessThan(200 * scale);
     }
   });
 });
@@ -695,9 +697,11 @@ describe("local bindings (let, RM-118)", () => {
     for (let level = 14; level >= 0; level--) {
       layer = { type: "group", let: names(level), children: [layer] };
     }
-    const started = performance.now();
-    valid(withLayers(layer));
-    expect(performance.now() - started).toBeLessThan(1000 * loadScale());
+    const design = withLayers(layer);
+    const { ms, scale } = timed(() => {
+      valid(design);
+    });
+    expect(ms).toBeLessThan(1000 * scale);
   });
 
   test("issues come in document order across the document and the components", () => {
@@ -990,11 +994,12 @@ describe("palette (RM-119)", () => {
     const flood = Object.fromEntries(
       Array.from({ length: 100_000 }, (_, i) => [`token${String(i)}`, "#000"]),
     );
-    const started = performance.now();
-    expect(issuesOf(withPalette({ palette: { light: flood } })).issues).toEqual([
+    const design = withPalette({ palette: { light: flood } });
+    const { value, ms, scale } = timed(() => issuesOf(design));
+    expect(value.issues).toEqual([
       { path: "/palette/light", code: "count", message: "must have at most 256 entries" },
     ]);
-    expect(performance.now() - started).toBeLessThan(2000 * loadScale());
+    expect(ms).toBeLessThan(2000 * scale);
   });
 
   test("modes sharing one huge token object are refused before validation", () => {
@@ -1011,9 +1016,11 @@ describe("palette (RM-119)", () => {
 
   test("scanning hostile text for reads stays fast", () => {
     const content = `${"{{ palette.bg ".repeat(300)}}} {{ '${"palette.x ".repeat(450)}`;
-    const started = performance.now();
-    valid(textOf(content));
-    expect(performance.now() - started).toBeLessThan(1000 * loadScale());
+    const design = textOf(content);
+    const { ms, scale } = timed(() => {
+      valid(design);
+    });
+    expect(ms).toBeLessThan(1000 * scale);
   });
 
   test("__proto__ and constructor are plain tokens and pollute nothing", () => {
@@ -1027,6 +1034,156 @@ describe("palette (RM-119)", () => {
     const reading = { ...design, layers: [rect({ fill: "{{ palette.toString }}" })] };
     expect(codes(reading)).toEqual([{ path: "/layers/0/fill", code: "unknown-reference" }]);
     expect(Object.hasOwn(Object.prototype, "#fff")).toBe(false);
+  });
+});
+
+describe("orbit (RM-111)", () => {
+  const orbit = (extra: Record<string, unknown> = {}) => ({
+    center: { x: 5, y: 5 },
+    radius: 4,
+    angle: 30,
+    ...extra,
+  });
+  const timeline = { animation: { duration: 1000 } };
+  const withLayers = (layers: unknown[], extra: Record<string, unknown> = timeline) => ({
+    ...base(),
+    ...extra,
+    layers,
+  });
+  const issues = (value: unknown) => {
+    const result = validateDesign(value);
+    return result.ok ? [] : result.issues.map(({ path, code }) => ({ path, code }));
+  };
+
+  test("a literal and a bound orbit are valid on every layer kind", () => {
+    const bound = orbit({
+      center: { x: "{{ 5 }}", y: 5 },
+      radius: "{{ 4 }}",
+      radiusY: 2,
+      angle: "{{ 45 }}",
+      speed: "{{ -6 }}",
+      upright: "{{ false }}",
+      fade: { from: -0.5, to: 0.5 },
+    });
+    const layers = [
+      rect({ orbit: orbit() }),
+      { type: "path", d: "M0 0 L1 1", orbit: bound },
+      { type: "group", children: [rect()], orbit: orbit({ speed: 10 }) },
+      { type: "ellipse", width: 1, height: 1, orbit: orbit({ upright: false }) },
+    ];
+    expect(issues(withLayers(layers))).toEqual([]);
+  });
+
+  test.each([
+    [{ radius: -1 }, "/layers/0/orbit/radius", "range"],
+    [{ radiusY: 100_001 }, "/layers/0/orbit/radiusY", "range"],
+    [{ angle: 361 }, "/layers/0/orbit/angle", "range"],
+    [{ speed: 3601 }, "/layers/0/orbit/speed", "range"],
+    [{ fade: { from: 0, to: 1.5 } }, "/layers/0/orbit/fade/to", "range"],
+    [{ fade: { from: "{{ 0 }}", to: 1 } }, "/layers/0/orbit/fade/from", "type"],
+    [{ upright: "yes" }, "/layers/0/orbit/upright", "type"],
+    [{ tilt: 10 }, "/layers/0/orbit/tilt", "unknown-property"],
+    [{ center: { x: 1 } }, "/layers/0/orbit/center/y", "missing-property"],
+    [{ center: { x: 1, y: 1, z: 1 } }, "/layers/0/orbit/center/z", "unknown-property"],
+  ])("orbit %j fails at %s with %s", (extra, path, code) => {
+    expect(issues(withLayers([rect({ orbit: orbit(extra) })]))).toEqual([{ path, code }]);
+  });
+
+  test.each([42, "x", null, [1, 2]])("an orbit %j that is no object is a type issue", (value) => {
+    expect(issues(withLayers([rect({ orbit: value })]))).toEqual([
+      { path: "/layers/0/orbit", code: "type" },
+    ]);
+  });
+
+  test("radius and angle are required", () => {
+    expect(issues(withLayers([rect({ orbit: { center: { x: 1, y: 1 } } })]))).toEqual([
+      { path: "/layers/0/orbit/radius", code: "missing-property" },
+      { path: "/layers/0/orbit/angle", code: "missing-property" },
+    ]);
+  });
+
+  test.each(["stack", "grid"])("an orbit is refused as a direct child of a %s group", (type) => {
+    const layout = type === "stack" ? { type, direction: "row" } : { type, columns: 2 };
+    const inner = { type: "group", children: [rect({ orbit: orbit() })] };
+    const group = { type: "group", layout, children: [rect(), rect({ orbit: orbit() }), inner] };
+    expect(issues(withLayers([group]))).toEqual([
+      { path: "/layers/0/children/1/orbit", code: "type" },
+    ]);
+  });
+
+  test("an orbit in an absolute group or a component definition is valid", () => {
+    const design = withLayers(
+      [
+        { type: "group", layout: { type: "absolute" }, children: [rect({ orbit: orbit() })] },
+        { type: "component", ref: "dot" },
+      ],
+      { ...timeline, components: { dot: { layers: [rect({ orbit: orbit({ speed: 1 }) })] } } },
+    );
+    expect(issues(design)).toEqual([]);
+  });
+
+  test("a speed without a timeline is reported once at /animation", () => {
+    const layers = [rect({ orbit: orbit({ speed: 5 }) }), rect({ orbit: orbit({ speed: 6 }) })];
+    expect(issues(withLayers(layers, {}))).toEqual([
+      { path: "/animation", code: "missing-property" },
+    ]);
+    // a static orbit needs no timeline
+    expect(issues(withLayers([rect({ orbit: orbit() })], {}))).toEqual([]);
+  });
+
+  test("a speed and an animate without a timeline give one /animation issue", () => {
+    const animate = {
+      x: {
+        keyframes: [
+          { offset: 0, value: 0 },
+          { offset: 1, value: 1 },
+        ],
+      },
+    };
+    const layers = [rect({ animate }), rect({ orbit: orbit({ speed: 5 }) })];
+    expect(issues(withLayers(layers, {}))).toEqual([
+      { path: "/animation", code: "missing-property" },
+    ]);
+  });
+
+  test("a fade with equal depths is a range issue at to", () => {
+    expect(issues(withLayers([rect({ orbit: orbit({ fade: { from: 0.2, to: 0.2 } }) })]))).toEqual([
+      { path: "/layers/0/orbit/fade/to", code: "range" },
+    ]);
+  });
+
+  test("a fade and an opacity track on one layer are refused at the fade", () => {
+    const animate = {
+      opacity: {
+        keyframes: [
+          { offset: 0, value: 0 },
+          { offset: 1, value: 1 },
+        ],
+      },
+    };
+    const layer = rect({ animate, orbit: orbit({ speed: 1, fade: { from: 0, to: 1 } }) });
+    expect(issues(withLayers([layer]))).toEqual([{ path: "/layers/0/orbit/fade", code: "type" }]);
+    // a fade next to other tracks is fine
+    const moving = rect({
+      animate: { x: animate.opacity },
+      orbit: orbit({ fade: { from: 0, to: 1 } }),
+    });
+    expect(issues(withLayers([moving]))).toEqual([]);
+  });
+
+  test("the published schema describes the orbit with the shared ranges", () => {
+    const defs = designJsonSchema["$defs"] as Record<string, Record<string, unknown>>;
+    const properties = defs["Orbit"]?.["properties"] as Record<string, unknown>;
+    expect(Object.keys(properties)).toEqual([
+      "center",
+      "radius",
+      "radiusY",
+      "angle",
+      "speed",
+      "upright",
+      "fade",
+    ]);
+    expect(defs["Orbit"]?.["additionalProperties"]).toBe(false);
   });
 });
 

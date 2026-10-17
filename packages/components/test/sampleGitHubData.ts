@@ -114,6 +114,7 @@ export function sampleGitHubData(): { github: GitHubData } {
       languages,
       languagesByRepo,
       languageRepositories,
+      languagesAuthored: [],
       contributions: contributionsOf(year, {
         commits: 2310,
         pullRequests: 164,
@@ -160,6 +161,12 @@ export function worstCaseGitHubData(): { github: GitHubData } {
         color: index % 2 === 0 ? "#ff00ff" : null,
         repositories: 1,
       })),
+      languagesAuthored: Array.from({ length: 600 }, (_, index) => ({
+        name: longText(1024, String.fromCharCode(65 + (index % 26))),
+        color: index % 2 === 0 ? "#ff00ff" : null,
+        share: 1 / 600,
+        additions: 1,
+      })),
       contributions: contributionsOf(calendar, {
         commits: huge,
         pullRequests: huge,
@@ -182,6 +189,7 @@ export function sparseGitHubData(): { github: GitHubData } {
       languages: [],
       languagesByRepo: [],
       languageRepositories: [],
+      languagesAuthored: [],
       contributions: {
         ...sample.contributions,
         streaks: { current: none, longest: none },

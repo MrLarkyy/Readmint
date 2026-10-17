@@ -1,7 +1,7 @@
 import { encodeWoff } from "@readmint/fonts";
 import type { Design, FontAsset, Layer } from "@readmint/format";
 import { describe, expect, test } from "vitest";
-import { loadScale } from "../../../test-support/loadScale.js";
+import { timed } from "../../../test-support/loadScale.js";
 import { buildTestFont, type TestPoint } from "../../fonts/test/buildTestFont.js";
 import { readmintTestSymbols } from "../../fonts/test/readmintTestSymbols.js";
 import { readTableDirectory } from "../../fonts/src/readTableDirectory.js";
@@ -55,17 +55,20 @@ describe("decoded font bytes are bounded per render, not per asset", () => {
 
   test("small WOFF bombs, each under the per-font limit, stop at the asset that crosses the total", () => {
     const { design: many, options } = bombs(400, 6);
-    const started = performance.now();
-    const result = renderSvg(many, options);
+    const {
+      value: [result, again],
+      ms,
+      scale,
+    } = timed(() => [renderSvg(many, options), renderSvg(many, options)] as const);
     // 3.9 MB each: four fit in 16 MiB, the fifth (f4) crosses before it inflates.
     expect(result).toMatchObject({
       ok: false,
       issues: [{ path: "/assets/fonts/f4", code: "asset-too-large" }],
     });
     expect(result.ok ? "" : result.issues[0]?.message).toContain("maxTotalFontBytes");
-    expect(renderSvg(many, options)).toEqual(result);
+    expect(again).toEqual(result);
     // The refusal is the pin (before, all 400 decoded: 9.5 s, 1.5 GB); the ceiling only catches a late stop.
-    expect(performance.now() - started).toBeLessThan(10_000 * loadScale());
+    expect(ms).toBeLessThan(10_000 * scale);
   });
 
   test("assets sharing one source decode it once and count it once", () => {

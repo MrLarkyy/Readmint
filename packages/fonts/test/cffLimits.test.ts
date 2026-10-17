@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { loadScale } from "../../../test-support/loadScale.js";
+import { timed } from "../../../test-support/loadScale.js";
 import { FontRefused, OutlineBudget, parseSfnt, subsetFont, type SfntFont } from "../src/index.js";
 import { expandingFont } from "./buildTestCff.js";
 
@@ -23,13 +23,18 @@ describe("CFF outline work and subset size are bounded per font", () => {
   });
 
   test("flattening 300 such glyphs through one budget stops with too-large, quickly", () => {
-    const started = performance.now();
-    expect(() => subsetFont(font, codePoints(300), { budget: new OutlineBudget() })).toThrow(
-      FontRefused,
-    );
+    const { value, ms, scale } = timed(() => {
+      try {
+        subsetFont(font, codePoints(300), { budget: new OutlineBudget() });
+      } catch (error) {
+        return error;
+      }
+      return undefined;
+    });
+    expect(value).toBeInstanceOf(FontRefused);
     // The refusal is the pin (without a budget all 300 glyphs flatten); the ceiling (some 25 x the time) only
     // catches a budget that stops far too late.
-    expect(performance.now() - started).toBeLessThan(5000 * loadScale());
+    expect(ms).toBeLessThan(5000 * scale);
   });
 
   test("the budget is shared: outlines read for paths count toward the subset", () => {

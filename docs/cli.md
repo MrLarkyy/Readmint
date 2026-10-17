@@ -52,6 +52,7 @@ data it fails `image-binding`.
 | `--open`                                           | `preview`            | opens the printed address (with `--github`, `--data-json` or `--data-feed` a one-time launch address that redirects to the secret one) in the default browser: `rundll32 url.dll` on Windows, `open` on macOS, `xdg-open` elsewhere; if that cannot start, one line says so and the preview keeps serving                                                                              |
 | `--fetch-images`                                   | all                  | fetches the images whose `src` is bound to data (https, allowed hosts only, no credentials; see [asset-loading.md](asset-loading.md#images-bound-from-data)); without it a design with one fails `image-not-fetched` (with `--data`, `--github`, `--data-json` or `--data-feed`) and no image is requested (only `--github`, a `--data-json` URL and `--data-feed` make requests then) |
 | `--github`                                         | all                  | loads the live GitHub data as `{ github }` with the token from `GH_TOKEN`, else `GITHUB_TOKEN` ([Live GitHub data](#live-github-data)); excludes `--data`                                                                                                                                                                                                                              |
+| `--language-commit-cap <n>`                        | all                  | whole number 0-2000 (default 0 = off): own commits `--github` reads, one GitHub request each (about 0.3-0.6 s), to fill `github.languagesAuthored`; only with `--github`                                                                                                                                                                                                               |
 | `--exclude-repositories <names>`                   | all                  | comma separated repository names (`name` or `owner/name`) `--github` leaves out of every aggregate: the repository list, stars, forks, languages and the pinned fallback (not the repository total, `pushes` or the contribution calendar); only with `--github`                                                                                                                       |
 | `--login <login>`                                  | all                  | the GitHub login `--github` loads; default the token's owner; only with `--github`                                                                                                                                                                                                                                                                                                     |
 | `--data-json [<ns>=]<source>`                      | all                  | loads a JSON document, a file inside `--root` (its path is relative to `--root`, not to the current folder) or an https URL, as `{ <ns>: { version: 0, document } }` (default namespace `json`); repeatable, at most 8, added to `--data` or `--github` data ([JSON data](#json-data))                                                                                                 |
@@ -60,7 +61,7 @@ data it fails `image-binding`.
 | `--data-feed-limit <ns>=<n>`                       | all                  | entries kept from the feed of `<ns>`, 1 to 50 (default 5); repeatable ([Feed data](#feed-data))                                                                                                                                                                                                                                                                                        |
 
 An option a command does not take, an unknown option, a missing or extra argument and a bad value are usage errors
-(exit code 2), as are `--github` with `--data`, `--login` or `--exclude-repositories` without `--github`, a `--data-json` namespace given twice or
+(exit code 2), as are `--github` with `--data`, `--login` or `--exclude-repositories` or `--language-commit-cap` without `--github`, a `--data-json` namespace given twice or
 named `github` with `--github`, more than 8 JSON sources or feeds, a `--data-feed` namespace given twice or also a `--data-json` namespace, a `--data-feed-limit` that is not `<ns>=<n>` (n from 1 to 50) or names a namespace without a feed, and a `--data-json-header` that is not
 `<ns>:<Header-Name>=<ENV_NAME>` or names a namespace without a source. There is no `--token` option: `--token`
 and any argument shaped like a GitHub token (`ghp_`, `gho_`, `ghu_`, `ghs_`, `ghr_`, `github_pat_`) are usage errors
@@ -184,12 +185,16 @@ as `render --data` with that object.
 - **`--exclude-repositories`** takes a comma separated list of at most 100 repository names; an entry that is not a
   repository name fails `invalid-option`, reporting its position only. The CLI never prints a name from the list.
   See [Languages](data-github.md#languages) for what is left out.
+- **`--language-commit-cap`** takes a whole number from 0 to 2000; anything else is a usage error (exit code 2). The
+  limit for the whole GitHub load grows by 600 ms per commit on top of 5 minutes, and the reading of commits has a deadline 60 s before it: when it passes, the data read so far is kept and `authored` is reported. With your own token, private repositories add to the sums (language names and sums only). See
+  [Languages from your own commits](data-github.md#languages-from-your-own-commits) for the budget and for the
+  `authored` and `authored-cap` warnings.
 - **Order**: `render` and `validate` load the data after the design file and its assets: a design that fails to load
   (exit code 1 or 3) costs no request and is reported before a missing or refused token (exit code 4). `preview` loads
   the data first, before it reads the design or starts serving: a missing token or a failed load exits with 4 at once,
   and a design error is then shown on the page like any later one.
 - **Requests**: a load sends the requests of [data-github.md](data-github.md#rate-limits) (at most 6 with `--login`
-  and 7 without it, plus retries; fewer for a user with fewer repositories), only to `https://api.github.com/graphql`, and takes at most 300 s in all, retries and
+  and 7 without it, plus retries; fewer for a user with fewer repositories), only to `https://api.github.com/graphql` (with `--language-commit-cap` also `https://api.github.com/repos/...`), and takes at most 300 s in all (plus 600 ms per commit read; the commit reading ends 60 s earlier with a warning instead of failing), retries and
   rate-limit waits included. There is no cache and nothing is written to disk.
 - **Incomplete data**: when GitHub refuses the activity or the weekly-commit request (a token that may not read the
   profile status or the pinned items, as the Actions `GITHUB_TOKEN` may not), the load still succeeds with those
@@ -325,7 +330,7 @@ A port in use, or one the system refuses, is exit code 3.
 from, `bin` passes `process.env`), `ExitCode`, `CliError`, `CliIo`,
 `escapeForLog`, `quoteForLog`, `formatIssue`, `localeProblem(locale)` (why a tag cannot be the `--locale`, `undefined` when it can; the Action's `locale` input uses it too), `outputFormats` and `outputExtension(format)` (the `OutputFormat`s and their file extension, `apng` → `png`), and the loaders the commands share: `loadDesignFile`, `loadDesignAssets`,
 `loadFixtureData` (with `maxFixtureBytes`, its size cap), `loadDesignProps(file, cwd)` (the `--props` settings file, a `DesignProps` of `@readmint/format`; whose `props` in `RenderInputOptions` stands in for `--props`) and `propsSection(fileName)` (the section a design file takes; it lives in `@readmint/format`, which the editor uses too), `loadLiveData` (the `--github` load: `LiveDataOptions` with
-`token`, `login`, `fetch`, `signal` and `onPartial`, at most `liveDataTimeoutMs`; a failure is a `CliError` with exit code 4),
+`token`, `login`, `fetch`, `signal` and `onPartial`, at most `liveDataTimeoutMs` plus `liveDataTimeoutPerCommitMs` (600) per `languageCommitCap` commit (`liveDataTimeout(cap)`; the commit reading ends `liveDataAuthoredMarginMs`, 60 s, earlier); a failure is a `CliError` with exit code 4),
 `parseDataJsonArgs(sources, headers)` (the `--data-json` and `--data-json-header` texts as `DataJsonSpec`s, or the
 problems; at most `maxDataJsonSources`), `loadJsonArgs(specs, options)` (the `--data-json` load, `JsonArgsOptions` with
 `root`, `fetch`, `env` and `signal`; a failure is a `CliError` with exit code 4), `parseDataFeedArgs(sources, limits)` (the `--data-feed` and `--data-feed-limit` texts as `DataFeedSpec`s, or the

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { loadScale } from "../../../test-support/loadScale.js";
+import { timed } from "../../../test-support/loadScale.js";
 import { wrapParagraphs, wrapText } from "../src/wrapText.js";
 
 /** Every code point is 1 wide, so widths are character counts. */
@@ -90,9 +90,9 @@ describe("wrapText", () => {
 
   test("a long text wraps in linear time", () => {
     const text = "word ".repeat(2000);
-    const started = performance.now();
-    expect(wrapText(text, 50, count).length).toBeGreaterThan(100);
-    expect(performance.now() - started).toBeLessThan(500 * loadScale());
+    const { value, ms, scale } = timed(() => wrapText(text, 50, count));
+    expect(value.length).toBeGreaterThan(100);
+    expect(ms).toBeLessThan(500 * scale);
   });
 });
 

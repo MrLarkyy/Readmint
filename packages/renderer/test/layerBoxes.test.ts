@@ -139,6 +139,41 @@ describe("layer boxes", () => {
     ]);
   });
 
+  test("put a layer on an orbit with the orbit's turns about where its chain moved, innermost first", () => {
+    const orbit = { center: { x: 100, y: 50 }, radius: 30, radiusY: 10, angle: 40 };
+    const result = boxes(
+      design([
+        {
+          type: "group",
+          x: 2,
+          y: 3,
+          orbit,
+          children: [{ type: "rect", x: 1, y: 1, width: 4, height: 2 }],
+        },
+        { type: "rect", width: 4, height: 2, orbit: { ...orbit, radiusY: 30, upright: false } },
+      ]),
+    );
+    // R1 = 20 and R2 = 10: turns of 40 about the centre, -80 about the end of R1, 40 about the end of R2
+    const chain = [
+      { degrees: 40, cx: 130, cy: 50 },
+      { degrees: -80, cx: 120, cy: 50 },
+      { degrees: 40, cx: 100, cy: 50 },
+    ];
+    expect(result).toEqual([
+      { layer: "/layers/0", x: 132, y: 53, width: 5, height: 3, groupTurns: chain },
+      { layer: "/layers/0/children/0", x: 133, y: 54, width: 4, height: 2, groupTurns: chain },
+      // a circle not upright turns once
+      {
+        layer: "/layers/1",
+        x: 130,
+        y: 50,
+        width: 4,
+        height: 2,
+        groupTurns: [{ degrees: 40, cx: 100, cy: 50 }],
+      },
+    ]);
+  });
+
   test("give every repeat copy the pointer of its layer", () => {
     expect(
       boxes(

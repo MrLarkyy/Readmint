@@ -38,6 +38,10 @@ body {
   gap: 4px;
   margin-bottom: 4px;
 }
+.rm-read-only {
+  background: #f6f8fa;
+  color: #59636e;
+}
 .rm-bound {
   background: #fff8c5;
 }

@@ -8,7 +8,7 @@ import { sampleProfileData } from "./sampleProfileData.js";
 
 const months = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
 const themes: readonly ProfileTheme[] = ["light", "dark"];
-/** Every 5 s, and both sides of the half-loop and loop ends, where the counter-rotation jumps. */
+/** Every 5 s, and both sides of the half-loop and loop ends. */
 const times = [
   ...Array.from({ length: 12 }, (_, index) => index * 5000),
   29_999,
@@ -28,12 +28,14 @@ const opposites: readonly (readonly [number, number])[] = [
 interface Axes {
   readonly a: number;
   readonly b: number;
+  /** The centre the points travel round, when known: the dots and spokes start at their orbit point. */
+  readonly centre?: readonly [number, number];
 }
-/** Semi-axes of the ellipse a label or dot travels: R1 + R2 and R1 - R2 of its two rotating arms. */
-const yearLabels: Axes = { a: 202.43 + 112.56, b: 202.43 - 112.56 };
-/** The ticks and dots of the year ring: arms of 186.285 and 103.585. */
-const yearDots: Axes = { a: 186.285 + 103.585, b: 186.285 - 103.585 };
-const headerDots: Axes = { a: 36.845 + 20.485, b: 36.845 - 20.485 };
+/** Semi-axes of the ellipse a label travels: its orbit's radius and radiusY (the label sits a little off its point). */
+const yearLabels: Axes = { a: 314.99, b: 89.87 };
+/** The ticks and dots of the year ring. */
+const yearDots: Axes = { a: 289.87, b: 82.7, centre: [420, 223.74] };
+const headerDots: Axes = { a: 57.33, b: 16.36, centre: [752, 117.09] };
 
 type Frames = ReadonlyMap<number, readonly RingPoint[]>;
 type Mutable = Record<string, unknown>;
@@ -78,6 +80,8 @@ interface Drift {
   readonly radialPx: number;
   /** Largest distance of the middle of two opposite samples from the centre taken from the first pair. */
   readonly centrePx: number;
+  /** Largest distance of the centre taken from the first pair from the known centre (0 when unknown). */
+  readonly offCentrePx: number;
   /** Largest turn of the composed transform, in degrees (0 = upright). */
   readonly tilt: number;
   /** Largest deviation of the angle travelled on the ellipse from -6 deg/s, in degrees. */
@@ -87,9 +91,9 @@ interface Drift {
 }
 
 /** How far the points of `sampled` leave one fixed ellipse of semi-axes `a` and `b`, upright, at -360 deg per loop. */
-function drift(sampled: Frames, { a, b }: Axes): Drift {
+function drift(sampled: Frames, { a, b, centre: known }: Axes): Drift {
   const labels = at(sampled, 0).map((point) => point.label);
-  let [radius, centrePx, tilt, speed, missing] = [0, 0, 0, 0, 0];
+  let [radius, centrePx, offCentrePx, tilt, speed, missing] = [0, 0, 0, 0, 0, 0];
   for (const label of labels) {
     // a mutated design may hide a label for a moment: such a sample is skipped
     const sample = (time: number): RingPoint | undefined =>
@@ -104,6 +108,8 @@ function drift(sampled: Frames, { a, b }: Axes): Drift {
       continue;
     }
     const [cx, cy] = centre;
+    if (known !== undefined)
+      offCentrePx = Math.max(offCentrePx, Math.hypot(cx - known[0], cy - known[1]));
     for (const pair of opposites) {
       const [mx, my] = middle(pair) ?? centre;
       centrePx = Math.max(centrePx, Math.hypot(mx - cx, my - cy));
@@ -126,19 +132,17 @@ function drift(sampled: Frames, { a, b }: Axes): Drift {
       previous = { time, angle };
     }
   }
-  return { radius, radialPx: radius * Math.min(a, b), centrePx, tilt, speed, missing };
+  return { radius, radialPx: radius * Math.min(a, b), centrePx, offCentrePx, tilt, speed, missing };
 }
 
 function expectConstantRing(measured: Drift): void {
   expect(measured.missing).toBe(0);
   expect(measured.radius).toBeLessThan(1e-3);
   expect(measured.centrePx).toBeLessThan(0.05);
+  expect(measured.offCentrePx).toBeLessThan(0.05);
   expect(measured.tilt).toBeLessThan(0.01);
   expect(measured.speed).toBeLessThan(0.05);
 }
-
-const yearLabelFrames = (design: Design): Frames =>
-  frames(design, (svg) => ringLabelGeometry(svg, months));
 
 describe("year ring month labels", () => {
   test.each(themes)("keep a constant radius and stay upright over the loop (%s)", (theme) => {
@@ -158,55 +162,54 @@ describe("year ring month labels", () => {
   });
 });
 
-/** The groups whose rotation track has the four keyframes of the counter-rotation, found by walking the design. */
-function counterRotations(node: unknown, found: Mutable[] = []): readonly Mutable[] {
-  if (Array.isArray(node)) for (const child of node) counterRotations(child, found);
+/** Every `orbit` object of the design, found by walking it. */
+function orbits(node: unknown, found: Mutable[] = []): readonly Mutable[] {
+  if (Array.isArray(node)) for (const child of node) orbits(child, found);
   else if (node !== null && typeof node === "object") {
     const record = node as Mutable;
-    const track = (record["animate"] as { rotation?: Mutable } | undefined)?.rotation;
-    if ((track?.["keyframes"] as unknown[] | undefined)?.length === 4) found.push(record);
-    for (const child of Object.values(record)) counterRotations(child, found);
+    const orbit = record["orbit"];
+    if (orbit !== null && typeof orbit === "object") found.push(orbit as Mutable);
+    for (const child of Object.values(record)) orbits(child, found);
   }
   return found;
 }
 
-const trackOf = (group: Mutable): Mutable => (group["animate"] as { rotation: Mutable }).rotation;
+/** Whether a measure leaves the constant ring the templates must draw. */
+const broken = (measured: Drift): boolean =>
+  measured.radialPx > 0.5 ||
+  measured.tilt > 0.1 ||
+  measured.speed > 0.05 ||
+  measured.offCentrePx > 0.5;
 
 describe("the geometry check", () => {
-  const mutants: readonly [string, (group: Mutable) => void][] = [
-    ["an eased counter-rotation", (group) => void (trackOf(group)["easing"] = "ease")],
+  const mutants: readonly [string, (orbit: Mutable) => void][] = [
+    ["orbits that are not upright", (orbit) => void (orbit["upright"] = false)],
     [
-      "a counter-rotation turning once per loop with no jump",
-      (group) =>
-        void (trackOf(group)["keyframes"] = [
-          { offset: 0, value: 0 },
-          { offset: 1, value: 360 },
-        ]),
+      "a radiusY 1 px larger",
+      (orbit) => void (orbit["radiusY"] = (orbit["radiusY"] as number) + 1),
     ],
+    ["a speed of -5.9 deg/s", (orbit) => void (orbit["speed"] = -5.9)],
     [
-      "a counter-rotation pivot moved by 1 px",
-      (group) => {
-        group["width"] = 4;
-        group["height"] = 4;
-      },
-    ],
-    [
-      "a missing inner rotation track",
-      (group) => {
-        const inner = (group["children"] as Mutable[])[0] as Mutable;
-        expect((inner["animate"] as Mutable)["rotation"]).toBeDefined();
-        delete (inner["animate"] as Mutable)["rotation"];
+      "a centre 1 px to the right",
+      (orbit) => {
+        const centre = orbit["center"] as Mutable;
+        centre["x"] = (centre["x"] as number) + 1;
       },
     ],
   ];
 
   test.each(mutants)("fails on %s", (_name, mutate) => {
     const design = structuredClone(loadProfile("year-ring", "year", "light"));
-    const groups = counterRotations(design);
-    expect(groups.length).toBeGreaterThan(0);
-    for (const group of groups) mutate(group);
-    const measured = drift(yearLabelFrames(design), yearLabels);
-    expect(measured.radialPx > 0.5 || measured.tilt > 0.1).toBe(true);
+    const found = orbits(design);
+    expect(found.length).toBeGreaterThan(0);
+    for (const orbit of found) mutate(orbit);
+    const svgs = renderFrames(design);
+    const labels = drift(
+      readFrames(svgs, (svg) => ringLabelGeometry(svg, months)),
+      yearLabels,
+    );
+    const dots = drift(readFrames(svgs, ringDotGeometry), yearDots);
+    expect(broken(labels) || broken(dots)).toBe(true);
   });
 });
 
@@ -245,14 +248,22 @@ describe("rotation tracks", () => {
     expect(animatesRotation({ rotation: 90 })).toBe(false);
   });
 
-  test("only the year ring year and header animate rotation", () => {
+  test("no profile template animates rotation: the year ring's year and header turn on orbits", () => {
     const rotating = new Set<string>();
+    const orbiting = new Set<string>();
     for (const [template, sections] of Object.entries(profileTemplates))
       for (const section of sections)
         for (const theme of themes) {
           const design = loadProfile(template as ProfileTemplate, section, theme);
           if (animatesRotation(design)) rotating.add(`${template}/${section}`);
+          if (orbits(design).length > 0) orbiting.add(`${template}/${section}/${theme}`);
         }
-    expect([...rotating].sort()).toEqual(["year-ring/header", "year-ring/year"]);
+    expect([...rotating]).toEqual([]);
+    expect([...orbiting].sort()).toEqual([
+      "year-ring/header/dark",
+      "year-ring/header/light",
+      "year-ring/year/dark",
+      "year-ring/year/light",
+    ]);
   });
 });

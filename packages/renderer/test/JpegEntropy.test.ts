@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, test } from "vitest";
-import { loadScale } from "../../../test-support/loadScale.js";
+import { timed } from "../../../test-support/loadScale.js";
 import { EntropyBits } from "../src/EntropyBits.js";
 import { dcRefineBlock, maxColumnPairSum, runCorrections } from "../src/entropyBlocks.js";
 import { HuffmanTable } from "../src/HuffmanTable.js";
@@ -140,17 +140,22 @@ describe("JpegEntropy bounds", () => {
       bytes.push(...(byte === 0xff ? [0xff, 0] : [byte]));
     }
     const data = new Uint8Array([...bytes, 0xff, 0xd9]);
-    const started = performance.now();
-    let fault;
-    let scans = 0;
-    while (fault === undefined && scans < 64) {
-      fault = entropy.scanFault(data, 0, refine);
-      scans++;
-    }
-    const elapsed = performance.now() - started;
+    const {
+      value: { fault, scans },
+      ms: elapsed,
+      scale,
+    } = timed(() => {
+      let fault;
+      let scans = 0;
+      while (fault === undefined && scans < 64) {
+        fault = entropy.scanFault(data, 0, refine);
+        scans++;
+      }
+      return { fault, scans };
+    });
     expect(fault).toBe("steps");
     expect(scans).toBe(Math.floor(maxEntropySteps / 2 ** 23) + 1);
-    expect(elapsed).toBeLessThan(3000 * loadScale());
+    expect(elapsed).toBeLessThan(3000 * scale);
   });
 
   test("costs one step for a run of empty bands in a first AC scan", () => {

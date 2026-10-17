@@ -37,12 +37,19 @@ export function placeChildren(
   return extent(children);
 }
 
+/**
+ * The furthest right and bottom edge of the children, at least 0. A child on an orbit reaches its box past the
+ * furthest point of its ellipse (centre plus semi-axis), whatever its angle and the time: the extent never moves.
+ */
 export function extent(children: readonly RenderNode[]): Size {
   let width = 0;
   let height = 0;
   for (const child of children) {
-    width = Math.max(width, child.x + child.width);
-    height = Math.max(height, child.y + child.height);
+    const orbit = child.orbit;
+    const reachX = orbit === undefined ? 0 : orbit.cx + Math.abs(orbit.rx);
+    const reachY = orbit === undefined ? 0 : orbit.cy + Math.abs(orbit.ry);
+    width = Math.max(width, reachX + child.x + child.width);
+    height = Math.max(height, reachY + child.y + child.height);
   }
   return { width, height };
 }

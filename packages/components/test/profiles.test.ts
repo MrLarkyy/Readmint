@@ -377,15 +377,16 @@ describe("the animation of the profile sections", () => {
     expect(frame(1000)).toBe(frame(0));
   });
 
-  test("the year ring shares three rotation rules between all its day groups", () => {
+  test("the year ring's day orbits share two turn rules: once round and twice back", () => {
     const svg = render("year-ring", "year");
     const css = /<style>(.*?)<\/style>/su.exec(svg)?.[1] ?? "";
     const rotating = css
       .split("@keyframes ")
       .slice(1)
       .filter((rule) => rule.includes("rotate("));
-    expect(rotating.length).toBeGreaterThan(0);
-    expect(rotating.length).toBeLessThanOrEqual(4);
+    expect(rotating).toHaveLength(2);
+    expect(rotating.some((rule) => rule.includes("rotate(-360deg)"))).toBe(true);
+    expect(rotating.some((rule) => rule.includes("rotate(720deg)"))).toBe(true);
     expect(utf8Bytes(svg)).toBeLessThanOrEqual(ringBudget);
   });
 

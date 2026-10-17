@@ -1,6 +1,9 @@
 import { describe, expect, test } from "vitest";
 import type { Bounds } from "../src/pathBounds.js";
-import { placeBounds } from "../src/PlacementStep.js";
+import { linearEasing } from "../src/easing.js";
+import type { NodeOrbit } from "../src/NodeOrbit.js";
+import { orbitSteps, placeBounds, placeThrough } from "../src/PlacementStep.js";
+import { sampleOrbit } from "../src/sampleOrbit.js";
 
 /** The four corners of `bounds` turned by `degrees` about (cx, cy), by Math.cos and Math.sin (tests only). */
 function turnedCorners(
@@ -78,6 +81,72 @@ describe("a turn", () => {
       maxX: 25,
       maxY: 25,
     });
+  });
+});
+
+describe("the steps of an orbit", () => {
+  const ellipse: NodeOrbit = {
+    cx: 120,
+    cy: 70,
+    rx: 90,
+    ry: 40,
+    parts: [
+      { kind: "move", x: 120, y: 70 },
+      { kind: "turn", degrees: 33.5, spin: undefined },
+      { kind: "move", x: 65, y: 0 },
+      { kind: "turn", degrees: -67, spin: undefined },
+      { kind: "move", x: 25, y: 0 },
+      { kind: "turn", degrees: 33.5, spin: undefined },
+    ],
+  };
+
+  test("contain the box at its point on the ellipse", () => {
+    const bounds = { minX: -6, minY: -4, maxX: 8, maxY: 3 };
+    const placed = placeThrough(bounds, orbitSteps(sampleOrbit(ellipse, 0), false));
+    if (placed === undefined) throw new Error("no box");
+    const radians = (33.5 * Math.PI) / 180;
+    const [x, y] = [120 + 90 * Math.cos(radians), 70 + 40 * Math.sin(radians)];
+    for (const [cornerX, cornerY] of [
+      [bounds.minX, bounds.minY],
+      [bounds.maxX, bounds.maxY],
+    ] as const) {
+      expect(x + cornerX).toBeGreaterThanOrEqual(placed.minX);
+      expect(x + cornerX).toBeLessThanOrEqual(placed.maxX);
+      expect(y + cornerY).toBeGreaterThanOrEqual(placed.minY);
+      expect(y + cornerY).toBeLessThanOrEqual(placed.maxY);
+    }
+    // three turns of a box grow it by at most a factor of the square root of 2 each
+    expect(placed.maxX - placed.minX).toBeLessThan(14 * 2 ** 1.5 + 4);
+  });
+
+  test("are unknown in the animated SVG where the orbit moves", () => {
+    const spin = {
+      duration: 1000,
+      loop: true,
+      dash: undefined,
+      tracks: [
+        {
+          property: "rotation" as const,
+          alpha: false,
+          keyframes: [
+            { position: 0, value: [0], easing: linearEasing },
+            { position: 100_000, value: [360], easing: linearEasing },
+          ],
+        },
+      ],
+    };
+    const moving: NodeOrbit = {
+      ...ellipse,
+      parts: ellipse.parts.map((part) => (part.kind === "turn" ? { ...part, spin } : part)),
+    };
+    const bounds = { minX: 0, minY: 0, maxX: 1, maxY: 1 };
+    expect(placeThrough(bounds, orbitSteps(sampleOrbit(moving, 0), true))).toBeUndefined();
+    expect(placeThrough(bounds, orbitSteps(sampleOrbit(moving, 250), false))).toBeDefined();
+    expect(sampleOrbit(moving, 250).filter((step) => step.kind === "spin")).toEqual([
+      { kind: "spin", degrees: 90, animation: spin },
+      { kind: "spin", degrees: 90, animation: spin },
+      { kind: "spin", degrees: 90, animation: spin },
+    ]);
   });
 });
 

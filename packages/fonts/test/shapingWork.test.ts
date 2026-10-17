@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { loadScale } from "../../../test-support/loadScale.js";
+import { timed } from "../../../test-support/loadScale.js";
 import { ByteWriter } from "../src/ByteWriter.js";
 import { MalformedFont, ShapingBudget, shapeText, type SfntFont } from "../src/index.js";
 import { buildTestFont, type TestGlyph } from "./buildTestFont.js";
@@ -57,9 +57,16 @@ describe("shaping work is bounded across calls", () => {
   test("probing which consonants take below-base forms is charged: a crafted blwf fails within 50 ms", () => {
     const font = probingFont();
     const text = String.fromCharCode(...consonants);
-    const started = performance.now();
-    expect(() => shapeText(font, text, { script: "Deva" })).toThrow(MalformedFont);
-    expect(performance.now() - started).toBeLessThan(ceilingMs * loadScale());
+    const { value, ms, scale } = timed(() => {
+      try {
+        shapeText(font, text, { script: "Deva" });
+      } catch (error) {
+        return error;
+      }
+      return undefined;
+    });
+    expect(value).toBeInstanceOf(MalformedFont);
+    expect(ms).toBeLessThan(ceilingMs * scale);
   });
 
   test("a font's form answers are kept with its plan: the second text pays nothing for them", () => {

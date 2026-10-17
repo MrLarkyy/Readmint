@@ -1,16 +1,17 @@
 import type { SfntFont } from "@readmint/fonts";
 import type { Bounds } from "./pathBounds.js";
-import { placeBounds, placeThrough, transformSteps } from "./PlacementStep.js";
+import { orbitSteps, placeBounds, placeThrough, transformSteps } from "./PlacementStep.js";
 import type { GroupNode, RenderNode, TextNode } from "./RenderNode.js";
 import { sampleTransforms, timelinePosition } from "./sampleAnimation.js";
+import { sampleOrbit } from "./sampleOrbit.js";
 import { strokeBounds } from "./strokeBounds.js";
 
 /**
- * A box surely containing everything `node` draws, in the coordinates it is drawn in: its own rotation and, in a
- * frame (`time` set), the groups its transform tracks wrap around it. Strokes reach their miter tips, glyphs the
- * head box of their font, turns are bounded by cosine and sine intervals, and the arithmetic is + - * / % round min
- * max abs and a correctly rounded square root only, so every engine decides alike. Undefined when it cannot be known:
- * an animated node of the animated SVG (CSS moves it), or a group around one.
+ * A box surely containing everything `node` draws, in the coordinates it is drawn in: its own rotation, the groups of
+ * its orbit and, in a frame (`time` set), the groups its transform tracks wrap around it. Strokes reach their miter
+ * tips, glyphs the head box of their font, turns are bounded by cosine and sine intervals, and the arithmetic is + - *
+ * / % round min max abs and a correctly rounded square root only, so every engine decides alike. Undefined when it
+ * cannot be known: an animated node or a moving orbit in the animated SVG (CSS moves it), or a group around one.
  */
 export function inkBounds(
   node: RenderNode,
@@ -24,6 +25,17 @@ export function inkBounds(
 }
 
 function measure(
+  node: RenderNode,
+  time: number | undefined,
+  memo: WeakMap<RenderNode, Bounds | undefined>,
+): Bounds | undefined {
+  const played = measurePlayed(node, time, memo);
+  if (node.orbit === undefined) return played;
+  // As renderOrbit draws it: the node, played, inside the orbit's groups.
+  return placeThrough(played, orbitSteps(sampleOrbit(node.orbit, time ?? 0), time === undefined));
+}
+
+function measurePlayed(
   node: RenderNode,
   time: number | undefined,
   memo: WeakMap<RenderNode, Bounds | undefined>,
