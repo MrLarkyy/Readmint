@@ -258,13 +258,12 @@ A folder holds, per section, `<section>.json` and its dark twin `<section>.dark.
   `horizon` name's font size, the slots of the `horizon` commit ticker and worked-with band, the `pinscreen`
   contact underline and stack parentheses, the `horizon` and `year-ring` contact pills, the contacts cut to their
   room (the `horizon` and `year-ring` ones are placed by their width, not wrapped in a box, so they never break), the
-  `pinscreen` repository line (the `:`, `Project` and `{` after the name follow its drawn width, so a name with undrawn characters leaves no gap), the `pinscreen` ticker's cut and the `pinscreen` and `year-ring` ticker travel. A few texts that can only be ASCII
-  are still placed by counting characters: in `pinscreen`, the login in Geist Mono (0.6 em a
-  character, exact); in `year-ring`, the row under the year (Today, the longest streak and the busiest weekday, all
-  generated, in Archivo Regular 12) is centred by 6.2 px a character, an estimate that may leave it slightly off
-  centre; it holds no free text, so no dropped character can move it. The row lists only what the year draws: Today
-  only when the calendar has days, the streak only for a run of two or more days (the same rule as its marker), the
-  busiest weekday only when a day has contributions; the remaining items are centred by the same estimate. Archivo has no arrow or star glyph
+  `pinscreen` repository line (the `:`, `Project` and `{` after the name follow its drawn width, so a name with undrawn characters leaves no gap), the `pinscreen` ticker's cut and the `pinscreen` and `year-ring` ticker travel. One text that can only be ASCII is still placed by counting characters: in `pinscreen`, the login in Geist Mono (0.6 em a
+  character, exact). The `year-ring` row under the year (Today, the longest streak and the busiest weekday, all generated, in
+  Archivo Regular 12) is centred on the ring by the drawn width of its texts (`textWidth`), whichever of them it
+  lists. The row lists only what the year draws: Today only when the calendar has days, the streak only for a run of
+  two or more days (the same rule as its marker), the busiest weekday only when a day has contributions; the
+  remaining items are centred by the same measure. Archivo has no arrow or star glyph
   either: the contact arrow and the worked-with stars are paths.
 
 ### Settings file
