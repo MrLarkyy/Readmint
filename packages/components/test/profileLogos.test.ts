@@ -707,6 +707,15 @@ describe("profileLogos", () => {
     const creators = /MrBeast|SpeedSilver|DiamondXR/u;
     expect(profileLogos.map((logo) => logo.name).join(" ")).not.toMatch(creators);
     expect(Math.max(...profileLogos.map((logo) => logo.line))).toBeLessThanOrEqual(2);
+    const lines = Math.max(...profileLogos.map((logo) => logo.line)) + 1;
+    for (const props of [
+      profileExampleProps["year-ring"]?.index,
+      profileExampleProps.pinscreen?.stack,
+    ]) {
+      const count = (props?.logoLabels as readonly string[]).length;
+      expect(count).toBeGreaterThanOrEqual(1);
+      expect(count).toBeLessThanOrEqual(lines);
+    }
     expect(JSON.stringify(profileExampleProps)).not.toMatch(
       /MrBeast|SpeedSilver|DiamondXR|Minecraft|Discord|TypeScript/iu,
     );
