@@ -11,7 +11,9 @@ import { liveData } from "./liveData.js";
 import { loadRenderInput, type RenderInput } from "./loadRenderInput.js";
 import { printLines } from "./printLines.js";
 import { quoteForLog } from "./quoteForLog.js";
+import { renderManifestCommand } from "./renderManifestCommand.js";
 import { renderOutput } from "./renderOutput.js";
+import { renderOutputOptions } from "./renderOutputOptions.js";
 import { variantTwin } from "./variantTwin.js";
 
 /**
@@ -23,16 +25,11 @@ export async function renderCommand(
   args: Extract<CliCommand, { name: "render" }>,
   io: CliIo,
 ): Promise<ExitCode> {
+  if ("manifest" in args) return renderManifestCommand(args, io);
   const input = await loadInput(args, io);
   const name = input.file.name;
   await printLines(io.stderr, input.warnings ?? []);
-  const result = await renderOutput(input, [args.format], {
-    ...(args.locale === undefined ? {} : { locale: args.locale }),
-    ...(args.time === undefined ? {} : { time: args.time }),
-    ...(args.scale === undefined ? {} : { scale: args.scale }),
-    ...(args.frameRate === undefined ? {} : { frameRate: args.frameRate }),
-    ...(args.quality === undefined ? {} : { quality: args.quality }),
-  });
+  const result = await renderOutput(input, [args.format], renderOutputOptions(args));
   if (!result.ok) {
     throw new CliError(
       ExitCode.invalid,
@@ -63,7 +60,7 @@ export async function renderCommand(
 }
 
 async function loadInput(
-  args: Extract<CliCommand, { name: "render" }>,
+  args: Extract<CliCommand, { name: "render" }> & { readonly design: string },
   io: CliIo,
 ): Promise<RenderInput> {
   const { variant, ...plain } = args;

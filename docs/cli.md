@@ -14,6 +14,7 @@ readmint validate design.json
 readmint preview design.json --data fixture.json
 GH_TOKEN=<token> readmint render design.json --github --login octocat --out card.svg
 readmint render design.json --data-json stats=stats.json --out card.svg
+readmint render --manifest renders.json --data fixture.json --out-dir readmint
 ```
 
 `render` writes SVG, or a raster image of it: PNG, WebP, APNG or GIF (see [raster.md](raster.md)). An animated design
@@ -21,13 +22,14 @@ becomes an animated WebP, APNG or GIF; `png` is always a still image (the frame 
 
 ## Commands
 
-| command                | does                                                                                                                                                                           |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `render <design>`      | renders the design; writes the SVG to standard output (no trailing newline) or to `--out`, a raster image to `--out`                                                           |
-| `validate <design>`    | checks the design and loads every asset it declares; with data (`--data`, `--github`, `--data-json` or `--data-feed`) also renders it and reports its issues                   |
-| `preview <design>`     | serves a live preview on `http://127.0.0.1:<port>/` (with `--github`, `--data-json` or `--data-feed` under a per-session secret path), reloaded whenever an input file changes |
-| `help`, `-h`, `--help` | prints the usage                                                                                                                                                               |
-| `--version`            | prints the version                                                                                                                                                             |
+| command                                    | does                                                                                                                                                                           |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `render <design>`                          | renders the design; writes the SVG to standard output (no trailing newline) or to `--out`, a raster image to `--out`                                                           |
+| `render --manifest <file> --out-dir <dir>` | renders the named renders of a [manifest](#render-manifest) into the folder and prints the `<picture>` snippet of their names to standard output                               |
+| `validate <design>`                        | checks the design and loads every asset it declares; with data (`--data`, `--github`, `--data-json` or `--data-feed`) also renders it and reports its issues                   |
+| `preview <design>`                         | serves a live preview on `http://127.0.0.1:<port>/` (with `--github`, `--data-json` or `--data-feed` under a per-session secret path), reloaded whenever an input file changes |
+| `help`, `-h`, `--help`                     | prints the usage                                                                                                                                                               |
+| `--version`                                | prints the version                                                                                                                                                             |
 
 Without data (`--data`, `--github`, `--data-json` or `--data-feed`), `validate` does not render: every binding would fail. Every asset the design
 declares with a path is loaded, used or not, so a broken reference fails `validate` too. An image `src` bound to data is
@@ -45,7 +47,9 @@ data it fails `image-binding`.
 | `--locale <tag>`                                   | all                  | BCP 47 language tag for the `number`, `compact`, `percent` and `date` filters; default the design's `locale`, else `en`; a tag the expression tables lack (`en`, `de`, `fr`, `es`, `cs`, or a region tag of one) is a usage error                                                                                                                                                      |
 | `--time <ms>`                                      | `render`, `validate` | renders that frame of the animation as a static SVG (or a still raster image), in 0..86400000                                                                                                                                                                                                                                                                                          |
 | `--out <file>`                                     | `render`             | writes the output to this file (its folder must exist) instead of standard output; written only once the whole output is made, so a failed raster export leaves it as it was                                                                                                                                                                                                           |
-| `--format <name>`                                  | `render`             | `svg`, `png`, `webp`, `apng` or `gif`; default from the `--out` extension (`.png`, `.apng`, `.webp`, `.gif`), else `svg`; a raster format without `--out` is a usage error                                                                                                                                                                                                             |
+| `--manifest <file>`                                | `render`             | a [render manifest](#render-manifest): named renders of designs with their props, instead of a design file; needs `--out-dir`, refuses `--out` and `--root`                                                                                                                                                                                                                            |
+| `--out-dir <dir>`                                  | `render`             | with `--manifest`: the folder the renders are written to as `<name>.<ext>` and `<name>.dark.<ext>` (created when missing); written only when every render succeeded                                                                                                                                                                                                                    |
+| `--format <name>`                                  | `render`             | `svg`, `png`, `webp`, `apng` or `gif`; default from the `--out` extension (`.png`, `.apng`, `.webp`, `.gif`), else `svg`; a raster format without `--out` (or `--out-dir` with `--manifest`) is a usage error                                                                                                                                                                          |
 | `--scale <n>`                                      | `render`             | raster pixels per design pixel, 1..4 (up to three decimals); default 2; raster formats only                                                                                                                                                                                                                                                                                            |
 | `--frame-rate <n>`                                 | `render`             | frames per second sampled from the animation, a whole number in 1..60 (`gif` 1..50); default 30, `gif` 25, lowered to fit the raster limits for a long animation or a file over 5 MiB (one line on standard error says so, [raster.md](raster.md#timing-and-looping)); raster formats only                                                                                             |
 | `--quality <n>`                                    | `render`             | lossy WebP at this quality, a whole number in 1..100; default lossless; `webp` output only (any other format is a usage error)                                                                                                                                                                                                                                                         |
@@ -70,14 +74,14 @@ whose message never shows the value. There is no host option: the preview listen
 
 ## Exit codes
 
-| code | name       | meaning                                                                                                                                                                                                                                                                                          |
-| ---- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 0    | `ok`       | done; warnings (such as `animation-cut`) may have been printed                                                                                                                                                                                                                                   |
-| 1    | `invalid`  | the design is invalid (parse, schema, references, not UTF-8, too large), an asset was refused, the render failed, or a raster export failed (a limit in [raster.md](raster.md))                                                                                                                  |
-| 2    | `usage`    | unknown command or option, missing or extra argument, bad option value (`--variant` other than `dark`, or on `validate` or `preview`)                                                                                                                                                            |
-| 3    | `input`    | a file, folder or port cannot be used: design file missing or outside `--root`, fixture data unreadable or invalid, a fixture key equal to a `--data-json` or `--data-feed` namespace, `--out` or standard output not writable, port in use                                                      |
-| 4    | `data`     | `--github` without a token in `GH_TOKEN` or `GITHUB_TOKEN`, the GitHub data could not be loaded (`GitHub data (<code>): <message>`), a `--data-json` source could not be loaded (`JSON data <ns> (<code>): <message>`), or a `--data-feed` feed could not (`Feed data <ns> (<code>): <message>`) |
-| 70   | `internal` | a bug in Readmint                                                                                                                                                                                                                                                                                |
+| code | name       | meaning                                                                                                                                                                                                                                                                                                                |
+| ---- | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 0    | `ok`       | done; warnings (such as `animation-cut`) may have been printed                                                                                                                                                                                                                                                         |
+| 1    | `invalid`  | the design is invalid (parse, schema, references, not UTF-8, too large), an asset was refused, the render failed, or a raster export failed (a limit in [raster.md](raster.md))                                                                                                                                        |
+| 2    | `usage`    | unknown command or option, missing or extra argument, bad option value (`--variant` other than `dark`, or on `validate` or `preview`; `--manifest` or `--out-dir` on `validate` or `preview`; `render --manifest` without `--out-dir` or with a design file, `--out` or `--root`; `--out-dir` without `--manifest`)    |
+| 3    | `input`    | a file, folder or port cannot be used: design file missing or outside `--root`, a manifest unreadable or one of its designs missing or outside its folder, fixture data unreadable or invalid, a fixture key equal to a `--data-json` or `--data-feed` namespace, `--out` or standard output not writable, port in use |
+| 4    | `data`     | `--github` without a token in `GH_TOKEN` or `GITHUB_TOKEN`, the GitHub data could not be loaded (`GitHub data (<code>): <message>`), a `--data-json` source could not be loaded (`JSON data <ns> (<code>): <message>`), or a `--data-feed` feed could not (`Feed data <ns> (<code>): <message>`)                       |
+| 70   | `internal` | a bug in Readmint                                                                                                                                                                                                                                                                                                      |
 
 `@readmint/cli` exports the same values as `ExitCode`.
 
@@ -166,7 +170,7 @@ The file is JSON, UTF-8, at most 4 Mi characters of text; section and prop names
 file and may lie anywhere; the Action's `props-file` is confined to the workspace instead. A file that cannot be read exits with code 3, one whose content is invalid with code 1; the
 message names the file and the pointer, not the content. `preview` watches the file and re-renders when it changes.
 With `--variant` the section is the same one, applied after the variant ([Variants](#variants)). The Action takes the same file as [`props-file`](action.md#inputs). The profile templates ship one, see
-[components.md](components.md#profile-templates).
+[components.md](components.md#profile-templates). With a [render manifest](#render-manifest) the section is the name of the render instead.
 
 ## Variants
 
@@ -186,6 +190,88 @@ prop's allowed values`, or `card.json: error type at /theme: variant dark: the v
 prop`); the design has no top-level component layer (`card.json: error unknown-property at /: variant dark: the design
 has no top-level component layer`). An unknown variant name, and `--variant` on `validate` or `preview`, exit with 2. The
 Action takes the same variant as [`variant`](action.md#inputs).
+
+## Render manifest
+
+One design often serves several outputs that differ in a few root props (the six repository cards `repo-1` to
+`repo-6` differ only in `slot`). A render manifest lists them: a JSON file, conventionally `renders.json`, named
+explicitly with `--manifest` (never found by itself), next to the designs.
+
+```json
+{
+  "$schema": "https://raw.githubusercontent.com/MrLarkyy/Readmint/main/packages/format/schema/renders-v0.schema.json",
+  "renders": [
+    { "name": "header", "design": "header.json", "variants": ["dark"] },
+    { "name": "repo-1", "design": "repo.json", "props": { "slot": 0 }, "variants": ["dark"] },
+    { "name": "repo-2", "design": "repo.json", "props": { "slot": 1 }, "variants": ["dark"] },
+    { "name": "repo-3", "design": "repo.json", "props": { "slot": 2 }, "variants": ["dark"] },
+    { "name": "repo-4", "design": "repo.json", "props": { "slot": 3 }, "variants": ["dark"] },
+    { "name": "repo-5", "design": "repo.json", "props": { "slot": 4 }, "variants": ["dark"] },
+    { "name": "repo-6", "design": "repo.json", "props": { "slot": 5 }, "variants": ["dark"] }
+  ]
+}
+```
+
+`readmint render --manifest renders.json --out-dir readmint --data fixture.json` renders every entry the way
+`readmint render` renders its design with the entry's props, and writes `readmint/<name>.svg` (the format of `--format`)
+and, for each variant, `readmint/<name>.dark.svg`. The bytes are those of a design file that holds the same props as
+literals. It prints the `<picture>` snippet of the names to standard output, one `<picture>` per entry in the order of
+the manifest (the `<source>` is the dark output, the `<img>` the light one, a raster `<img>` carries the design's
+width and height), with the paths as `--out-dir` was typed:
+
+```text
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="readmint/repo-3.dark.svg">
+  <img alt="repo-3" src="readmint/repo-3.svg">
+</picture>
+```
+
+| key        | meaning                                                                                                                                                                                     |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `$schema`  | optional, a string of at most 512 characters, ignored (editors read it for completion)                                                                                                      |
+| `renders`  | the list of renders, 1 to 64                                                                                                                                                                |
+| `name`     | the output name and the alt text: an id (a letter, then letters, digits, `_` or `-`, at most 64), unique ignoring letter case, and not a Windows device name (`con`, `nul`, `lpt1` ...)     |
+| `design`   | the design file (`.json`, `.yaml`, `.yml`), relative to the manifest's folder, `/`-separated, no `..`, no drive, no empty segment; it must stay inside that folder after links are resolved |
+| `props`    | optional, root props set on the design: an id to a string, a number, a boolean or a list of those (at most 64 props, at most 65 536 characters as JSON)                                     |
+| `variants` | optional, the variants rendered next to the light output: `["dark"]`; absent: the run's `--variant`; `[]`: none                                                                             |
+
+Unknown keys are refused, so a later key (such as a version) can be added without changing what a file means. The file is
+JSON, UTF-8, at most 1 Mi characters; the limits are `RenderManifestLimits` in `@readmint/format`, and the same rules are
+published as a JSON Schema, `packages/format/schema/renders-v0.schema.json` (the package exports it as
+`@readmint/format/schema/renders-v0.schema.json`). A schema cannot say that a name is unique ignoring letter case, is no
+device name, or that a prop is set once, so the parser checks those.
+
+**Order.** For each render: the design, then the entry's `props` (on the root component layers, as
+[`--props`](#settings-file) does), then the variant, then the settings section named like the render (`--props`
+file; `"repo-3"` for the render `repo-3`). A settings section that sets a prop of the entry wins, and one stderr line
+names the section and the prop, never the value. A prop the entry sets and one of its variants sets too is refused
+(`duplicate-key`), as is the run's `--variant` when it sets a prop of an entry without `variants`, so the order never
+changes a byte. The manifest is explicit: no `<name>.dark.json` is looked up, each variant is rendered from the entry's
+own design.
+
+**Everything or nothing.** The manifest and every design it lists are read and checked before any data is loaded or
+request made; then each render runs, and when any fails every problem is printed and no file is written. Data
+(`--data`, `--github`, `--data-json`, `--data-feed`) and the images bound to it are loaded once for the whole run;
+`--data-json` file paths are relative to the current folder (`--root` is not allowed). `--locale`, `--time`, `--scale`,
+`--frame-rate`, `--quality`, `--format` and `--variant` apply to every render.
+
+Errors are lines `manifest "<file>": error <code> at <pointer>: <message>` with a code of the design format, and they
+never carry a prop value:
+
+```text
+manifest "renders.json": error duplicate-name at /renders/1/name: the name Repo is used twice (letter case is ignored)
+manifest "renders.json": error pattern at /renders/0/design: the design must be a relative path inside the manifest folder: no empty, . or .. segment
+manifest "renders.json": error unknown-reference at /renders/0/design: design file "missing.json" does not exist
+manifest "renders.json": error duplicate-key at /renders/0/props/theme: the prop theme is also set by the dark variant; set it in one place
+```
+
+A manifest that cannot be read, and a design that is missing, not a file or outside the manifest's folder (the
+`unknown-reference` line), exit with 3; invalid content (a pointer into the manifest), a failing render and a clash exit
+with 1; a wrong combination of options exits with 2. A message about a render names the design and the render:
+`repo.json (render "repo-3", dark variant): ...`; an error in the entry's props is located in the manifest
+(`manifest "renders.json": error unknown-property at /renders/2/props/slotz: no top-level component of the design has the prop "slotz"`) and, where it could echo a value, its
+message only names the render and the prop. `validate` and `preview` take no manifest. The Action takes the same file as
+[`manifest`](action.md#inputs).
 
 ## Live GitHub data
 
@@ -357,7 +443,7 @@ problems; at most `maxDataJsonSources`), `loadJsonArgs(specs, options)` (the `--
 problems; at most `maxDataFeedSources`), `loadFeedArgs(specs, options)` (the `--data-feed` load, `FeedArgsOptions` with
 `fetch` and `signal`; a failure is a `CliError` with exit code 4), `mergeDataNamespaces(fixture, loaded)`
 (adds loaded namespaces to fixture data; a clash is a `CliError` with exit code 3),
-`partialDataWarning(parts)` (the one warning line for `meta.partial`, also the Action's),
+`loadRenderManifest(file, cwd, options?)` (the `--manifest` file as a `LoadedRenderManifest` of `LoadedRenderEntry`s, designs checked inside its folder; with `{ confinedTo }` a relative path inside that folder, as the Action's `manifest`; whose `RenderEntry` in `RenderInputOptions.entry` sets an entry's props and names the settings section), `pictureHtml(entries)` (the `<picture>` HTML of `PictureEntry`s, also the Action's snippet) and `relabelLine(line, design, label)` (a message line with a render label in place of the design name), `partialDataWarning(parts)` (the one warning line for `meta.partial`, also the Action's),
 `redactSecrets(text, secrets)` (the redaction of standard error, also the Action's log), `loadRenderInput` (design file, assets, fixture data and the images bound to data in one call; `RenderInput`,
 `RenderInputOptions`, whose `images` fetches them, whose `data` stands in for `--data`, and whose `loadData` loads it
 once the design and its assets are valid, as `--github` does), `fetchBoundImages` and its

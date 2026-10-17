@@ -2,7 +2,7 @@ export const packageName = "@readmint/cli";
 
 export { AssetPathError, type AssetPathErrorCode } from "./AssetPathError.js";
 export { checkAssetPath } from "./checkAssetPath.js";
-export type { CliCommand, DesignArgs, RenderArgs } from "./CliCommand.js";
+export type { CliCommand, DesignArgs, ManifestRenderArgs, RenderArgs } from "./CliCommand.js";
 export type { DesignProps, RenderVariant } from "@readmint/format";
 export { applyRenderVariant, renderVariant, renderVariants } from "@readmint/format";
 export { CliError } from "./CliError.js";
@@ -30,8 +30,15 @@ export {
   liveDataTimeout,
 } from "./loadLiveData.js";
 export { loadRenderInput, type RenderInput, type RenderInputOptions } from "./loadRenderInput.js";
+export {
+  type LoadedRenderEntry,
+  type LoadedRenderManifest,
+  loadRenderManifest,
+  type RenderManifestOptions,
+} from "./loadRenderManifest.js";
 export { localeProblem } from "./localeProblem.js";
 export { type OutputFormat, outputExtension, outputFormats } from "./OutputFormat.js";
+export { type PictureEntry, pictureHtml } from "./pictureHtml.js";
 export { propsSection } from "./propsSection.js";
 export { quoteForLog } from "./quoteForLog.js";
 export { readAsset, readResolvedAsset, type AssetReadLimits } from "./readAsset.js";
@@ -44,6 +51,8 @@ export {
   RemoteImageLimits,
   type RemoteImageOptions,
 } from "./RemoteImageOptions.js";
+export { type RenderEntry } from "./RenderEntry.js";
+export { relabelLine } from "./relabelLine.js";
 export { renderInput } from "./renderInput.js";
 export {
   type RenderedOutput,

@@ -158,7 +158,13 @@ function readEntry(
       }
     }
   }
-  if (!ok || typeof name !== "string" || typeof design !== "string" || props === undefined) {
+  if (
+    !ok ||
+    typeof name !== "string" ||
+    typeof design !== "string" ||
+    props === undefined ||
+    variants === null
+  ) {
     return undefined;
   }
   return { name, design, props, ...(variants === undefined ? {} : { variants }) };

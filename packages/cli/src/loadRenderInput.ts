@@ -1,6 +1,7 @@
 import {
   applyDesignProps,
   applyRenderVariant,
+  type ComponentPropValue,
   type DesignProps,
   type RenderVariant,
 } from "@readmint/format";
@@ -14,11 +15,11 @@ import { isBoundSource } from "./isBoundSource.js";
 import { loadDesignAssets } from "./loadDesignAssets.js";
 import { type DesignFile, loadDesignFile } from "./loadDesignFile.js";
 import { loadDesignProps } from "./loadDesignProps.js";
-import { loadFixtureData } from "./loadFixtureData.js";
+import { loadInputData } from "./loadInputData.js";
 import { formatIssue } from "./formatIssue.js";
-import { mergeDataNamespaces } from "./mergeDataNamespaces.js";
 import { propsSection } from "./propsSection.js";
 import { quoteForLog } from "./quoteForLog.js";
+import type { RenderEntry } from "./RenderEntry.js";
 import { RemoteImageError } from "./RemoteImageError.js";
 import type { RemoteImageOptions } from "./RemoteImageOptions.js";
 import { SettingsMask } from "./SettingsMask.js";
@@ -55,6 +56,11 @@ export interface RenderInputOptions {
    * `image-not-fetched` when there is data (without data its bytes stay missing and only a render fails).
    */
   readonly images?: RemoteImageOptions;
+  /**
+   * A render of a manifest: its props are set on the design before the variant, and its name is the settings
+   * section instead of the design file's.
+   */
+  readonly entry?: RenderEntry;
 }
 
 /**
@@ -72,18 +78,19 @@ export async function loadRenderInput(
   const props =
     options.props ??
     (args.props === undefined ? undefined : await loadDesignProps(args.props, options.cwd));
-  const varied = options.variant === undefined ? loaded : withVariant(loaded, options.variant);
-  const { file, mask } = props === undefined ? { file: varied } : withProps(varied, props);
-  const warnings =
-    options.variant === undefined || props === undefined
-      ? []
-      : overrides(varied, props, options.variant);
+  const { entry } = options;
+  const entered = entry === undefined ? loaded : withEntryProps(loaded, entry);
+  const varied = options.variant === undefined ? entered : withVariant(entered, options.variant);
+  const section = entry?.name ?? propsSection(loaded.name);
+  const own = props !== undefined && Object.hasOwn(props, section) ? props[section] : undefined;
+  const { file, mask } = withProps(varied, section, own, entry);
+  const warnings = overrides(loaded.name, section, own, entry, options.variant);
   options.onDesignFile?.(file);
   const fileAssets = await loadDesignAssets(file);
   if (options.data === undefined) {
     checkDataNamespaces(file, args.dataJson ?? [], args.dataFeed ?? []);
   }
-  const data = options.data ?? (await loadData(args, options));
+  const data = options.data ?? (await loadInputData(args, options));
   const assets = await withBoundImages(file, fileAssets, data, options.images);
   return {
     file,
@@ -102,45 +109,73 @@ function withVariant(file: DesignFile, variant: RenderVariant): DesignFile {
   throw new CliError(ExitCode.invalid, lines);
 }
 
-function overrides(file: DesignFile, props: DesignProps, variant: RenderVariant): string[] {
-  const section = propsSection(file.name);
-  const own = Object.hasOwn(props, section) ? props[section] : undefined;
-  if (own === undefined) return [];
-  return Object.keys(variant.props)
-    .filter((name) => Object.hasOwn(own, name))
-    .map(
-      (name) =>
-        `${file.name}: settings section ${quoteForLog(section)} sets ${quoteForLog(name)}, which overrides the ${variant.name} variant`,
-    );
+function withEntryProps(file: DesignFile, entry: RenderEntry): DesignFile {
+  if (Object.keys(entry.props).length === 0) return file;
+  const result = applyDesignProps(file.design, entry.props);
+  if (result.ok) return { ...file, design: result.value };
+  const mask = new SettingsMask(entry.name, entry.props, file.design, renderLabel(entry));
+  const lines = result.issues.map((issue) =>
+    formatIssue(
+      entry.manifest,
+      mask.mask({ ...issue, path: `${entry.at}/props${issue.path}` }),
+      "error",
+    ),
+  );
+  if (result.truncated) lines.push(`${entry.manifest}: more issues not shown`);
+  throw new CliError(ExitCode.invalid, lines);
 }
 
-async function loadData(
-  args: DesignArgs,
-  options: RenderInputOptions,
-): Promise<Record<string, unknown> | undefined> {
-  const fixture =
-    args.data === undefined ? undefined : await loadFixtureData(args.data, options.cwd);
-  if (options.loadData === undefined) return fixture;
-  const loaded = await options.loadData();
-  return fixture === undefined ? loaded : mergeDataNamespaces(fixture, loaded);
+function renderLabel(entry: RenderEntry): string {
+  return `render ${quoteForLog(entry.name)}`;
+}
+
+/** Notes for the section that overrides what the variant or the manifest render set; names only. */
+function overrides(
+  fileName: string,
+  section: string,
+  own: Readonly<Record<string, unknown>> | undefined,
+  entry: RenderEntry | undefined,
+  variant: RenderVariant | undefined,
+): string[] {
+  if (own === undefined) return [];
+  const notes: string[] = [];
+  const sets = (name: string): boolean => Object.hasOwn(own, name);
+  for (const name of Object.keys(entry?.props ?? {}).filter(sets)) {
+    notes.push(
+      `${fileName}: settings section ${quoteForLog(section)} sets ${quoteForLog(name)}, which overrides the props of render ${quoteForLog(section)}`,
+    );
+  }
+  for (const name of Object.keys(variant?.props ?? {}).filter(sets)) {
+    notes.push(
+      `${fileName}: settings section ${quoteForLog(section)} sets ${quoteForLog(name)}, which overrides the ${variant?.name ?? ""} variant`,
+    );
+  }
+  return notes;
 }
 
 function withProps(
   file: DesignFile,
-  props: DesignProps,
+  section: string,
+  own: Readonly<Record<string, ComponentPropValue>> | undefined,
+  entry: RenderEntry | undefined,
 ): { file: DesignFile; mask?: SettingsMask } {
-  const section = propsSection(file.name);
-  const own = Object.hasOwn(props, section) ? props[section] : undefined;
-  if (own === undefined || Object.keys(own).length === 0) return { file };
+  const label = entry === undefined ? undefined : renderLabel(entry);
+  const entryProps = entry?.props ?? {};
+  if (own === undefined || Object.keys(own).length === 0) {
+    return Object.keys(entryProps).length === 0
+      ? { file }
+      : { file, mask: new SettingsMask(section, entryProps, file.design, label) };
+  }
   const result = applyDesignProps(file.design, own);
+  const merged = { ...entryProps, ...own };
   if (result.ok) {
     return {
       file: { ...file, design: result.value },
-      mask: new SettingsMask(section, own, result.value),
+      mask: new SettingsMask(section, merged, result.value, label),
     };
   }
   // Issues outside the section's props (a merged value another check rejected) still must not quote a value.
-  const mask = new SettingsMask(section, own, file.design);
+  const mask = new SettingsMask(section, merged, file.design, label);
   const lines = result.issues.map((issue) =>
     formatIssue(file.name, mask.mask({ ...issue, path: `/${section}${issue.path}` }), "error"),
   );
