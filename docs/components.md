@@ -277,7 +277,7 @@ props written into it are byte-identical.
 ### The examples repository
 
 [MrLarkyy/readmint-template-test](https://github.com/MrLarkyy/readmint-template-test) runs the three templates with the Action: per template its `designs/` (the
-folder above: the template designs byte for byte, the fonts, and a `settings.json` with the personal texts of `profileExampleProps`, set through the Action input `props-file`, which the pinned v0.3.0 carries), the SVGs the Action wrote to
+folder above: the template designs byte for byte, the fonts, and a `settings.json` with the personal texts of `profileExampleProps`, set through the Action input `props-file`, which the pinned release carries), the SVGs the Action wrote to
 `readmint/`, a README with the snippet and one workflow with a step per template. To use one, copy its `designs/`
 folder and its step. The designs and READMEs there are generated, never edited by hand, from the template folders by
 `@readmint/examples` (a package of this repository, not published):
@@ -290,14 +290,13 @@ pnpm examples <path to a clone of the examples repository> --check
 The first writes the files (and removes the generated ones that are no longer produced, never `<template>/readmint/`);
 `--check` writes nothing, lists each missing, differing or stale file and exits 1 when the clone is not in sync. Run it
 after changing a template or `profileExampleProps`, then commit and push the clone. `--login` and `--action` set the
-account and the Action reference (`MrLarkyy` and `MrLarkyy/Readmint@v0.3.0` by default). The generator refuses an Action reference pinned to a release older than the filters the templates use
+account and the Action reference (`MrLarkyy` and `MrLarkyy/Readmint@v0.4.0` by default). The generator refuses an Action reference pinned to a release older than the filters the templates use
 (`textWidth`, `truncateWidth`), than the layer properties they set (`let` of the Horizon and Pinscreen sections and of the Year Ring ones,
 `orbit` of the Year Ring year and header, `maxLines` of its repository cards, all v0.4.0; looked up as keys of the
 layers, not in texts), than a root `palette` (v0.4.0; looked up as a key of the document only) or than `props-file`
 (v0.3.0), which the generated `settings.json` needs, for the write and for `--check`. Examples that use `maxLines`,
-`let`, `orbit` or `palette` need the v0.4.0 tag and refuse every earlier pin, the default included: the Action bundle exists only
-on release tags ([action](action.md#releases)), so until v0.4.0 is cut no reference runs them, and the examples are
-generated after that release with the bumped default.
+`let`, `orbit` or `palette` need the v0.4.0 tag or newer and refuse every earlier pin: the Action bundle exists only
+on release tags ([action](action.md#releases)), and the default is bumped with every release.
 
 ### Data the templates read
 
