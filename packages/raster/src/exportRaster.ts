@@ -8,7 +8,7 @@ import { encodeWebp, encodeWebpStill } from "./encodeWebp.js";
 import { fitFrameRate } from "./fitFrameRate.js";
 import type { FrameEncoder } from "./FrameEncoder.js";
 import { type DelayUnit, frameDelays, type TimedFrame } from "./frameDelays.js";
-import { frameFits } from "./frameFits.js";
+import { FrameBudget } from "./FrameBudget.js";
 import { loadRaster, openWebpCodec } from "./rasterRuntime.js";
 import { hasWebpImage, inlineWebpAssets } from "./inlineWebpAssets.js";
 import { matchFontFamilies } from "./matchFontFamilies.js";
@@ -32,6 +32,8 @@ const defaultGifFrameRate = 25;
 const maxGifFrameRate = 50;
 /** Latest frame time the renderer takes (`RenderOptions.time`). */
 const maxTime = 86_400_000;
+/** Encodings of a default-rate animation at a projected rate before the last try at 1 fps. */
+const maxRetries = 4;
 
 const units: Readonly<Record<RasterFormat, DelayUnit>> = {
   png: { ms: 1, min: 1 },
@@ -105,43 +107,33 @@ export async function exportRaster(
   const height = Math.round(Math.ceil(size.height) * settings.scale);
   checkSide(settings, width, height);
   const unit = units[format];
-  let fits: ((frames: number) => boolean) | undefined;
-  let frameRate = 0;
-  let frameRateFitted = false;
-  if (animation !== undefined) {
-    const imageBase = countImagePixels(first, 0).pixels;
-    const imagePerFrame = countImagePixels(first, 1).pixels - imageBase;
-    fits = frameFits(limits, width, height, imageBase, imagePerFrame);
-    if (settings.frameRate === undefined) {
-      const wanted = format === "gif" ? defaultGifFrameRate : defaultFrameRate;
-      // When not even 1 fps fits, the checks below fail at 1 fps with their usual message.
-      frameRate = fitFrameRate(animation, wanted, unit, fits) ?? 1;
-      frameRateFitted = frameRate < wanted;
-    } else {
-      frameRate = settings.frameRate;
-    }
-  }
-  const plan: TimedFrame[] =
+  const one = countImagePixels(first, 1);
+  const imageBase = animation === undefined ? 0 : countImagePixels(first, 0).pixels;
+  const frames = new FrameBudget(limits, width, height, imageBase, one.pixels - imageBase);
+  const wanted = format === "gif" ? defaultGifFrameRate : defaultFrameRate;
+  const explicit = settings.frameRate;
+  const fitsRate = (frameCount: number): boolean => frames.fits(frameCount);
+  // When not even 1 fps fits, the checks below fail at 1 fps with their usual message.
+  const startRate =
     animation === undefined
-      ? [{ time: settings.time ?? 0, delay: 0 }]
-      : frameDelays(frameTimes(animation, frameRate), animation, frameRate, unit);
-  const lowerRate = (): number | undefined =>
-    animation === undefined || fits === undefined
-      ? undefined
-      : fitFrameRate(animation, frameRate - 1, unit, fits);
-  checkPlan(settings, width, height, plan.length, frameRate, lowerRate);
-  checkImageWork(limits, countImagePixels(first, plan.length), plan.length, lowerRate);
+      ? 0
+      : (explicit ?? fitFrameRate(animation, wanted, unit, fitsRate) ?? 1);
+  const checked = (rate: number): TimedFrame[] => {
+    const plan: TimedFrame[] =
+      animation === undefined
+        ? [{ time: settings.time ?? 0, delay: 0 }]
+        : frameDelays(frameTimes(animation, rate), animation, rate, unit);
+    const lowerRate = (): number | undefined =>
+      animation === undefined ? undefined : fitFrameRate(animation, rate - 1, unit, fitsRate);
+    checkPlan(settings, width, height, plan.length, rate, lowerRate);
+    checkImageWork(limits, frames.imagePixels(plan.length), one, plan.length, rate, lowerRate);
+    return plan;
+  };
+  const firstPlan = checked(startRate);
   const fonts = rasterFonts(first, input.fonts);
   const buffers = fonts.map((font) => font.bytes);
   await loadRaster();
   const codecs = format === "webp" || hasWebpImage(first) ? await openWebpCodec() : undefined;
-  const budget = new OutputBudget(
-    limits.maxOutputBytes,
-    labels[format],
-    format === "webp" && settings.quality === undefined
-      ? ", or give a WebP quality (1..100) for lossy frames"
-      : "",
-  );
   const webpCache = new Map<string, string>();
   const draw = (svg: string): Uint8Array => {
     const prepared = matchFontFamilies(inlineWebpAssets(svg, codecs, webpCache), fonts);
@@ -160,10 +152,25 @@ export async function exportRaster(
     displayWidth: Math.round(size.width),
     displayHeight: Math.round(size.height),
   };
-
-  if (animation === undefined || plan.length === 1) {
+  const newBudget = (): OutputBudget =>
+    new OutputBudget(
+      limits.maxOutputBytes,
+      labels[format],
+      format === "webp" && settings.quality === undefined
+        ? ", or give a WebP quality (1..100) for lossy frames"
+        : "",
+    );
+  const stillOutput = (): RasterOutput => {
     const still = format === "apng" ? "png" : format;
-    const bytes = encodeStill(still, draw(first), width, height, codecs, budget, settings.quality);
+    const bytes = encodeStill(
+      still,
+      draw(first),
+      width,
+      height,
+      codecs,
+      newBudget(),
+      settings.quality,
+    );
     return {
       bytes,
       format: still,
@@ -174,46 +181,74 @@ export async function exportRaster(
       frameRate: 0,
       frameRateFitted: false,
     };
-  }
+  };
 
-  const encoder = frameEncoder(format, width, height, animation, codecs, budget, settings.quality);
-  let pending: { pixels: Uint8Array; time: number; delay: number } | undefined;
-  const projection = new RateProjection(animation.duration, frameRate, limits.maxOutputBytes);
-  const write = (frame: { pixels: Uint8Array; time: number; delay: number }): void => {
-    const covered = Math.min(animation.duration, frame.time + frame.delay * unit.ms);
-    try {
+  if (animation === undefined || firstPlan.length === 1) return stillOutput();
+
+  /** One encoding of the animation at `rate`, or the byte-limit error with the rate projected to fit. */
+  const encodeAt = (
+    rate: number,
+    plan: readonly TimedFrame[],
+  ): RasterOutput | { error: RasterError; next: number | undefined } => {
+    if (plan.length === 1) return stillOutput();
+    const budget = newBudget();
+    const encoder = frameEncoder(
+      format,
+      width,
+      height,
+      animation,
+      codecs,
+      budget,
+      settings.quality,
+    );
+    const projection = new RateProjection(animation, unit, rate, limits.maxOutputBytes);
+    let adding = false;
+    const write = (frame: { pixels: Uint8Array; delay: number }): void => {
+      adding = true;
       encoder.add(frame.pixels, frame.delay);
+      adding = false;
+      projection.written(budget.bytes);
+    };
+    try {
+      let pending: { pixels: Uint8Array; delay: number } | undefined;
+      for (const [index, frame] of plan.entries()) {
+        const pixels = draw(index === 0 ? first : input.frame(frame.time));
+        if (pending !== undefined && samePixels(pending.pixels, pixels)) {
+          pending.delay += frame.delay;
+          continue;
+        }
+        if (pending !== undefined) write(pending);
+        pending = { pixels, delay: frame.delay };
+      }
+      if (pending !== undefined) write(pending);
+      const bytes = encoder.finish();
+      return {
+        bytes,
+        format,
+        mimeType: mimeTypes[format],
+        ...common,
+        frames: encoder.frames,
+        duration: animation.duration,
+        frameRate: rate,
+        frameRateFitted: explicit === undefined && rate < wanted,
+      };
     } catch (error) {
-      throw projection.explain(error, budget.bytes, covered);
+      if (!(error instanceof RasterError) || error.code !== "raster-output-too-large") throw error;
+      return { error, next: projection.rate(budget.bytes, adding) };
     }
-    projection.written(budget.bytes, covered);
   };
-  for (const [index, frame] of plan.entries()) {
-    const pixels = draw(index === 0 ? first : input.frame(frame.time));
-    if (pending !== undefined && samePixels(pending.pixels, pixels)) {
-      pending.delay += frame.delay;
-      continue;
-    }
-    if (pending !== undefined) write(pending);
-    pending = { pixels, time: frame.time, delay: frame.delay };
+
+  // An explicit rate is tried once. A default one is retried at the projected rate, at most this many times, and then
+  // at 1 fps, so the default export succeeds wherever any rate does.
+  let rate = startRate;
+  let plan = firstPlan;
+  for (let attempt = 1; ; attempt++) {
+    const result = encodeAt(rate, plan);
+    if (!("error" in result)) return result;
+    if (explicit !== undefined || rate === 1) throw named(result.error, result.next);
+    rate = attempt < maxRetries ? (result.next ?? 1) : 1;
+    plan = checked(rate);
   }
-  if (pending !== undefined) write(pending);
-  let bytes: Uint8Array;
-  try {
-    bytes = encoder.finish();
-  } catch (error) {
-    throw projection.explain(error, budget.bytes, animation.duration);
-  }
-  return {
-    bytes,
-    format,
-    mimeType: mimeTypes[format],
-    ...common,
-    frames: encoder.frames,
-    duration: animation.duration,
-    frameRate,
-    frameRateFitted,
-  };
 }
 
 function resolveSettings(options: RasterOptions): Settings {
@@ -289,17 +324,19 @@ function checkPlan(
   lowerRate: () => number | undefined,
 ): void {
   const { limits } = settings;
+  const slowest = frameRate === 1;
   if (frames > limits.maxFrames) {
     throw new RasterError(
       "raster-too-many-frames",
-      `the animation would have ${String(frames)} frames at ${String(frameRate)} fps, more than the ${String(limits.maxFrames)} allowed; lower the frame rate${upTo(lowerRate())}`,
+      `the animation would have ${String(frames)} frames at ${String(frameRate)} fps, more than the ${String(limits.maxFrames)} allowed; ${slowest ? "shorten the animation" : `lower the frame rate${upTo(lowerRate())}`}`,
     );
   }
   const pixels = width * height * frames;
   if (pixels > limits.maxTotalPixels) {
     const rate = lowerRate();
-    const fix =
-      rate === undefined
+    const fix = slowest
+      ? "lower the scale"
+      : rate === undefined
         ? "lower the scale or the frame rate"
         : `lower the frame rate${upTo(rate)}, or the scale`;
     throw new RasterError(
@@ -311,14 +348,26 @@ function checkPlan(
 
 function checkImageWork(
   limits: RasterLimits,
-  work: { pixels: number; images: number; draws: number },
+  pixels: number,
+  drawn: { images: number; draws: number },
   frames: number,
+  frameRate: number,
   lowerRate: () => number | undefined,
 ): void {
-  if (work.pixels <= limits.maxImagePixels) return;
+  if (pixels <= limits.maxImagePixels) return;
+  const fix = frameRate === 1 ? "" : `, or lower the frame rate${upTo(lowerRate())}`;
   throw new RasterError(
     "raster-too-many-image-pixels",
-    `drawing the images would decode ${String(work.pixels)} pixels (${String(work.images)} images drawn ${String(work.draws)} times a frame, ${String(frames)} frames), more than the ${String(limits.maxImagePixels)} allowed; draw large images fewer times or smaller, or lower the frame rate${upTo(lowerRate())}`,
+    `drawing the images would decode ${String(pixels)} pixels (${String(drawn.images)} images drawn ${String(drawn.draws)} times a frame, ${String(frames)} frames), more than the ${String(limits.maxImagePixels)} allowed; draw large images fewer times or smaller${fix}`,
+  );
+}
+
+/** The byte-limit error of an animation, with the rate that should fit when there is one. */
+function named(error: RasterError, rate: number | undefined): RasterError {
+  if (rate === undefined) return error;
+  return new RasterError(
+    error.code,
+    `${error.message} (about ${String(rate)} fps fits at this size)`,
   );
 }
 

@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 import { fitFrameRate } from "../src/fitFrameRate.js";
 import { frameCount } from "../src/frameCount.js";
-import { frameFits } from "../src/frameFits.js";
+import { FrameBudget } from "../src/FrameBudget.js";
 import { RasterLimits } from "../src/RasterLimits.js";
 
 const ms = { ms: 1, min: 1 };
@@ -23,15 +23,15 @@ describe("fitFrameRate", () => {
 
   test("a pixel-bound case: 1680x800 pixels over 60 s allows 3 fps", () => {
     const minute = { duration: 60_000, loop: true };
-    const fits = frameFits(RasterLimits, 1680, 800, 0, 0);
-    expect(fitFrameRate(minute, 30, ms, fits)).toBe(3);
+    const fits = new FrameBudget(RasterLimits, 1680, 800, 0, 0);
+    expect(fitFrameRate(minute, 30, ms, (frames) => fits.fits(frames))).toBe(3);
   });
 
   test("image work counts like frames", () => {
     const minute = { duration: 60_000, loop: true };
     const limits = { ...RasterLimits, maxImagePixels: 5_000_000 };
-    const fits = frameFits(limits, 10, 10, 1000, 10_000);
-    expect(fitFrameRate(minute, 30, ms, fits)).toBe(8);
+    const fits = new FrameBudget(limits, 10, 10, 1000, 10_000);
+    expect(fitFrameRate(minute, 30, ms, (frames) => fits.fits(frames))).toBe(8);
   });
 
   test("GIF delay merging is counted, as the export counts it", () => {

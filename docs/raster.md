@@ -71,12 +71,17 @@ Action one info line when it was:
 `design.json: apng sampled at 16 fps, the most the raster limits allow for a 60000 ms animation`.
 
 A frame rate given on purpose is never changed: it either passes or fails before the first frame is drawn, naming the
-highest rate that fits (`lower the frame rate to 16 or less`). The size of the file is only known when it is encoded, so
-the default rate does not account for `maxOutputBytes`; an animation that passes it fails with
-`raster-output-too-large` and a projected rate (`about 6 fps fits at this size`), computed from the bytes written for the
-part of the timeline reached, 30 percent short of the limit. It is an estimate: a design whose frames grow in the
-timeline, or whose frames differ more at a lower rate, can need a second error to name a lower one. When even the first
-frame leaves no room, the error names no rate: export SVG, or lower the scale.
+highest rate that fits (`lower the frame rate to 16 or less`). The size of the file is only known when it is encoded,
+so the fit does not account for `maxOutputBytes`. When a default-rate animation passes it, the export is encoded
+again at a lower rate, projected from the bytes written so far (the first frame costs the same at any rate, every later
+one the average of those written, and a lower rate counts all its frames with no merge as a saving, 30 percent short of
+the limit): up to four times at the projected rate, then at 1 fps. The first file that fits is the result, with
+`frameRate` and `frameRateFitted` saying so; the same design, data and options always take the same steps and give the
+same bytes, as an export at that rate given explicitly. If even 1 fps is over the limit, the `raster-output-too-large`
+error is the result. An explicit rate is not retried: its `raster-output-too-large` error names the projected rate
+(`about 6 fps fits at this size`), an estimate that a design whose frames differ more at a lower rate can miss. When even
+the first frame leaves no room, the error names no rate: export SVG, or lower the scale. Each retry draws the frames
+again, so a long animation that needs them takes a multiple of the time of one export.
 
 APNG frames after the first hold only the rectangle that changed (dispose none, blend source); WebP frames likewise,
 with the rectangle's corner on even pixels as WebP requires (no blending, no disposal). GIF frames are full frames

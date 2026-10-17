@@ -308,28 +308,29 @@ and at the default scale 2 even 3 frames a second of the widest sections nearly 
 therefore samples such a loop at the highest whole frame rate that fits the frame and pixel limits and says so
 ([raster.md](raster.md#timing-and-looping)); the one-shot sections (footers, stacks, the repository slots of
 `horizon` and `pinscreen`, the index and recent work of `year-ring`) keep 30 frames a second (GIF 25). The limit that
-is left is the 5 MiB of the file, which depends on how much of the picture moves. The measured result at the defaults
-(light theme, the sample data, scale 2), by section; a rate is the frame rate of the fitted export and `x fps` the
-rate the error names, which then exports:
+is left is the 5 MiB of the file, which depends on how much of the picture moves: an export that passes it is encoded again at a
+lower rate ([raster.md](raster.md#timing-and-looping)) until it fits. The frame rate each section ends at with the
+defaults (light theme, the sample data, scale 2), measured; the second column is the highest rate the frame and pixel
+limits allow:
 
-| section                        | fitted rate | WebP and APNG                     | GIF                                                         |
-| ------------------------------ | ----------- | --------------------------------- | ----------------------------------------------------------- |
-| `year-ring` `repo-1`..`repo-6` | 16          | export                            | export, `repo-1`, `repo-2` and `repo-4` at 11, 9 and 11 fps |
-| `year-ring` `header`           | 5           | too large: 1 fps works            | too large: 2 fps                                            |
-| `year-ring` `year`             | 3           | SVG only (too large at 1 fps)     | too large: 1 fps                                            |
-| `horizon` `header`             | 5           | export                            | export                                                      |
-| `horizon` `ticker`             | 16          | too large: WebP 6 fps, APNG 3 fps | too large: 9 fps                                            |
-| `horizon` `year`               | 3           | export                            | too large: 1 fps                                            |
-| `horizon` `worked`             | 16          | too large: WebP 7 fps, APNG 3 fps | too large: 7 fps                                            |
-| `pinscreen` `header`           | 4           | export                            | too large: 2 fps                                            |
-| `pinscreen` `year` (54 s)      | 4           | export                            | export                                                      |
-| `pinscreen` `log`              | 5           | export                            | too large: 2 fps                                            |
+| section                        | limits allow | WebP | APNG | GIF                                      |
+| ------------------------------ | ------------ | ---- | ---- | ---------------------------------------- |
+| `year-ring` `repo-1`..`repo-6` | 16           | 16   | 16   | 16; `repo-1` and `repo-4` 11, `repo-2` 9 |
+| `year-ring` `header`           | 5            | 1    | 1    | 2                                        |
+| `year-ring` `year`             | 3            | none | none | 1                                        |
+| `horizon` `header`             | 5            | 5    | 5    | 5                                        |
+| `horizon` `ticker`             | 16           | 6    | 3    | 9                                        |
+| `horizon` `year`               | 3            | 3    | 3    | 1                                        |
+| `horizon` `worked`             | 16           | 7    | 3    | 7                                        |
+| `pinscreen` `header`           | 4            | 4    | 4    | 2                                        |
+| `pinscreen` `year` (54 s)      | 4            | 4    | 4    | 4                                        |
+| `pinscreen` `log`              | 5            | 5    | 5    | 1                                        |
 
-"Too large" ends with a `raster-output-too-large` error that names a rate (about, it is projected from the bytes
-written, and a second error names a lower one if it still does not fit) and writes no file; the table lists what was
-measured to export. `year-ring` `year` is SVG only at scale 2 for WebP and APNG; at scale 1 it exports as WebP or APNG
-at 1 frame a second. A `repo-N` slot of `year-ring` is 960 frames at 16 fps, and about 30 to 60 seconds of work for each
-export format in the Action.
+Every section exports in every format except `year-ring` `year` as WebP and APNG: at scale 2 even its first frame and
+one more pass 5 MiB, so those two fail with `raster-output-too-large` and no rate named; it is SVG only (or GIF) at
+scale 2. At scale 1 it exports as WebP or APNG at 1 frame a second. A section that ends at a low rate is a slideshow:
+give a lower `scale` for a smoother one. A `repo-N` slot of `year-ring` is 960 frames at 16 fps, about 15 to 65
+seconds of work for each export format.
 
 ### Writing a template like these
 
