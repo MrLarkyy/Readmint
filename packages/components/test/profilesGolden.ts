@@ -11,6 +11,7 @@ import {
 import { profileExampleProps } from "@readmint/examples/props";
 import {
   longLocationProfileData,
+  longTextProfileData,
   noPushProfileData,
   noStatusProfileData,
   sampleProfileData,
@@ -40,6 +41,11 @@ const pushHeaders: readonly ProfileTemplate[] = ["pinscreen", "year-ring"];
 
 /** The templates whose header fits the location by drawn width, pinned with GitHub's longest values. */
 const locationHeaders: readonly ProfileTemplate[] = ["year-ring"];
+
+/** The sections that fit long names, messages and descriptions to their boxes, pinned with realistic long texts. */
+const longTextSections: Readonly<Partial<Record<ProfileTemplate, readonly ProfileSection[]>>> = {
+  "year-ring": ["recent", "repo-1"],
+};
 
 /** 64 characters of a real place name, and 255 (GitHub's limit) of the widest capital. */
 const longLocation = "Llanfairpwllgwyngyllgogerychwyrndrobwllllantysiliogogogoch, Wales";
@@ -144,6 +150,12 @@ export function profileGoldenSuite(template: ProfileTemplate): GoldenSuite<Profi
         name: `header-wide-location-${theme}`,
         input: render("header", theme, { data: longLocationProfileData(wideLocation) }),
       })),
+      ...(longTextSections[template] ?? []).flatMap((section) =>
+        themes.map((theme) => ({
+          name: `${section}-long-text-${theme}`,
+          input: render(section, theme, { data: longTextProfileData() }),
+        })),
+      ),
       {
         name: `${frameSection}-t${String(frameTime)}`,
         input: render(frameSection, "light", { time: frameTime }),

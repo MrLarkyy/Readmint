@@ -12,6 +12,7 @@ import { shapeLines } from "./shapeLines.js";
 import { stripXmlInvalid } from "./stripXmlInvalid.js";
 import { evaluateText } from "./expressions.js";
 import { exceedsCodePoints } from "./exceedsCodePoints.js";
+import { cutProbes, ellipsis } from "./cutToWidth.js";
 import { resolveOptionalNumber } from "./resolveValue.js";
 import { privateCode } from "./privateCode.js";
 import type { PlacedGlyph, TextLine, TextRun } from "./TextLine.js";
@@ -61,11 +62,19 @@ export function resolveText(
     ValueRanges.size,
     scope,
   );
+  const maxLines = resolveOptionalNumber(
+    context,
+    layer.maxLines,
+    pointer(path, "maxLines"),
+    ValueRanges.maxLines,
+    scope,
+  );
   const contentPath = pointer(path, "content");
   const content = interpolate(context, layer.content, contentPath, scope);
   // Every UTF-16 unit is written as at least one byte (a dropped soft-break space or line break costs a <tspan>),
-  // so the content is reserved before it is measured and wrapped.
-  context.writer.reserve(content.length);
+  // so the content is reserved before it is measured and wrapped. A line cap writes only its drawn text, reserved
+  // once it is known: a reservation is never given back.
+  if (maxLines === undefined) context.writer.reserve(content.length);
   const fontRef = resolveStyle(context, layer, path, "font");
   if (typeof fontRef.value !== "string") {
     context.fail(fontRef.path, "missing-asset", "a text needs a font (its own or its style's)");
@@ -80,6 +89,7 @@ export function resolveText(
     fontSize,
     letterSpacing,
     width ?? null,
+    maxLines ?? null,
     alignment,
     content,
   ]);
@@ -89,6 +99,7 @@ export function resolveText(
       context,
       content,
       width,
+      maxLines,
       alignment,
       {
         referenced: fontRef.value,
@@ -102,6 +113,7 @@ export function resolveText(
     );
     context.textLayouts.set(key, layout);
   }
+  if (maxLines !== undefined) context.writer.reserve(layout.text.length);
   const { text, lines, drawnAs, privateUse, rtl } = layout;
   const scale = fontSize / primary.font.unitsPerEm;
   const lineAdvance = lineHeight * fontSize;
@@ -129,14 +141,22 @@ function layOut(
   context: RenderContext,
   content: string,
   width: number | undefined,
+  maxLines: number | undefined,
   alignment: Align,
   options: TextShaperOptions,
   contentPath: string,
 ): TextLayout {
   // One shaping budget for the whole text, shared by every word and line: words are shaped to measure them and again
-  // as lines, so it allows two passes, max(16384, 64 x twice its length).
-  const shaper = new TextShaper(context, options, ShapingBudget.forText(2 * content.length));
-  const { lines: shaped, widest } = shapeLines(shaper, content, width);
+  // as lines, so it allows two passes, max(16384, 64 x twice its length). A line cap adds what truncateWidth gets for
+  // cutting a text of the same length.
+  const cut =
+    maxLines === undefined ? 0 : (content.length + ellipsis.length) * cutProbes(content.length);
+  const shaper = new TextShaper(
+    context,
+    options,
+    ShapingBudget.forText(2 * (content.length + cut)),
+  );
+  const { lines: shaped, widest, text } = shapeLines(shaper, content, width, maxLines);
   const boxWidth = width ?? widest;
   const drawnAs = shaped.some((line) => line.glyphs.some((glyph) => glyph.font?.drawAs === "paths"))
     ? "paths"
@@ -156,7 +176,7 @@ function layOut(
   }
   const drawn = shaped.flatMap((line) => line.glyphs.filter((glyph) => glyph.font !== undefined));
   return {
-    text: normalizeNfc(content),
+    text: normalizeNfc(text),
     lines,
     width: boxWidth,
     drawnAs,

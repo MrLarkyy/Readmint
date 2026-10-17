@@ -359,12 +359,15 @@ describe("runExamples", () => {
     expect(err).toContain(defaultActionRef);
   });
 
+  // The real templates use maxLines, which the default pin predates until its release (docs/action.md#releases).
+  const pin = ["--action", options.actionRef];
+
   it("writes, then reports in sync with exit 0", () => {
     const out = temp();
-    const written = run(templatesDir, out);
+    const written = run(templatesDir, out, ...pin);
     expect(written.code).toBe(0);
     expect(written.out).toMatch(/^wrote \d+ files to .*, removed 0\n$/);
-    expect(run(templatesDir, out, "--check")).toEqual({
+    expect(run(templatesDir, out, "--check", ...pin)).toEqual({
       code: 0,
       out: "the examples repository is in sync\n",
       err: "",
@@ -373,12 +376,12 @@ describe("runExamples", () => {
 
   it("lists missing, differing and stale files with --check and exits 1", () => {
     const out = temp();
-    run(templatesDir, out);
+    run(templatesDir, out, ...pin);
     const template = templates[0] ?? "";
     rmSync(join(out, "README.md"));
     writeFileSync(join(out, template, "designs", "header.json"), "{}\n");
     writeFileSync(join(out, template, "designs", "stale.json"), "{}\n");
-    const { code, out: lines, err } = run(templatesDir, out, "--check");
+    const { code, out: lines, err } = run(templatesDir, out, "--check", ...pin);
     expect(code).toBe(1);
     expect(lines).toBe(
       `missing: README.md\ndiffers: ${template}/designs/header.json\nstale: ${template}/designs/stale.json\n`,
@@ -388,10 +391,26 @@ describe("runExamples", () => {
 
   it("writes the pinned default Action reference without --action", () => {
     expect(defaultActionRef).toBe("MrLarkyy/Readmint@v0.3.0");
+    // The templates as the pinned release accepts them: without the line cap it predates.
+    const dir = temp();
+    cpSync(templatesDir, dir, { recursive: true });
+    const yearRing = join(dir, "profiles", "year-ring");
+    for (const file of readdirSync(yearRing).filter((name) => name.endsWith(".json"))) {
+      const design = readFileSync(join(yearRing, file), "utf8");
+      writeFileSync(join(yearRing, file), design.replace(/\n\s*"maxLines": \d+,/g, ""));
+    }
     const out = temp();
-    expect(run(templatesDir, out).code).toBe(0);
+    expect(run(dir, out).code).toBe(0);
     const workflow = readFileSync(join(out, ".github", "workflows", "readmint.yml"), "utf8");
     expect(workflow).toContain(`uses: ${defaultActionRef}`);
+  });
+
+  it("refuses the default pin over the real templates until the release that brings maxLines", () => {
+    const { code, err } = run(templatesDir, temp());
+    expect(code).toBe(1);
+    expect(err).toMatch(
+      /@v0\.3\.0 predates maxLines \(Action v0\.4\.0\), which year-ring\/repo-1(\.dark)?\.json uses/,
+    );
   });
 
   it("reports a failure as exit 1 with its message", () => {
