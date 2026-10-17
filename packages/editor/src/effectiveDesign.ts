@@ -12,7 +12,7 @@ import { variantDesign } from "./variantDesign.js";
 /** The design a render shows, why the chosen variant or settings section could not be applied, and what it only warns about. */
 export interface EffectiveDesign {
   readonly design: Design;
-  /** Why the variant or the section does not apply; the design is then rendered as it is. */
+  /** Why the variant or the section does not apply; the part that does not apply is left out and the other still applies. */
   readonly issues: readonly EditorIssue[];
   /** Props the section lacks or that nothing declares; the preview is not blocked. */
   readonly warnings: readonly EditorIssue[];
@@ -24,8 +24,8 @@ export interface EffectiveDesign {
  * The design the preview and the raster export render: the state's design with its variant applied (as `readmint
  * render --variant`), then the chosen settings section (`applyDesignProps`, as `--props`; a section prop wins over
  * the variant's, with a warning), but only the props the design declares: a prop it does not
- * declare is a warning and `unknownProps`, a declared prop the section lacks a warning too. When the section does not
- * apply, the design as it is and the reasons (a message never quotes a value).
+ * declare is a warning and `unknownProps`, a declared prop the section lacks a warning too. When the variant or the section does not
+ * apply, that part is left out, the other still applies, and the reasons are given (a message never quotes a value).
  */
 export function effectiveDesign(state: EditorState): EffectiveDesign {
   const varied = variantDesign(state);
