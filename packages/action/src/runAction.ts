@@ -83,6 +83,7 @@ export async function runAction(env: Env, deps: ActionDeps): Promise<number> {
       images: { fetch: deps.fetch ?? globalThis.fetch, cache: new Map() },
     });
     for (const warning of rendered.warnings) log.warning(warning);
+    for (const note of rendered.notes) log.info(note);
     const written = await writeOutputs(workspace, config.outputDir, rendered.files);
     log.info(
       `rendered ${String(rendered.files.length)} file(s); ${String(written.length)} written, the rest unchanged`,

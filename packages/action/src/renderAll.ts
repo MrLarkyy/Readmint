@@ -24,6 +24,8 @@ export interface RenderAllResult {
   readonly files: readonly RenderedFile[];
   /** Renderer warnings, one line each, not escaped yet. */
   readonly warnings: readonly string[];
+  /** Info lines, one each: a default frame rate lowered to fit the raster limits. */
+  readonly notes: readonly string[];
 }
 
 export interface RenderAllOptions {
@@ -53,6 +55,7 @@ export async function renderAll(
   const { images, props, ...outputOptions } = options;
   const files: RenderedFile[] = [];
   const warnings: string[] = [];
+  const notes: string[] = [];
   const problems: string[] = [];
   for (const entry of plan) {
     for (const planned of entry.dark === undefined ? [entry.light] : [entry.light, entry.dark]) {
@@ -78,6 +81,7 @@ export async function renderAll(
         }
         warnings.push(...result.warnings.map((issue) => formatIssue(name, issue, "warning")));
         result.outputs.forEach((output, index) => {
+          if (output.note !== undefined) notes.push(output.note);
           const target = planned.outputs[index];
           if (target === undefined) return;
           files.push({
@@ -94,5 +98,5 @@ export async function renderAll(
     }
   }
   if (problems.length > 0) throw new ActionError("render", problems);
-  return { files, warnings };
+  return { files, warnings, notes };
 }

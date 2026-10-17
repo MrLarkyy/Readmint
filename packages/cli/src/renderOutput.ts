@@ -14,6 +14,10 @@ export interface RenderedOutput {
   readonly bytes: Uint8Array;
   /** The design's size in CSS pixels, for an `<img>`; raster formats only. */
   readonly size?: { readonly width: number; readonly height: number };
+  /** Frames per second an animation was sampled at; raster formats of an animation only. */
+  readonly frameRate?: number;
+  /** One line saying the default frame rate was lowered to fit the raster limits; only then. */
+  readonly note?: string;
 }
 
 export type RenderOutputResult =
@@ -91,6 +95,12 @@ export async function renderOutput(
         format,
         bytes: raster.bytes,
         size: { width: raster.displayWidth, height: raster.displayHeight },
+        ...(raster.frameRate === 0 ? {} : { frameRate: raster.frameRate }),
+        ...(raster.frameRateFitted
+          ? {
+              note: `${name}: ${format} sampled at ${String(raster.frameRate)} fps, the most the raster limits allow for a ${String(raster.duration)} ms animation`,
+            }
+          : {}),
       });
     } catch (error) {
       if (!(error instanceof RasterError)) throw error;

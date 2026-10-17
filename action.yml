@@ -22,7 +22,7 @@ inputs:
     required: false
     default: "2"
   frame-rate:
-    description: Frames per second of an animated raster output, 1..60 (gif 1..50); empty uses 30, gif 25.
+    description: Frames per second of an animated raster output, 1..60 (gif 1..50); empty uses 30, gif 25, or the highest rate the raster limits allow.
     required: false
   quality:
     description: Lossy WebP at this quality, a whole number 1..100 (webp output only); empty keeps WebP lossless.
