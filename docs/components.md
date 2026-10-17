@@ -334,8 +334,8 @@ limits allow:
 | `pinscreen` `log`              | 5            | 5    | 5    | 1                                        |
 
 Every section exports in every format except `year-ring` `year` as WebP and APNG: at scale 2 even its first frame and
-one more pass 5 MiB, so those two fail with `raster-output-too-large` and no rate named; it is SVG only (or GIF) at
-scale 2. At scale 1 it exports as WebP or APNG at 1 frame a second. A section that ends at a low rate is a slideshow:
+one more pass 5 MiB, so those two fail with `raster-output-too-large`, an error that says 1 fps was tried and
+names the scale; it is SVG only (or GIF) at scale 2. At scale 1 it exports as WebP or APNG at 1 frame a second. A section that ends at a low rate is a slideshow:
 give a lower `scale` for a smoother one. A `repo-N` slot of `year-ring` is 960 frames at 16 fps, about 15 to 65
 seconds of work for each export format.
 

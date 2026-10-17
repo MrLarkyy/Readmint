@@ -8,6 +8,9 @@ import {
 } from "../src/index.js";
 import { designInput, loopDesign, shapesDesign } from "./rasterFixtures.js";
 
+/** The slide of `loopDesign` over 3000 ms: 1 fps samples three frames. */
+const slowLoop = { ...loopDesign, animation: { duration: 3000 } };
+
 interface Counted {
   readonly input: RasterInput;
   readonly frames: () => number;
@@ -86,13 +89,25 @@ describe("raster limits", () => {
     expect(Buffer.from(output.bytes).equals(Buffer.from(same.bytes))).toBe(true);
   });
 
-  test("when not even 1 fps fits, the error is the plain one", async () => {
+  test("when no rate that animates fits, the error is the plain one at the lowest such rate, never a still", async () => {
+    // 1 and 2 fps sample one frame of the 500 ms loop, which would fit; 3 fps is the lowest rate with two.
     const { input } = counted(loopDesign);
-    const error = await failure(input, { format: "apng", limits: { maxFrames: 0 } });
+    const error = await failure(input, { format: "apng", limits: { maxFrames: 1 } });
     expect(error.code).toBe("raster-too-many-frames");
-    expect(error.message).toContain("1 frames at 1 fps");
+    expect(error.message).toContain("2 frames at 3 fps, more than the 1 allowed");
     expect(error.message).toMatch(/allowed; shorten the animation$/);
     expect(error.message).not.toContain("lower the frame rate");
+  });
+
+  test("a pixel limit that no rate that animates fits names the scale only", async () => {
+    const error = await failure(designInput(loopDesign), {
+      format: "gif",
+      scale: 1,
+      limits: { maxTotalPixels: 2000 },
+    });
+    expect(error.code).toBe("raster-too-many-pixels");
+    expect(error.message).toContain("(2 frames of 48x24)");
+    expect(error.message).toMatch(/allowed; lower the scale$/);
   });
 
   test("a timeline over the limit fails before anything is rendered", async () => {
@@ -186,7 +201,8 @@ describe("raster limits", () => {
     });
     expect(error.code).toBe("raster-output-too-large");
     const named = Number(/about (\d+) fps fits at this size/.exec(error.message)?.[1]);
-    expect(named).toBeGreaterThanOrEqual(1);
+    // 3 fps is the lowest rate that animates the 500 ms loop.
+    expect(named).toBeGreaterThanOrEqual(3);
     expect(named).toBeLessThan(20);
     expect(error.message).not.toContain("--");
     const fitted = await exportRaster(designInput(loopDesign), {
@@ -232,14 +248,48 @@ describe("raster limits", () => {
     expect(frames()).toBeLessThan(30);
   });
 
-  test("a default rate that does not fit even at 1 fps fails with the byte-limit error", async () => {
-    const error = await failure(designInput(loopDesign), {
-      format: "apng",
-      scale: 1,
-      limits: { maxOutputBytes: 100 },
-    });
+  test("a default rate that does not fit even at 1 fps fails saying 1 fps was tried, naming the scale", async () => {
+    const options = { format: "apng", scale: 1 } as const;
+    const still = await exportRaster(designInput(slowLoop), { ...options, time: 0 });
+    const slowest = await exportRaster(designInput(slowLoop), { ...options, frameRate: 1 });
+    expect(slowest.frames).toBe(3);
+    const limits = { maxOutputBytes: slowest.bytes.length - 1 };
+    // The first frame fits, so the retries run down to 1 fps.
+    expect(still.bytes.length).toBeLessThan(limits.maxOutputBytes);
+    const error = await failure(designInput(slowLoop), { ...options, limits });
     expect(error.code).toBe("raster-output-too-large");
+    expect(error.message).toMatch(
+      /allowed even at 1 fps, the lowest frame rate that still animates; lower the scale, or export SVG$/,
+    );
+    expect(error.message).not.toContain("lower the scale or the frame rate");
     expect(error.message).not.toContain("fps fits");
+  });
+
+  test("an animation over the byte limit at its lowest animated rate stays an error, never a still image", async () => {
+    const options = { format: "apng", scale: 1 } as const;
+    const still = await exportRaster(designInput(loopDesign), { ...options, time: 0 });
+    const slowest = await exportRaster(designInput(loopDesign), { ...options, frameRate: 3 });
+    expect(slowest.format).toBe("apng");
+    expect(slowest.frames).toBe(2);
+    const limits = { maxOutputBytes: slowest.bytes.length - 1 };
+    // 1 and 2 fps sample one frame, a still image that would fit.
+    expect(still.bytes.length).toBeLessThan(limits.maxOutputBytes);
+    const error = await failure(designInput(loopDesign), { ...options, limits });
+    expect(error.code).toBe("raster-output-too-large");
+    expect(error.message).toContain(
+      "allowed even at 3 fps, the lowest frame rate that still animates",
+    );
+    const explicit = await failure(designInput(loopDesign), {
+      ...options,
+      frameRate: 20,
+      limits,
+    });
+    expect(explicit.code).toBe("raster-output-too-large");
+    expect(explicit.message).not.toMatch(/about [12] fps/);
+    for (const frameRate of [1, 2]) {
+      const one = await exportRaster(designInput(loopDesign), { ...options, frameRate });
+      expect(one.frames).toBe(1);
+    }
   });
 
   test("a still image over the byte limit names no frame rate", async () => {
@@ -248,6 +298,8 @@ describe("raster limits", () => {
       limits: { maxOutputBytes: 200 },
     });
     expect(error.message).not.toContain("fps");
+    expect(error.message).not.toContain("frame rate");
+    expect(error.message).toMatch(/allowed; lower the scale, or export SVG$/);
   });
 
   test.each([

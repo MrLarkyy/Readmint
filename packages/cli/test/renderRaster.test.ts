@@ -252,7 +252,7 @@ describe("render to a raster image", () => {
     const run = await tree.run(["render", "long.json", "--scale", "1", "--out", "out/long.apng"]);
     expect(run).toMatchObject({ code: ExitCode.ok, stdout: "" });
     expect(run.stderr).toBe(
-      "long.json: apng sampled at 16 fps, the most the raster limits allow for a 60000 ms animation\n",
+      "long.json: apng of the 60000 ms animation sampled at 16 fps to fit the raster limits\n",
     );
   });
 

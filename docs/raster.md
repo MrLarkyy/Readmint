@@ -61,27 +61,32 @@ ever reaches.
 ### The default frame rate
 
 Without a frame rate, an animation is sampled at 30 frames a second (GIF 25), or, when that would pass `maxFrames`,
-`maxTotalPixels` or `maxImagePixels`, at the highest whole rate below it that does not (down to 1). A 60 second loop
-cannot have 30 frames a second at any size: the 1000 frames allowed are 16 frames a second, and a 1680 x 800 pixel
-frame (a 840 x 400 design at scale 2) leaves room for 3 over 60 seconds. The choice is arithmetic on the timeline, the
-size and the limits, never on the design, so the same input gives the same bytes in Node and in the browser, and a
+`maxTotalPixels` or `maxImagePixels`, at the highest whole rate below it that does not, and then lower again while the
+encoded file passes `maxOutputBytes` (below). It never goes below the lowest rate that samples two frames (1 for a loop of over
+a second or a timeline that plays once, 3 for a 500 ms loop): a lower one would turn the animation into a still image, so the
+export fails instead. A 60 second loop cannot have 30 frames a second at any size: the 1000 frames allowed are 16
+frames a second, and a 1680 x 800 pixel frame (a 840 x 400 design at scale 2) leaves room for 3 over 60 seconds. The
+fit to the frame and pixel limits is arithmetic on the timeline, the size and the limits; the byte step depends on
+the encoded bytes, which are the same in Node and in the browser. So the same input gives the same bytes in both, and a
 design that exports at 30 (GIF 25) today exports the same file. `RasterOutput.frameRate` is the rate sampled (0 for a
 still image) and `frameRateFitted` says it is lower than the default. The CLI prints one line on standard error and the
 Action one info line when it was:
-`design.json: apng sampled at 16 fps, the most the raster limits allow for a 60000 ms animation`.
+`design.json: apng of the 60000 ms animation sampled at 16 fps to fit the raster limits`.
 
 A frame rate given on purpose is never changed: it either passes or fails before the first frame is drawn, naming the
 highest rate that fits (`lower the frame rate to 16 or less`). The size of the file is only known when it is encoded,
 so the fit does not account for `maxOutputBytes`. When a default-rate animation passes it, the export is encoded
 again at a lower rate, projected from the bytes written so far (the first frame costs the same at any rate, every later
 one the average of those written, and a lower rate counts all its frames with no merge as a saving, 30 percent short of
-the limit): up to four times at the projected rate, then at 1 fps. The first file that fits is the result, with
-`frameRate` and `frameRateFitted` saying so; the same design, data and options always take the same steps and give the
-same bytes, as an export at that rate given explicitly. If even 1 fps is over the limit, the `raster-output-too-large`
-error is the result. An explicit rate is not retried: its `raster-output-too-large` error names the projected rate
-(`about 6 fps fits at this size`), an estimate that a design whose frames differ more at a lower rate can miss. When even
-the first frame leaves no room, the error names no rate: export SVG, or lower the scale. Each retry draws the frames
-again, so a long animation that needs them takes a multiple of the time of one export.
+the limit, and only rates that sample two frames or more): up to three times at the projected rate, then at the lowest
+rate that animates (1 fps for a long loop). The first file that fits is the result, with `frameRate` and
+`frameRateFitted` saying so; the same design, data and options always take the same steps and give the same bytes, as
+an export at that rate given explicitly. If even the lowest rate is over the limit, the `raster-output-too-large` error
+is the result and says so (`more than the 5242880 allowed even at 1 fps, the lowest frame rate that still animates;
+lower the scale, or export SVG`). An explicit rate is not retried: its `raster-output-too-large` error names the
+projected rate (`about 6 fps fits at this size`), an estimate that a design whose frames differ more at a lower rate
+can miss. When even the first frame leaves no room, the error names no rate: export SVG, or lower the scale. Each
+retry draws the frames again, so a long animation that needs them takes a multiple of the time of one export.
 
 APNG frames after the first hold only the rectangle that changed (dispose none, blend source); WebP frames likewise,
 with the rectangle's corner on even pixels as WebP requires (no blending, no disposal). GIF frames are full frames
@@ -94,17 +99,17 @@ while encoding and stops at the frame that passes it. A failure is a `RasterErro
 writes no file (an existing `--out` stays as it was), the Action writes nothing at all. The message names the measured
 value, the limit and a fix.
 
-| code                           | limit (`RasterLimits`)                                    | default                                     | fix                                                                                                    |
-| ------------------------------ | --------------------------------------------------------- | ------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| `raster-too-large`             | `maxSide`: pixels per side                                | 4096                                        | lower the scale (for example to 1)                                                                     |
-| `raster-too-many-frames`       | `maxFrames`: sampled frames                               | 1000                                        | lower the frame rate (the message names the highest rate that fits)                                    |
-| `raster-too-long`              | `maxDuration`: ms of the timeline                         | 60000                                       | shorten the animation                                                                                  |
-| `raster-too-many-pixels`       | `maxTotalPixels`: all frames                              | 268435456                                   | lower the frame rate (named) or the scale                                                              |
-| `raster-too-many-image-pixels` | `maxImagePixels`: image pixels decoded (below)            | 268435456                                   | draw large images fewer times or smaller, or lower the frame rate (named)                              |
-| `raster-output-too-large`      | `maxOutputBytes`: encoded file                            | 5242880 (5 MiB, GitHub's image proxy limit) | lower the scale or the frame rate (about N fps fits, named), or export SVG (WebP: or give a `quality`) |
-| `raster-font`                  | text needs a TTF, OTF or WOFF font carrying its family    |                                             | give the font asset as TTF, OTF or WOFF                                                                |
-| `raster-image`                 | an image or SVG resvg or libwebp cannot read or draw      |                                             | fix or replace the image; move layers far outside the canvas onto it                                   |
-| `raster-options`               | a format, scale, frame rate, quality or time out of range |                                             |                                                                                                        |
+| code                           | limit (`RasterLimits`)                                    | default                                     | fix                                                                                                                                                      |
+| ------------------------------ | --------------------------------------------------------- | ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `raster-too-large`             | `maxSide`: pixels per side                                | 4096                                        | lower the scale (for example to 1)                                                                                                                       |
+| `raster-too-many-frames`       | `maxFrames`: sampled frames                               | 1000                                        | lower the frame rate (the message names the highest rate that fits), else shorten the animation                                                          |
+| `raster-too-long`              | `maxDuration`: ms of the timeline                         | 60000                                       | shorten the animation                                                                                                                                    |
+| `raster-too-many-pixels`       | `maxTotalPixels`: all frames                              | 268435456                                   | lower the frame rate (named) or the scale                                                                                                                |
+| `raster-too-many-image-pixels` | `maxImagePixels`: image pixels decoded (below)            | 268435456                                   | draw large images fewer times or smaller, or lower the frame rate (named)                                                                                |
+| `raster-output-too-large`      | `maxOutputBytes`: encoded file                            | 5242880 (5 MiB, GitHub's image proxy limit) | lower the scale or the frame rate (about N fps fits, named; at the lowest rate that animates, the scale only), or export SVG (WebP: or give a `quality`) |
+| `raster-font`                  | text needs a TTF, OTF or WOFF font carrying its family    |                                             | give the font asset as TTF, OTF or WOFF                                                                                                                  |
+| `raster-image`                 | an image or SVG resvg or libwebp cannot read or draw      |                                             | fix or replace the image; move layers far outside the canvas onto it                                                                                     |
+| `raster-options`               | a format, scale, frame rate, quality or time out of range |                                             |                                                                                                                                                          |
 
 The fixes are worded for the CLI options (`--scale`, `--frame-rate`, `--quality`) and the Action inputs (`scale`, `frame-rate`, `quality`)
 alike.

@@ -95,7 +95,7 @@ export async function renderOutput(
         size: { width: raster.displayWidth, height: raster.displayHeight },
         ...(raster.frameRateFitted
           ? {
-              note: `${name}: ${format} sampled at ${String(raster.frameRate)} fps, the most the raster limits allow for a ${String(raster.duration)} ms animation`,
+              note: `${name}: ${format} of the ${String(raster.duration)} ms animation sampled at ${String(raster.frameRate)} fps to fit the raster limits`,
             }
           : {}),
       });

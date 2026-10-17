@@ -144,7 +144,7 @@ test("a default frame rate lowered to fit the limits is one info line, not a war
   });
   expect(run.code, run.log).toBe(0);
   const note =
-    "long.json: apng sampled at 16 fps, the most the raster limits allow for a 60000 ms animation";
+    "long.json: apng of the 60000 ms animation sampled at 16 fps to fit the raster limits";
   expect(run.log.split("\n").filter((line) => line.includes("sampled at"))).toEqual([note]);
   expect(run.log).not.toContain("::warning::");
   const plain = await tree.run({ ...dryRun, formats: "apng", scale: "1" });

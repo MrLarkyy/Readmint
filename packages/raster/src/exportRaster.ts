@@ -11,6 +11,7 @@ import { type DelayUnit, frameDelays, type TimedFrame } from "./frameDelays.js";
 import { FrameBudget } from "./FrameBudget.js";
 import { loadRaster, openWebpCodec } from "./rasterRuntime.js";
 import { hasWebpImage, inlineWebpAssets } from "./inlineWebpAssets.js";
+import { lowestFrameRate } from "./lowestFrameRate.js";
 import { matchFontFamilies } from "./matchFontFamilies.js";
 import { OutputBudget } from "./OutputBudget.js";
 import { RasterError } from "./RasterError.js";
@@ -32,8 +33,8 @@ const defaultGifFrameRate = 25;
 const maxGifFrameRate = 50;
 /** Latest frame time the renderer takes (`RenderOptions.time`). */
 const maxTime = 86_400_000;
-/** Encodings of a default-rate animation at a projected rate before the last try at 1 fps. */
-const maxRetries = 4;
+/** Encodings of a default-rate animation at a projected rate before the last try at the lowest rate. */
+const maxRetries = 3;
 
 const units: Readonly<Record<RasterFormat, DelayUnit>> = {
   png: { ms: 1, min: 1 },
@@ -69,9 +70,10 @@ interface Settings {
 /**
  * Rasterizes the renderer's SVG into a PNG, WebP, APNG or GIF that matches resvg's drawing of the same SVG. A design
  * with a timeline (and no `time`) becomes an animated WebP, APNG or GIF sampled at `frameRate`, by default the highest
- * whole rate up to 30 (GIF 25) whose frames fit the limits; a still design, one frame of it, or any design as `png`, a
- * still image (PNG for `apng`). WebP is lossless unless `quality` asks for lossy frames. Every limit that can be known
- * in advance (side, duration, frames, total pixels) is
+ * whole rate up to 30 (GIF 25) whose frames fit the limits, encoded again at a projected lower rate while the file
+ * passes `maxOutputBytes` (never below the lowest rate that samples two frames); a still design, one frame of it, or
+ * any design as `png`, a still image (PNG for `apng`). WebP is lossless unless `quality` asks for lossy frames. Every
+ * limit that can be known in advance (side, duration, frames, total pixels) is
  * checked before the first frame is drawn, the output size while encoding; any failure is a `RasterError` and
  * nothing is returned, except a call before the rasterizer was loaded (`initRaster`), which, once the input has
  * passed those checks, throws a plain `Error`. Same input, same bytes.
@@ -112,12 +114,14 @@ export async function exportRaster(
   const frames = new FrameBudget(limits, width, height, imageBase, one.pixels - imageBase);
   const wanted = format === "gif" ? defaultGifFrameRate : defaultFrameRate;
   const explicit = settings.frameRate;
-  const fitsRate = (frameCount: number): boolean => frames.fits(frameCount);
-  // When not even 1 fps fits, the checks below fail at 1 fps with their usual message.
+  // A rate that samples one frame would make the animation a still image: neither fitted, retried nor named.
+  const lowest = animation === undefined ? 0 : lowestFrameRate(animation, explicit ?? wanted, unit);
+  const fitsRate = (frameCount: number): boolean => frameCount >= 2 && frames.fits(frameCount);
+  // When no rate that animates fits, the checks below fail at the lowest one with their usual message.
   const startRate =
     animation === undefined
       ? 0
-      : (explicit ?? fitFrameRate(animation, wanted, unit, fitsRate) ?? 1);
+      : (explicit ?? fitFrameRate(animation, wanted, unit, fitsRate) ?? lowest);
   const checked = (rate: number): TimedFrame[] => {
     const plan: TimedFrame[] =
       animation === undefined
@@ -126,7 +130,7 @@ export async function exportRaster(
     const lowerRate = (): number | undefined =>
       animation === undefined ? undefined : fitFrameRate(animation, rate - 1, unit, fitsRate);
     checkPlan(settings, width, height, plan.length, rate, lowerRate);
-    checkImageWork(limits, frames.imagePixels(plan.length), one, plan.length, rate, lowerRate);
+    checkImageWork(limits, frames.imagePixels(plan.length), one, plan.length, lowerRate);
     return plan;
   };
   const firstPlan = checked(startRate);
@@ -152,13 +156,20 @@ export async function exportRaster(
     displayWidth: Math.round(size.width),
     displayHeight: Math.round(size.height),
   };
-  const newBudget = (): OutputBudget =>
+  const qualityHint =
+    format === "webp" && settings.quality === undefined
+      ? ", or give a WebP quality (1..100) for lossy frames"
+      : "";
+  /** The byte budget of a still image (no `rate`) or of an animation sampled at `rate`. */
+  const newBudget = (rate?: number): OutputBudget =>
     new OutputBudget(
       limits.maxOutputBytes,
       labels[format],
-      format === "webp" && settings.quality === undefined
-        ? ", or give a WebP quality (1..100) for lossy frames"
-        : "",
+      rate === undefined
+        ? `; lower the scale, or export SVG${qualityHint}`
+        : rate > lowest
+          ? `; lower the scale or the frame rate, or export SVG${qualityHint}`
+          : ` even at ${String(rate)} fps, the lowest frame rate that still animates; lower the scale, or export SVG${qualityHint}`,
     );
   const stillOutput = (): RasterOutput => {
     const still = format === "apng" ? "png" : format;
@@ -190,8 +201,7 @@ export async function exportRaster(
     rate: number,
     plan: readonly TimedFrame[],
   ): RasterOutput | { error: RasterError; next: number | undefined } => {
-    if (plan.length === 1) return stillOutput();
-    const budget = newBudget();
+    const budget = newBudget(rate);
     const encoder = frameEncoder(
       format,
       width,
@@ -201,7 +211,7 @@ export async function exportRaster(
       budget,
       settings.quality,
     );
-    const projection = new RateProjection(animation, unit, rate, limits.maxOutputBytes);
+    const projection = new RateProjection(animation, unit, rate, lowest, limits.maxOutputBytes);
     let adding = false;
     const write = (frame: { pixels: Uint8Array; delay: number }): void => {
       adding = true;
@@ -238,15 +248,16 @@ export async function exportRaster(
     }
   };
 
-  // An explicit rate is tried once. A default one is retried at the projected rate, at most this many times, and then
-  // at 1 fps, so the default export succeeds wherever any rate does.
+  // An explicit rate is tried once. A default one is retried at the projected rate up to `maxRetries` times, then at
+  // the lowest rate that animates, so the default export succeeds wherever any such rate does. Rates only go down
+  // and never below `lowest`, so every plan here has at least two frames.
   let rate = startRate;
   let plan = firstPlan;
-  for (let attempt = 1; ; attempt++) {
+  for (let retries = 0; ; retries++) {
     const result = encodeAt(rate, plan);
     if (!("error" in result)) return result;
-    if (explicit !== undefined || rate === 1) throw named(result.error, result.next);
-    rate = attempt < maxRetries ? (result.next ?? 1) : 1;
+    if (explicit !== undefined || rate <= lowest) throw named(result.error, result.next);
+    rate = retries < maxRetries ? (result.next ?? lowest) : lowest;
     plan = checked(rate);
   }
 }
@@ -324,21 +335,19 @@ function checkPlan(
   lowerRate: () => number | undefined,
 ): void {
   const { limits } = settings;
-  const slowest = frameRate === 1;
+  // When no lower rate fits and still animates, lowering the frame rate is no fix.
   if (frames > limits.maxFrames) {
+    const rate = lowerRate();
     throw new RasterError(
       "raster-too-many-frames",
-      `the animation would have ${String(frames)} frames at ${String(frameRate)} fps, more than the ${String(limits.maxFrames)} allowed; ${slowest ? "shorten the animation" : `lower the frame rate${upTo(lowerRate())}`}`,
+      `the animation would have ${String(frames)} frames at ${String(frameRate)} fps, more than the ${String(limits.maxFrames)} allowed; ${rate === undefined ? "shorten the animation" : `lower the frame rate${upTo(rate)}`}`,
     );
   }
   const pixels = width * height * frames;
   if (pixels > limits.maxTotalPixels) {
     const rate = lowerRate();
-    const fix = slowest
-      ? "lower the scale"
-      : rate === undefined
-        ? "lower the scale or the frame rate"
-        : `lower the frame rate${upTo(rate)}, or the scale`;
+    const fix =
+      rate === undefined ? "lower the scale" : `lower the frame rate${upTo(rate)}, or the scale`;
     throw new RasterError(
       "raster-too-many-pixels",
       `the export would draw ${String(pixels)} pixels (${String(frames)} frames of ${String(width)}x${String(height)}), more than the ${String(limits.maxTotalPixels)} allowed; ${fix}`,
@@ -351,11 +360,11 @@ function checkImageWork(
   pixels: number,
   drawn: { images: number; draws: number },
   frames: number,
-  frameRate: number,
   lowerRate: () => number | undefined,
 ): void {
   if (pixels <= limits.maxImagePixels) return;
-  const fix = frameRate === 1 ? "" : `, or lower the frame rate${upTo(lowerRate())}`;
+  const rate = lowerRate();
+  const fix = rate === undefined ? "" : `, or lower the frame rate${upTo(rate)}`;
   throw new RasterError(
     "raster-too-many-image-pixels",
     `drawing the images would decode ${String(pixels)} pixels (${String(drawn.images)} images drawn ${String(drawn.draws)} times a frame, ${String(frames)} frames), more than the ${String(limits.maxImagePixels)} allowed; draw large images fewer times or smaller${fix}`,
