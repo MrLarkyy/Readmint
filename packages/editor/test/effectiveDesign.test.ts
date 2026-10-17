@@ -1,3 +1,4 @@
+import { renderVariants, type RenderVariant } from "@readmint/format";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { expect, test } from "vitest";
@@ -13,7 +14,8 @@ import {
   loadSettings,
   newDesign,
 } from "../src/index.js";
-import { settingsDesign, settingsText } from "./settingsDesign.js";
+import { setVariant } from "../src/index.js";
+import { noDarkDesign, settingsDesign, settingsText, themeDesign } from "./settingsDesign.js";
 
 const base = createEditorState(settingsDesign);
 const withSection = (section: string) => loadSettings(base, settingsText, section);
@@ -128,4 +130,59 @@ test("a declared prop with no section value, layer value or default is a warning
   expect(warnings.map((warning) => warning.message)).toEqual([
     "settings /s/title: not set in the section, by a layer or by a default; nothing is rendered for it",
   ]);
+});
+
+const themed = createEditorState(themeDesign);
+const layerProps = (design: ReturnType<typeof effectiveDesign>["design"]) =>
+  (design.layers[0] as { props?: Record<string, unknown> }).props;
+
+test("the dark variant sets theme on the root component layer, the state's design stays", () => {
+  const { design, issues, warnings } = effectiveDesign(setVariant(themed, "dark"));
+  expect(issues).toEqual([]);
+  expect(warnings).toEqual([]);
+  expect(layerProps(design)).toEqual({ theme: "dark" });
+  expect(themed.design.layers[0]).not.toHaveProperty("props");
+  expect(effectiveDesign(themed).design).toBe(themed.design);
+});
+
+test("the section applies after the variant, and a section that sets theme wins with a warning", () => {
+  const dark = setVariant(themed, "dark");
+  const other = loadSettings(dark, '{"s": {"w": 9}}', "s");
+  const plainResult = effectiveDesign(other);
+  expect(plainResult.issues).toEqual([]);
+  expect(plainResult.warnings).toEqual([]);
+  expect(layerProps(plainResult.design)).toEqual({ theme: "dark", w: 9 });
+  const wins = effectiveDesign(loadSettings(dark, '{"s": {"theme": "light", "w": 9}}', "s"));
+  expect(layerProps(wins.design)).toEqual({ theme: "light", w: 9 });
+  expect(wins.warnings).toEqual([
+    {
+      source: "settings",
+      severity: "warning",
+      message: "settings /s/theme: the section sets it, which overrides the dark variant",
+    },
+  ]);
+});
+
+test("a variant the design does not declare is a variant issue and the design is shown as it is", () => {
+  const state = {
+    ...createEditorState(settingsDesign),
+    variant: renderVariants[0] as RenderVariant,
+  };
+  const result = effectiveDesign(state);
+  expect(result.design).toBe(state.design);
+  expect(result.issues).toHaveLength(1);
+  expect(result.issues[0]?.source).toBe("variant");
+});
+
+test("an enum without dark is a variant issue without a value, the section still applies", () => {
+  const state = loadSettings(
+    setVariant(createEditorState(noDarkDesign), "dark"),
+    '{"s": {"w": 9}}',
+    "s",
+  );
+  const result = effectiveDesign(state);
+  expect(result.issues.map((issue) => issue.source)).toEqual(["variant"]);
+  expect(result.issues[0]?.message).toMatch(/^variant \/theme: /u);
+  expect(result.issues[0]?.message).not.toContain('"dark"');
+  expect(layerProps(result.design)).toEqual({ w: 9 });
 });
