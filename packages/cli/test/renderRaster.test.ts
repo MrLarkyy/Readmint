@@ -247,6 +247,38 @@ describe("render to a raster image", () => {
     expect(plain.includes(Buffer.from("VP8L", "latin1"))).toBe(true);
   });
 
+  test("a default frame rate lowered to fit the limits is told on standard error, once", async () => {
+    await tree.file("long.json", { ...animatedDesign, animation: { duration: 60_000 } });
+    const run = await tree.run(["render", "long.json", "--scale", "1", "--out", "out/long.apng"]);
+    expect(run).toMatchObject({ code: ExitCode.ok, stdout: "" });
+    expect(run.stderr).toBe(
+      "long.json: apng of the 60000 ms animation sampled at 16 fps to fit the raster limits\n",
+    );
+  });
+
+  test("no note when the default rate fits", async () => {
+    const run = await tree.run(["render", "animated.json", "--out", "out/short.apng"]);
+    expect(run).toMatchObject({ code: ExitCode.ok, stderr: "" });
+  });
+
+  test("an explicit frame rate that does not fit fails naming the rate that does, without a flag", async () => {
+    await tree.file("long.json", { ...animatedDesign, animation: { duration: 60_000 } });
+    const run = await tree.run([
+      "render",
+      "long.json",
+      "--scale",
+      "1",
+      "--frame-rate",
+      "30",
+      "--out",
+      "out/long.apng",
+    ]);
+    expect(run.code).toBe(ExitCode.invalid);
+    expect(run.stderr).toContain("lower the frame rate to 16 or less");
+    expect(run.stderr).not.toContain("--");
+    expect(existsSync(join(tree.root, "out", "long.apng"))).toBe(false);
+  });
+
   test("two renders write the same bytes", async () => {
     const args = ["render", "animated.json", "--frame-rate", "10", "--out"];
     await tree.run([...args, "out/one.gif"]);

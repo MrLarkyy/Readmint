@@ -16,4 +16,8 @@ export interface RasterOutput {
   readonly frames: number;
   /** Milliseconds of one play of the timeline; 0 for a still image. */
   readonly duration: number;
+  /** Frames per second sampled from the timeline; 0 for a still image. */
+  readonly frameRate: number;
+  /** Whether `frameRate` is lower than the default because the limits did not allow it. */
+  readonly frameRateFitted: boolean;
 }

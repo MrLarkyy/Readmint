@@ -112,3 +112,41 @@ test("raster codecs that cannot be loaded are a render error before anything is 
   expect(lines.join("")).not.toContain("/abs/path");
   expect(existsSync(join(tree.root, "readmint"))).toBe(false);
 });
+
+test("a default frame rate lowered to fit the limits is one info line, not a warning", async () => {
+  await tree.file("long.json", {
+    version: 0,
+    canvas: { width: 20, height: 10 },
+    animation: { duration: 60_000 },
+    layers: [
+      {
+        type: "rect",
+        width: 10,
+        height: 10,
+        fill: "#1a7f37",
+        animate: {
+          x: {
+            keyframes: [
+              { offset: 0, value: 0 },
+              { offset: 1, value: 10 },
+            ],
+          },
+        },
+      },
+    ],
+  });
+  const run = await tree.run({
+    designs: "long.json",
+    "data-file": "data.json",
+    "dry-run": "true",
+    formats: "apng",
+    scale: "1",
+  });
+  expect(run.code, run.log).toBe(0);
+  const note =
+    "long.json: apng of the 60000 ms animation sampled at 16 fps to fit the raster limits";
+  expect(run.log.split("\n").filter((line) => line.includes("sampled at"))).toEqual([note]);
+  expect(run.log).not.toContain("::warning::");
+  const plain = await tree.run({ ...dryRun, formats: "apng", scale: "1" });
+  expect(plain.log).not.toContain("sampled at");
+});

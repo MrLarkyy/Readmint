@@ -5,6 +5,7 @@ import tall from "../../renderer/test/assets/tall.webp?inline";
 import font from "../../renderer/test/fonts/Montserrat-Medium.ttf?inline";
 import type { RasterFormat } from "../src/RasterFormat.js";
 import type { RasterInput } from "../src/RasterInput.js";
+import type { RasterOptions } from "../src/RasterOptions.js";
 
 /** Designs that need no Node API to load, so the Node and the Chromium test export the same ones. */
 const shapes: Design = {
@@ -89,6 +90,8 @@ export interface ParityCase {
   readonly name: string;
   readonly design: Design;
   readonly format: RasterFormat;
+  /** Export options besides the format: what makes a case sample at a fitted default rate, say. */
+  readonly options?: Partial<RasterOptions>;
 }
 
 export const parityCases: readonly ParityCase[] = [
@@ -97,6 +100,7 @@ export const parityCases: readonly ParityCase[] = [
   { name: "text", design: text, format: "png" },
   { name: "text", design: text, format: "webp" },
   { name: "loop", design: loop, format: "webp" },
+  { name: "loop-fitted", design: loop, format: "webp", options: { limits: { maxFrames: 10 } } },
   { name: "image-png", design: pngImage, format: "png" },
   { name: "image-webp", design: webpImage, format: "png" },
 ];
@@ -113,6 +117,7 @@ export const parityPins: Readonly<Record<string, string>> = {
   "image-png.png": "a23070b974339260462aa8a7ba44760a8f644bbfc66b75aca058446bf3bc52da",
   "image-webp.png": "7359fa4645e6160c3666122429dc241e0a4f78123b6b65a0332f3d9a4e0ac68c",
   "loop.webp": "db864fbe90c5b8121598ba4f5509fc8cee0fdbdbeea2d5c004414a3c359a8734",
+  "loop-fitted.webp": "06b8c569db17339d39f610f3a2524b4e7f0de8adaa716b8f41f39a9c348a589e",
 };
 
 export function parityKey(item: ParityCase): string {

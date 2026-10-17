@@ -47,6 +47,7 @@ export async function renderCommand(
   );
   const [output] = result.outputs;
   if (output === undefined) throw new Error("render produced no output");
+  if (output.note !== undefined) await printLines(io.stderr, [output.note]);
   if (args.out === undefined) {
     await io.stdout(new TextDecoder().decode(output.bytes));
     return ExitCode.ok;

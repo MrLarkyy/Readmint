@@ -20,7 +20,7 @@ Options:
                       .png, .apng, .webp or .gif, else svg); raster formats need --out
   --scale <n>         Raster pixels per design pixel, 1..4 (raster formats; default 2)
   --frame-rate <n>    Frames per second of an animation, 1..60, gif 1..50 (raster formats;
-                      default 30, gif 25)
+                      default 30, gif 25, lowered to fit the limits)
   --quality <n>       Lossy WebP at this quality, 1..100 (webp; default lossless)
   --port <n>          Preview port, 0 for any free one (preview; default 4870)
   --open              Open the preview address in the default browser (preview)
