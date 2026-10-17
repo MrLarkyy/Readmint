@@ -52,10 +52,24 @@ export interface RenderArgs {
   readonly variant?: RenderVariant;
 }
 
+/**
+ * `readmint render --manifest <file> --out-dir <dir>`: the designs and their props come from the manifest, so there is
+ * no design file, `--root` or `--out`.
+ */
+export type ManifestRenderArgs = Omit<DesignArgs, "design" | "root"> &
+  Omit<RenderArgs, "out"> & {
+    readonly name: "render";
+    /** The manifest file as given; resolved against the working folder. */
+    readonly manifest: string;
+    /** Folder every render is written to (`<name>[.dark].<ext>`); created when missing. */
+    readonly outDir: string;
+  };
+
 /** A parsed command line. */
 export type CliCommand =
   | { readonly name: "help" }
   | { readonly name: "version" }
   | (DesignArgs & RenderArgs & { readonly name: "render" })
+  | ManifestRenderArgs
   | (DesignArgs & { readonly name: "validate"; readonly time?: number })
   | (DesignArgs & { readonly name: "preview"; readonly port: number; readonly open?: boolean });

@@ -8,7 +8,7 @@ import type { RemoteImageOptions } from "./RemoteImageOptions.js";
  * aborts the requests (the preview passes its stop signal; render and validate finish on the first signal).
  */
 export function imageFetching(
-  args: DesignArgs,
+  args: Partial<DesignArgs>,
   io: CliIo,
   stop?: AbortSignal,
 ): { readonly images?: RemoteImageOptions } {

@@ -1,20 +1,7 @@
+import { windowsDeviceName } from "@readmint/format";
 import type { AssetPathErrorCode } from "./AssetPathError.js";
 
 const maxLength = 1024;
-
-// Windows opens these as devices in any folder and with any extension ("CON.png", "com1.txt").
-// Superscript digits count too: Windows maps them to 1-3 for COM and LPT.
-const devices = new Set([
-  "CON",
-  "PRN",
-  "AUX",
-  "NUL",
-  "CONIN$",
-  "CONOUT$",
-  ...["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "\u00b9", "\u00b2", "\u00b3"].flatMap(
-    (digit) => [`COM${digit}`, `LPT${digit}`],
-  ),
-]);
 
 const forbiddenCharacters = new Set(["\\", ":", "*", "?", '"', "<", ">", "|"]);
 
@@ -44,7 +31,7 @@ export function findAssetPathIssue(src: string): AssetPathIssue | undefined {
     return { code: "trailing-dot-or-space" };
   }
   for (const segment of segments) {
-    const device = deviceName(segment);
+    const device = windowsDeviceName(segment);
     if (device !== undefined) return { code: "device-name", device };
   }
   return undefined;
@@ -58,10 +45,4 @@ function hasInvalidCharacter(src: string): boolean {
     if (unit < 0x20 || unit === 0x7f || forbiddenCharacters.has(char)) return true;
   }
   return false;
-}
-
-function deviceName(segment: string): string | undefined {
-  const dot = segment.indexOf(".");
-  const stem = (dot === -1 ? segment : segment.slice(0, dot)).replace(/ +$/, "").toUpperCase();
-  return devices.has(stem) ? stem : undefined;
 }

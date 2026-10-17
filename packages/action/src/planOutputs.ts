@@ -1,6 +1,8 @@
 import path from "node:path";
-import { type OutputFormat, outputExtension, quoteForLog, type RenderVariant } from "@readmint/cli";
+import { type OutputFormat, quoteForLog, type RenderVariant } from "@readmint/cli";
 import { ActionError } from "./ActionError.js";
+import { claimOutput } from "./claimOutput.js";
+import { outputPath } from "./outputPath.js";
 import type { PlannedDesign } from "./PlannedDesign.js";
 import type { PlannedFile } from "./PlannedFile.js";
 
@@ -33,18 +35,11 @@ export async function planOutputs(
       ...(as === undefined ? {} : { variant: as }),
       outputs: formats.map((format) => ({
         format,
-        output: join(outputDir, `${name}.${outputExtension(format)}`),
+        output: outputPath(outputDir, name, format),
       })),
     };
     for (const { output } of planned.outputs) {
-      const key = output.toLowerCase();
-      const other = outputs.get(key);
-      if (other !== undefined && other !== design) {
-        problems.push(
-          `designs ${quoteForLog(other)} and ${quoteForLog(design)} both write ${quoteForLog(output)}`,
-        );
-      }
-      outputs.set(key, design);
+      claimOutput(outputs, problems, "designs", design, output);
     }
     return planned;
   };

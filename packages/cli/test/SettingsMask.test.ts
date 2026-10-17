@@ -186,3 +186,25 @@ describe("with the shipped settings files", () => {
     }
   });
 });
+
+describe("SettingsMask label", () => {
+  test("names a manifest render instead of a settings section", () => {
+    const masked = new SettingsMask("repo-3", { label: "s3cret" }, design, 'render "repo-3"').mask({
+      path: "/layers/1/props/label",
+      code: "binding",
+      message: "unexpected end",
+    });
+    expect(masked.message).toBe(
+      'a value of render "repo-3" (prop "label") is not valid here; the message is hidden so the value is not shown',
+    );
+  });
+
+  test("the default label stays the settings section", () => {
+    const masked = mask({ label: "x" }).mask({
+      path: "/layers/1/props/label",
+      code: "binding",
+      message: "unexpected end",
+    });
+    expect(masked.message).toMatch(/^a value of settings section "header" \(prop "label"\)/);
+  });
+});

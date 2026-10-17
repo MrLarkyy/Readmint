@@ -20,6 +20,8 @@ type ValueOption =
   | "locale"
   | "time"
   | "out"
+  | "manifest"
+  | "out-dir"
   | "port"
   | "format"
   | "scale"
@@ -41,6 +43,8 @@ const valueOptions: ReadonlySet<string> = new Set<ValueOption>([
   "locale",
   "time",
   "out",
+  "manifest",
+  "out-dir",
   "port",
   "format",
   "scale",
@@ -79,6 +83,8 @@ const allowed: Readonly<Record<DesignCommand, ReadonlySet<ValueOption>>> = {
     "locale",
     "time",
     "out",
+    "manifest",
+    "out-dir",
     "format",
     "scale",
     "frame-rate",
@@ -184,8 +190,26 @@ export function parseCliArgs(argv: readonly string[]): CliCommand {
     usage(`unknown command ${quoteForLog(command)}`);
   }
   const [design, extra] = rest;
-  if (design === undefined) usage(`${command} needs a design file`);
-  if (extra !== undefined) usage(`unexpected argument ${quoteForLog(extra)}`);
+  const manifest = values.get("manifest");
+  if (command !== "render") {
+    for (const name of ["manifest", "out-dir"] as const) {
+      if (values.has(name)) usage(`option --${name} does not apply to ${command}`);
+    }
+  } else if (manifest === undefined && values.has("out-dir")) {
+    usage("option --out-dir needs --manifest");
+  }
+  if (manifest !== undefined) {
+    if (design !== undefined) {
+      usage(`render --manifest takes no design file, got ${quoteForLog(design)}`);
+    }
+    if (!values.has("out-dir")) usage("render --manifest needs --out-dir");
+    for (const name of ["out", "root"] as const) {
+      if (values.has(name)) usage(`option --${name} does not apply to render --manifest`);
+    }
+  } else {
+    if (design === undefined) usage(`${command} needs a design file`);
+    if (extra !== undefined) usage(`unexpected argument ${quoteForLog(extra)}`);
+  }
   for (const name of [...values.keys(), ...repeated.keys()]) {
     if (!allowed[command].has(name)) usage(`option --${name} does not apply to ${command}`);
   }
@@ -202,8 +226,7 @@ export function parseCliArgs(argv: readonly string[]): CliCommand {
   }
   const dataJson = dataJsonArgs(repeated, github);
   const dataFeed = dataFeedArgs(repeated, github, dataJson);
-  const common: DesignArgs = {
-    design,
+  const shared: Omit<DesignArgs, "design"> = {
     ...optional("root", values.get("root")),
     ...optional("data", values.get("data")),
     ...optional("props", values.get("props")),
@@ -218,9 +241,20 @@ export function parseCliArgs(argv: readonly string[]): CliCommand {
   };
   const time = values.get("time");
   const timeArgs = time === undefined ? {} : { time: parseTime(time) };
+  if (manifest !== undefined) {
+    return {
+      name: "render",
+      ...shared,
+      ...timeArgs,
+      ...renderArgs(values, true),
+      manifest,
+      outDir: values.get("out-dir") ?? "",
+    };
+  }
+  const common: DesignArgs = { design: design ?? "", ...shared };
   switch (command) {
     case "render":
-      return { name: "render", ...common, ...timeArgs, ...renderArgs(values) };
+      return { name: "render", ...common, ...timeArgs, ...renderArgs(values, false) };
     case "validate":
       return { name: "validate", ...common, ...timeArgs };
     case "preview": {
@@ -296,11 +330,14 @@ function dataFeedArgs(
   return specs;
 }
 
-function renderArgs(values: ReadonlyMap<ValueOption, string>): Omit<RenderArgs, "time"> {
+function renderArgs(
+  values: ReadonlyMap<ValueOption, string>,
+  manifest: boolean,
+): Omit<RenderArgs, "time"> {
   const out = values.get("out");
   const formatText = values.get("format");
   const format = formatText === undefined ? formatOf(out) : parseFormat(formatText);
-  if (format !== "svg" && out === undefined) {
+  if (format !== "svg" && out === undefined && !manifest) {
     usage(`--format ${format} needs --out: raster images are never written to standard output`);
   }
   const scale = values.get("scale");
