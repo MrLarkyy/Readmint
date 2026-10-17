@@ -74,7 +74,8 @@ Action one info line when it was:
 `design.json: apng of the 60000 ms animation sampled at 16 fps to fit the raster limits`.
 
 A frame rate given on purpose is never changed: it either passes or fails before the first frame is drawn, naming the
-highest rate that fits (`lower the frame rate to 16 or less`). The size of the file is only known when it is encoded,
+highest rate that fits (`lower the frame rate to 16 or less`). An explicit rate that samples only one frame (1 or 2
+frames a second on a 500 ms loop) does not fail: that frame is written as a still image, a PNG for an apng request. The size of the file is only known when it is encoded,
 so the fit does not account for `maxOutputBytes`. When a default-rate animation passes it, the export is encoded
 again at a lower rate, projected from the bytes written so far (the first frame costs the same at any rate, every later
 one the average of those written, and a lower rate counts all its frames with no merge as a saving, 30 percent short of
