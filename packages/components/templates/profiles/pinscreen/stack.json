@@ -41,6 +41,11 @@
           "values": ["light", "dark"],
           "default": "light"
         },
+        "languageShare": {
+          "type": "enum",
+          "values": ["bytes", "repositories"],
+          "default": "bytes"
+        },
         "plugin": {
           "type": "string",
           "default": ""
@@ -456,7 +461,7 @@
             {
               "type": "group",
               "repeat": {
-                "each": "{{ [github.languages[0], github.languages[1], github.languages[2], github.languages[3]] }}",
+                "each": "{{ [(props.languageShare == \"repositories\" ? (github.languagesByRepo || github.languages) : github.languages)[0], (props.languageShare == \"repositories\" ? (github.languagesByRepo || github.languages) : github.languages)[1], (props.languageShare == \"repositories\" ? (github.languagesByRepo || github.languages) : github.languages)[2], (props.languageShare == \"repositories\" ? (github.languagesByRepo || github.languages) : github.languages)[3]] }}",
                 "as": "lang",
                 "index": "j"
               },

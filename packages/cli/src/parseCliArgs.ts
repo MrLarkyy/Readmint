@@ -6,6 +6,7 @@ import type { CliCommand, DesignArgs, RenderArgs } from "./CliCommand.js";
 import { ExitCode } from "./ExitCode.js";
 import { localeProblem } from "./localeProblem.js";
 import { type OutputFormat, outputFormats } from "./OutputFormat.js";
+import { type DataFeedSpec, parseDataFeedArgs } from "./parseDataFeedArgs.js";
 import { type DataJsonSpec, parseDataJsonArgs } from "./parseDataJsonArgs.js";
 import { quoteForLog } from "./quoteForLog.js";
 
@@ -23,8 +24,11 @@ type ValueOption =
   | "frame-rate"
   | "quality"
   | "login"
+  | "exclude-repositories"
   | "data-json"
-  | "data-json-header";
+  | "data-json-header"
+  | "data-feed"
+  | "data-feed-limit";
 
 const valueOptions: ReadonlySet<string> = new Set<ValueOption>([
   "root",
@@ -39,13 +43,18 @@ const valueOptions: ReadonlySet<string> = new Set<ValueOption>([
   "frame-rate",
   "quality",
   "login",
+  "exclude-repositories",
   "data-json",
   "data-json-header",
+  "data-feed",
+  "data-feed-limit",
 ]);
 /** Value options that may be given more than once; each use adds one value. */
 const repeatableOptions: ReadonlySet<string> = new Set<ValueOption>([
   "data-json",
   "data-json-header",
+  "data-feed",
+  "data-feed-limit",
 ]);
 const flagOptions: ReadonlySet<string> = new Set([
   "help",
@@ -69,8 +78,11 @@ const allowed: Readonly<Record<DesignCommand, ReadonlySet<ValueOption>>> = {
     "frame-rate",
     "quality",
     "login",
+    "exclude-repositories",
     "data-json",
     "data-json-header",
+    "data-feed",
+    "data-feed-limit",
   ]),
   validate: new Set([
     "root",
@@ -79,8 +91,11 @@ const allowed: Readonly<Record<DesignCommand, ReadonlySet<ValueOption>>> = {
     "locale",
     "time",
     "login",
+    "exclude-repositories",
     "data-json",
     "data-json-header",
+    "data-feed",
+    "data-feed-limit",
   ]),
   preview: new Set([
     "root",
@@ -89,8 +104,11 @@ const allowed: Readonly<Record<DesignCommand, ReadonlySet<ValueOption>>> = {
     "locale",
     "port",
     "login",
+    "exclude-repositories",
     "data-json",
     "data-json-header",
+    "data-feed",
+    "data-feed-limit",
   ]),
 };
 /** Prefixes of GitHub tokens (classic, OAuth, user-to-server, server-to-server, refresh, fine-grained). */
@@ -166,7 +184,11 @@ export function parseCliArgs(argv: readonly string[]): CliCommand {
   const github = flags.has("github");
   if (github && values.has("data")) usage("--github and --data exclude each other");
   if (!github && values.has("login")) usage("option --login needs --github");
+  if (!github && values.has("exclude-repositories")) {
+    usage("option --exclude-repositories needs --github");
+  }
   const dataJson = dataJsonArgs(repeated, github);
+  const dataFeed = dataFeedArgs(repeated, github, dataJson);
   const common: DesignArgs = {
     design,
     ...optional("root", values.get("root")),
@@ -176,7 +198,9 @@ export function parseCliArgs(argv: readonly string[]): CliCommand {
     ...(flags.has("fetch-images") ? { fetchImages: true } : {}),
     ...(github ? { github: true } : {}),
     ...optional("login", values.get("login")),
+    ...excludeArgs(values.get("exclude-repositories")),
     ...(dataJson.length === 0 ? {} : { dataJson }),
+    ...(dataFeed.length === 0 ? {} : { dataFeed }),
   };
   const time = values.get("time");
   const timeArgs = time === undefined ? {} : { time: parseTime(time) };
@@ -230,6 +254,30 @@ function dataJsonArgs(
     usage(
       "--data-json namespace github clashes with --github; name the JSON source another namespace",
     );
+  }
+  return specs;
+}
+
+function dataFeedArgs(
+  repeated: ReadonlyMap<ValueOption, readonly string[]>,
+  github: boolean,
+  dataJson: readonly DataJsonSpec[],
+): readonly DataFeedSpec[] {
+  const { specs, problems } = parseDataFeedArgs(
+    repeated.get("data-feed") ?? [],
+    repeated.get("data-feed-limit") ?? [],
+  );
+  const [problem] = problems;
+  if (problem !== undefined) usage(`--data-feed: ${problem}`);
+  const json = new Set(dataJson.map((spec) => spec.namespace));
+  const clash = specs.find((spec) => json.has(spec.namespace));
+  if (clash !== undefined) {
+    usage(
+      `--data-feed namespace ${clash.namespace} is also a --data-json namespace; name one of them another namespace`,
+    );
+  }
+  if (github && specs.some((spec) => spec.namespace === GITHUB_DATA_NAMESPACE)) {
+    usage("--data-feed namespace github clashes with --github; name the feed another namespace");
   }
   return specs;
 }
@@ -299,6 +347,15 @@ function parseQuality(text: string): number {
     usage(`--quality must be a whole number in 1..100, got ${quoteForLog(text)}`);
   }
   return quality;
+}
+
+function excludeArgs(value: string | undefined): { excludeRepositories?: readonly string[] } {
+  if (value === undefined) return {};
+  const names = value
+    .split(",")
+    .map((name) => name.trim())
+    .filter((name) => name !== "");
+  return names.length === 0 ? {} : { excludeRepositories: names };
 }
 
 function optional<K extends string>(key: K, value: string | undefined): { [P in K]?: string } {

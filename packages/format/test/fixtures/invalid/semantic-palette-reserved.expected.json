@@ -1,0 +1,14 @@
+[
+  {
+    "path": "/layers/0/let/palette",
+    "code": "reserved-name"
+  },
+  {
+    "path": "/layers/0/children/0/repeat/as",
+    "code": "reserved-name"
+  },
+  {
+    "path": "/palette/light/true",
+    "code": "reserved-name"
+  }
+]

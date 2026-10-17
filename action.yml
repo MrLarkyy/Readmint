@@ -35,14 +35,23 @@ inputs:
     description: GitHub login whose data is loaded; required with the workflow's GITHUB_TOKEN.
     required: false
     default: ${{ github.repository_owner }}
+  exclude-repositories:
+    description: Repositories (name or owner/name; comma or line separated) left out of every GitHub aggregate such as the languages; not with data-file.
+    required: false
   data-file:
-    description: Fixture data JSON file (the CLI `--data` format) used instead of loading GitHub data.
+    description: Fixture data JSON file (the CLI `--data` format) used instead of loading GitHub data; a file inside the workspace.
     required: false
   data-json:
     description: JSON documents to bind, one per line as `[<namespace>=]<source>` (the CLI `--data-json`; default namespace json, at most 8) - a file inside the workspace or an https URL; each is bound as `{ version, document }` under its namespace, added to the data-file or GitHub data.
     required: false
   data-json-headers:
     description: Headers for the data-json URLs, one per line as `<namespace>:<Header-Name>=<ENV_NAME>` - the value is read from the step's environment variable ENV_NAME (set it from a secret with `env:`), masked and never printed, and sent only to that URL's origin.
+    required: false
+  data-feed:
+    description: RSS 2.0 or Atom 1.0 feeds to bind, one per line as `[<namespace>=]<https URL>` (the CLI `--data-feed`; default namespace feed, at most 8); each is bound as `{ version, title, link, entries }` with plain-text entries newest first, added after the data-json documents. A URL that holds a key must come from a secret (from a repository secret via the secrets context) - the runner prints the with values and masks only secrets. The Action itself never prints it.
+    required: false
+  data-feed-limits:
+    description: Entries kept per feed, one per line as `<namespace>=<n>` with n from 1 to 50 (the CLI `--data-feed-limit`); a feed without a line keeps 5.
     required: false
   props-file:
     description: Settings JSON file (the CLI `--props` format, root component props by section) merged into every listed design and its dark twin, for texts set once per template.

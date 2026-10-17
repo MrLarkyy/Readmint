@@ -71,6 +71,7 @@ export interface RecordNode {
   readonly label: string;
   readonly keys: StringNode;
   readonly values: SchemaNode;
+  readonly minEntries?: number;
   readonly maxEntries?: number;
 }
 
@@ -175,13 +176,14 @@ export function record(
   label: string,
   keys: StringNode,
   values: SchemaNode,
-  options: Optional<Pick<RecordNode, "maxEntries">> = {},
+  options: Optional<Pick<RecordNode, "minEntries" | "maxEntries">> = {},
 ): RecordNode {
   return {
     kind: "record",
     label,
     keys,
     values,
+    ...(options.minEntries === undefined ? {} : { minEntries: options.minEntries }),
     ...(options.maxEntries === undefined ? {} : { maxEntries: options.maxEntries }),
   };
 }

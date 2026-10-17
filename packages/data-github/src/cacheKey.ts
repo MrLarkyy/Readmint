@@ -9,6 +9,8 @@ export interface CacheKeyInput {
   readonly login: string;
   readonly pageSize: number;
   readonly maxRepositories: number;
+  /** Lowercased and sorted; part of the key only when not empty. */
+  readonly excludeRepositories?: readonly string[];
 }
 
 /**
@@ -30,6 +32,9 @@ export async function cacheKey(
       login: input.login.toLowerCase(),
       pageSize: input.pageSize,
       maxRepositories: input.maxRepositories,
+      ...(input.excludeRepositories === undefined || input.excludeRepositories.length === 0
+        ? {}
+        : { excludeRepositories: input.excludeRepositories.join(",") }),
     },
   );
 }

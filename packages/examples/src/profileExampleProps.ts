@@ -43,6 +43,7 @@ export const profileExampleProps: Readonly<
         "we.builders, SWN Moravia, Partners, Hoplite, Minebox, Cobblemon Islands, Mineclub, MrBeast, SpeedSilver, DiamondXR",
       ],
       languagesAfter: 2,
+      languageShare: "repositories",
       logoLabels: ["Working now", "Before", "", "Creators"],
       logoLines: profileLogos.map((logo) => String(logo.line)),
       logoNames: profileLogos.map((logo) => logo.name),
@@ -65,6 +66,7 @@ export const profileExampleProps: Readonly<
       statusNote: "Open to collaborations",
     },
     stack: {
+      languageShare: "repositories",
       labels: ["Frameworks", "Messaging", "Data", "Tools"],
       items: [
         "Ktor\nSpring",
@@ -102,6 +104,7 @@ export const profileExampleProps: Readonly<
       statusBarRight: "Kotlin · LF · UTF-8",
     },
     stack: {
+      languageShare: "repositories",
       plugin: 'kotlin("jvm")',
       labels: ["frameworks", "messaging", "storage", "wire format"],
       items: [

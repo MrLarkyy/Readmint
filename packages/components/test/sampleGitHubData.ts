@@ -2,7 +2,9 @@ import type {
   GitHubContributionDay,
   GitHubContributions,
   GitHubData,
+  GitHubLanguageRepositories,
   GitHubLanguageShare,
+  GitHubLanguageWeight,
   GitHubStreak,
 } from "@readmint/data-github";
 import { contributionsYear, worstCaseContributions } from "./contributionsFixture.js";
@@ -67,6 +69,27 @@ export function sampleGitHubData(): { github: GitHubData } {
     bytes: thousandths * 1000,
     share: thousandths / 1000,
   }));
+  // The repository weighting orders the languages differently from the bytes, as a dominant repository would.
+  const weights: readonly (readonly [string, string | null, number, number])[] = [
+    ["Python", "#3572a5", 250, 14],
+    ["TypeScript", "#3178c6", 200, 9],
+    ["Go", "#00add8", 150, 8],
+    ["Shell", "#89e051", 120, 12],
+    ["Rust", "#dea584", 100, 5],
+    ["HTML", null, 100, 7],
+    ["Dockerfile", "#384d54", 80, 6],
+  ];
+  const languagesByRepo: GitHubLanguageWeight[] = weights.map(
+    ([name, color, thousandths, repositories]) => ({
+      name,
+      color,
+      share: thousandths / 1000,
+      repositories,
+    }),
+  );
+  const languageRepositories: GitHubLanguageRepositories[] = weights
+    .map(([name, color, , repositories]) => ({ name, color, repositories }))
+    .sort((left, right) => right.repositories - left.repositories);
   return {
     github: {
       version: 0,
@@ -89,6 +112,8 @@ export function sampleGitHubData(): { github: GitHubData } {
       status: null,
       repositoriesTruncated: false,
       languages,
+      languagesByRepo,
+      languageRepositories,
       contributions: contributionsOf(year, {
         commits: 2310,
         pullRequests: 164,
@@ -124,6 +149,17 @@ export function worstCaseGitHubData(): { github: GitHubData } {
         bytes: huge,
         share: 1 / 600,
       })),
+      languagesByRepo: Array.from({ length: 600 }, (_, index) => ({
+        name: longText(1024, String.fromCharCode(65 + (index % 26))),
+        color: index % 2 === 0 ? "#ff00ff" : null,
+        share: 1 / 600,
+        repositories: 1,
+      })),
+      languageRepositories: Array.from({ length: 600 }, (_, index) => ({
+        name: longText(1024, String.fromCharCode(65 + (index % 26))),
+        color: index % 2 === 0 ? "#ff00ff" : null,
+        repositories: 1,
+      })),
       contributions: contributionsOf(calendar, {
         commits: huge,
         pullRequests: huge,
@@ -144,6 +180,8 @@ export function sparseGitHubData(): { github: GitHubData } {
       name: null,
       bio: null,
       languages: [],
+      languagesByRepo: [],
+      languageRepositories: [],
       contributions: {
         ...sample.contributions,
         streaks: { current: none, longest: none },

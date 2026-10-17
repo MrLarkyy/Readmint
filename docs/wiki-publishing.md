@@ -31,17 +31,17 @@ _Golden-tests_ and _Wiki-publishing_ are new in the wiki (they were repository-o
 
 ## Gallery
 
-The _Gallery_ page shows every profile template (Year Ring, Horizon, Pinscreen: every section) and every starter
-template in light and dark, with a one-line description and links to the template folder in the examples repository
-(the starters, which have no folder there, link to their design file) and to
+The _Gallery_ page shows every profile template (Year Ring, Horizon, Pinscreen: every section), every starter
+template and the three contribution calendars (heatmap, isometric, dots) in light and dark, with a one-line description and links to the template folder in the examples repository
+(the starters and calendars, which have no folder there, link to their design file) and to
 [Components and templates](components.md).
 
-- **The list** is `packages/wiki/src/galleryTemplates.ts`. A test compares it with the starter and profile tables of
+- **The list** is `packages/wiki/src/galleryTemplates.ts`. A test compares it with the profile, starter and contribution calendar tables of
   [components.md](components.md) and with the section files in `packages/components/templates/`, so a template or
   section added without a gallery entry (or the reverse) fails `pnpm test`. Another test fails when a golden image of the
   list does not exist.
 - **The images** are the golden PNGs the [golden tests](golden-tests.md) pin (`packages/components/test/golden/`,
-  `ITEM-light.png` and `ITEM-dark.png`); nothing is drawn by hand and nothing is fetched. The profile sections have a
+  `ITEM-light.png` and `ITEM-dark.png`; the calendars are `calendar/NAME.png` for light and `calendar/NAME-dark.png` for dark); nothing is drawn by hand and nothing is fetched. The profile sections have a
   transparent canvas, so each image is flattened on the GitHub page colour of its theme (light `#ffffff`, dark
   `#0d1117`) and reads on any wiki theme.
 - **Names and size.** A file is named by the first 16 hex digits of the sha256 of its bytes (`gallery/<hash>.png`), so

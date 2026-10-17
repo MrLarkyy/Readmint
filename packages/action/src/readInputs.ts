@@ -1,9 +1,11 @@
 import path from "node:path";
 import {
+  type DataFeedSpec,
   type DataJsonSpec,
   localeProblem,
   type OutputFormat,
   outputFormats,
+  parseDataFeedArgs,
   parseDataJsonArgs,
   quoteForLog,
 } from "@readmint/cli";
@@ -113,6 +115,10 @@ export function readInputs(env: Env): ActionConfig {
 
   const token = value("token");
   const dataFile = value("data-file");
+  if (dataFile !== "") {
+    const reason = checkRelativePath(dataFile);
+    if (reason !== undefined) problems.push(`input data-file ${quoteForLog(dataFile)} ${reason}`);
+  }
   if (dataFile === "" && token === "") {
     problems.push("input token is empty; pass a token or a data-file");
   }
@@ -125,6 +131,17 @@ export function readInputs(env: Env): ActionConfig {
   if (dataFile === "" && dataJson.some((spec) => spec.namespace === "github")) {
     problems.push(
       "input data-json: namespace github clashes with the GitHub data; name the JSON source another namespace",
+    );
+  }
+  const dataFeed = readDataFeed(
+    lines(value("data-feed")),
+    lines(value("data-feed-limits")),
+    dataJson,
+    problems,
+  );
+  if (dataFile === "" && dataFeed.some((spec) => spec.namespace === "github")) {
+    problems.push(
+      "input data-feed: namespace github clashes with the GitHub data; name the feed another namespace",
     );
   }
 
@@ -154,6 +171,12 @@ export function readInputs(env: Env): ActionConfig {
     problems.push(`input dry-run ${quoteForLog(dryRunText)} is not true or false`);
   }
 
+  const excludeRepositories = lines(value("exclude-repositories").replace(/,/g, "\n"));
+  if (dataFile !== "" && excludeRepositories.length > 0) {
+    problems.push(
+      "input exclude-repositories applies to GitHub data only; it cannot go with data-file",
+    );
+  }
   if (problems.length > 0) throw new ActionError("input", problems);
   return {
     designs,
@@ -164,8 +187,10 @@ export function readInputs(env: Env): ActionConfig {
     ...(qualityText === "" ? {} : { quality }),
     token: dataFile === "" ? token : "",
     login: value("login"),
+    ...(excludeRepositories.length === 0 ? {} : { excludeRepositories }),
     ...(dataFile === "" ? {} : { dataFile }),
     ...(dataJson.length === 0 ? {} : { dataJson }),
+    ...(dataFeed.length === 0 ? {} : { dataFeed }),
     ...(propsFile === "" ? {} : { propsFile }),
     ...(locale === "" ? {} : { locale }),
     commitMessage,
@@ -187,6 +212,26 @@ function readDataJson(
     const reason = checkRelativePath(spec.source);
     if (reason !== undefined) {
       problems.push(`input data-json: the file of namespace ${spec.namespace} ${reason}`);
+    }
+  }
+  return parsed.specs;
+}
+
+/** The `data-feed` lines as specs; a namespace a `data-json` source has too is a problem. */
+function readDataFeed(
+  sources: readonly string[],
+  limits: readonly string[],
+  dataJson: readonly DataJsonSpec[],
+  problems: string[],
+): readonly DataFeedSpec[] {
+  const parsed = parseDataFeedArgs(sources, limits);
+  for (const problem of parsed.problems) problems.push(`input data-feed: ${problem}`);
+  const json = new Set(dataJson.map((spec) => spec.namespace));
+  for (const spec of parsed.specs) {
+    if (json.has(spec.namespace)) {
+      problems.push(
+        `input data-feed: namespace ${spec.namespace} is also a data-json namespace; name one of them another namespace`,
+      );
     }
   }
   return parsed.specs;

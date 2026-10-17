@@ -38,8 +38,21 @@ test.each([["render"], ["validate"], ["preview"]])("%s takes --github and --logi
   expect(parseCliArgs([name, "a.json"])).not.toHaveProperty("github");
 });
 
+test("--exclude-repositories is a trimmed comma list", () => {
+  expect(
+    parseCliArgs(["render", "a.json", "--github", "--exclude-repositories", " Readmint, a/b ,,"]),
+  ).toMatchObject({ excludeRepositories: ["Readmint", "a/b"] });
+  expect(
+    parseCliArgs(["render", "a.json", "--github", "--exclude-repositories", " , "]),
+  ).not.toHaveProperty("excludeRepositories");
+});
+
 test.each([
   [["render", "a.json", "--login", "octocat"], "option --login needs --github"],
+  [
+    ["render", "a.json", "--exclude-repositories", "x"],
+    "option --exclude-repositories needs --github",
+  ],
   [["render", "a.json", "--github", "--data", "d.json"], "--github and --data exclude each other"],
   [
     ["render", "a.json", "--github", "--login", "a", "--login", "b"],
@@ -203,5 +216,101 @@ describe("--data-json", () => {
       "https://y.example/?key=SECRETKEY",
     ]).message;
     expect(message).not.toContain("SECRETKEY");
+  });
+});
+
+describe("--data-feed", () => {
+  test.each([["render"], ["validate"], ["preview"]])("%s takes it with limits", (name) => {
+    expect(
+      parseCliArgs([
+        name,
+        "a.json",
+        "--data-feed",
+        "https://blog.example/feed.xml?a=b",
+        "--data-feed",
+        "yt=https://videos.example/feed",
+        "--data-feed-limit",
+        "yt=12",
+      ]),
+    ).toMatchObject({
+      dataFeed: [
+        { namespace: "feed", url: "https://blog.example/feed.xml?a=b" },
+        { namespace: "yt", url: "https://videos.example/feed", limit: 12 },
+      ],
+    });
+    expect(parseCliArgs([name, "a.json"])).not.toHaveProperty("dataFeed");
+  });
+
+  test.each([
+    [["--data-feed", "a=https://x.example", "--data-feed", "a=https://y.example"], "given twice"],
+    [["--data-feed", "http://x.example/feed"], "the URL of feed feed is not an https URL"],
+    [["--data-feed", "b=feed.xml"], "the URL of feed b is not an https URL"],
+    [["--data-feed", "https://u:p@x.example/"], "contains a user name or password"],
+    [["--data-feed", `https://x.example/${"a".repeat(2048)}`], "longer than 2048"],
+    [["--data-feed-limit", "a=3"], "names namespace a, which has no feed"],
+    [["--data-feed", "a=https://x.example", "--data-feed-limit", "a=0"], "from 1 to 50"],
+    [["--data-feed", "a=https://x.example", "--data-feed-limit", "a=51"], "from 1 to 50"],
+    [["--data-feed", "a=https://x.example", "--data-feed-limit", "a=1.5"], "<namespace>=<n>"],
+    [["--data-feed", "a=https://x.example", "--data-feed-limit", "A=5"], "<namespace>=<n>"],
+    [
+      [
+        "--data-feed",
+        "a=https://x.example",
+        "--data-feed-limit",
+        "a=2",
+        "--data-feed-limit",
+        "a=3",
+      ],
+      "given twice",
+    ],
+    [
+      Array.from({ length: 9 }, (_, i) => [
+        "--data-feed",
+        `n${String(i)}=https://x.example`,
+      ]).flat(),
+      "at most 8",
+    ],
+  ])("%j is a usage error", (args, message) => {
+    const error = usageError(["render", "a.json", ...args]);
+    expect(error.exitCode).toBe(ExitCode.usage);
+    expect(error.message).toContain(message);
+  });
+
+  test("a namespace given to --data-json too is a usage error naming it", () => {
+    expect(
+      usageError([
+        "render",
+        "a.json",
+        "--data-json",
+        "posts=x.json",
+        "--data-feed",
+        "posts=https://x.example/feed",
+      ]).message,
+    ).toContain("--data-feed namespace posts is also a --data-json namespace");
+  });
+
+  test("namespace github clashes with --github, not without it", () => {
+    expect(
+      usageError(["render", "a.json", "--github", "--data-feed", "github=https://x.example"])
+        .message,
+    ).toContain("clashes with --github");
+    expect(
+      parseCliArgs(["render", "a.json", "--data-feed", "github=https://x.example"]),
+    ).toMatchObject({ dataFeed: [{ namespace: "github" }] });
+  });
+
+  test("a usage error never quotes the URL", () => {
+    for (const args of [
+      ["--data-feed", "http://x.example/?key=SECRETKEY"],
+      [
+        "--data-feed",
+        "https://x.example/?key=SECRETKEY",
+        "--data-feed",
+        "https://y.example/?key=SECRETKEY",
+      ],
+      ["--data-feed", "https://user:SECRETKEY@x.example/"],
+    ]) {
+      expect(usageError(["render", "a.json", ...args]).message).not.toContain("SECRETKEY");
+    }
   });
 });

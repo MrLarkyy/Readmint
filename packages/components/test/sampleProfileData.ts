@@ -282,6 +282,14 @@ export function otherProfileData(): ProfileData {
         { name: "Kotlin", color: "#a97bff", bytes: 800_000, share: 0.8 },
         { name: "Java", color: "#b07219", bytes: 200_000, share: 0.2 },
       ],
+      languagesByRepo: [
+        { name: "Java", color: "#b07219", share: 0.6, repositories: 6 },
+        { name: "Kotlin", color: "#a97bff", share: 0.4, repositories: 4 },
+      ],
+      languageRepositories: [
+        { name: "Java", color: "#b07219", repositories: 6 },
+        { name: "Kotlin", color: "#a97bff", repositories: 4 },
+      ],
       repositories: pinned,
       pinned,
       status: { emoji: null, message: "Reading papers" },
@@ -305,4 +313,10 @@ export function noStatusProfileData(): ProfileData {
 export function noPushProfileData(): ProfileData {
   const data = noStatusProfileData();
   return { github: { ...data.github, pushes: [] } };
+}
+
+/** The sample data with the given location, for headers that fit it by drawn width. */
+export function longLocationProfileData(location: string): ProfileData {
+  const data = sampleProfileData();
+  return { github: { ...data.github, location } };
 }

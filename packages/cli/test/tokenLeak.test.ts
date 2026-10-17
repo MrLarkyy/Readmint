@@ -421,3 +421,33 @@ test("the preview page and standard error never show a --data-json-header value"
   expect(await exit).toBe(ExitCode.ok);
   expect(stderr).not.toContain(value);
 });
+
+test("standard error never shows a --data-feed URL or its key", async () => {
+  const key = "feedKEY-rm107-canary";
+  const url = `https://feeds.example/private.xml?key=${key}`;
+  const answers: ImageFetch[] = [
+    () => Promise.resolve(new Response("", { status: 401 })),
+    () => Promise.reject(new TypeError(`connect ECONNREFUSED ${url}`)),
+    () =>
+      Promise.resolve(
+        new Response(`<rss><channel><title>${url}</title></rss>`, {
+          headers: { "content-type": "application/rss+xml" },
+        }),
+      ),
+    () =>
+      Promise.resolve(new Response(`<p>${url}</p>`, { headers: { "content-type": "text/html" } })),
+  ];
+  for (const fetch of answers) {
+    for (const command of ["render", "validate"]) {
+      const run = await tree.run([command, "bound/design.json", "--data-feed", url], {
+        env,
+        fetch,
+      });
+      expect(run.code).toBe(ExitCode.data);
+      expect(run.stderr).toMatch(/^Feed data feed \(/);
+      expect(run.stderr).not.toContain(key);
+      expect(run.stderr).not.toContain("feeds.example");
+      expectNoToken(run);
+    }
+  }
+});

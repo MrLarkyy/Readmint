@@ -77,6 +77,7 @@ function emit(node: SchemaNode): JsonSchema {
         type: "object",
         propertyNames: emit(node.keys),
         additionalProperties: emit(node.values),
+        ...(node.minEntries === undefined ? {} : { minProperties: node.minEntries }),
         ...(node.maxEntries === undefined ? {} : { maxProperties: node.maxEntries }),
       };
     case "union":

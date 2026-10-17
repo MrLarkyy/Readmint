@@ -41,6 +41,16 @@ test("a design with lets gives the same bytes on every render", () => {
   expect(renderFixture(design)).toBe(first);
 });
 
+test.each(["palette-light", "palette-dark"])(
+  "the palette design %s gives the same bytes on every render",
+  (name) => {
+    const design = input(components, name);
+    const first = renderFixture(design);
+    renderFixture(input(components, name === "palette-light" ? "palette-dark" : "palette-light"));
+    expect(renderFixture(design)).toBe(first);
+  },
+);
+
 test.each(animationDesigns.map(({ name, input }) => [name, input] as const))(
   "the animated SVG and a frame of %s are the same bytes on every render",
   (_name, input) => {

@@ -45,15 +45,20 @@ The hyphen rule keeps ids usable as names: `props.my-label` and `repo-index` are
 
 - **Names.** A name is looked up in the locals first (the `repeat` item and index, the names a layer's `let` binds,
   component `props`, which canvas bindings see as the props of the root instance, see
-  [design-format.md](design-format.md#components)), then among the own top-level keys of the data. An unknown name is
-  an `unknown-name` error.
+  [design-format.md](design-format.md#components), and `palette` in a design that declares one), then among the own
+  top-level keys of the data. An unknown name is an `unknown-name` error.
+- **Palette.** In a design with a `palette`, the name `palette` is an object of the active mode's tokens, visible to
+  every binding of the design (canvas, layers, components): `{{ palette.accent }}`, `{{ palette["bg-muted"] }}`. A
+  token no mode defines is a design `unknown-reference` issue when it is written as `palette.<token>` or
+  `palette["<token>"]`; a computed key (`palette[name]`) that names no token reads `null`
+  ([design-format.md](design-format.md#palette)).
 - **Local bindings.** A layer's `let` binds names in key order, each entry reading the entries before it
   ([design-format.md](design-format.md#local-bindings-let)):
   `"let": { "n": "{{ github.contributions.total }}", "half": "{{ n / 2 }}" }` lets the layer and its subtree write
   `{{ half }}`. An entry that reads itself or a later entry (`"a": "{{ b }}", "b": "{{ 1 }}"`) is a render `binding`
   issue at the entry, found from the names the entry reads before anything is evaluated; it never falls back to an
   outer local or a data key of that name. A `let` name may not be a top-level data key either (`binding` at the
-  entry), and `props`, `true`, `false` and `null` are reserved.
+  entry, message `let "x" hides the data name "x"; rename the let name or the data namespace`), and `props`, `true`, `false` and `null` are reserved.
 - **Missing data is `null`.** A missing property, an index out of range and any property of `null` read as `null`, so
   `{{ github.repo.owner.name }}` on partial data is `null`, not an error. Arrays have only integer indices (`list[0]`;
   `list.length` is `null`, use `| length`), and strings, numbers and booleans have no properties.

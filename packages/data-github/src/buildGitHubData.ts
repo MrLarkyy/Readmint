@@ -14,6 +14,8 @@ import type {
   RepositoriesPageRecord,
   WeeksRecord,
 } from "./GitHubRecords.js";
+import { languageRepositories } from "./languageRepositories.js";
+import { languagesByRepo } from "./languagesByRepo.js";
 import { selectPinned } from "./selectPinned.js";
 import { sortPushes } from "./sortPushes.js";
 
@@ -26,10 +28,11 @@ export function buildGitHubData(
   profile: ProfileRecord,
   pages: readonly RepositoriesPageRecord[],
   maxRepositories: number,
+  exclude: readonly string[],
   activity: ActivityRecord | null,
   weeks: WeeksRecord | null,
 ): GitHubData {
-  const { loaded, repositories, ids } = collectRepositories(pages, maxRepositories);
+  const { loaded, repositories, ids } = collectRepositories(pages, maxRepositories, exclude);
   const lastPage = pages.at(-1);
   const sources = repositories.filter((repository) => !repository.isFork);
   const contributions = profile.contributions;
@@ -67,6 +70,8 @@ export function buildGitHubData(
     status: activity?.status ?? null,
     repositoriesTruncated: loaded.length > maxRepositories || (lastPage?.hasNextPage ?? false),
     languages: languageShares(sources),
+    languagesByRepo: languagesByRepo(sources),
+    languageRepositories: languageRepositories(sources),
     contributions: {
       total: contributions.total,
       commits: contributions.commits,

@@ -9,7 +9,10 @@
     "paths": {
       "@readmint/cli": ["../cli/src/index.ts"],
       "@readmint/data": ["../data/src/index.ts"],
+      "@readmint/data-feed": ["../data-feed/src/index.ts"],
       "@readmint/data-github": ["../data-github/src/index.ts"],
+      "@readmint/data-json": ["../data-json/src/index.ts"],
+      "@readmint/data-json/node": ["../data-json/src/node/index.ts"],
       "@readmint/expr": ["../expr/src/index.ts"],
       "@readmint/fonts": ["../fonts/src/index.ts"],
       "@readmint/format": ["../format/src/index.ts"],

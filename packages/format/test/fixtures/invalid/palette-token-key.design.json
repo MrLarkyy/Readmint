@@ -1,0 +1,17 @@
+{
+  "version": 0,
+  "canvas": {
+    "width": 10,
+    "height": 10
+  },
+  "palette": {
+    "1a": {
+      "bg": "#000"
+    },
+    "light": {
+      "a-1": "#000",
+      "bg": "#fff"
+    }
+  },
+  "layers": []
+}

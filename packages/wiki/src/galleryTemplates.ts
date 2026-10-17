@@ -2,7 +2,7 @@ import type { GalleryTemplate } from "./GalleryTemplate.js";
 
 const repos = ["repo-1", "repo-2", "repo-3", "repo-4", "repo-5", "repo-6"];
 
-/** Every profile and starter template shown on the Gallery page, in page order. Tested against docs/components.md. */
+/** Every profile, starter and calendar template shown on the Gallery page, in page order. Tested against docs/components.md. */
 export const galleryTemplates: readonly GalleryTemplate[] = [
   {
     name: "year-ring",
@@ -62,5 +62,26 @@ export const galleryTemplates: readonly GalleryTemplate[] = [
     kind: "starter",
     description: "The showcase: name, stats, isometric calendar and streaks.",
     items: ["profile-card"],
+  },
+  {
+    name: "calendar-heatmap",
+    title: "Heatmap calendar",
+    kind: "calendar",
+    description: "Rounded squares coloured by level, like GitHub.",
+    items: ["calendar-heatmap"],
+  },
+  {
+    name: "calendar-isometric",
+    title: "Isometric calendar",
+    kind: "calendar",
+    description: "Isometric pillars whose height follows the count.",
+    items: ["calendar-isometric"],
+  },
+  {
+    name: "calendar-dots",
+    title: "Dots calendar",
+    kind: "calendar",
+    description: "Dots that grow with the level.",
+    items: ["calendar-dots"],
   },
 ];

@@ -10,7 +10,7 @@ import { printLines } from "./printLines.js";
 import { renderInput } from "./renderInput.js";
 
 /**
- * Checks the design and loads its assets; with data (`--data`, `--github` or `--data-json`) also renders it (output discarded),
+ * Checks the design and loads its assets; with data (`--data`, `--github`, `--data-json` or `--data-feed`) also renders it (output discarded),
  * since without data every binding would fail.
  */
 export async function validateCommand(
