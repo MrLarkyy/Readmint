@@ -39,8 +39,10 @@ const longSections: Readonly<Record<ProfileTemplate, readonly ProfileSection[]>>
 const statusHeaders: readonly ProfileTemplate[] = ["horizon", "pinscreen"];
 
 /** The templates whose header reads the pushes. */
-const zeroYearTemplates: readonly ProfileTemplate[] = ["year-ring", "horizon"];
 const pushHeaders: readonly ProfileTemplate[] = ["pinscreen", "year-ring"];
+
+/** The templates whose year is pinned on a calendar without a contribution. */
+const zeroYearTemplates: readonly ProfileTemplate[] = ["year-ring", "horizon"];
 
 /** The templates whose header fits the location by drawn width, pinned with GitHub's longest values. */
 const locationHeaders: readonly ProfileTemplate[] = ["year-ring"];
@@ -88,8 +90,8 @@ function emojiProfileData(): ReturnType<typeof sampleProfileData> {
 
 /**
  * The golden suite of one profile template: every section in both themes with the example's personal texts, the
- * long ones on worst-case data, the year on a sparse, spiky calendar and (Year Ring, Horizon) on one without a contribution, the sections with personal texts left empty,
- * the header with emoji no template font covers in the name, bio, status and latest push (each emoji is dropped and
+ * long ones on worst-case data, the year on a sparse, spiky calendar and (Year Ring, Horizon) on one without a
+ * contribution, the sections with personal texts left empty, the header with emoji no template font covers in the name, bio, status and latest push (each emoji is dropped and
  * takes no space; the spaces written between them stay, so the status shows "Shipping", four spaces and the keycap's
  * "1"), and a mid frame.
  */

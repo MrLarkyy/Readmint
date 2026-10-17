@@ -764,7 +764,7 @@ describe("the page-coloured fades", () => {
   });
 });
 
-describe("the year sections on a sparse, spiky calendar", () => {
+describe("the year sections on a sparse, an all-zero and an empty calendar", () => {
   const calendars = [
     ["sparse", sparseProfileData],
     ["all-zero", zeroYearProfileData],
@@ -839,19 +839,45 @@ describe("the year sections on a year without contributions", () => {
         design: loadProfile("year-ring", "year", theme),
         data,
       });
-      expect(svg).not.toContain('width="2.8"');
+      expect(svg).not.toContain('rx="1.4"');
+      const sample = renderProfile({
+        template: "year-ring",
+        design: loadProfile("year-ring", "year", theme),
+        data: sampleProfileData(),
+      });
+      expect(sample).toContain('rx="1.4"');
     },
   );
 
-  test.each(themes)("year-ring %s centres the reduced legend row by the same estimate", (theme) => {
-    const svg = renderProfile({
-      template: "year-ring",
-      design: loadProfile("year-ring", "year", theme),
-      data: zeroYearProfileData(),
-    });
-    const row = /<g transform="translate\(([0-9.]+) 390\)"/u.exec(svg);
-    expect(row?.[1]).toBe("396.5");
-  });
+  const five = { length: 5, start: "2025-10-01", end: "2025-10-05" };
+  const zero = zeroYearProfileData();
+  const subsets = [
+    ["Today alone", zero, "396.5"],
+    ["Today and busiest", oneDayStreakProfileData(), "336.7"],
+    [
+      "Today and streak",
+      withPatch(zero, {
+        contributions: {
+          ...zero.github.contributions,
+          streaks: { current: five, longest: five },
+        },
+      }),
+      "311.3",
+    ],
+  ] as const;
+
+  test.each(subsets.flatMap((subset) => themes.map((theme) => [theme, ...subset] as const)))(
+    "year-ring %s centres the reduced legend row of %s by the same estimate",
+    (theme, _name, data, x) => {
+      const svg = renderProfile({
+        template: "year-ring",
+        design: loadProfile("year-ring", "year", theme),
+        data,
+      });
+      const row = /<g transform="translate\(([0-9.]+) 390\)"/u.exec(svg);
+      expect(row?.[1]).toBe(x);
+    },
+  );
 
   test.each(themes)("horizon %s hides the busiest stat and keeps longest_streak", (theme) => {
     for (const [, data] of empty) {
