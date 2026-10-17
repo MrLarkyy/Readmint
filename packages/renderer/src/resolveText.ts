@@ -72,8 +72,9 @@ export function resolveText(
   const contentPath = pointer(path, "content");
   const content = interpolate(context, layer.content, contentPath, scope);
   // Every UTF-16 unit is written as at least one byte (a dropped soft-break space or line break costs a <tspan>),
-  // so the content is reserved before it is measured and wrapped.
-  context.writer.reserve(content.length);
+  // so the content is reserved before it is measured and wrapped. A line cap writes only its drawn text, reserved
+  // once it is known: a reservation is never given back.
+  if (maxLines === undefined) context.writer.reserve(content.length);
   const fontRef = resolveStyle(context, layer, path, "font");
   if (typeof fontRef.value !== "string") {
     context.fail(fontRef.path, "missing-asset", "a text needs a font (its own or its style's)");
@@ -112,6 +113,7 @@ export function resolveText(
     );
     context.textLayouts.set(key, layout);
   }
+  if (maxLines !== undefined) context.writer.reserve(layout.text.length);
   const { text, lines, drawnAs, privateUse, rtl } = layout;
   const scale = fontSize / primary.font.unitsPerEm;
   const lineAdvance = lineHeight * fontSize;

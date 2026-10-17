@@ -75,6 +75,9 @@ interface Run {
 
 const missing = -1;
 
+/** A paragraph's base direction: given, or (`auto`) from its first strong character (UAX #9 P2-P3). */
+export type ParagraphDirection = "ltr" | "rtl" | "auto";
+
 const isPrivateUse = (codePoint: number) =>
   (codePoint >= 0xe000 && codePoint <= 0xf8ff) || codePoint >= 0xf0000;
 
@@ -90,8 +93,11 @@ const isPrivateUse = (codePoint: number) =>
  * cannot cost a fresh allowance per word.
  */
 export class TextShaper {
-  /** Widths of the strings measured for wrapping (words repeat): at most one entry per word of the text. */
-  private readonly widths = new Map<string, number>();
+  /**
+   * Widths of the strings measured for wrapping (words repeat): at most one entry per word of the text, per paragraph
+   * direction asked for.
+   */
+  private readonly widths = new Map<ParagraphDirection, Map<string, number>>();
   private readonly shapedRuns = new Map<string, ShapedRun>();
   /** The font covering each cluster text (`fontCovering`), a single character included. */
   private readonly fontOf = new Map<string, number>();
@@ -112,12 +118,20 @@ export class TextShaper {
     return this.options.primary;
   }
 
-  /** Width of a text laid out on one line, as a paragraph of its own. */
-  measure(text: string): number {
-    let width = this.widths.get(text);
+  /**
+   * Width of a text laid out on one line, as a paragraph of its own: of the given direction, or by default of its
+   * first strong character's.
+   */
+  measure(text: string, direction: ParagraphDirection = "auto"): number {
+    let widths = this.widths.get(direction);
+    if (widths === undefined) {
+      widths = new Map();
+      this.widths.set(direction, widths);
+    }
+    let width = widths.get(text);
     if (width === undefined) {
-      width = this.layout(text, resolveLevels(text), 0, text.length).width;
-      this.widths.set(text, width);
+      width = this.layout(text, resolveLevels(text, direction), 0, text.length).width;
+      widths.set(text, width);
     }
     return width;
   }
@@ -133,9 +147,12 @@ export class TextShaper {
     return starts.map((start, index) => word.slice(start, starts[index + 1] ?? word.length));
   }
 
-  /** The bidi levels of a paragraph (a hard line), its direction from its first strong character. */
-  paragraph(text: string): BidiParagraph {
-    return resolveLevels(text);
+  /**
+   * The bidi levels of a paragraph (a hard line), of the given direction or by default of its first strong
+   * character's.
+   */
+  paragraph(text: string, direction: ParagraphDirection = "auto"): BidiParagraph {
+    return resolveLevels(text, direction);
   }
 
   /** Whether no font of the text has a character, own or as a space / hyphen fallback (it is then not drawn and takes no space). */

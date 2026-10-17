@@ -256,8 +256,11 @@ Drawn in document order, first at the back. Layer `id` and `name` are not emitte
 - `maxLines` keeps at most that many lines, soft-wrapped and hard. When lines are left out, the last kept line becomes
   its own text followed by `…`, cut between clusters by the same bisection as `truncateWidth` so that line and `…` fit
   the `width` (without a `width` the `…` is appended; an ellipsis wider than the width leaves the line empty). That
-  line is laid out as a paragraph of its own and never wrapped again: wrapping sums word widths, so a kerned line that
-  fits could break anew. Lines are counted, glyphs recorded for the subset and missing glyphs warned only for the drawn
+  line is measured and laid out as a paragraph of its own with its paragraph's direction (a left-to-right paragraph's
+  cut stays left-to-right even when it starts with Arabic, a right-to-left one's stays right-to-left when it starts
+  with Latin, so it is placed and aligned as the line it replaces), and never wrapped again: wrapping sums word
+  widths, so a kerned line that fits could break anew. A text with `maxLines` reserves its drawn text in the output
+  budget once it is laid out, not its whole content, so dropped lines cost no output. Lines are counted, glyphs recorded for the subset and missing glyphs warned only for the drawn
   lines, and the accessible name (`aria-label`) is the drawn text: the content up to the last kept line, then its cut.
   A text within `maxLines` lays out exactly as without it.
 - The box is the `width` (or the widest line) by `lines x lineHeight x fontSize` (`lineHeight` default 1.2). The

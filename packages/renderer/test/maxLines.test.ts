@@ -7,6 +7,7 @@ import { selectFont } from "../src/loadFont.js";
 import { RenderContext } from "../src/RenderContext.js";
 import { shapeLines } from "../src/shapeLines.js";
 import { TextShaper } from "../src/TextShaper.js";
+import { wrapParagraphs } from "../src/wrapText.js";
 import { fontAssets } from "./testAssets.js";
 
 const family = "\u{1F468}‍\u{1F469}‍\u{1F467}";
@@ -17,6 +18,7 @@ const fonts: Record<string, FontAsset> = {
   s: fontAssets.symbols,
   n: fontAssets.naskh,
   p: { ...fontAssets.extraBold, drawAs: "paths" },
+  a: { ...fontAssets.medium, fallback: ["n"] },
 };
 
 const three = "The quick brown fox jumps over the lazy dog and keeps running far away";
@@ -61,6 +63,20 @@ function lines(svg: string): { y: string; xs: number[]; text: string }[] {
 }
 
 /** The lines `shapeLines` keeps of a text in font `m` at 14 px, with the text they draw. */
+function shaper(font = "m", length = 10_000) {
+  const context = new RenderContext(design([]), {});
+  const primary = selectFont(context, font, undefined, "/layers/0/font");
+  const options = {
+    referenced: font,
+    primary,
+    weight: undefined,
+    fontSize: 14,
+    letterSpacing: 0,
+    path: "/layers/0/content",
+  };
+  return new TextShaper(context, options, ShapingBudget.forText(64 * length));
+}
+
 function shaped(content: string, width: number | undefined, maxLines?: number) {
   const context = new RenderContext(design([]), {});
   const primary = selectFont(context, "m", undefined, "/layers/0/font");
@@ -214,5 +230,64 @@ describe("a text layer's maxLines", () => {
     if (!result.ok) throw new Error(JSON.stringify(result.issues));
     expect(result.warnings.map((warning) => warning.code)).toContain("missing-glyph");
     expect(lines(result.svg)).toHaveLength(1);
+  });
+
+  test("the cut line of a left-to-right paragraph stays left-to-right, placed as without maxLines", () => {
+    const content = `Hi ${arabic} ${arabic} ${arabic}`;
+    const width = (measure.width(arabic, "a", 14, 0) ?? Number.NaN) + 1;
+    const capped = shapeLines(shaper("a"), content, width, 2);
+    const full = shapeLines(shaper("a"), content, width);
+    expect(full.lines.length).toBeGreaterThan(2);
+    expect(capped.lines.map((line) => line.rtl)).toEqual([false, false]);
+    expect(capped.text.endsWith("…")).toBe(true);
+    const drawn = (cap?: number) =>
+      lines(
+        render([
+          text({ content, font: "a", width, ...(cap === undefined ? {} : { maxLines: cap }) }),
+        ]).svg,
+      );
+    expect(Math.min(...(drawn(2)[1]?.xs ?? []))).toBe(Math.min(...(drawn()[1]?.xs ?? [])));
+    expect(Math.min(...(drawn(2)[1]?.xs ?? []))).toBe(0);
+  });
+
+  test("the cut line of a right-to-left paragraph stays right-to-left when it starts with Latin", () => {
+    const content = `${arabic} ${arabic} Python ${arabic} ${arabic} ${arabic} ${arabic} ${arabic}`;
+    const probe = shaper("a");
+    const width = Array.from({ length: 340 }, (_, index) => 60 + index).find((candidate) => {
+      const [paragraph] = wrapParagraphs(
+        content,
+        candidate,
+        (part) => probe.measure(part),
+        (word) => probe.clusters(word),
+      );
+      const second = paragraph?.lines[1];
+      return (
+        (paragraph?.lines.length ?? 0) > 2 &&
+        second !== undefined &&
+        paragraph?.text.slice(second.start, second.end).startsWith("Python") === true
+      );
+    });
+    expect(width).toBeDefined();
+    const capped = shapeLines(shaper("a"), content, width, 2);
+    expect(capped.lines.map((line) => line.rtl)).toEqual([true, true]);
+    expect(capped.text.endsWith("…")).toBe(true);
+    expect(capped.lines[1]?.width).toBeLessThanOrEqual(width ?? 0);
+  });
+
+  test("many copies of a long capped text reserve only what they draw", () => {
+    const content = "word ".repeat(2000);
+    const items = Array.from({ length: 600 }, (_, index) => index);
+    const result = renderSvg(
+      design([
+        {
+          type: "group",
+          repeat: { each: "{{ items }}" },
+          children: [text({ content: "{{ t }}", width: 200, maxLines: 1 })],
+        },
+      ]),
+      { data: { items, t: content } },
+    );
+    if (!result.ok) throw new Error(JSON.stringify(result.issues));
+    expect(result.svg.match(/<text /gu)).toHaveLength(600);
   });
 });

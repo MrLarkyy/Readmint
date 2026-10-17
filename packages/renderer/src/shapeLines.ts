@@ -16,8 +16,8 @@ export interface ShapedLines {
  *
  * With `maxLines`, at most that many lines (soft-wrapped and hard) are kept. When lines are left out, the last kept
  * line becomes its own text followed by `…`, cut between clusters to fit `width` (`cutToWidth`, as `truncateWidth`
- * cuts; without a width the `…` is appended); it is laid out on its own and never wrapped again, since wrapping sums
- * word widths and could break it anew.
+ * cuts; without a width the `…` is appended); it is laid out on its own, in its paragraph's direction, and never
+ * wrapped again, since wrapping sums word widths and could break it anew.
  */
 export function shapeLines(
   shaper: TextShaper,
@@ -45,12 +45,14 @@ export function shapeLines(
         lines.push(shaper.layout(paragraph.text, bidi, line.start, line.end));
         continue;
       }
+      // The cut keeps its paragraph's direction, so it is placed and aligned as the line it replaces would be.
+      const direction = bidi.level === 1 ? "rtl" : "ltr";
       const own = paragraph.text.slice(line.start, line.end);
       const cut =
         width === undefined
           ? own + ellipsis
-          : cutToWidth(shaper, own, width, (part) => shaper.measure(part), true);
-      lines.push(shaper.layout(cut, shaper.paragraph(cut), 0, cut.length));
+          : cutToWidth(shaper, own, width, (part) => shaper.measure(part, direction), true);
+      lines.push(shaper.layout(cut, shaper.paragraph(cut, direction), 0, cut.length));
       text = content.slice(0, offset + line.start) + cut;
       break;
     }
