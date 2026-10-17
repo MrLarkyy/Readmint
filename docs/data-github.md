@@ -1,7 +1,7 @@
 # GitHub data
 
 `@readmint/data-github` loads one GitHub user's profile, public repositories, languages, contribution calendar, pinned
-repositories with their weekly commits, recent pushes and status through the GraphQL API with the user's own token, and returns a plain-JSON data object that designs bind to as
+repositories with their weekly commits, recent pushes and status through the GraphQL API with the user's own token (with a `languageCommitCap` it also reads the user's own commits over the REST API and, with the user's own token, counts private repositories into `languagesAuthored`: language names and sums only), and returns a plain-JSON data object that designs bind to as
 `github.*`. It is a [data source](data-sources.md) (`githubDataSource`, namespace `github`). It runs in Node 22 and in the browser (native `fetch` and `crypto.subtle`; its only dependency is `@readmint/data`).
 
 ```ts
@@ -155,7 +155,7 @@ as GitHub returns them. Array items are written `[]` below.
 | `languageRepositories[].repositories`  | number            | repositories that list the language                                                                                                                                                                                        |
 | `languagesAuthored`                    | array             | the lines you added per language in your own commits, see [Languages from your own commits](#languages-from-your-own-commits); `[]` while `languageCommitCap` is 0                                                         |
 | `languagesAuthored[].name`             | string            | language name                                                                                                                                                                                                              |
-| `languagesAuthored[].color`            | string            | null                                                                                                                                                                                                                       | `#rrggbb` or `null` |
+| `languagesAuthored[].color`            | string \| null    | `#rrggbb` or `null`                                                                                                                                                                                                        |
 | `languagesAuthored[].share`            | number            | `additions` over the added lines of all languages, 0-1                                                                                                                                                                     |
 | `languagesAuthored[].additions`        | number            | lines you added in files of the language                                                                                                                                                                                   |
 | `languages[].share`                    | number            | `bytes` over the bytes of all languages, 0–1 (0 when there are none)                                                                                                                                                       |
