@@ -57,6 +57,7 @@ export function layerFields(layer: Layer, sources: FieldSources): LayerField[] {
         ...common,
         { key: "content", kind: "text", required: true },
         { key: "width", kind: "number" },
+        { key: "maxLines", kind: "number" },
         { key: "font", kind: "choice", options: sources.fonts },
         { key: "fontSize", kind: "number" },
         { key: "fontWeight", kind: "number" },
