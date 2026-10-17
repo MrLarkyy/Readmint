@@ -1,6 +1,6 @@
 # pinscreen fonts
 
-The fonts the pinscreen template names (`assets.fonts.*.src` is `fonts/<file>`, resolved against the design file by the CLI and the Action). Every file may be redistributed under the SIL Open Font License 1.1; the licence text of each family sits beside the files. Each file has OS/2 `fsType` 0 (installable embedding), and none of the families declares a Reserved Font Name, so the renderer embeds a subset of the glyphs a section draws. Archivo comes in fixed widths (SemiExpanded, SemiCondensed, ExtraCondensed are separate files), since the renderer reads static faces, not variable axes.
+The fonts the pinscreen template names (`assets.fonts.*.src` is `fonts/<file>`, resolved against the design file by the CLI and the Action). Every file may be redistributed under the SIL Open Font License 1.1; the licence text of each family sits beside the files. Each file has OS/2 `fsType` 0 (installable embedding), and none of the families declares a Reserved Font Name, so the renderer embeds a subset of the glyphs a section draws. Geist and Geist Mono come as static files per weight, since the renderer reads static faces, not variable axes.
 
 ## Geist and Geist Mono (SIL Open Font License 1.1, `OFL-Geist.txt`)
 

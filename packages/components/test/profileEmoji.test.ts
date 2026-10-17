@@ -231,6 +231,8 @@ describe("emoji no template font covers", () => {
       expect(width("scm")(cutMessage)).toBeLessThanOrEqual(244);
       expect(width("sc")(cutNote)).toBeLessThanOrEqual(260);
     },
+    // each of the hundreds of probe renders also checks the four Noto Sans fallback files of the section
+    180_000,
   );
 
   test("the pinscreen contact underline is as long as the contact as drawn", () => {

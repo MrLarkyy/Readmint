@@ -164,11 +164,11 @@ Five complete designs that show what the format can do; each is an ordinary desi
 Three full README profiles, each a folder of designs under `@readmint/components/templates/profiles/<name>/`, built
 section by section to the approved prototype (version 6):
 
-| template    | look                                                                                                     | fonts (SIL OFL 1.1)                                         | year visual                                                                      |
-| ----------- | -------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- | -------------------------------------------------------------------------------- |
-| `year-ring` | calm and cobalt; a typed last push, an index table, recent work, repository cards with a 52-week line    | Archivo (normal and SemiExpanded)                           | a turning 3D ring, one line per day, the longest streak marked (runs of 2+ days) |
-| `horizon`   | an orange poster: the name full width, a commit ticker, repositories ranked by stars, stack, worked with | Archivo (ExtraCondensed, SemiCondensed, normal), Geist Mono | a lit, shaded 3D terrain whose peaks turn orange                                 |
-| `pinscreen` | an editor: a status bar, repositories as Kotlin objects, a terminal git log, a build script stack        | Geist, Geist Mono                                           | a wall of pins with a ripple running out from today                              |
+| template    | look                                                                                                     | fonts (SIL OFL 1.1)                                                             | year visual                                                                      |
+| ----------- | -------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| `year-ring` | calm and cobalt; a typed last push, an index table, recent work, repository cards with a 52-week line    | Archivo (normal and SemiExpanded), Noto Sans fallback                           | a turning 3D ring, one line per day, the longest streak marked (runs of 2+ days) |
+| `horizon`   | an orange poster: the name full width, a commit ticker, repositories ranked by stars, stack, worked with | Archivo (ExtraCondensed, SemiCondensed, normal), Geist Mono, Noto Sans fallback | a lit, shaded 3D terrain whose peaks turn orange                                 |
+| `pinscreen` | an editor: a status bar, repositories as Kotlin objects, a terminal git log, a build script stack        | Geist, Geist Mono                                                               | a wall of pins with a ripple running out from today                              |
 
 `profileTemplates` from `@readmint/components` maps each name to its sections (`ProfileTemplate`, `ProfileSection`).
 A folder holds, per section, `<section>.json` and its dark twin `<section>.dark.json`, an example `README.md` and
@@ -232,23 +232,30 @@ A folder holds, per section, `<section>.json` and its dark twin `<section>.dark.
 - **No user in a design.** No design contains a login, name, address or personal text; every other text comes from
   `github.*`, so another account's data needs no edit. The render date is `github.contributions.to`: a render reads no
   clock, so times are days ("today", "yesterday", "3 days ago", read from the calendar's own dates), never hours.
-- **Fonts.** Archivo (Omnibus-Type), Geist and Geist Mono (Vercel) are SIL OFL 1.1 static TTFs, byte copies of the
+- **Fonts.** Archivo (Omnibus-Type), Noto Sans (Noto Project), Geist and Geist Mono (Vercel) are SIL OFL 1.1 static TTFs, byte copies of the
   upstream files (origin, version and sha256 in each `fonts/README.md`), none with a Reserved Font Name and all with
   OS/2 `fsType` 0, so the renderer embeds a subset of the glyphs a section draws. The renderer reads static faces, not
   variable axes, so the prototype's Archivo widths are the static width instances: stretch 62-70 % is ExtraCondensed,
   90 % SemiCondensed, 108-116 % SemiExpanded, 100 % the normal width. Only the files a template names are in its
-  folder, with the licence text beside them. Archivo has no Cyrillic and none of the families has emoji or CJK glyphs:
-  such a name or commit message is not drawn and the render warns `missing-glyph` ([renderer](renderer.md)). Add a
-  font asset that has them and list it in the `fallback` of the design's fonts
-  ([design format](design-format.md#assets)), and mind the size budget below. A dropped emoji takes no space, so
+  folder, with the licence text beside them.
+  **Script coverage.** `year-ring` and `horizon` set their text in Archivo, which covers Latin, Latin Extended and
+  Vietnamese but no Cyrillic or Greek; every Archivo font asset lists a Noto Sans file (the weight and, in `horizon`,
+  the width of the Archivo file) as its `fallback`, so Cyrillic and Greek names, descriptions and messages are drawn
+  from Noto Sans in those two templates. The `horizon` code and label text in Geist Mono and `pinscreen`'s Geist and
+  Geist Mono cover Latin, Latin Extended and Cyrillic (the Slavic languages, not every historic letter), but of Greek
+  only Λ, Ω, λ, μ, π (and ω in Geist): other Greek letters in a Geist or Geist Mono text are not drawn there. No
+  template font has emoji or CJK glyphs: such a name or commit message is not drawn, takes no space, and the render
+  warns `missing-glyph` ([renderer](renderer.md)). To cover more, add a font asset that has the script and list it in
+  the `fallback` of the design's fonts ([design format](design-format.md#assets);
+  [fonts](fonts.md#script-coverage-of-the-bundled-templates)), and mind the size budget below. A dropped emoji takes no space, so
   what follows a text in `pinscreen` (the status bar: separator, "last push", the ticker) is placed by the layout
   after the text as drawn. The `pinscreen` bar follows the branch as drawn (at least 80 px, wider for a long branch name), and without a GitHub status it closes up: the last push and its separator start right after the branch. Whatever follows the width of a text that may hold any character is bound to its drawn
   width (`textWidth`, `truncateWidth`, [expressions](expressions.md#filters)), so a dropped emoji moves nothing: the
   `horizon` name's font size, the slots of the `horizon` commit ticker and worked-with band, the `pinscreen`
   contact underline and stack parentheses, the `horizon` and `year-ring` contact pills, the contacts cut to their
   room (the `horizon` and `year-ring` ones are placed by their width, not wrapped in a box, so they never break), the
-  `pinscreen` ticker's cut and the `pinscreen` and `year-ring` ticker travel. A few texts that can only be ASCII
-  are still placed by counting characters: in `pinscreen`, a repository name and the login in Geist Mono (0.6 em a
+  `pinscreen` repository line (the `:`, `Project` and `{` after the name follow its drawn width, so a name with undrawn characters leaves no gap), the `pinscreen` ticker's cut and the `pinscreen` and `year-ring` ticker travel. A few texts that can only be ASCII
+  are still placed by counting characters: in `pinscreen`, the login in Geist Mono (0.6 em a
   character, exact); in `year-ring`, the row under the year (Today, the longest streak and the busiest weekday, all
   generated, in Archivo Regular 12) is centred by 6.2 px a character, an estimate that may leave it slightly off
   centre; it holds no free text, so no dropped character can move it. The row lists only what the year draws: Today
@@ -407,7 +414,7 @@ seconds of work for each export format.
   entries. The largest
   count of a year needs none: `days | max("count")` is one binding ([expressions.md](expressions.md)).
 - **Text without measuring.** Geist Mono advances 0.6 em, so a token of the Pinscreen code sits at `columns x 6.9`
-  pixels; free text is cut with `truncate` and held in a `clip` group. A clip group (or other layer of its own) lying
+  pixels (what follows a repository name sits after the name's drawn width instead); free text is cut with `truncate` and held in a `clip` group. A clip group (or other layer of its own) lying
   wholly off the canvas draws nothing there; the renderer leaves it out ([renderer.md](renderer.md#layers)), so such a
   design still renders and rasterizes. A few far layers are still written (a stroke whose joins are padded by twice its
   width (at an arc, a nearly straight curve or a short segment), a path whose control points or arc box reach the canvas

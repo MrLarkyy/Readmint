@@ -447,3 +447,40 @@ export function longLanguageProfileData(
     },
   };
 }
+
+/** The sample with the first repository (and its pinned copy) renamed and described, as a user's own texts arrive. */
+export function repositoryTextsProfileData(name: string, description: string): ProfileData {
+  const data = sampleProfileData();
+  const [first, ...rest] = data.github.repositories;
+  const repositories =
+    first === undefined
+      ? rest
+      : [{ ...first, name, nameWithOwner: `readmint-sample/${name}`, description }, ...rest];
+  return { github: { ...data.github, repositories, pinned: repositories } };
+}
+
+/** Every Cyrillic and Greek letter a template font may have to draw, in one repeating cycle. */
+const scriptCycle = "Привет-мир Ωμέγα ёЁ ъЪ ςΣ ἀ";
+
+/**
+ * The worst-case data with every text of the long kind (a run of "W", or the alternating "W"/"i" message) written in
+ * Cyrillic and Greek instead: the fallback fonts must keep a section inside its budget as well.
+ */
+export function worstCaseScriptsProfileData(): ProfileData {
+  const swap = (value: unknown): unknown => {
+    if (typeof value === "string") {
+      return value.length >= 64 && /^[Wi]+$/u.test(value)
+        ? Array.from(
+            { length: value.length },
+            (_, index) => scriptCycle[index % scriptCycle.length],
+          ).join("")
+        : value;
+    }
+    if (Array.isArray(value)) return value.map(swap);
+    if (typeof value === "object" && value !== null) {
+      return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, swap(item)]));
+    }
+    return value;
+  };
+  return swap(worstCaseProfileData()) as ProfileData;
+}

@@ -16,11 +16,31 @@
         "licence": {
           "embedding": "allowed",
           "name": "OFL-1.1"
-        }
+        },
+        "fallback": ["nxbold"]
       },
       "sc": {
         "family": "Archivo SemiCondensed",
         "src": "fonts/ArchivoSemiCondensed-Regular.ttf",
+        "weight": 400,
+        "licence": {
+          "embedding": "allowed",
+          "name": "OFL-1.1"
+        },
+        "fallback": ["nsc"]
+      },
+      "nxbold": {
+        "family": "Noto Sans",
+        "src": "fonts/NotoSans-ExtraCondensedBold.ttf",
+        "weight": 700,
+        "licence": {
+          "embedding": "allowed",
+          "name": "OFL-1.1"
+        }
+      },
+      "nsc": {
+        "family": "Noto Sans",
+        "src": "fonts/NotoSans-SemiCondensed.ttf",
         "weight": 400,
         "licence": {
           "embedding": "allowed",
