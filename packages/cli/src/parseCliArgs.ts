@@ -1,6 +1,6 @@
 import path from "node:path";
 import { parseArgs } from "node:util";
-import { GITHUB_DATA_NAMESPACE } from "@readmint/data-github";
+import { GITHUB_DATA_NAMESPACE, GitHubLimits } from "@readmint/data-github";
 import { CliError } from "./CliError.js";
 import type { CliCommand, DesignArgs, RenderArgs } from "./CliCommand.js";
 import { ExitCode } from "./ExitCode.js";
@@ -25,6 +25,7 @@ type ValueOption =
   | "quality"
   | "login"
   | "exclude-repositories"
+  | "language-commit-cap"
   | "data-json"
   | "data-json-header"
   | "data-feed"
@@ -44,6 +45,7 @@ const valueOptions: ReadonlySet<string> = new Set<ValueOption>([
   "quality",
   "login",
   "exclude-repositories",
+  "language-commit-cap",
   "data-json",
   "data-json-header",
   "data-feed",
@@ -79,6 +81,7 @@ const allowed: Readonly<Record<DesignCommand, ReadonlySet<ValueOption>>> = {
     "quality",
     "login",
     "exclude-repositories",
+    "language-commit-cap",
     "data-json",
     "data-json-header",
     "data-feed",
@@ -92,6 +95,7 @@ const allowed: Readonly<Record<DesignCommand, ReadonlySet<ValueOption>>> = {
     "time",
     "login",
     "exclude-repositories",
+    "language-commit-cap",
     "data-json",
     "data-json-header",
     "data-feed",
@@ -105,6 +109,7 @@ const allowed: Readonly<Record<DesignCommand, ReadonlySet<ValueOption>>> = {
     "port",
     "login",
     "exclude-repositories",
+    "language-commit-cap",
     "data-json",
     "data-json-header",
     "data-feed",
@@ -119,6 +124,7 @@ const maxTime = 86_400_000;
 const defaultPreviewPort = 4870;
 /** GIF delays are whole centiseconds; players stretch anything under 2. */
 const maxGifFrameRate = 50;
+const maxLanguageCommitCap = GitHubLimits.maxLanguageCommitCap;
 const formatByExtension: Readonly<Record<string, OutputFormat>> = {
   ".png": "png",
   ".apng": "apng",
@@ -187,6 +193,9 @@ export function parseCliArgs(argv: readonly string[]): CliCommand {
   if (!github && values.has("exclude-repositories")) {
     usage("option --exclude-repositories needs --github");
   }
+  if (!github && values.has("language-commit-cap")) {
+    usage("option --language-commit-cap needs --github");
+  }
   const dataJson = dataJsonArgs(repeated, github);
   const dataFeed = dataFeedArgs(repeated, github, dataJson);
   const common: DesignArgs = {
@@ -199,6 +208,7 @@ export function parseCliArgs(argv: readonly string[]): CliCommand {
     ...(github ? { github: true } : {}),
     ...optional("login", values.get("login")),
     ...excludeArgs(values.get("exclude-repositories")),
+    ...languageCommitCapArgs(values.get("language-commit-cap")),
     ...(dataJson.length === 0 ? {} : { dataJson }),
     ...(dataFeed.length === 0 ? {} : { dataFeed }),
   };
@@ -356,6 +366,17 @@ function excludeArgs(value: string | undefined): { excludeRepositories?: readonl
     .map((name) => name.trim())
     .filter((name) => name !== "");
   return names.length === 0 ? {} : { excludeRepositories: names };
+}
+
+function languageCommitCapArgs(value: string | undefined): { languageCommitCap?: number } {
+  if (value === undefined) return {};
+  const cap = /^\d{1,4}$/.test(value) ? Number(value) : Number.NaN;
+  if (!(cap >= 0 && cap <= maxLanguageCommitCap)) {
+    usage(
+      `--language-commit-cap must be a whole number in 0..${String(maxLanguageCommitCap)}, got ${quoteForLog(value)}`,
+    );
+  }
+  return { languageCommitCap: cap };
 }
 
 function optional<K extends string>(key: K, value: string | undefined): { [P in K]?: string } {

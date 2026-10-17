@@ -20,7 +20,12 @@ export { mergeDataNamespaces } from "./mergeDataNamespaces.js";
 export { type DataFeedSpec, maxDataFeedSources, parseDataFeedArgs } from "./parseDataFeedArgs.js";
 export { type DataJsonSpec, maxDataJsonSources, parseDataJsonArgs } from "./parseDataJsonArgs.js";
 export { partialDataWarning } from "./partialDataWarning.js";
-export { loadLiveData, type LiveDataOptions, liveDataTimeoutMs } from "./loadLiveData.js";
+export {
+  loadLiveData,
+  type LiveDataOptions,
+  liveDataTimeoutMs,
+  liveDataTimeoutPerCommitMs,
+} from "./loadLiveData.js";
 export { loadRenderInput, type RenderInput, type RenderInputOptions } from "./loadRenderInput.js";
 export { localeProblem } from "./localeProblem.js";
 export { type OutputFormat, outputExtension, outputFormats } from "./OutputFormat.js";

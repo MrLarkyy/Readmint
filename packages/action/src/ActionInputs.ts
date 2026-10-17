@@ -18,6 +18,7 @@ export const ActionInputs = Object.freeze({
   token: { required: false, default: "${{ github.token }}", runnerDefault: true },
   login: { required: false, default: "${{ github.repository_owner }}", runnerDefault: true },
   "exclude-repositories": { required: false, default: "", runnerDefault: false },
+  "language-commit-cap": { required: false, default: "", runnerDefault: false },
   "data-file": { required: false, default: "", runnerDefault: false },
   "data-json": { required: false, default: "", runnerDefault: false },
   "data-json-headers": { required: false, default: "", runnerDefault: false },

@@ -20,6 +20,8 @@ export interface ActionConfig {
   readonly login: string;
   /** Repositories `github` data leaves out of every aggregate; absent: none. */
   readonly excludeRepositories?: readonly string[];
+  /** Own commits read for `github.languagesAuthored`, 1..2000; absent: not loaded. */
+  readonly languageCommitCap?: number;
   /** Fixture data file instead of a GitHub load. */
   readonly dataFile?: string;
   /** JSON sources of `data-json` with the headers of `data-json-headers`, added to the fixture or GitHub data. */

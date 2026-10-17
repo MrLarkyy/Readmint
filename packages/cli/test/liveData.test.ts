@@ -220,6 +220,26 @@ describe("render and validate --github", () => {
     expect(bad.requests).toEqual([]);
   });
 
+  test("--language-commit-cap reads the commits and warns when GitHub's answer is unusable", async () => {
+    const replay = githubReplay();
+    const run = await tree.run(
+      ["render", "bound/design.json", "--github", "--language-commit-cap", "3"],
+      { env: { GH_TOKEN: CANARY }, fetch: replay.fetch },
+    );
+    expect(run.code).toBe(ExitCode.ok);
+    expect(replay.graphql().map((request) => request.operation)).toContain("ReadmintContributed");
+    expect(run.stderr).toMatch(/^warning: GitHub data is incomplete \(authored\): .*\n$/);
+    expect(run.stderr).not.toContain(CANARY);
+    const plain = githubReplay();
+    await tree.run(["render", "bound/design.json", "--github"], {
+      env: { GH_TOKEN: CANARY },
+      fetch: plain.fetch,
+    });
+    expect(plain.graphql().map((request) => request.operation)).not.toContain(
+      "ReadmintContributed",
+    );
+  });
+
   test("an invalid --login exits with 4 invalid-option before any request", async () => {
     const replay = githubReplay();
     const run = await tree.run(

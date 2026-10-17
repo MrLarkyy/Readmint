@@ -43,3 +43,31 @@ test("partial GitHub data is one ::warning:: line naming the parts, never the to
   ]);
   expect(run.log).not.toContain(CANARY);
 });
+
+test("language-commit-cap reaches the loader and its stop is a warning, not a failure", async () => {
+  const operations: string[] = [];
+  const run = await tree.run(
+    {
+      designs: "card.json",
+      login: "readmint-fixture",
+      "language-commit-cap": "5",
+      "dry-run": "true",
+      token: CANARY,
+    },
+    {
+      runGit: () => Promise.reject(new Error("git must not run")),
+      fetch: (url, init) => {
+        const sent = JSON.parse(typeof init.body === "string" ? init.body : "{}") as {
+          operationName?: string;
+        };
+        operations.push(sent.operationName ?? "");
+        return fetch(url, init);
+      },
+    },
+  );
+  expect(run.code).toBe(0);
+  expect(operations).toContain("ReadmintContributed");
+  const warning = run.log.split("\n").find((line) => line.startsWith("::warning::"));
+  expect(warning).toContain("(activity, weeks, authored)");
+  expect(run.log).not.toContain(CANARY);
+});

@@ -22,3 +22,15 @@ test("both parts are named in the order given, on one line, with no token", () =
   expect(line).not.toContain("\n");
   expect(line).not.toContain(CANARY);
 });
+
+test("authored names the fewer commits and authored-cap names the cap input", () => {
+  expect(partialDataWarning(["authored"])).toContain(
+    "GitHub data is incomplete (authored): github.languagesAuthored counts fewer commits",
+  );
+  const capped = partialDataWarning(["authored-cap"]);
+  expect(capped).toContain("(authored-cap)");
+  expect(capped).toContain("language-commit-cap");
+  const both = partialDataWarning(["authored", "authored-cap"]);
+  expect(both).not.toContain("\n");
+  expect(both).not.toContain(CANARY);
+});

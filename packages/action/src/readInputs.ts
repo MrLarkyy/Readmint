@@ -9,6 +9,7 @@ import {
   parseDataJsonArgs,
   quoteForLog,
 } from "@readmint/cli";
+import { GitHubLimits } from "@readmint/data-github";
 import type { ActionConfig } from "./ActionConfig.js";
 import { ActionError } from "./ActionError.js";
 import {
@@ -177,6 +178,17 @@ export function readInputs(env: Env): ActionConfig {
       "input exclude-repositories applies to GitHub data only; it cannot go with data-file",
     );
   }
+  const capText = value("language-commit-cap");
+  const cap = /^\d{1,4}$/.test(capText) ? Number(capText) : Number.NaN;
+  if (capText !== "" && !(cap >= 0 && cap <= GitHubLimits.maxLanguageCommitCap)) {
+    problems.push(
+      `input language-commit-cap ${quoteForLog(capText)} is not a whole number in 0..${String(GitHubLimits.maxLanguageCommitCap)}`,
+    );
+  } else if (capText !== "" && dataFile !== "") {
+    problems.push(
+      "input language-commit-cap applies to GitHub data only; it cannot go with data-file",
+    );
+  }
   if (problems.length > 0) throw new ActionError("input", problems);
   return {
     designs,
@@ -188,6 +200,7 @@ export function readInputs(env: Env): ActionConfig {
     token: dataFile === "" ? token : "",
     login: value("login"),
     ...(excludeRepositories.length === 0 ? {} : { excludeRepositories }),
+    ...(capText === "" || cap === 0 ? {} : { languageCommitCap: cap }),
     ...(dataFile === "" ? {} : { dataFile }),
     ...(dataJson.length === 0 ? {} : { dataJson }),
     ...(dataFeed.length === 0 ? {} : { dataFeed }),

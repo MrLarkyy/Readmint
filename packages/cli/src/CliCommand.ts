@@ -21,6 +21,8 @@ export interface DesignArgs {
   readonly login?: string;
   /** `--exclude-repositories`: repository names `--github` leaves out of every aggregate. */
   readonly excludeRepositories?: readonly string[];
+  /** `--language-commit-cap`: own commits `--github` reads for `github.languagesAuthored`, 0 to 2000. */
+  readonly languageCommitCap?: number;
   /**
    * `--data-json` with its `--data-json-header` headers: JSON documents loaded live, each under its namespace, added
    * to `--data` or `--github` data.

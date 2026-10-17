@@ -115,6 +115,25 @@ describe("readInputs", () => {
     ]);
   });
 
+  test("language-commit-cap is a whole number 0 to 2000, and not with a data-file", () => {
+    expect(readInputs(env(base))).not.toHaveProperty("languageCommitCap");
+    expect(readInputs(env({ ...base, "language-commit-cap": "0" }))).not.toHaveProperty(
+      "languageCommitCap",
+    );
+    expect(readInputs(env({ ...base, "language-commit-cap": "300" })).languageCommitCap).toBe(300);
+    expect(readInputs(env({ ...base, "language-commit-cap": "2000" })).languageCommitCap).toBe(
+      2000,
+    );
+    for (const bad of ["2001", "-1", "1.5", "many"]) {
+      expect(problems({ ...base, "language-commit-cap": bad })).toEqual([
+        `input language-commit-cap "${bad}" is not a whole number in 0..2000`,
+      ]);
+    }
+    expect(problems({ ...base, "data-file": "d.json", "language-commit-cap": "5" })).toEqual([
+      "input language-commit-cap applies to GitHub data only; it cannot go with data-file",
+    ]);
+  });
+
   test("quality is read for webp output and absent by default", () => {
     expect(readInputs(env(base))).not.toHaveProperty("quality");
     expect(readInputs(env({ ...base, formats: "svg, webp", quality: "80" }))).toMatchObject({

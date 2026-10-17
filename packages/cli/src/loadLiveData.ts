@@ -11,6 +11,9 @@ import { ExitCode } from "./ExitCode.js";
 /** How long one GitHub load may take in total, retries and rate-limit waits included. */
 export const liveDataTimeoutMs = 300_000;
 
+/** Added to the limit for every own commit read for `languagesAuthored` (one REST request each). */
+export const liveDataTimeoutPerCommitMs = 600;
+
 export interface LiveDataOptions {
   /** The user's GitHub token; only `loadGitHubData` sees it, in the `Authorization` header. */
   readonly token: string;
@@ -18,6 +21,8 @@ export interface LiveDataOptions {
   readonly login?: string;
   /** Repositories left out of every aggregate, as `name` or `owner/name`. */
   readonly excludeRepositories?: readonly string[];
+  /** Own commits read for `github.languagesAuthored`, 0 to 2000 (default 0). */
+  readonly languageCommitCap?: number;
   /** The global `fetch` when absent. */
   readonly fetch?: GitHubFetch;
   /** Ends the load early, besides the `liveDataTimeoutMs` limit. */
@@ -32,7 +37,9 @@ export interface LiveDataOptions {
  * request details may hold the token. Parts GitHub refused are reported to `onPartial`, never thrown.
  */
 export async function loadLiveData(options: LiveDataOptions): Promise<Record<string, unknown>> {
-  const timeout = AbortSignal.timeout(liveDataTimeoutMs);
+  const timeout = AbortSignal.timeout(
+    liveDataTimeoutMs + (options.languageCommitCap ?? 0) * liveDataTimeoutPerCommitMs,
+  );
   try {
     const result = await loadGitHubData({
       token: options.token,
@@ -40,6 +47,9 @@ export async function loadLiveData(options: LiveDataOptions): Promise<Record<str
       ...(options.excludeRepositories === undefined
         ? {}
         : { excludeRepositories: options.excludeRepositories }),
+      ...(options.languageCommitCap === undefined
+        ? {}
+        : { languageCommitCap: options.languageCommitCap }),
       signal: options.signal === undefined ? timeout : AbortSignal.any([timeout, options.signal]),
       ...(options.fetch === undefined ? {} : { fetch: options.fetch }),
     });
