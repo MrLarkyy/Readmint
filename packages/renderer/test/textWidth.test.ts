@@ -137,11 +137,24 @@ describe("truncateWidth", () => {
       expect(text.startsWith(kept)).toBe(true);
       const count = clusters.findIndex((_, index) => clusters.slice(0, index).join("") === kept);
       expect(count).toBeGreaterThanOrEqual(0);
-      const next = `${clusters.slice(0, count + 1).join("")}…`;
+      const next = `${clusters.slice(0, count + 1).join("").trimEnd()}…`;
       // A dropped cluster takes no space, so it is kept as long as the next drawn one does not fit.
       const nextWidth = measure.width(next, "m", 14, 0) ?? 0;
       if (nextWidth > (measure.width(cut, "m", 14, 0) ?? 0)) expect(nextWidth).toBeGreaterThan(max);
     }
+  });
+
+  test("a cut that lands after a space drops it, so the ellipsis follows the word", () => {
+    const measure = measurer();
+    const sample = "Visual Studio code";
+    const cuts = new Set<string>();
+    for (let max = 0; max < (measure.width(sample, "m", 14, 0) ?? 0); max += 0.5) {
+      const cut = measure.truncate(sample, max, "m", 14, 0) ?? "";
+      expect(cut).not.toMatch(/\s…$/);
+      cuts.add(cut);
+    }
+    expect(cuts).toContain("Visual…");
+    expect(cuts).toContain("Visual Studio…");
   });
 
   test("a ZWJ emoji sequence is never split", () => {
