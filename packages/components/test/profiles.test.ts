@@ -11,6 +11,7 @@ import { embeddedFonts } from "../../renderer/test/embeddedFonts.js";
 import {
   loadExampleProfile,
   loadProfile,
+  profileFontAssets,
   profileSource,
   renderProfile,
   type ProfileTheme,
@@ -852,8 +853,9 @@ describe("the year sections on a year without contributions", () => {
   const five = { length: 5, start: "2025-10-01", end: "2025-10-05" };
   const zero = zeroYearProfileData();
   const subsets = [
-    ["Today alone", zero, "396.5"],
-    ["Today and busiest", oneDayStreakProfileData(), "336.7"],
+    ["the sample data", sampleProfileData(), { light: "263.02", dark: "263.02" }],
+    ["Today alone", zero, { light: "395.728", dark: "395.728" }],
+    ["Today and busiest", oneDayStreakProfileData(), { light: "337.686", dark: "337.686" }],
     [
       "Today and streak",
       withPatch(zero, {
@@ -862,20 +864,31 @@ describe("the year sections on a year without contributions", () => {
           streaks: { current: five, longest: five },
         },
       }),
-      "311.3",
+      { light: "319.226", dark: "319.226" },
     ],
   ] as const;
 
   test.each(subsets.flatMap((subset) => themes.map((theme) => [theme, ...subset] as const)))(
-    "year-ring %s centres the reduced legend row of %s by the same estimate",
-    (theme, _name, data, x) => {
-      const svg = renderProfile({
-        template: "year-ring",
-        design: loadProfile("year-ring", "year", theme),
+    "year-ring %s centres the legend row of %s on the ring",
+    (theme, _name, data, xs) => {
+      const design = loadProfile("year-ring", "year", theme);
+      const result = renderSvg(design, {
         data,
+        assets: { fonts: profileFontAssets("year-ring", design) },
+        layerBoxes: true,
       });
-      const row = /<g transform="translate\(([0-9.]+) 390\)"/u.exec(svg);
-      expect(row?.[1]).toBe(x);
+      if (!result.ok) throw new Error(`render failed: ${JSON.stringify(result.issues)}`);
+      const row = /<g transform="translate\(([0-9.]+) 390\)"/u.exec(result.svg)?.[1];
+      expect(row).toBe(xs[theme]);
+      const x = Number(row);
+      const boxes = (result.layerBoxes ?? []).filter((box) => box.y > 370 && box.y < 400);
+      const group = boxes.find((box) => box.x === x);
+      const last = boxes[boxes.length - 1];
+      expect(group).toBeDefined();
+      expect(last).toBeDefined();
+      expect(x + (group?.width ?? 0) / 2).toBeCloseTo(420, 2);
+      const ink = (x + 0.5 + ((last?.x ?? 0) + (last?.width ?? 0))) / 2;
+      expect(Math.abs(ink - 420)).toBeLessThan(2);
     },
   );
 

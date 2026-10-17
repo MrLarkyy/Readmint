@@ -545,9 +545,11 @@
                 "s5": "{{ (d[o5 + 0].count || 0) + (d[o5 + 7].count || 0) + (d[o5 + 14].count || 0) + (d[o5 + 21].count || 0) + (d[o5 + 28].count || 0) + (d[o5 + 35].count || 0) + (d[o5 + 42].count || 0) + (d[o5 + 49].count || 0) + (d[o5 + 56].count || 0) + (d[o5 + 63].count || 0) + (d[o5 + 70].count || 0) + (d[o5 + 77].count || 0) + (d[o5 + 84].count || 0) + (d[o5 + 91].count || 0) + (d[o5 + 98].count || 0) + (d[o5 + 105].count || 0) + (d[o5 + 112].count || 0) + (d[o5 + 119].count || 0) + (d[o5 + 126].count || 0) + (d[o5 + 133].count || 0) + (d[o5 + 140].count || 0) + (d[o5 + 147].count || 0) + (d[o5 + 154].count || 0) + (d[o5 + 161].count || 0) + (d[o5 + 168].count || 0) + (d[o5 + 175].count || 0) + (d[o5 + 182].count || 0) + (d[o5 + 189].count || 0) + (d[o5 + 196].count || 0) + (d[o5 + 203].count || 0) + (d[o5 + 210].count || 0) + (d[o5 + 217].count || 0) + (d[o5 + 224].count || 0) + (d[o5 + 231].count || 0) + (d[o5 + 238].count || 0) + (d[o5 + 245].count || 0) + (d[o5 + 252].count || 0) + (d[o5 + 259].count || 0) + (d[o5 + 266].count || 0) + (d[o5 + 273].count || 0) + (d[o5 + 280].count || 0) + (d[o5 + 287].count || 0) + (d[o5 + 294].count || 0) + (d[o5 + 301].count || 0) + (d[o5 + 308].count || 0) + (d[o5 + 315].count || 0) + (d[o5 + 322].count || 0) + (d[o5 + 329].count || 0) + (d[o5 + 336].count || 0) + (d[o5 + 343].count || 0) + (d[o5 + 350].count || 0) + (d[o5 + 357].count || 0) + (d[o5 + 364].count || 0) + (d[o5 + 371].count || 0) }}",
                 "o6": "{{ (6 - (d[0].weekday || 0) + 7) % 7 }}",
                 "s6": "{{ (d[o6 + 0].count || 0) + (d[o6 + 7].count || 0) + (d[o6 + 14].count || 0) + (d[o6 + 21].count || 0) + (d[o6 + 28].count || 0) + (d[o6 + 35].count || 0) + (d[o6 + 42].count || 0) + (d[o6 + 49].count || 0) + (d[o6 + 56].count || 0) + (d[o6 + 63].count || 0) + (d[o6 + 70].count || 0) + (d[o6 + 77].count || 0) + (d[o6 + 84].count || 0) + (d[o6 + 91].count || 0) + (d[o6 + 98].count || 0) + (d[o6 + 105].count || 0) + (d[o6 + 112].count || 0) + (d[o6 + 119].count || 0) + (d[o6 + 126].count || 0) + (d[o6 + 133].count || 0) + (d[o6 + 140].count || 0) + (d[o6 + 147].count || 0) + (d[o6 + 154].count || 0) + (d[o6 + 161].count || 0) + (d[o6 + 168].count || 0) + (d[o6 + 175].count || 0) + (d[o6 + 182].count || 0) + (d[o6 + 189].count || 0) + (d[o6 + 196].count || 0) + (d[o6 + 203].count || 0) + (d[o6 + 210].count || 0) + (d[o6 + 217].count || 0) + (d[o6 + 224].count || 0) + (d[o6 + 231].count || 0) + (d[o6 + 238].count || 0) + (d[o6 + 245].count || 0) + (d[o6 + 252].count || 0) + (d[o6 + 259].count || 0) + (d[o6 + 266].count || 0) + (d[o6 + 273].count || 0) + (d[o6 + 280].count || 0) + (d[o6 + 287].count || 0) + (d[o6 + 294].count || 0) + (d[o6 + 301].count || 0) + (d[o6 + 308].count || 0) + (d[o6 + 315].count || 0) + (d[o6 + 322].count || 0) + (d[o6 + 329].count || 0) + (d[o6 + 336].count || 0) + (d[o6 + 343].count || 0) + (d[o6 + 350].count || 0) + (d[o6 + 357].count || 0) + (d[o6 + 364].count || 0) + (d[o6 + 371].count || 0) }}",
-                "busy": "{{ (s0 >= s1 && s0 >= s2 && s0 >= s3 && s0 >= s4 && s0 >= s5 && s0 >= s6 ? 0 : (s1 >= s2 && s1 >= s3 && s1 >= s4 && s1 >= s5 && s1 >= s6 ? 1 : (s2 >= s3 && s2 >= s4 && s2 >= s5 && s2 >= s6 ? 2 : (s3 >= s4 && s3 >= s5 && s3 >= s6 ? 3 : (s4 >= s5 && s4 >= s6 ? 4 : (s5 >= s6 ? 5 : 6)))))) }}"
+                "busy": "{{ (s0 >= s1 && s0 >= s2 && s0 >= s3 && s0 >= s4 && s0 >= s5 && s0 >= s6 ? 0 : (s1 >= s2 && s1 >= s3 && s1 >= s4 && s1 >= s5 && s1 >= s6 ? 1 : (s2 >= s3 && s2 >= s4 && s2 >= s5 && s2 >= s6 ? 2 : (s3 >= s4 && s3 >= s5 && s3 >= s6 ? 3 : (s4 >= s5 && s4 >= s6 ? 4 : (s5 >= s6 ? 5 : 6)))))) }}",
+                "streakText": "{{ \"Longest streak, \" + (github.contributions.streaks.longest.length | number) + (github.contributions.streaks.longest.length == 1 ? \" day\" : \" days\") }}",
+                "busyText": "{{ \"Busiest on \" + [\"Sundays\", \"Mondays\", \"Tuesdays\", \"Wednesdays\", \"Thursdays\", \"Fridays\", \"Saturdays\"][busy] }}"
               },
-              "x": "{{ github.contributions.streaks.longest.length > 1 && top > 0 ? 420 - (5 * 6.2 + 18 + 26 + (16 + (github.contributions.streaks.longest.length | number | length) + 5) * 6.2 + 28 + 26 + (11 + ([\"Sundays\", \"Mondays\", \"Tuesdays\", \"Wednesdays\", \"Thursdays\", \"Fridays\", \"Saturdays\"][busy] | length)) * 6.2) / 2 : 420 - (8 + 8 + 5 * 6.2 + (github.contributions.streaks.longest.length > 1 ? 8 + 18 + 8 + (16 + (github.contributions.streaks.longest.length | number | length) + 5) * 6.2 : 0) + (top > 0 ? 8 + (11 + ([\"Sundays\", \"Mondays\", \"Tuesdays\", \"Wednesdays\", \"Thursdays\", \"Fridays\", \"Saturdays\"][busy] | length)) * 6.2 : 0)) / 2 }}",
+              "x": "{{ 420 - (16 + (\"Today\" | textWidth(\"reg\", 12)) + (github.contributions.streaks.longest.length > 1 ? 34 + (streakText | textWidth(\"reg\", 12)) : 0) + (top > 0 ? 8 + (busyText | textWidth(\"reg\", 12)) : 0)) / 2 }}",
               "if": "{{ n > 0 }}",
               "y": 390,
               "layout": {
@@ -600,7 +602,7 @@
                   "if": "{{ github.contributions.streaks.longest.length > 1 }}",
                   "x": 0,
                   "y": -11.208,
-                  "content": "{{ \"Longest streak, \" + (github.contributions.streaks.longest.length | number) + (github.contributions.streaks.longest.length == 1 ? \" day\" : \" days\") }}",
+                  "content": "{{ streakText }}",
                   "font": "reg",
                   "fontSize": 12,
                   "fill": "{{ props.theme == \"dark\" ? \"#8E949D\" : \"#696E77\" }}"
@@ -610,7 +612,7 @@
                   "if": "{{ top > 0 }}",
                   "x": 0,
                   "y": -11.208,
-                  "content": "{{ \"Busiest on \" + [\"Sundays\", \"Mondays\", \"Tuesdays\", \"Wednesdays\", \"Thursdays\", \"Fridays\", \"Saturdays\"][busy] }}",
+                  "content": "{{ busyText }}",
                   "font": "reg",
                   "fontSize": 12,
                   "fill": "{{ props.theme == \"dark\" ? \"#8E949D\" : \"#696E77\" }}"
