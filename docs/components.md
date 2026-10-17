@@ -164,11 +164,11 @@ Five complete designs that show what the format can do; each is an ordinary desi
 Three full README profiles, each a folder of designs under `@readmint/components/templates/profiles/<name>/`, built
 section by section to the approved prototype (version 6):
 
-| template    | look                                                                                                     | fonts (SIL OFL 1.1)                                                             | year visual                                                                      |
-| ----------- | -------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
-| `year-ring` | calm and cobalt; a typed last push, an index table, recent work, repository cards with a 52-week line    | Archivo (normal and SemiExpanded), Noto Sans fallback                           | a turning 3D ring, one line per day, the longest streak marked (runs of 2+ days) |
-| `horizon`   | an orange poster: the name full width, a commit ticker, repositories ranked by stars, stack, worked with | Archivo (ExtraCondensed, SemiCondensed, normal), Geist Mono, Noto Sans fallback | a lit, shaded 3D terrain whose peaks turn orange                                 |
-| `pinscreen` | an editor: a status bar, repositories as Kotlin objects, a terminal git log, a build script stack        | Geist, Geist Mono                                                               | a wall of pins with a ripple running out from today                              |
+| template    | look                                                                                                     | fonts (SIL OFL 1.1)                                                                                 | year visual                                                                      |
+| ----------- | -------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| `year-ring` | calm and cobalt; a typed last push, an index table, recent work, repository cards with a 52-week line    | Archivo (normal and SemiExpanded), Noto Sans fallback                                               | a turning 3D ring, one line per day, the longest streak marked (runs of 2+ days) |
+| `horizon`   | an orange poster: the name full width, a commit ticker, repositories ranked by stars, stack, worked with | Archivo (ExtraCondensed, SemiCondensed, normal), Geist Mono, Noto Sans and Noto Sans Mono fallbacks | a lit, shaded 3D terrain whose peaks turn orange                                 |
+| `pinscreen` | an editor: a status bar, repositories as Kotlin objects, a terminal git log, a build script stack        | Geist, Geist Mono, Noto Sans and Noto Sans Mono fallbacks                                           | a wall of pins with a ripple running out from today                              |
 
 `profileTemplates` from `@readmint/components` maps each name to its sections (`ProfileTemplate`, `ProfileSection`).
 A folder holds, per section, `<section>.json` and its dark twin `<section>.dark.json`, an example `README.md` and
@@ -246,8 +246,9 @@ A folder holds, per section, `<section>.json` and its dark twin `<section>.dark.
   normal-width Archivo (`reg`) to SemiCondensed Noto Sans (the template carries no normal-width Noto Sans). The
   `horizon` code and label text in Geist Mono and `pinscreen`'s Geist and Geist Mono cover Latin, most of Latin
   Extended-A (not Ĕ ĕ Ĭ ĭ ĸ Ŀ ŀ ŉ Ŏ ŏ ſ, nor Ĳ ĳ in Geist Mono), Vietnamese and Cyrillic (the Slavic languages, not
-  every historic letter), but of Greek only Λ, Ω, λ, μ, π (and ω in Geist): other Greek letters in a Geist or Geist
-  Mono text are not drawn there. No
+  every historic letter) and of Greek only Λ, Ω, λ, μ, π (and ω in Geist); every Geist Mono asset lists Noto Sans
+  Mono (version 2.014, the same 0.6 em advance, so the code grid holds) and every Geist asset of `pinscreen` the Noto
+  Sans of its weight as its `fallback`, which draw the rest of Latin Extended-A, Cyrillic and Greek. No
   template font has emoji or CJK glyphs: such a name or commit message is not drawn, takes no space, and the render
   warns `missing-glyph` ([renderer](renderer.md)). To cover more, add a font asset that has the script and list it in
   the `fallback` of the design's fonts ([design format](design-format.md#assets);
@@ -434,7 +435,7 @@ seconds of work for each export format.
 UTF-8 bytes (KB of 1000) of the animated SVG of the files as published (both themes weigh alike), on the sample data
 of the tests and on the worst-case data (1024-character texts, counts of 10^15, 600 pushes, a 54-column calendar at
 1000000 a day), the larger of it in Latin and with the long texts in Cyrillic and Greek (every letter of U+0400..045F
-and U+0386..03CE, which embeds the most glyphs of the fallback fonts); every section is within the budget below. The
+and U+0386..03CE, starting with either script, which embeds the most glyphs of the fallback fonts); every section is within the budget below. The
 repository slots weigh alike; `work` is 5 to 7 KB.
 
 | template    | section | sample | worst case |
@@ -445,19 +446,19 @@ repository slots weigh alike; `work` is 5 to 7 KB.
 | `year-ring` | recent  | 29 KB  | 34 KB      |
 | `year-ring` | repo-1  | 16 KB  | 27 KB      |
 | `year-ring` | footer  | 10 KB  | 13 KB      |
-| `horizon`   | header  | 15 KB  | 24 KB      |
-| `horizon`   | ticker  | 34 KB  | 42 KB      |
+| `horizon`   | header  | 15 KB  | 26 KB      |
+| `horizon`   | ticker  | 34 KB  | 54 KB      |
 | `horizon`   | year    | 98 KB  | 92 KB      |
-| `horizon`   | repo-1  | 45 KB  | 54 KB      |
+| `horizon`   | repo-1  | 45 KB  | 58 KB      |
 | `horizon`   | stack   | 10 KB  | 9 KB       |
 | `horizon`   | worked  | 3 KB   | 3 KB       |
 | `horizon`   | footer  | 8 KB   | 11 KB      |
-| `pinscreen` | header  | 21 KB  | 41 KB      |
+| `pinscreen` | header  | 21 KB  | 62 KB      |
 | `pinscreen` | year    | 169 KB | 182 KB     |
-| `pinscreen` | repo-1  | 12 KB  | 15 KB      |
-| `pinscreen` | log     | 24 KB  | 29 KB      |
+| `pinscreen` | repo-1  | 12 KB  | 18 KB      |
+| `pinscreen` | log     | 24 KB  | 39 KB      |
 | `pinscreen` | stack   | 13 KB  | 13 KB      |
-| `pinscreen` | footer  | 5 KB   | 7 KB       |
+| `pinscreen` | footer  | 5 KB   | 9 KB       |
 
 The ring of the Year Ring prototype was about 390 KB; sharing the turn rules between the days brought it to 241 KB with
 a dot for every day without commits, and drawing each day on an orbit (six groups instead of nine, no keyframes per
