@@ -1881,6 +1881,11 @@
             }
           ]
         },
+        "cycles": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000
+        },
         "easing": {
           "$ref": "#/$defs/Easing"
         }
@@ -1963,6 +1968,11 @@
               "$ref": "#/$defs/Binding"
             }
           ]
+        },
+        "cycles": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000
         },
         "easing": {
           "$ref": "#/$defs/Easing"
@@ -2047,6 +2057,11 @@
             }
           ]
         },
+        "cycles": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000
+        },
         "easing": {
           "$ref": "#/$defs/Easing"
         }
@@ -2130,6 +2145,11 @@
             }
           ]
         },
+        "cycles": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000
+        },
         "easing": {
           "$ref": "#/$defs/Easing"
         }
@@ -2210,6 +2230,11 @@
               "$ref": "#/$defs/Binding"
             }
           ]
+        },
+        "cycles": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000
         },
         "easing": {
           "$ref": "#/$defs/Easing"

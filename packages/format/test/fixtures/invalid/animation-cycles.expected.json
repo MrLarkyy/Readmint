@@ -1,0 +1,26 @@
+[
+  {
+    "path": "/layers/0/animate/opacity/cycles",
+    "code": "range"
+  },
+  {
+    "path": "/layers/0/animate/x/cycles",
+    "code": "range"
+  },
+  {
+    "path": "/layers/0/animate/y/cycles",
+    "code": "type"
+  },
+  {
+    "path": "/layers/0/animate/scale/cycles",
+    "code": "type"
+  },
+  {
+    "path": "/layers/0/animate/rotation/cycles",
+    "code": "type"
+  },
+  {
+    "path": "/layers/0/animate/fill/cycles",
+    "code": "range"
+  }
+]

@@ -623,9 +623,15 @@ keyframes per track, so the browser and the frames cannot drift:
   not loop draws `min(t, duration)` (it holds its end).
 
 Each track is mapped onto the timeline: it holds its first value until it starts (`delay + stagger x index`), runs its
-keyframes over its `duration`, and holds its last value to the end of the timeline; a track running past the end is cut
+keyframes over its `duration` (`cycles` times back to back, each cycle starting exactly `duration` after the one
+before), and holds its last value to the end of the timeline; a track running past the end is cut
 there (the warning `animation-cut`, once per track), the segment before the cut keeping its easing over the shorter
-span. Keyframe positions are percentages of the timeline rounded to 3
+span. A track with `cycles` is expanded into one keyframe list before this mapping, so the CSS and the frames read the
+same keyframes: each cycle's keyframes at `start + i x duration + offset x duration`, a hold of the last value at a
+cycle's end when its last offset is below 1 and of the first value at the next cycle's start when its first offset is
+above 0, and of a keyframe ending a cycle and one starting the next at the same moment with equal values only the later
+one (a cycle that ends where it starts joins the next; different values jump). Bindings and easings are evaluated once
+per track, not per cycle. Keyframe positions are percentages of the timeline rounded to 3
 decimals; keyframes landing on the same rounded position keep their order one step (0.001 %) apart. Values are rounded
 as written (numbers to 3 decimals, colour channels to integers), and the frames sample these rounded keyframes with the
 same curves CSS uses: `easing` from a keyframe to the next is written as that keyframe's `animation-timing-function`,
@@ -721,7 +727,7 @@ the canvas background and the layers.
 | `maxTextLength`         | 10000    | characters of a text after its placeholders are filled                                                                                    | `too-large`          |
 | `maxExpressionSteps`    | 5000000  | expression work of the whole render (under a second of the costliest string filters), including copies an `if` drops                      | `binding` (`budget`) |
 | `maxRepeatCopies`       | 100000   | copies made by every `repeat` of the render together, including copies an `if` or `visible: false` drops                                  | `too-large`          |
-| `maxAnimationKeyframes` | 100000   | keyframes of every animation track of the render together, every repeat copy counted, in a frame too                                      | `too-large`          |
+| `maxAnimationKeyframes` | 100000   | keyframes of every animation track of the render together, every repeat copy and cycle counted, in a frame too                            | `too-large`          |
 
 The output size is counted while the SVG is written (a shared definition once, when its first use writes it), and
 every layer reserves the least markup of its kind before it is built (a path also its data, a template `d` once
@@ -732,7 +738,8 @@ against the budget glyph by glyph while it is built.
 Animation CSS counts toward `maxOutputBytes` like any markup, and every animated transform reserves its group (a
 `draw` its dash attributes, an orbit its static group and one group per moving turn) before the layer is built. Opacity and colour tracks write nothing of their own and the CSS
 is written only once every track is built, so `maxAnimationKeyframes` bounds that work: each track charges its
-keyframes before any is resolved. Fixed limits: 10000 items per `repeat` (expr, `binding` at
+keyframes times its `cycles` before any is resolved (the holds between cycles, at most 2 a cycle, are not charged
+apart). Fixed limits: 10000 items per `repeat` (expr, `binding` at
 `repeat/each`) and 64 levels of nested component instances (`too-large`). Shaping is bounded twice by counts (see Fonts, untrusted fonts):
 each text by its own budget, max(16384, 128 x its length) operations (with `maxLines` plus the cut's, see Fonts), which fails as `asset-format` at the font (a
 `textWidth` or `truncateWidth` measurement by its own budget too, see Expressions); and the whole render by 4000000

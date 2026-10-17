@@ -1,0 +1,97 @@
+{
+  "version": 0,
+  "canvas": {
+    "width": 10,
+    "height": 10
+  },
+  "animation": {
+    "duration": 1000
+  },
+  "layers": [
+    {
+      "type": "rect",
+      "width": 1,
+      "height": 1,
+      "animate": {
+        "opacity": {
+          "keyframes": [
+            {
+              "offset": 0,
+              "value": 0
+            },
+            {
+              "offset": 1,
+              "value": 1
+            }
+          ],
+          "cycles": 0
+        },
+        "x": {
+          "keyframes": [
+            {
+              "offset": 0,
+              "value": 0
+            },
+            {
+              "offset": 1,
+              "value": 1
+            }
+          ],
+          "cycles": 1001
+        },
+        "y": {
+          "keyframes": [
+            {
+              "offset": 0,
+              "value": 0
+            },
+            {
+              "offset": 1,
+              "value": 1
+            }
+          ],
+          "cycles": 1.5
+        },
+        "scale": {
+          "keyframes": [
+            {
+              "offset": 0,
+              "value": 0
+            },
+            {
+              "offset": 1,
+              "value": 1
+            }
+          ],
+          "cycles": "{{ 3 }}"
+        },
+        "rotation": {
+          "keyframes": [
+            {
+              "offset": 0,
+              "value": 0
+            },
+            {
+              "offset": 1,
+              "value": 1
+            }
+          ],
+          "cycles": true
+        },
+        "fill": {
+          "keyframes": [
+            {
+              "offset": 0,
+              "value": "#000"
+            },
+            {
+              "offset": 1,
+              "value": "#fff"
+            }
+          ],
+          "cycles": -1
+        }
+      }
+    }
+  ]
+}

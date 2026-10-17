@@ -206,7 +206,7 @@ export class RenderContext {
       this.fail(
         path,
         "too-large",
-        `this track brings the render to ${String(this.animationKeyframes)} animation keyframes; at most ${String(max)} are allowed (every repeat copy counts)`,
+        `this track brings the render to ${String(this.animationKeyframes)} animation keyframes; at most ${String(max)} are allowed (every repeat copy and cycle counts)`,
       );
     }
   }

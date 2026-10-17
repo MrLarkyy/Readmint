@@ -78,11 +78,13 @@ export interface Keyframe<T> {
 export interface AnimationTrack<T> {
   /** 2 to 32 keyframes. */
   readonly keyframes: readonly Keyframe<T>[];
-  /** Default: the timeline's duration. */
+  /** One cycle of the keyframes. Default: the timeline's duration. */
   readonly duration?: Bindable<number>;
   readonly delay?: Bindable<number>;
   /** Added to `delay` once per index of the layer's own `repeat`. */
   readonly stagger?: Bindable<number>;
+  /** The keyframes play this many times back to back, each lasting `duration`; default 1. A literal integer. */
+  readonly cycles?: number;
   readonly easing?: Easing;
 }
 

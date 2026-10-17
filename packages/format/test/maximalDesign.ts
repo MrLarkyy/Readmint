@@ -21,6 +21,7 @@ const fade = {
   duration: 500,
   delay: "{{index * 10}}",
   stagger: 40,
+  cycles: 3,
   easing: "ease-out",
 } as const;
 

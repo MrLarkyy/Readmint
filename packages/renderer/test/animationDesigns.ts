@@ -228,6 +228,85 @@ const orbit = design(240, 140, { duration: 2000 }, [
   },
 ]);
 
+/**
+ * Tracks playing one cycle several times (RM-143): a pulse that jumps back at each seam, a bounce that ends where it
+ * starts, a cycle whose keyframes do not reach its start and end (the holds), and staggered copies of a delayed run.
+ */
+const cycles = design(240, 100, { duration: 1200 }, [
+  {
+    type: "rect",
+    x: 10,
+    y: 10,
+    width: 40,
+    height: 40,
+    fill: "#0969da",
+    animate: {
+      opacity: track(1, 0.2, { duration: 300, cycles: 4 }),
+      fill: track<Colour>("#0969da", "#8250df", { duration: 300, cycles: 4 }),
+    },
+  },
+  {
+    type: "ellipse",
+    x: 70,
+    y: 30,
+    width: 24,
+    height: 24,
+    fill: "#1a7f37",
+    animate: {
+      y: {
+        keyframes: [
+          { offset: 0, value: 0, easing: "ease-out" },
+          { offset: 0.5, value: -24, easing: "ease-in" },
+          { offset: 1, value: 0 },
+        ],
+        duration: 400,
+        cycles: 3,
+      },
+    },
+  },
+  {
+    type: "rect",
+    x: 120,
+    y: 15,
+    width: 30,
+    height: 30,
+    fill: "#cf222e",
+    animate: {
+      scale: {
+        keyframes: [
+          { offset: 0.25, value: 1 },
+          { offset: 0.75, value: 1.5 },
+        ],
+        duration: 400,
+        cycles: 3,
+        easing: "ease-in-out",
+      },
+    },
+  },
+  {
+    type: "rect",
+    x: "{{ 170 + item * 22 }}",
+    y: 60,
+    width: 16,
+    height: 30,
+    fill: "#bf3989",
+    repeat: { each: "{{ [0, 1, 2] }}" },
+    animate: {
+      opacity: {
+        keyframes: [
+          { offset: 0, value: 0.2 },
+          { offset: 0.5, value: 1 },
+          { offset: 1, value: 0.2 },
+        ],
+        duration: 200,
+        delay: 100,
+        stagger: 150,
+        cycles: 2,
+      },
+    },
+  },
+]);
+
 /** The animated designs of the golden frames, with the frame times each is pinned at. */
 export const animationDesigns: readonly {
   readonly name: string;
@@ -240,4 +319,5 @@ export const animationDesigns: readonly {
   { name: "easing", input: { design: easing }, times: [300] },
   { name: "calendar", input: { design: calendar, data: { cells } }, times: [0, 300, 600, 1200] },
   { name: "orbit-speed", input: { design: orbit }, times: [0, 500, 1000] },
+  { name: "cycles", input: { design: cycles }, times: [0, 150, 300, 400, 650, 1000] },
 ];
