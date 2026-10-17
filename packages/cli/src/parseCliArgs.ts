@@ -30,6 +30,7 @@ type ValueOption =
   | "login"
   | "exclude-repositories"
   | "language-commit-cap"
+  | "cache-dir"
   | "data-json"
   | "data-json-header"
   | "data-feed"
@@ -53,6 +54,7 @@ const valueOptions: ReadonlySet<string> = new Set<ValueOption>([
   "login",
   "exclude-repositories",
   "language-commit-cap",
+  "cache-dir",
   "data-json",
   "data-json-header",
   "data-feed",
@@ -92,6 +94,7 @@ const allowed: Readonly<Record<DesignCommand, ReadonlySet<ValueOption>>> = {
     "login",
     "exclude-repositories",
     "language-commit-cap",
+    "cache-dir",
     "data-json",
     "data-json-header",
     "data-feed",
@@ -106,6 +109,7 @@ const allowed: Readonly<Record<DesignCommand, ReadonlySet<ValueOption>>> = {
     "login",
     "exclude-repositories",
     "language-commit-cap",
+    "cache-dir",
     "data-json",
     "data-json-header",
     "data-feed",
@@ -120,6 +124,7 @@ const allowed: Readonly<Record<DesignCommand, ReadonlySet<ValueOption>>> = {
     "login",
     "exclude-repositories",
     "language-commit-cap",
+    "cache-dir",
     "data-json",
     "data-json-header",
     "data-feed",
@@ -224,6 +229,7 @@ export function parseCliArgs(argv: readonly string[]): CliCommand {
   if (!github && values.has("language-commit-cap")) {
     usage("option --language-commit-cap needs --github");
   }
+  if (!github && values.has("cache-dir")) usage("option --cache-dir needs --github");
   const dataJson = dataJsonArgs(repeated, github);
   const dataFeed = dataFeedArgs(repeated, github, dataJson);
   const shared: Omit<DesignArgs, "design"> = {
@@ -236,6 +242,7 @@ export function parseCliArgs(argv: readonly string[]): CliCommand {
     ...optional("login", values.get("login")),
     ...excludeArgs(values.get("exclude-repositories")),
     ...languageCommitCapArgs(values.get("language-commit-cap")),
+    ...cacheDirArgs(values.get("cache-dir")),
     ...(dataJson.length === 0 ? {} : { dataJson }),
     ...(dataFeed.length === 0 ? {} : { dataFeed }),
   };
@@ -422,6 +429,17 @@ function languageCommitCapArgs(value: string | undefined): { languageCommitCap?:
     );
   }
   return { languageCommitCap: cap };
+}
+
+function cacheDirArgs(value: string | undefined): { cacheDir?: string } {
+  if (value === undefined) return {};
+  // eslint-disable-next-line no-control-regex
+  if (value === "" || /[\u0000-\u001f\u007f]/.test(value)) {
+    usage(
+      `--cache-dir must be a folder path without control characters, got ${quoteForLog(value)}`,
+    );
+  }
+  return { cacheDir: value };
 }
 
 function optional<K extends string>(key: K, value: string | undefined): { [P in K]?: string } {

@@ -25,6 +25,7 @@ import type { GitHubSourceOptions } from "./GitHubSourceOptions.js";
 import { isGitHubLogin } from "./isGitHubLogin.js";
 import { isJsonRecord, ownField, type JsonRecord } from "./jsonRecord.js";
 import { parseActivityResponse } from "./parseActivityResponse.js";
+import { stripActivityResponse } from "./stripActivityResponse.js";
 import { parseProfileResponse } from "./parseProfileResponse.js";
 import { parseRepositoriesPage } from "./parseRepositoriesPage.js";
 import { parseViewerResponse } from "./parseViewerResponse.js";
@@ -190,7 +191,7 @@ export async function loadGitHubData(options: GitHubSourceOptions): Promise<GitH
     const stored = JSON.stringify({
       profile: profileData,
       pages: pageData,
-      activity: activityLoad?.raw ?? null,
+      activity: activityLoad === null ? null : stripActivityResponse(activityLoad.raw),
       weeks: weeksLoad?.raw ?? null,
       ...(authored === null
         ? {}

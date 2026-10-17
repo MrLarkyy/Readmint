@@ -64,6 +64,7 @@ function loadGitHub(
       ? {}
       : { excludeRepositories: args.excludeRepositories }),
     ...(args.languageCommitCap === undefined ? {} : { languageCommitCap: args.languageCommitCap }),
+    ...(args.cacheDir === undefined ? {} : { cacheDir: path.resolve(io.cwd, args.cacheDir) }),
     fetch: io.fetch ?? globalThis.fetch,
     onPartial: (parts) => {
       void io.stderr(`warning: ${partialDataWarning(parts)}\n`);

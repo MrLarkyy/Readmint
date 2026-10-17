@@ -51,6 +51,7 @@ templates as working workflows ([components.md](components.md#the-examples-repos
 | `login`                | `${{ github.repository_owner }}` | the GitHub user whose data is loaded; needed with `GITHUB_TOKEN`, which belongs to no user                                                                                                                                                                                                                                                                                                                                                                                      |
 | `exclude-repositories` | none                             | repositories (`name` or `owner/name`, separated by commas or lines) left out of the GitHub repository list, stars, forks, languages and pinned fallback (not the repository total, pushes or the calendar), as the CLI `--exclude-repositories`; not with `data-file`                                                                                                                                                                                                           |
 | `language-commit-cap`  | none                             | own commits (whole number 0-2000, empty or 0 = off) read, one GitHub request each (about 0.3-0.6 s; with your own token private repositories add to the sums, language names and sums only), to fill `github.languagesAuthored` for the templates' `languageShare: authored`, as the CLI `--language-commit-cap`; not with `data-file`. See [Languages from your own commits](data-github.md#languages-from-your-own-commits)                                                   |
+| `cache-dir`            | none                             | folder outside the workspace (absolute, or `..` relative to it) where the GitHub load keeps its validated answers and the commits read between runs, so a later run sends no request for them; see [GitHub cache](#github-cache); not with `data-file`, not the workspace or inside it                                                                                                                                                                                          |
 | `data-file`            | none                             | fixture data JSON (the CLI `--data` format) used instead of loading GitHub data: no token, no GitHub API (only images bound to data are fetched); a path relative to the workspace, checked like `designs` and `data-json` files (no `..`, no absolute or drive path, a link or junction leading outside refused), at most 8 MiB                                                                                                                                                |
 | `data-json`            | none                             | JSON documents to bind, one per line as `[<namespace>=]<source>` (the CLI [`--data-json`](cli.md#json-data)): a file inside the workspace or an https URL, each bound as `{ version: 0, document }` under its namespace (default `json`), at most 8, added to the `data-file` or GitHub data ([JSON data](#json-data))                                                                                                                                                          |
 | `data-json-headers`    | none                             | headers for the `data-json` URLs, one per line as `<namespace>:<Header-Name>=<ENV_NAME>`: the value is read from the step's environment variable `ENV_NAME`, masked, never printed and sent only to that URL's origin                                                                                                                                                                                                                                                           |
@@ -203,6 +204,37 @@ in both data modes, with its own request: no token, cookie or other credential, 
 only (`avatars.githubusercontent.com`), each URL once per run (so a dark twin shares the fetch), at most 32. The bytes
 are inlined in the SVG. The rules and error codes: [asset-loading.md](asset-loading.md#images-bound-from-data).
 
+## GitHub cache
+
+With `cache-dir` the GitHub load keeps its validated answers in that folder (created with mode 0o700 when missing): a
+re-run within an hour reuses the whole load and sends only the viewer request, and every commit read by
+`language-commit-cap` is kept for 7 days, so a later run sends no request for it. A runner starts empty, so restore the
+folder with `actions/cache`:
+
+```yaml
+- uses: actions/cache@v4
+  with:
+    path: ${{ runner.temp }}/readmint-cache
+    key: readmint-${{ github.run_id }}
+    restore-keys: readmint-
+- uses: MrLarkyy/Readmint@vX.Y.Z
+  with:
+    designs: readmint/card.json
+    language-commit-cap: 200
+    cache-dir: ${{ runner.temp }}/readmint-cache
+```
+
+What it holds: the validated public-profile answers (profile, public repositories, public pins and pushes, weekly
+commits) and the per-commit language sums, plus what the token's own contribution counts and commit sums reveal
+(private contribution counts, private repository language sums); no private repository name, pin, commit headline or
+organisation-only status, and never the token. A hit still sends one GraphQL request, the viewer lookup that names the
+token's owner. An Actions cache can be restored by the repository's workflows, and pull-request runs restore the caches
+of the base branch, so use a personal token only where that is acceptable. Entries are validated again on every read; a
+bad one is a miss. The folder must lie outside the workspace, so it is never staged, committed or published by a later
+step: use a path under `runner.temp` (an absolute path, or `..` relative to the workspace; `~` is not expanded). The
+cache is best effort: a failed write is ignored, while a path that exists and is not a folder fails the run before any
+request. Expired entries are not pruned.
+
 ## JSON data
 
 `data-json` binds any JSON document, a file in the repository or a public https URL, with the JSON source of
@@ -308,7 +340,7 @@ example with `actions/upload-artifact`.
 A failed run exits with 1 and prints one `::error::` line per problem, each naming what it is about:
 
 - inputs: a missing or invalid input (all at once; a manifest that is not valid or lists a design that does not exist, as `manifest "<file>": error <code> at <pointer>: <message>` lines, never a prop value; a `variant` other than empty or `dark` is refused without being echoed);
-- data: the fixture file's problem, or `GitHub data (<code>): <message>` with the code of
+- data: the fixture file's problem, `cache directory "<path>" is not a folder`, or `GitHub data (<code>): <message>` with the code of
   [data-github.md](data-github.md#errors), or `JSON data <namespace> (<code>): <message>` with a common code of
   [data-sources.md](data-sources.md#the-json-source), `Feed data <namespace> (<code>): <message>` with a common code of [data-sources.md](data-sources.md#the-feed-source), or a namespace both the `data-file` and `data-json` or `data-feed` give, or a `data-file` key equal to a `data-json` or `data-feed` namespace;
 - render: the design's issues (a render of the `variant` input is named `<design> (dark variant)`, a manifest render `<design> (render "<name>")`, with `, dark variant` inside the brackets for its variant), as `readmint render` prints them (an image bound to data that cannot be fetched as

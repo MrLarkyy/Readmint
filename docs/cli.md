@@ -58,6 +58,7 @@ data it fails `image-binding`.
 | `--fetch-images`                                   | all                  | fetches the images whose `src` is bound to data (https, allowed hosts only, no credentials; see [asset-loading.md](asset-loading.md#images-bound-from-data)); without it a design with one fails `image-not-fetched` (with `--data`, `--github`, `--data-json` or `--data-feed`) and no image is requested (only `--github`, a `--data-json` URL and `--data-feed` make requests then) |
 | `--github`                                         | all                  | loads the live GitHub data as `{ github }` with the token from `GH_TOKEN`, else `GITHUB_TOKEN` ([Live GitHub data](#live-github-data)); excludes `--data`                                                                                                                                                                                                                              |
 | `--language-commit-cap <n>`                        | all                  | whole number 0-2000 (default 0 = off): own commits `--github` reads, one GitHub request each (about 0.3-0.6 s), to fill `github.languagesAuthored`; only with `--github`                                                                                                                                                                                                               |
+| `--cache-dir <dir>`                                | all                  | folder (relative to the current folder, created when missing) where `--github` keeps its validated answers and the commit sums between runs; only with `--github`. See [Live GitHub data](#live-github-data)                                                                                                                                                                           |
 | `--exclude-repositories <names>`                   | all                  | comma separated repository names (`name` or `owner/name`) `--github` leaves out of every aggregate: the repository list, stars, forks, languages and the pinned fallback (not the repository total, `pushes` or the contribution calendar); only with `--github`                                                                                                                       |
 | `--login <login>`                                  | all                  | the GitHub login `--github` loads; default the token's owner; only with `--github`                                                                                                                                                                                                                                                                                                     |
 | `--data-json [<ns>=]<source>`                      | all                  | loads a JSON document, a file inside `--root` (its path is relative to `--root`, not to the current folder) or an https URL, as `{ <ns>: { version: 0, document } }` (default namespace `json`); repeatable, at most 8, added to `--data` or `--github` data ([JSON data](#json-data))                                                                                                 |
@@ -66,7 +67,7 @@ data it fails `image-binding`.
 | `--data-feed-limit <ns>=<n>`                       | all                  | entries kept from the feed of `<ns>`, 1 to 50 (default 5); repeatable ([Feed data](#feed-data))                                                                                                                                                                                                                                                                                        |
 
 An option a command does not take, an unknown option, a missing or extra argument and a bad value are usage errors
-(exit code 2), as are `--github` with `--data`, `--login` or `--exclude-repositories` or `--language-commit-cap` without `--github`, a `--data-json` namespace given twice or
+(exit code 2), as are `--github` with `--data`, `--login` or `--exclude-repositories` or `--language-commit-cap` or `--cache-dir` without `--github`, a `--data-json` namespace given twice or
 named `github` with `--github`, more than 8 JSON sources or feeds, a `--data-feed` namespace given twice or also a `--data-json` namespace, a `--data-feed-limit` that is not `<ns>=<n>` (n from 1 to 50) or names a namespace without a feed, and a `--data-json-header` that is not
 `<ns>:<Header-Name>=<ENV_NAME>` or names a namespace without a source. There is no `--token` option: `--token`
 and any argument shaped like a GitHub token (`ghp_`, `gho_`, `ghu_`, `ghs_`, `ghr_`, `github_pat_`) are usage errors
@@ -295,13 +296,22 @@ as `render --data` with that object.
   limit for the whole GitHub load grows by 600 ms per commit on top of 5 minutes, and the reading of commits has a deadline 60 s before it: when it passes, the data read so far is kept and `authored` is reported. With your own token, private repositories add to the sums (language names and sums only). See
   [Languages from your own commits](data-github.md#languages-from-your-own-commits) for the budget and for the
   `authored` and `authored-cap` warnings.
+- **`--cache-dir <dir>`** (needs `--github`; relative to the current folder like `--out-dir`; `~` is not expanded) keeps
+  the validated GitHub answers in that folder, created with mode 0o700 when missing. A later run reuses the whole load
+  within 3600 s and every commit read by `--language-commit-cap` for 7 days, with no request for them. A hit still sends
+  one GraphQL request, the viewer lookup that names the token's owner, since GitHub answers per viewer and the cache key
+  holds the owner; it is sent with `--login` too. The cache is best effort and every entry is validated again on read.
+  What is stored: the validated public-profile answers (profile, public repositories, public pins and pushes, weekly
+  commits) with what the token's own contribution counts and commit language sums reveal (private counts and sums, no
+  private repository name, pin, headline or organisation-only status), never the token. Keep the folder out of anything
+  published. A path that exists and is not a folder is exit code 3.
 - **Order**: `render` and `validate` load the data after the design file and its assets: a design that fails to load
   (exit code 1 or 3) costs no request and is reported before a missing or refused token (exit code 4). `preview` loads
   the data first, before it reads the design or starts serving: a missing token or a failed load exits with 4 at once,
   and a design error is then shown on the page like any later one.
 - **Requests**: a load sends the requests of [data-github.md](data-github.md#rate-limits) (at most 6 with `--login`
-  and 7 without it, plus retries; fewer for a user with fewer repositories), only to `https://api.github.com/graphql` (with `--language-commit-cap` also `https://api.github.com/repos/...`), and takes at most 300 s in all (plus 600 ms per commit read; the commit reading ends 60 s earlier with a warning instead of failing), retries and
-  rate-limit waits included. There is no cache and nothing is written to disk.
+  and 7 without it, 7 either way on a `--cache-dir` miss, plus retries; fewer for a user with fewer repositories), only to `https://api.github.com/graphql` (with `--language-commit-cap` also `https://api.github.com/repos/...`), and takes at most 300 s in all (plus 600 ms per commit read; the commit reading ends 60 s earlier with a warning instead of failing), retries and
+  rate-limit waits included. Without `--cache-dir` there is no cache and nothing is written to disk.
 - **Incomplete data**: when GitHub refuses the activity or the weekly-commit request (a token that may not read the
   profile status or the pinned items, as the Actions `GITHUB_TOKEN` may not), the load still succeeds with those
   fields empty and the CLI prints one line on standard error, `warning: GitHub data is incomplete (activity, weeks): ...`, naming the parts and the fields they leave empty

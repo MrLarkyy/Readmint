@@ -24,6 +24,8 @@ export interface DesignArgs {
   readonly excludeRepositories?: readonly string[];
   /** `--language-commit-cap`: own commits `--github` reads for `github.languagesAuthored`, 0 to 2000. */
   readonly languageCommitCap?: number;
+  /** `--cache-dir`: folder where `--github` keeps its answers between runs, relative to the current folder. */
+  readonly cacheDir?: string;
   /**
    * `--data-json` with its `--data-json-header` headers: JSON documents loaded live, each under its namespace, added
    * to `--data` or `--github` data.

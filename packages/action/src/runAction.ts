@@ -41,13 +41,13 @@ export async function runAction(env: Env, deps: ActionDeps): Promise<number> {
   const secrets = [env.INPUT_TOKEN ?? "", env.INPUT_TOKEN?.trim() ?? ""];
   const log = new ActionLog(deps.write, secrets);
   try {
-    const config = readInputs(env);
+    const workspace = path.resolve(deps.cwd, nonEmpty(env.GITHUB_WORKSPACE) ?? ".");
+    const config = readInputs(env, workspace);
     // Before any load: a header value must be masked before anything could print it.
     for (const name of new Set(config.dataJson?.flatMap((spec) => Object.values(spec.headers)))) {
       const value = Object.hasOwn(env, name) ? env[name] : undefined;
       if (value !== undefined) log.mask(value);
     }
-    const workspace = path.resolve(deps.cwd, nonEmpty(env.GITHUB_WORKSPACE) ?? ".");
     const plan =
       config.manifest === undefined
         ? await planOutputs(

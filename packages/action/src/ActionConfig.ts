@@ -24,6 +24,8 @@ export interface ActionConfig {
   readonly excludeRepositories?: readonly string[];
   /** Own commits read for `github.languagesAuthored`, 1..2000; absent: not loaded. */
   readonly languageCommitCap?: number;
+  /** Folder for the GitHub load's cache, absolute, outside the workspace; absent: no cache. */
+  readonly cacheDir?: string;
   /** Fixture data file instead of a GitHub load. */
   readonly dataFile?: string;
   /** JSON sources of `data-json` with the headers of `data-json-headers`, added to the fixture or GitHub data. */

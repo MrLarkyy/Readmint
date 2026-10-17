@@ -19,6 +19,7 @@ import {
   maxCommitMessageLength,
   maxDesigns,
 } from "./ActionInputs.js";
+import { cacheDirProblem } from "./cacheDirProblem.js";
 import { checkRelativePath } from "./checkRelativePath.js";
 import { isBranchName } from "./isBranchName.js";
 
@@ -39,9 +40,12 @@ const yamlBooleans: Readonly<Record<string, boolean>> = {
 /**
  * Reads the inputs the runner passes as `INPUT_<NAME>` (upper case, hyphens kept), trims them,
  * applies the `action.yml` defaults to absent or blank values and checks them. Throws
- * `ActionError` (input) listing every problem; the token is never part of a message.
+ * `ActionError` (input) listing every problem (`workspace` anchors a relative `cache-dir`); the token is never part of a message.
  */
-export function readInputs(env: Env): ActionConfig {
+export function readInputs(
+  env: Env,
+  workspace = path.resolve(env.GITHUB_WORKSPACE?.trim() || "."),
+): ActionConfig {
   const problems: string[] = [];
   const value = (name: ActionInputName): string => {
     const raw = env[`INPUT_${name.toUpperCase()}`]?.trim() ?? "";
@@ -210,6 +214,16 @@ export function readInputs(env: Env): ActionConfig {
       "input language-commit-cap applies to GitHub data only; it cannot go with data-file",
     );
   }
+  const cacheDir = value("cache-dir");
+  // eslint-disable-next-line no-control-regex -- control characters are what is refused here
+  if (/[\u0000-\u001f\u007f]/.test(cacheDir)) {
+    problems.push(`input cache-dir ${quoteForLog(cacheDir)} contains a control character`);
+  } else if (cacheDir !== "" && dataFile !== "") {
+    problems.push("input cache-dir applies to GitHub data only; it cannot go with data-file");
+  } else if (cacheDir !== "") {
+    const why = cacheDirProblem(cacheDir, workspace);
+    if (why !== undefined) problems.push(`input cache-dir ${quoteForLog(cacheDir)} ${why}`);
+  }
   if (problems.length > 0) throw new ActionError("input", problems);
   return {
     designs,
@@ -223,6 +237,7 @@ export function readInputs(env: Env): ActionConfig {
     login: value("login"),
     ...(excludeRepositories.length === 0 ? {} : { excludeRepositories }),
     ...(capText === "" || cap === 0 ? {} : { languageCommitCap: cap }),
+    ...(cacheDir === "" ? {} : { cacheDir: path.resolve(workspace, cacheDir) }),
     ...(dataFile === "" ? {} : { dataFile }),
     ...(dataJson.length === 0 ? {} : { dataJson }),
     ...(dataFeed.length === 0 ? {} : { dataFeed }),

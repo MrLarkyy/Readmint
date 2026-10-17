@@ -396,3 +396,34 @@ test("without --manifest render is parsed as before", () => {
   expect(command).toEqual({ name: "render", design: "a.json", out: "a.svg", format: "svg" });
   expect(command).not.toHaveProperty("manifest");
 });
+
+test("--cache-dir is kept as given on render, validate, preview and render --manifest", () => {
+  for (const command of [
+    ["render", "a.json"],
+    ["validate", "a.json"],
+    ["preview", "a.json"],
+    ["render", "--manifest", "m.json", "--out-dir", "o"],
+  ]) {
+    expect(parseCliArgs([...command, "--github", "--cache-dir", "d/c"])).toMatchObject({
+      cacheDir: "d/c",
+    });
+  }
+  expect(parseCliArgs(["render", "a.json", "--github"])).not.toHaveProperty("cacheDir");
+});
+
+test("--cache-dir needs --github, a value and no control character", () => {
+  expect(() => parseCliArgs(["render", "a.json", "--cache-dir", "d"])).toThrow(
+    "option --cache-dir needs --github",
+  );
+  expect(() => parseCliArgs(["render", "a.json", "--github", "--cache-dir", ""])).toThrow(
+    /--cache-dir must be/,
+  );
+  try {
+    parseCliArgs(["render", "a.json", "--github", "--cache-dir", "d\u001b[31m"]);
+    expect.unreachable();
+  } catch (error) {
+    // eslint-disable-next-line no-control-regex
+    expect((error as Error).message).not.toMatch(/[\u0000-\u001f]/);
+    expect((error as Error).message).toContain("--cache-dir");
+  }
+});
