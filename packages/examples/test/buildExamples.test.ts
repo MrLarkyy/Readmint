@@ -359,7 +359,7 @@ describe("runExamples", () => {
     expect(err).toContain(defaultActionRef);
   });
 
-  // The real templates use maxLines, let and orbit, which the default pin predates until its release
+  // The real profile templates use maxLines, let and orbit, which the default pin predates until its release
   // (docs/action.md#releases).
   const pin = ["--action", options.actionRef];
 
@@ -395,11 +395,16 @@ describe("runExamples", () => {
     // The templates as the pinned release accepts them: without the layer properties it predates.
     const dir = temp();
     cpSync(templatesDir, dir, { recursive: true });
-    const yearRing = join(dir, "profiles", "year-ring");
-    for (const file of readdirSync(yearRing).filter((name) => name.endsWith(".json"))) {
-      const design = JSON.parse(readFileSync(join(yearRing, file), "utf8")) as unknown;
-      if (withoutNewLayerProperties(design))
-        writeFileSync(join(yearRing, file), `${JSON.stringify(design, null, 2)}\n`);
+    const profiles = join(dir, "profiles");
+    for (const folder of readdirSync(profiles, { withFileTypes: true }).filter((entry) =>
+      entry.isDirectory(),
+    )) {
+      const root = join(profiles, folder.name);
+      for (const file of readdirSync(root).filter((name) => name.endsWith(".json"))) {
+        const design = JSON.parse(readFileSync(join(root, file), "utf8")) as unknown;
+        if (withoutNewLayerProperties(design))
+          writeFileSync(join(root, file), `${JSON.stringify(design, null, 2)}\n`);
+      }
     }
     const out = temp();
     expect(run(dir, out).code).toBe(0);
@@ -411,7 +416,7 @@ describe("runExamples", () => {
     const { code, err } = run(templatesDir, temp());
     expect(code).toBe(1);
     expect(err).toMatch(
-      /@v0\.3\.0 predates (maxLines|let|orbit) \(Action v0\.4\.0\), which year-ring\/[a-z0-9-]+(\.dark)?\.json uses/,
+      /@v0\.3\.0 predates (maxLines|let|orbit) \(Action v0\.4\.0\), which (horizon|pinscreen|year-ring)\/[a-z0-9-]+(\.dark)?\.json uses/,
     );
   });
 

@@ -160,9 +160,9 @@ is. A design whose section the file lacks is
 rendered as it is, and a section no design names is ignored. The output is the same as rendering the design with the
 props written into its root layer; the design format is not involved (no `$schema`, no version).
 
-The file is JSON, UTF-8, at most 4 MiB of text; section and prop names are ids (a letter, then letters, digits, `_` or
+The file is JSON, UTF-8, at most 4 Mi characters of text; section and prop names are ids (a letter, then letters, digits, `_` or
 `-`, at most 64); a value is a string, a number, a boolean or an array of those. Like `--data` it is the user's own
-file and may lie anywhere. A file that cannot be read exits with code 3, one whose content is invalid with code 1; the
+file and may lie anywhere; the Action's `props-file` is confined to the workspace instead. A file that cannot be read exits with code 3, one whose content is invalid with code 1; the
 message names the file and the pointer, not the content. `preview` watches the file and re-renders when it changes.
 The Action takes the same file as [`props-file`](action.md#inputs). The profile templates ship one, see
 [components.md](components.md#profile-templates).
@@ -329,7 +329,7 @@ A port in use, or one the system refuses, is exit code 3.
 `@readmint/cli` exports `runCli(argv, io)` (returns the exit code, never throws; `CliIo.openUrl` opens the `preview --open` address (with `--github`, `--data-json` or `--data-feed` the one-time launch address), the platform's opener when absent; `CliIo.env` is the environment `--github` takes its token
 from, `bin` passes `process.env`), `ExitCode`, `CliError`, `CliIo`,
 `escapeForLog`, `quoteForLog`, `formatIssue`, `localeProblem(locale)` (why a tag cannot be the `--locale`, `undefined` when it can; the Action's `locale` input uses it too), `outputFormats` and `outputExtension(format)` (the `OutputFormat`s and their file extension, `apng` → `png`), and the loaders the commands share: `loadDesignFile`, `loadDesignAssets`,
-`loadFixtureData` (with `maxFixtureBytes`, its size cap), `loadDesignProps(file, cwd)` (the `--props` settings file, a `DesignProps` of `@readmint/format`; whose `props` in `RenderInputOptions` stands in for `--props`) and `propsSection(fileName)` (the section a design file takes; it lives in `@readmint/format`, which the editor uses too), `loadLiveData` (the `--github` load: `LiveDataOptions` with
+`loadFixtureData` (with `maxFixtureBytes`, its size cap), `loadDesignProps(file, cwd, options?)` (the `--props` settings file, not confined; with `{ confinedTo }`, as the Action's `props-file`, a relative path staying inside that folder; a `DesignProps` of `@readmint/format`; whose `props` in `RenderInputOptions` stands in for `--props`) and `propsSection(fileName)` (the section a design file takes; it lives in `@readmint/format`, which the editor uses too), `loadLiveData` (the `--github` load: `LiveDataOptions` with
 `token`, `login`, `fetch`, `signal` and `onPartial`, at most `liveDataTimeoutMs` plus `liveDataTimeoutPerCommitMs` (600) per `languageCommitCap` commit (`liveDataTimeout(cap)`; the commit reading ends `liveDataAuthoredMarginMs`, 60 s, earlier); a failure is a `CliError` with exit code 4),
 `parseDataJsonArgs(sources, headers)` (the `--data-json` and `--data-json-header` texts as `DataJsonSpec`s, or the
 problems; at most `maxDataJsonSources`), `loadJsonArgs(specs, options)` (the `--data-json` load, `JsonArgsOptions` with

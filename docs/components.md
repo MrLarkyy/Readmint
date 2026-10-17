@@ -280,10 +280,11 @@ The first writes the files (and removes the generated ones that are no longer pr
 `--check` writes nothing, lists each missing, differing or stale file and exits 1 when the clone is not in sync. Run it
 after changing a template or `profileExampleProps`, then commit and push the clone. `--login` and `--action` set the
 account and the Action reference (`MrLarkyy` and `MrLarkyy/Readmint@v0.3.0` by default). The generator refuses an Action reference pinned to a release older than the filters the templates use
-(`textWidth`, `truncateWidth`), than the layer properties they set (`maxLines` of the `year-ring` repository cards,
-`let` and `orbit` of its year and header, v0.4.0; looked up as keys of the layers, not in texts) or than `props-file`
+(`textWidth`, `truncateWidth`), than the layer properties they set (`let` of the Horizon and Pinscreen sections and of the Year Ring ones,
+`orbit` of the Year Ring year and header, `maxLines` of its repository cards, all v0.4.0; looked up as keys of the
+layers, not in texts), than a root `palette` (v0.4.0; looked up as a key of the document only) or than `props-file`
 (v0.3.0), which the generated `settings.json` needs, for the write and for `--check`. Examples that use `maxLines`,
-`let` or `orbit` need the v0.4.0 tag and refuse every earlier pin, the default included: the Action bundle exists only
+`let`, `orbit` or `palette` need the v0.4.0 tag and refuse every earlier pin, the default included: the Action bundle exists only
 on release tags ([action](action.md#releases)), so until v0.4.0 is cut no reference runs them, and the examples are
 generated after that release with the bumped default.
 
@@ -358,9 +359,9 @@ seconds of work for each export format.
   bouncing every 9 s) is one cycle of a few keyframes with `cycles` ([design-format.md](design-format.md#animation)):
   `duration` is the period and `cycles` the periods in the run, and a cycle that ends where it starts joins the next
   without a duplicate keyframe; every period divides the timeline, so the loop is seamless. The rewrite from unrolled
-  tracks and layer copies to cycles (RM-143) took the 26 files with such a pulse from 19042 to 12934 lines: Horizon
-  header 671 to 430 and year 995 to 754, Pinscreen header 904 to 574, log 714 to 536 and year 540 to 493, Year Ring
-  header 900 to 570, year 831 to 590 and each repository card 661 to 420 (light and dark alike). A loop is never shortened to suit the raster export:
+  tracks and layer copies to cycles (RM-143) took the 26 files with such a pulse from 17764 to 11656 lines: Horizon
+  header 657 to 416 and year 703 to 462, Pinscreen header 902 to 572, log 705 to 527 and year 416 to 369, Year Ring
+  header 900 to 570, year 831 to 590 and each repository card 628 to 387 (light and dark alike). A loop is never shortened to suit the raster export:
   it samples a long loop at a lower rate instead (above).
 - **Tickers by measured width.** A ticker gives each item a slot as wide as its texts as drawn (`textWidth` of the
   repository name and message, fixed widths for the hash, date and gaps), clipped to the slot, so the width of one run
@@ -388,8 +389,9 @@ seconds of work for each export format.
   through the squares 0, 1, 4, 9, 16, 36, 64, 100, 169, 256, 400, 1024, 4096 and 16384; the terrain's smoothed values
   and its largest count look the root up in a table of sixteenths.
 - **Values computed once.** A `let` binds values for a layer and everything below it, in order, each entry reading the
-  ones before it (the Year Ring's ring and legend); a one-item `repeat` (`"each": "{{ [expr] }}"`) does the same one
-  level at a time. A binding holds at most 2048 characters, so long work (the weekday sums) is split into several
+  ones before it (the Year Ring's ring and legend, the Horizon and Pinscreen sections' derived widths and tables). A
+  template never binds a value with a one-item `repeat` (`"each": "{{ [expr] }}"`): that costs a wrapper `<g>` and a
+  nesting level per name, and a test fails on one. A binding holds at most 2048 characters, so long work (the weekday sums) is split into several
   entries. The largest
   count of a year needs none: `days | max("count")` is one binding ([expressions.md](expressions.md)).
 - **Text without measuring.** Geist Mono advances 0.6 em, so a token of the Pinscreen code sits at `columns x 6.9`

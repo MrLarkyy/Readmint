@@ -103,14 +103,39 @@ describe("layer properties", () => {
   it("ignores the words in texts, values and keys outside layers", () => {
     const mentions = JSON.stringify({
       title: "orbit",
-      layers: [{ type: "text", content: "let the orbit turn", props: { orbit: 1, let: 2 } }],
-      palette: { light: { orbit: "#000000" } },
+      layers: [
+        {
+          type: "text",
+          content: "let the orbit turn palette",
+          props: { orbit: 1, let: 2, palette: 3 },
+          palette: "x",
+        },
+      ],
+      tokens: { palette: "#000000" },
     });
     expect(() => {
       assertActionSupportsDesigns("owner/action@v0.1.0", design(mentions));
     }).not.toThrow();
     expect(() => {
       assertActionSupportsDesigns("owner/action@v0.1.0", design("not json"));
+    }).not.toThrow();
+  });
+});
+
+describe("document keys", () => {
+  const palette = JSON.stringify({ palette: { light: { accent: "#0969da" } }, layers: [] });
+
+  it("throws for a pinned release older than a palette on the document", () => {
+    expect(() => {
+      assertActionSupportsDesigns("owner/action@v0.3.0", design(palette));
+    }).toThrow(
+      "owner/action@v0.3.0 predates palette (Action v0.4.0), which t/header.json uses; pin v0.4.0 or newer",
+    );
+  });
+
+  it.each(["@v0.4.0", "@v1.0.0", "@main", "@v0"])("accepts a palette with %s", (ref) => {
+    expect(() => {
+      assertActionSupportsDesigns(`owner/action${ref}`, design(palette));
     }).not.toThrow();
   });
 });

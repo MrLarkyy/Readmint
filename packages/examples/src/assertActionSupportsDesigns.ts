@@ -7,6 +7,14 @@ const filterIntroducedIn: Readonly<Record<string, string>> = {
 };
 
 /**
+ * The Action version that accepts each top-level key of a design (a key of the document, not of a layer) format v0
+ * gained after a release; an older Action refuses it as `unknown-property`.
+ */
+const documentKeyIntroducedIn: Readonly<Record<string, string>> = {
+  palette: "0.4.0",
+};
+
+/**
  * The Action version that accepts each layer property format v0 gained after a release; an older Action refuses a
  * design using it as `unknown-property`. Add a property here in the change that adds it to the format.
  */
@@ -18,7 +26,8 @@ const propertyIntroducedIn: Readonly<Record<string, string>> = {
 
 /**
  * Throws when `actionRef` pins a full `vX.Y.Z` tag older than a filter a design uses (`| name`) or than a layer
- * property it sets (a key of a layer of the document or of a component, at any depth of `children`). Other references
+ * property it sets (a key of a layer of the document or of a component, at any depth of `children`) or than a key of
+ * the document itself. Other references
  * (`@main`, `@v0`, a commit) are not compared.
  */
 export function assertActionSupportsDesigns(
@@ -34,6 +43,12 @@ export function assertActionSupportsDesigns(
         refuse(actionRef, filter, introduced, file);
       }
     }
+    const keys = documentKeys(text);
+    for (const [key, introduced] of Object.entries(documentKeyIntroducedIn)) {
+      if (keys.has(key) && isPinnedOlderThan(actionRef, introduced)) {
+        refuse(actionRef, key, introduced, file);
+      }
+    }
     const properties = layerProperties(text);
     for (const [property, introduced] of Object.entries(propertyIntroducedIn)) {
       if (properties.has(property) && isPinnedOlderThan(actionRef, introduced)) {
@@ -47,6 +62,16 @@ function refuse(actionRef: string, feature: string, introduced: string, file: st
   throw new Error(
     `${actionRef} predates ${feature} (Action v${introduced}), which ${file} uses; pin v${introduced} or newer`,
   );
+}
+
+/** The top-level keys of a design text; none when the text is no JSON object. */
+function documentKeys(text: string): ReadonlySet<string> {
+  try {
+    const design: unknown = JSON.parse(text);
+    return new Set(isRecord(design) ? Object.keys(design) : []);
+  } catch {
+    return new Set();
+  }
 }
 
 /** The property names set on any layer of a design text; none when the text is no JSON object. */

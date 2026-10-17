@@ -12,7 +12,7 @@ export { ExitCode } from "./ExitCode.js";
 export { formatIssue } from "./formatIssue.js";
 export { loadDesignAssets } from "./loadDesignAssets.js";
 export { loadDesignFile, type DesignFile, type DesignFileOptions } from "./loadDesignFile.js";
-export { loadDesignProps } from "./loadDesignProps.js";
+export { type DesignPropsOptions, loadDesignProps } from "./loadDesignProps.js";
 export { loadFixtureData, maxFixtureBytes } from "./loadFixtureData.js";
 export { loadFeedArgs, type FeedArgsOptions } from "./loadFeedArgs.js";
 export { loadJsonArgs, type JsonArgsOptions } from "./loadJsonArgs.js";

@@ -311,16 +311,14 @@
             },
             {
               "type": "group",
-              "repeat": {
-                "each": "{{ [github.contributions.days] }}",
-                "as": "d"
+              "let": {
+                "d": "{{ github.contributions.days }}"
               },
               "children": [
                 {
                   "type": "group",
-                  "repeat": {
-                    "each": "{{ [d | length] }}",
-                    "as": "n"
+                  "let": {
+                    "n": "{{ d | length }}"
                   },
                   "children": [
                     {
