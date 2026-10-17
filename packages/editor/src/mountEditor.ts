@@ -118,7 +118,7 @@ export function mountEditor(root: HTMLElement, options: MountEditorOptions = {})
   const pending = new Set<Promise<unknown>>();
   const shell = element(root, "div", { className: "rm-editor" });
 
-  /** Renders what the state shows: the design with the chosen settings section applied. */
+  /** Renders what the state shows: the design with the chosen variant, then the settings section, applied. */
   const render = (current: EditorState) => {
     const effective = effectiveDesign(current);
     settingsIssues = effective.issues;

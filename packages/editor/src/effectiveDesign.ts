@@ -9,10 +9,10 @@ import type { EditorIssue } from "./EditorIssue.js";
 import type { EditorState } from "./EditorState.js";
 import { variantDesign } from "./variantDesign.js";
 
-/** The design a render shows, why the chosen settings section could not be applied, and what it only warns about. */
+/** The design a render shows, why the chosen variant or settings section could not be applied, and what it only warns about. */
 export interface EffectiveDesign {
   readonly design: Design;
-  /** Why the section does not apply; the design is then rendered as it is. */
+  /** Why the variant or the section does not apply; the design is then rendered as it is. */
   readonly issues: readonly EditorIssue[];
   /** Props the section lacks or that nothing declares; the preview is not blocked. */
   readonly warnings: readonly EditorIssue[];

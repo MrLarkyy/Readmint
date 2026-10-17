@@ -1,12 +1,13 @@
 import type { ComponentPropDefinition, ComponentPropValue } from "@readmint/format";
 import { declaredProps, layerValue, undeclaredProps } from "./declaredProps.js";
 import type { EditorState } from "./EditorState.js";
+import { variantDesign } from "./variantDesign.js";
 
 /** One prop the design declares, as the settings form shows it. */
 export interface SettingsField {
   readonly name: string;
   readonly definition: ComponentPropDefinition;
-  /** What renders: the section's value, else the layer's own, else the definition's default; none when in none. */
+  /** What renders: the section's value, else the applied variant's, else the layer's own, else the definition's default; none when in none. */
   readonly value?: ComponentPropValue;
   /** Where `value` comes from: the section, the chosen variant (which sits under the section), the top-level component layer's own props, the definition's default, or nowhere. */
   readonly from: "settings" | "variant" | "layer" | "default" | "none";
@@ -15,7 +16,8 @@ export interface SettingsField {
 /**
  * The fields of the form for the chosen section: every prop a top-level component of the design declares (declaration
  * order, each once), and the section's props nothing declares (`unknown`, at most `DesignLimits.maxIssues`, with
- * `truncated` when there are more). No section chosen: nothing.
+ * `truncated` when there are more). The chosen variant's value counts only when the variant applies to the design.
+ * No section chosen: nothing.
  */
 export function settingsFields(state: EditorState): {
   fields: SettingsField[];
@@ -26,13 +28,12 @@ export function settingsFields(state: EditorState): {
   const section = settings?.section === undefined ? undefined : settings.sections[settings.section];
   if (section === undefined) return { fields: [], unknown: [], truncated: false };
   const declared = declaredProps(state.design);
+  const variant = variantDesign(state).issues.length === 0 ? state.variant : undefined;
   const fields: SettingsField[] = [];
   for (const [name, definition] of declared) {
     const own = layerValue(state.design, name);
     const variantValue =
-      state.variant !== undefined && Object.hasOwn(state.variant.props, name)
-        ? state.variant.props[name]
-        : undefined;
+      variant !== undefined && Object.hasOwn(variant.props, name) ? variant.props[name] : undefined;
     if (Object.hasOwn(section, name)) {
       fields.push({
         name,

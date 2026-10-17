@@ -7,6 +7,7 @@ import {
   type RasterRequest,
   type RasterResponse,
   type RasterWorker,
+  removeLayer,
   type SavedImage,
 } from "../src/index.js";
 import { noDarkDesign, settingsDesign, themeDesign } from "./settingsDesign.js";
@@ -174,4 +175,29 @@ test("a variant that does not fit shows an issue and refuses the raster export",
   expect(requests).toHaveLength(0);
   expect(find('[aria-label="Issues"]').textContent).toContain("needs the dark variant to apply");
   expect(images).toHaveLength(0);
+});
+
+test("the settings form follows the variant: Dark shows its value greyed, Light the default again", async () => {
+  await upload("load-settings", "settings.json", JSON.stringify({ card: { w: 3 } }));
+  await userEvent.selectOptions(find('select[data-action="settings-section"]'), "card");
+  await current().settled();
+  const theme = () => find('[data-prop="theme"]');
+  const value = () => (theme().querySelector("select") as HTMLSelectElement).value;
+  expect(value()).toBe("light");
+  await choose("dark");
+  expect(value()).toBe("dark");
+  expect(theme().classList).toContain("rm-default");
+  await choose("");
+  expect(value()).toBe("light");
+});
+
+test("the switch stays enabled after the design loses theme, and Light clears the variant", async () => {
+  await choose("dark");
+  current().dispatch((state) => removeLayer(state, "/layers/0"));
+  await current().settled();
+  expect(variant().disabled).toBe(false);
+  expect(variant().value).toBe("dark");
+  await choose("");
+  expect(current().state.variant).toBeUndefined();
+  expect(variant().disabled).toBe(true);
 });

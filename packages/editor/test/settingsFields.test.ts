@@ -2,7 +2,7 @@ import type { Design } from "@readmint/format";
 import { expect, test } from "vitest";
 import { chooseSection, createEditorState, loadSettings, settingsFields } from "../src/index.js";
 import { setVariant } from "../src/index.js";
-import { settingsDesign, themeDesign } from "./settingsDesign.js";
+import { noDarkDesign, settingsDesign, themeDesign } from "./settingsDesign.js";
 
 const design: Design = {
   version: 0,
@@ -95,4 +95,17 @@ test("a prop the section lacks shows the variant's value while a variant is chos
   ]);
   const own = chooseSection(loadSettings(dark, '{"s": {"theme": "light"}}'), "s");
   expect(settingsFields(own).fields[0]).toMatchObject({ from: "settings", value: "light" });
+});
+
+test("a variant that does not apply to the design gives no value to the form", () => {
+  const state = chooseSection(
+    loadSettings(setVariant(createEditorState(noDarkDesign), "dark"), '{"s": {"w": 9}}'),
+    "s",
+  );
+  expect(
+    settingsFields(state).fields.map((field) => [field.name, field.from, field.value]),
+  ).toEqual([
+    ["theme", "default", "light"],
+    ["w", "settings", 9],
+  ]);
 });
