@@ -19,25 +19,6 @@
         },
         "fallback": ["nm"]
       },
-      "g": {
-        "family": "Geist",
-        "src": "fonts/Geist-Regular.ttf",
-        "weight": 400,
-        "licence": {
-          "embedding": "allowed",
-          "name": "OFL-1.1"
-        },
-        "fallback": ["n"]
-      },
-      "n": {
-        "family": "Noto Sans",
-        "src": "fonts/NotoSans-Regular.ttf",
-        "weight": 400,
-        "licence": {
-          "embedding": "allowed",
-          "name": "OFL-1.1"
-        }
-      },
       "nm": {
         "family": "Noto Sans Mono",
         "src": "fonts/NotoSansMono-Regular.ttf",

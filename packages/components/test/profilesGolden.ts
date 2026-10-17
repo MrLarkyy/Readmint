@@ -111,7 +111,8 @@ function emojiProfileData(): ReturnType<typeof sampleProfileData> {
  * contribution, the sections with personal texts left empty, the header with emoji no template font covers in the
  * name, bio, status and latest push (each emoji is dropped and takes no space; the spaces written between them stay,
  * so the status shows "Shipping", four spaces and the keycap's "1"), a repository card with a Cyrillic name and a
- * Greek description (drawn by every template through its Noto Sans fallbacks), a pinscreen card with a Greek name and a horizon header with a Greek location and one with a CJK name
+ * Greek description (drawn by every template through its Noto Sans and Noto Sans Mono fallbacks), a pinscreen card with
+ * a Greek name, a horizon header with a Greek location in its monospaced text, a repository card with a CJK name
  * (always dropped, never a gap), and a mid frame.
  */
 export function profileGoldenSuite(template: ProfileTemplate): GoldenSuite<ProfileRender> {

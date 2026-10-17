@@ -232,7 +232,7 @@ A folder holds, per section, `<section>.json` and its dark twin `<section>.dark.
 - **No user in a design.** No design contains a login, name, address or personal text; every other text comes from
   `github.*`, so another account's data needs no edit. The render date is `github.contributions.to`: a render reads no
   clock, so times are days ("today", "yesterday", "3 days ago", read from the calendar's own dates), never hours.
-- **Fonts.** Archivo (Omnibus-Type), Noto Sans (Noto Project), Geist and Geist Mono (Vercel) are SIL OFL 1.1 static TTFs, byte copies of the
+- **Fonts.** Archivo (Omnibus-Type), Noto Sans and Noto Sans Mono (Noto Project), Geist and Geist Mono (Vercel) are SIL OFL 1.1 static TTFs, byte copies of the
   upstream files (origin, version and sha256 in each `fonts/README.md`), none with a Reserved Font Name and all with
   OS/2 `fsType` 0, so the renderer embeds a subset of the glyphs a section draws. The renderer reads static faces, not
   variable axes, so the prototype's Archivo widths are the static width instances: stretch 62-70 % is ExtraCondensed,
