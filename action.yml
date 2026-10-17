@@ -44,6 +44,9 @@ inputs:
   language-commit-cap:
     description: Own commits (a whole number 0..2000; empty or 0 = off) read, one GitHub request each, to fill github.languagesAuthored with the lines you added per language; the run takes about 0.3-0.6 seconds per commit; with your own token it also counts private repositories (language names and sums only, no repository name); a slow run ends the reading early with a warning; not with data-file.
     required: false
+  cache-dir:
+    description: Folder (absolute, or relative to the workspace) where the GitHub load keeps its answers and the commits read between runs, so a later run sends no request for them, e.g. restored by actions/cache; it never holds the token; not with data-file; not the workspace itself or inside output-dir.
+    required: false
   data-file:
     description: Fixture data JSON file (the CLI `--data` format) used instead of loading GitHub data; a file inside the workspace.
     required: false

@@ -5,6 +5,8 @@ import {
   type GitHubPartialPart,
   loadGitHubData,
 } from "@readmint/data-github";
+import { FileCache } from "@readmint/data/node";
+import { checkCacheDir } from "./checkCacheDir.js";
 import { CliError } from "./CliError.js";
 import { ExitCode } from "./ExitCode.js";
 
@@ -31,6 +33,8 @@ export interface LiveDataOptions {
   readonly excludeRepositories?: readonly string[];
   /** Own commits read for `github.languagesAuthored`, 0 to 2000 (default 0). */
   readonly languageCommitCap?: number;
+  /** Absolute folder where the GitHub load keeps its answers and the commits read between runs; created when missing. */
+  readonly cacheDir?: string;
   /** The global `fetch` when absent. */
   readonly fetch?: GitHubFetch;
   /** Ends the load early, besides the `liveDataTimeoutMs` limit. */
@@ -46,6 +50,7 @@ export interface LiveDataOptions {
  * and ends as a partial `authored` while the rest of the data is kept.
  */
 export async function loadLiveData(options: LiveDataOptions): Promise<Record<string, unknown>> {
+  if (options.cacheDir !== undefined) await checkCacheDir(options.cacheDir);
   const total = liveDataTimeout(options.languageCommitCap ?? 0);
   const timeout = AbortSignal.timeout(total);
   try {
@@ -61,6 +66,9 @@ export async function loadLiveData(options: LiveDataOptions): Promise<Record<str
             languageCommitCap: options.languageCommitCap,
             languageSignal: AbortSignal.timeout(total - liveDataAuthoredMarginMs),
           }),
+      ...(options.cacheDir === undefined
+        ? {}
+        : { cache: new FileCache({ directory: options.cacheDir }) }),
       signal: options.signal === undefined ? timeout : AbortSignal.any([timeout, options.signal]),
       ...(options.fetch === undefined ? {} : { fetch: options.fetch }),
     });

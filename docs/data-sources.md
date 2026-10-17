@@ -244,7 +244,7 @@ A URL load without headers uses `cache` when one is given: the key is `dataSourc
 version, the URL and `maxBytes` (no header name or value), the value the response text, parsed and checked again on
 read (a bad entry is a miss). A URL load with headers never reads or writes the cache, since its answer depends on a
 credential and a cache may be shared. The key and the entry name never hold the URL or its query; the cached body is as sensitive as
-the URL. The CLI and the Action pass no cache: each run loads the documents again.
+the URL. The CLI and the Action pass no cache to JSON and feed loads (their cache folder serves GitHub data only): each run loads the documents again.
 
 ### Editor
 
@@ -358,7 +358,7 @@ from the source itself becomes `invalid-response` "The feed load failed.".
 With a `cache` the raw document is stored under `dataSourceCacheKey` of the namespace, the data version, the URL and
 `maxBytes`, never `limit`, and only once it parsed: a cached feed is parsed again on every read, under the same rules
 and with the limit of that load (a bad entry is a miss). The key and the entry name never hold the URL or its query; the
-cached feed is as sensitive as the URL. The CLI and the Action pass no cache: each run loads the feeds again.
+cached feed is as sensitive as the URL. The CLI and the Action pass no cache to JSON and feed loads (their cache folder serves GitHub data only): each run loads the feeds again.
 
 ### Feeds in the editor
 

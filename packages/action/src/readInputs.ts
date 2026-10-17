@@ -210,6 +210,13 @@ export function readInputs(env: Env): ActionConfig {
       "input language-commit-cap applies to GitHub data only; it cannot go with data-file",
     );
   }
+  const cacheDir = value("cache-dir");
+  // eslint-disable-next-line no-control-regex -- control characters are what is refused here
+  if (/[ -]/.test(cacheDir)) {
+    problems.push(`input cache-dir ${quoteForLog(cacheDir)} contains a control character`);
+  } else if (cacheDir !== "" && dataFile !== "") {
+    problems.push("input cache-dir applies to GitHub data only; it cannot go with data-file");
+  }
   if (problems.length > 0) throw new ActionError("input", problems);
   return {
     designs,
@@ -223,6 +230,7 @@ export function readInputs(env: Env): ActionConfig {
     login: value("login"),
     ...(excludeRepositories.length === 0 ? {} : { excludeRepositories }),
     ...(capText === "" || cap === 0 ? {} : { languageCommitCap: cap }),
+    ...(cacheDir === "" ? {} : { cacheDir }),
     ...(dataFile === "" ? {} : { dataFile }),
     ...(dataJson.length === 0 ? {} : { dataJson }),
     ...(dataFeed.length === 0 ? {} : { dataFeed }),

@@ -366,6 +366,8 @@ Strings are otherwise kept as GitHub returns them; the renderer escapes them.
 
 ## Cache
 
+The CLI (`--cache-dir`) and the Action (`cache-dir`) pass a `FileCache` on a folder the host chooses.
+
 With a `cache`, the validated GitHub responses of a load (profile, pages, activity and weeks) are stored as one entry and a later load within
 `cacheTtlSeconds` sends only the viewer request. A hit is
 validated again and rebuilt by the current code, so a changed loader needs no invalidation, and an entry that fails
