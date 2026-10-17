@@ -1,6 +1,7 @@
 import pixelmatch from "pixelmatch";
 import { PNG } from "pngjs";
 import type { GoldenTolerance } from "../GoldenTolerance.js";
+import { tileInkShift } from "./tileInkShift.js";
 
 export const maxPngSide = 4096;
 
@@ -8,6 +9,8 @@ export interface PngComparison {
   pass: boolean;
   diffPixels: number;
   totalPixels: number;
+  /** Worst 16 px tile ink change as a share of the tile; 0 when the images were not comparable. */
+  inkShift: number;
   reason?: string;
   diffPng?: Buffer;
 }
@@ -42,16 +45,29 @@ export function comparePng(
     includeAA: tolerance.includeAA,
   });
   const totalPixels = a.width * a.height;
-  return {
-    pass: diffPixels / totalPixels <= tolerance.maxDiffRatio,
+  const ink = tileInkShift(a, b);
+  const ratioOk = diffPixels / totalPixels <= tolerance.maxDiffRatio;
+  const inkOk = ink.shift <= tolerance.maxTileInk;
+  const comparison: PngComparison = {
+    pass: ratioOk && inkOk,
     diffPixels,
     totalPixels,
+    inkShift: ink.shift,
     diffPng: PNG.sync.write(diff),
   };
+  if (!inkOk) {
+    const pixels = ratioOk ? "" : `; ${String(diffPixels)} of ${String(totalPixels)} pixels differ`;
+    comparison.reason = `ink of the 16x16 tile at ${String(ink.x)},${String(ink.y)} changed by ${percent(ink.shift)} % (limit ${percent(tolerance.maxTileInk)} %)${pixels}`;
+  }
+  return comparison;
+}
+
+function percent(share: number): string {
+  return (share * 100).toFixed(2);
 }
 
 function failure(reason: string): PngComparison {
-  return { pass: false, diffPixels: 0, totalPixels: 0, reason };
+  return { pass: false, diffPixels: 0, totalPixels: 0, inkShift: 0, reason };
 }
 
 // The header is read before decoding so an oversized image never gets allocated.

@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { defaultNodeTolerance, resolveTolerance } from "@readmint/golden";
 import { comparePng } from "@readmint/golden/node";
+import { pathInkTolerance } from "./pathInkTolerance.js";
 import { describe, expect, test } from "vitest";
 import formats, { formatPairNames } from "./renderer-fonts-formats.golden.js";
 import fonts, { fontPairNames } from "./renderer-fonts.golden.js";
@@ -20,7 +21,10 @@ describe.each([
       const comparison = comparePng(
         png("font"),
         png("paths"),
-        resolveTolerance(suite.tolerance, defaultNodeTolerance),
+        resolveTolerance(
+          { maxTileInk: pathInkTolerance, ...suite.tolerance },
+          defaultNodeTolerance,
+        ),
       );
       expect(comparison.reason).toBeUndefined();
       expect(comparison.diffPixels).toBe(0);
