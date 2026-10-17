@@ -145,7 +145,8 @@ describe.each(cases)("%s %s", (template, section) => {
         for (const [property, track] of tracks) {
           if ((track?.keyframes.length ?? 0) > 8) long.push(`${at} ${property}`);
           const offsets = track?.keyframes.map((keyframe) => keyframe.offset) ?? [];
-          const runsToEnd = (track?.duration ?? 0) * (track?.cycles ?? 1) >= timelineEnd;
+          const run = Number(track?.duration ?? 0) * Number(track?.cycles ?? 1);
+          const runsToEnd = run >= timelineEnd;
           if (track?.cycles !== undefined && runsToEnd && offsets.slice(-2).join() === "1,1")
             jumpAtEnd.push(`${at} ${property}`);
         }
