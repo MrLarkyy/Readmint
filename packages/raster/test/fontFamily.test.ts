@@ -94,13 +94,15 @@ interface Face {
   readonly family: string;
   readonly bytes: Uint8Array;
   readonly weight: number;
+  /** The rule's `font-style`, normal when absent. */
+  readonly style?: string;
 }
 
 function facesSvg(faces: readonly Face[], text: string): string {
   const rules = faces
     .map(
       (face) =>
-        `@font-face{font-family:"${face.family}";src:url(${dataUri("font/ttf", face.bytes)});font-weight:${String(face.weight)};font-style:normal}`,
+        `@font-face{font-family:"${face.family}";src:url(${dataUri("font/ttf", face.bytes)});font-weight:${String(face.weight)};font-style:${face.style ?? "normal"}}`,
     )
     .join("");
   return `<svg xmlns="http://www.w3.org/2000/svg" width="120" height="28"><rect width="120" height="28" fill="#ffffff"/><defs><style>${rules}</style></defs>${text}</svg>`;
@@ -204,6 +206,32 @@ describe("faces of one family", () => {
     expect(picked(three, 600)).toBe("710 normal");
     expect(picked([face(300, fontBytes), face(600, extraBoldBytes)], 450)).toBe("310 normal");
     expect(picked(three, 500, "italic")).toBe("510 normal");
+  });
+
+  test("an italic or oblique ask takes the face of the nearest style a rule has", () => {
+    // The weight inside each face tells the picked rule apart: 510 normal, 520 italic, 530 oblique.
+    const face = (style: string, inside: number) => ({
+      family: "Brand",
+      bytes: atWeight(fontBytes, inside),
+      weight: 500,
+      style,
+    });
+    const picked = (faces: readonly Face[], style: string): string => {
+      const svg = facesSvg(
+        faces,
+        word(`font-family="'Brand'" font-weight="500" font-style="${style}"`),
+      );
+      const tag = /<text\s[^>]*>/.exec(matchFontFamilies(svg, rasterFonts(svg)))?.[0] ?? "";
+      return /font-weight="(\d+)"/.exec(tag)?.[1] ?? "";
+    };
+    const normal = face("normal", 510);
+    const italic = face("italic", 520);
+    const oblique = face("oblique", 530);
+    expect(picked([normal, italic], "italic")).toBe("520");
+    expect(picked([normal, oblique], "italic")).toBe("530");
+    expect(picked([normal, italic], "oblique")).toBe("520");
+    expect(picked([normal, oblique, italic], "italic")).toBe("520");
+    expect(picked([normal, italic, oblique], "oblique")).toBe("530");
   });
 
   test("a tspan whose family no font carries is a raster-font error", async () => {
