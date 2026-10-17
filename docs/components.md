@@ -407,11 +407,11 @@ seconds of work for each export format.
   entries. The largest
   count of a year needs none: `days | max("count")` is one binding ([expressions.md](expressions.md)).
 - **Text without measuring.** Geist Mono advances 0.6 em, so a token of the Pinscreen code sits at `columns x 6.9`
-  pixels; free text is cut by character count with `truncate` (the header, log, stack and repository texts, the footer's
-  contact label) and held in a `clip` group. Two texts are cut by drawn width instead (`truncateWidth`): the header's
-  latest-push ticker, to the room the status bar leaves it, and the footer's contact text, to 300 px after `truncate(34)`;
-  the header's branch chip and status message and the stack's items are cut by count and then measured with `textWidth`
-  to place what follows them. A clip group (or other layer of its own) lying
+  pixels; short free text is cut by character count with `truncate` (the header, log, stack and repository texts, the
+  footer's contact label), and longer prose that is not cut (the header's role and intro, the footer's headline and note)
+  is held in a `clip` group. Two texts are cut by drawn width instead (`truncateWidth`): the header's latest-push
+  ticker (also in a `clip` group), to the room the status bar leaves it, and the footer's contact text, to 300 px after `truncate(34)`; the header's branch chip and status message and the stack's items are cut by count and
+  then measured with `textWidth` to place what follows them. A clip group (or other layer of its own) lying
   wholly off the canvas draws nothing there; the renderer leaves it out ([renderer.md](renderer.md#layers)), so such a
   design still renders and rasterizes. A few far layers are still written (a stroke whose joins are padded by twice its
   width (at an arc, a nearly straight curve or a short segment), a path whose control points or arc box reach the canvas
