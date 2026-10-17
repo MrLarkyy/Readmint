@@ -10,6 +10,7 @@ import {
 } from "./profileDesigns.js";
 import { profileExampleProps } from "@readmint/examples/props";
 import {
+  longLanguageProfileData,
   longLocationProfileData,
   longTextProfileData,
   noPushProfileData,
@@ -45,6 +46,11 @@ const locationHeaders: readonly ProfileTemplate[] = ["year-ring"];
 /** The sections that fit long names, messages and descriptions to their boxes, pinned with realistic long texts. */
 const longTextSections: Readonly<Partial<Record<ProfileTemplate, readonly ProfileSection[]>>> = {
   "year-ring": ["recent", "repo-1"],
+};
+
+/** The sections whose Languages row fits the names by drawn width, pinned with names GitHub really uses. */
+const languageSections: Readonly<Partial<Record<ProfileTemplate, readonly ProfileSection[]>>> = {
+  "year-ring": ["index"],
 };
 
 /** 64 characters of a real place name, and 255 (GitHub's limit) of the widest capital. */
@@ -154,6 +160,12 @@ export function profileGoldenSuite(template: ProfileTemplate): GoldenSuite<Profi
         themes.map((theme) => ({
           name: `${section}-long-text-${theme}`,
           input: render(section, theme, { data: longTextProfileData() }),
+        })),
+      ),
+      ...(languageSections[template] ?? []).flatMap((section) =>
+        themes.map((theme) => ({
+          name: `${section}-long-languages-${theme}`,
+          input: render(section, theme, { data: longLanguageProfileData() }),
         })),
       ),
       {

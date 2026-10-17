@@ -205,7 +205,7 @@ describe("--props with a shipped template", () => {
     expect(height(merged.stdout)).toBe("147");
   });
 
-  test("a data error in year-ring index prints as without the file (languagesAfter 2, repeat item 2)", async () => {
+  test("a data error in year-ring index prints as without the file", async () => {
     const sample = sampleProfileData();
     const languages = (
       [
@@ -221,7 +221,9 @@ describe("--props with a shipped template", () => {
     const plain = await tree.run(args, io);
     const merged = await tree.run([...args, "--props", "settings.json"], io);
     expect(plain.code).toBe(ExitCode.invalid);
-    expect(plain.stderr).toMatch(/needs two numbers, got string and number .*repeat item 2\)/);
+    expect(plain.stderr).toMatch(
+      /\* needs two numbers, got string and number at column \d+ \(type\)/,
+    );
     expect(merged).toEqual(plain);
   });
 });

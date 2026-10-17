@@ -150,10 +150,12 @@ Five complete designs that show what the format can do; each is an ordinary desi
 - **Long and missing data.** Names are cut with `truncate`, counts shortened with `compact`, the language list shows
   six rows (`repeat` with `if: {{ i < 6 }}`; a dropped copy takes no slot) or a "No language data yet." line, and a
   streak of 0 days shows "No streak". In `year-ring`, the repository names and push messages of recent work and the
-  repository cards' names are cut to their box by drawn width (`truncateWidth`), and a card's description is capped
-  at the two lines its box shows (`maxLines`), so a long one ends with `…` inside its box. Golden images pin the light
-  and dark look of every template, the worst-case data (1024-character strings, 10^15 counts) and, for `year-ring`,
-  realistic long names, messages and descriptions in both themes.
+  repository cards' names, and the language names of the index Languages row (shared out by drawn width so the row
+  ends left of the bar; the percentages stay) are cut to their box by drawn width (`truncateWidth`), and a card's
+  description is capped at the two lines its box shows (`maxLines`), so a long one ends with `…` inside its box.
+  Golden images pin the light and dark look of every template, the worst-case data (1024-character strings, 10^15
+  counts) and, for `year-ring`, realistic long names, messages and descriptions in both themes
+  (`index-long-languages-light` and `-dark` for the language names).
 - **The sample data** the goldens render is synthetic (an invented account, `readmint-sample`), shaped like the
   data-github object.
 
@@ -421,7 +423,7 @@ the budget below. The repository slots weigh alike; `work` is 5 to 7 KB.
 | ----------- | ------- | ------ | ---------- |
 | `year-ring` | header  | 151 KB | 162 KB     |
 | `year-ring` | year    | 168 KB | 184 KB     |
-| `year-ring` | index   | 10 KB  | 34 KB      |
+| `year-ring` | index   | 10 KB  | 7 KB       |
 | `year-ring` | recent  | 28 KB  | 88 KB      |
 | `year-ring` | repo-1  | 16 KB  | 26 KB      |
 | `year-ring` | footer  | 10 KB  | 10 KB      |
