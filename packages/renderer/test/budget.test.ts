@@ -1,4 +1,4 @@
-import type { AnimationTrack, Design, Layer } from "@readmint/format";
+import type { AnimationTrack, Design, Layer, Orbit } from "@readmint/format";
 import { describe, expect, test } from "vitest";
 import { loadScale } from "../../../test-support/loadScale.js";
 import { RenderLimits, renderSvg } from "../src/index.js";
@@ -642,7 +642,7 @@ test.each([
 });
 
 describe("orbits (RM-111)", () => {
-  const orbit = {
+  const orbit: Orbit = {
     center: { x: 50, y: 50 },
     radius: 40,
     radiusY: 10,

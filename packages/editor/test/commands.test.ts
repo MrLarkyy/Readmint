@@ -1,4 +1,4 @@
-import { DesignLimits, type Design } from "@readmint/format";
+import { DesignLimits, type Design, type Orbit } from "@readmint/format";
 import { describe, expect, test } from "vitest";
 import {
   addLayer,
@@ -118,7 +118,7 @@ describe("resizeLayer", () => {
 });
 
 describe("a layer on an orbit", () => {
-  const orbit = { center: { x: 50, y: 50 }, radius: 30, radiusY: 10, angle: "{{ 45 }}" };
+  const orbit: Orbit = { center: { x: 50, y: 50 }, radius: 30, radiusY: 10, angle: "{{ 45 }}" };
   const placed = { ...rect, orbit };
 
   test("keeps its orbit as it is when another property is set or it is moved", () => {
