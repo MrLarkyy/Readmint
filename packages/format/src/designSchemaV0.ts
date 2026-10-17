@@ -88,6 +88,7 @@ function track(label: string, value: SchemaNode): ObjectNode {
     "duration?": bindable(numberIn(ValueRanges.animationDuration)),
     "delay?": bindable(numberIn(ValueRanges.animationTime)),
     "stagger?": bindable(numberIn(ValueRanges.animationTime)),
+    "cycles?": numberIn(ValueRanges.animationCycles),
     "easing?": easing,
   });
 }

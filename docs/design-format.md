@@ -99,7 +99,7 @@ Validation runs in this order and stops at the first stage with issues: source l
 
 Every numeric, colour and boolean property of the canvas, layers, styles, layouts and gradients is bindable, and so are
 keyframe values and track timing (`duration`, `delay`, `stagger`); asset and component-definition metadata, the
-timeline (`animation`), keyframe `offset`s, easings and an orbit's `fade` take literals only. Numbers must be finite: YAML `.inf` and `.nan` are rejected. Bindings are opaque here; the expression language
+timeline (`animation`), keyframe `offset`s, a track's `cycles`, easings and an orbit's `fade` take literals only. Numbers must be finite: YAML `.inf` and `.nan` are rejected. Bindings are opaque here; the expression language
 (`@readmint/expr`, [docs/expressions.md](expressions.md)) evaluates them, and the renderer checks the evaluated values
 against the same ranges (`ValueRanges` from `@readmint/format`, which the schema is built from). A binding that is exactly
 one `{{ }}` placeholder keeps the type of its value (`"{{ count }}"` is a number); any other string, such as
@@ -527,7 +527,8 @@ with `missing-property` at `/animation` (reported once).
 Animation never changes the layout: a stack or grid places the layer as if it did not move.
 
 **track**: `keyframes` (required, 2 to 32 `{ offset, value, easing? }`), `duration` (`B<integer 1..60000>` ms, default
-the timeline's), `delay` and `stagger` (`B<integer 0..60000>` ms, default 0), `easing` (default `linear`).
+the timeline's), `delay` and `stagger` (`B<integer 0..60000>` ms, default 0), `cycles` (a literal integer 1..1000,
+default 1), `easing` (default `linear`).
 
 - `offset` is a literal unit: the share of the track's `duration` at which the keyframe's value is reached. Offsets
   never decrease (a decreasing one is `range` at that offset); two equal offsets make a jump. Before its first keyframe
@@ -535,6 +536,17 @@ the timeline's), `delay` and `stagger` (`B<integer 0..60000>` ms, default 0), `e
 - A track starts at `delay + stagger x index`, where `index` is the copy's position in the layer's own `repeat` (0
   without one). Nested repeats, such as weeks and days of a calendar, bind the delay instead:
   `"delay": "{{ (week * 7 + day) * 8 }}"` with `index: "week"` and `index: "day"` on the two repeats.
+- `cycles` plays the keyframes that many times back to back, each cycle lasting `duration` (as a CSS iteration does), so
+  the track runs `duration x cycles` from its start; `"duration": 2000, "cycles": 30` fills a 60000 ms timeline. Cycle
+  `i` spans `start + i x duration` to `start + (i + 1) x duration` and plays its keyframes as a track does. A cycle
+  whose last offset is below 1 holds its last value until it ends; one whose first offset is above 0 holds its first
+  value from its start (holds come only between cycles: before the first and after the last the track holds as above).
+  Where the keyframe ending a cycle and the one starting the next fall on the same moment with equal values, only the
+  later one is kept (its easing leads on), so a cycle that ends where it starts joins the next seamlessly; different
+  values jump, like two equal offsets. A binding, a fraction or a value outside 1..1000 fails (`type` for a binding
+  or a fraction, `range` outside the bounds, at `.../cycles`). At 100 % of the timeline only the later of two keyframes
+  stays, so a run that ends at the timeline end should not end with a jump. Every cycle counts against the renderer's keyframe limit:
+  the track charges `keyframes x cycles` before any keyframe is resolved ([renderer.md](renderer.md#limits)).
 - A track that runs past the end of the timeline is cut there: its last keyframe becomes the value it has at that
   moment, and the render warns `animation-cut` once per track. Copy counts come from data, so this is a warning, not a
   failure. The segment before the cut keeps its easing, played over the shorter span up to the end.
@@ -546,6 +558,45 @@ the timeline's), `delay` and `stagger` (`B<integer 0..60000>` ms, default 0), `e
 - `draw` needs path data without `A`/`a` commands (`pattern` at `.../animate/draw`): an arc's exact length needs
   trigonometry, which the renderer never uses ([renderer.md](renderer.md#animation)). In a template `d` the text
   outside the placeholders is checked here; an arc the placeholders give is a `range` issue at the track when rendering.
+
+A pulse repeats one short cycle instead of writing out every beat: a ring that grows and fades every 2 s, all minute
+long (opacity ends a cycle at 0 and the scale at 2.5, and each cycle starts again at 0 and 1, so the scale jumps back at
+the boundary; the jump from opacity 0 to 0.7 at each start is two equal offsets). The scale track does not end with a
+jump back to 1: the run reaches the end of the timeline, where only the later of two keyframes stays.
+
+```json
+{
+  "animation": { "duration": 60000 },
+  "layers": [
+    {
+      "type": "ellipse",
+      "width": 8,
+      "height": 8,
+      "fill": "none",
+      "stroke": "#2b4bff",
+      "animate": {
+        "opacity": {
+          "keyframes": [
+            { "offset": 0, "value": 0 },
+            { "offset": 0, "value": 0.7 },
+            { "offset": 1, "value": 0 }
+          ],
+          "duration": 2000,
+          "cycles": 30
+        },
+        "scale": {
+          "keyframes": [
+            { "offset": 0, "value": 1 },
+            { "offset": 1, "value": 2.5 }
+          ],
+          "duration": 2000,
+          "cycles": 30
+        }
+      }
+    }
+  ]
+}
+```
 
 How the timeline becomes CSS animation and static frames: [renderer.md](renderer.md#animation).
 
@@ -698,5 +749,8 @@ item, `let` and component instance copies one more local and costs one more step
 The line cap of a text (`maxLines`, RM-123) was added to v0 as an optional text-layer property, with no new issue
 code, so no design needs migrating and every design without it draws the same SVG; a reader older than RM-123 (Action
 v0.3.0 and older) rejects `maxLines` as an `unknown-property`.
+A track's `cycles` (RM-143) was added to v0 as an optional literal, with no new issue code, so no design needs
+migrating and every design without it (or with `cycles: 1`) draws the same SVG; a reader older than RM-143 rejects
+`cycles` as an `unknown-property`.
 The grammar inside bindings is
 the expression language v0 of `@readmint/expr`, described in [docs/expressions.md](expressions.md).

@@ -9,6 +9,7 @@ import {
 } from "@readmint/format";
 import type { Scope } from "@readmint/expr";
 import { buildTimeline } from "./animationTimeline.js";
+import { cycleKeyframes } from "./cycleKeyframes.js";
 import { bezierEasing, keywordEasing, linearEasing, type EasingCurve } from "./easing.js";
 import {
   elementProperties,
@@ -136,7 +137,8 @@ function resolveTrack(
   if (!Array.isArray(list) || list.length < 2 || list.length > maxKeyframes) {
     context.fail(keyframesPath, "type", `a track needs 2 to ${String(maxKeyframes)} keyframes`);
   }
-  context.countAnimationKeyframes(path, list.length);
+  const cycles = resolveCycles(context, track.cycles, pointer(path, "cycles"), scope);
+  context.countAnimationKeyframes(path, list.length * cycles);
   const time = (key: "delay" | "stagger") =>
     resolveOptionalNumber(
       context,
@@ -156,7 +158,7 @@ function resolveTrack(
   const start = time("delay") + time("stagger") * copy;
   const trackEasing = resolveEasing(context, track.easing, pointer(path, "easing")) ?? linearEasing;
   let previous = 0;
-  return (list as AnimationTrack<unknown>["keyframes"]).map((keyframe, index) => {
+  const cycle = (list as AnimationTrack<unknown>["keyframes"]).map((keyframe, index) => {
     const at = pointer(keyframesPath, index);
     const offset = resolveNumber(
       context,
@@ -170,11 +172,26 @@ function resolveTrack(
     }
     previous = offset;
     return {
-      time: start + offset * duration,
+      time: offset * duration,
       value: resolveValue(context, property, keyframe.value, pointer(at, "value"), scope, dash),
       easing: resolveEasing(context, keyframe.easing, pointer(at, "easing")) ?? trackEasing,
     };
   });
+  return cycleKeyframes(cycle, start, duration, cycles);
+}
+
+/** A literal integer, never a binding; checked here too, as a design the renderer gets may be unvalidated. */
+function resolveCycles(
+  context: RenderContext,
+  cycles: unknown,
+  path: string,
+  scope: Scope,
+): number {
+  if (cycles === undefined) return 1;
+  if (typeof cycles !== "number") {
+    context.fail(path, "type", `expected a literal number of cycles, got ${echo(cycles)}`);
+  }
+  return resolveNumber(context, cycles, path, ValueRanges.animationCycles, scope);
 }
 
 /** A number in the property's range, a colour as r, g, b, alpha, or for `draw` the dash offset it needs. */

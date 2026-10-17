@@ -659,9 +659,135 @@ test.each([
   });
   // 96 keyframes a copy: the 1042nd copy (row 1, item 41) crosses 100000.
   expect(result.ok ? "" : result.issues[0]?.message).toBe(
-    "this track brings the render to 100032 animation keyframes; at most 100000 are allowed (every repeat copy counts) (repeat item 1, repeat item 41)",
+    "this track brings the render to 100032 animation keyframes; at most 100000 are allowed (every repeat copy and cycle counts) (repeat item 1, repeat item 41)",
   );
   expect(elapsed).toBeLessThan(1000 * scale);
+});
+
+describe("cycles (RM-143)", () => {
+  const pulse = (cycles: unknown, duration = 100): AnimationTrack<number> =>
+    ({
+      keyframes: [
+        { offset: 0, value: 0 },
+        { offset: 0.5, value: 1 },
+        { offset: 1, value: 0 },
+      ],
+      duration,
+      cycles,
+    }) as AnimationTrack<number>;
+  const one = (track: AnimationTrack<number>, timeline = 60_000): Design => ({
+    version: 0,
+    canvas: { width: 10, height: 10 },
+    animation: { duration: timeline },
+    layers: [{ type: "rect", width: 1, height: 1, animate: { opacity: track } }],
+  });
+
+  test("a track charges its keyframes once per cycle", () => {
+    for (const time of [undefined, 500]) {
+      const at = time === undefined ? {} : { time };
+      const fits = renderSvg(one(pulse(30)), { limits: { maxAnimationKeyframes: 3 * 30 }, ...at });
+      expect(fits.ok).toBe(true);
+      const over = renderSvg(one(pulse(30)), {
+        limits: { maxAnimationKeyframes: 3 * 30 - 1 },
+        ...at,
+      });
+      expect(over).toMatchObject({
+        ok: false,
+        issues: [{ path: "/layers/0/animate/opacity", code: "too-large" }],
+      });
+      expect(over.ok ? "" : over.issues[0]?.message).toContain(
+        "90 animation keyframes; at most 89",
+      );
+    }
+  });
+
+  test.each([
+    ["the animated SVG", undefined],
+    ["a frame", 500],
+  ] as const)("10000 copies of 32 keyframes x 1000 cycles stop %s fast", (_name, time) => {
+    const design: Design = {
+      version: 0,
+      canvas: { width: 10, height: 10 },
+      animation: { duration: 60_000 },
+      layers: [
+        {
+          type: "rect",
+          width: 1,
+          height: 1,
+          repeat: { each: "{{ items }}" },
+          animate: { opacity: { ...longTrack((index) => index % 2), cycles: 1000 } },
+        },
+      ],
+    };
+    const data = { items: Array.from({ length: 10_000 }, (_, index) => index) };
+    // 32000 keyframes a copy: the fourth crosses 100000, the first any limit below 32000
+    for (const [limits, count] of [
+      [{}, 128_000],
+      [{ maxAnimationKeyframes: 31_999 }, 32_000],
+    ] as const) {
+      const {
+        value: result,
+        ms: elapsed,
+        scale,
+      } = timed(() => renderSvg(design, { data, limits, ...(time === undefined ? {} : { time }) }));
+      expect(result).toMatchObject({
+        ok: false,
+        issues: [{ path: "/layers/0/animate/opacity", code: "too-large" }],
+      });
+      expect(result.ok ? "" : result.issues[0]?.message).toContain(
+        `brings the render to ${String(count)} animation keyframes`,
+      );
+      expect(elapsed).toBeLessThan(1000 * scale);
+    }
+  });
+
+  test.each([
+    [1e9, "range"],
+    [0, "range"],
+    [1001, "range"],
+    [-1, "range"],
+    [Number.NaN, "type"],
+    [Infinity, "type"],
+    [2.5, "type"],
+    ["3", "type"],
+    ["{{ 3 }}", "type"],
+    [{}, "type"],
+    [null, "type"],
+  ] as const)("unvalidated cycles of %s fail %s before a keyframe resolves", (cycles, code) => {
+    // the keyframe value is out of range too: the cycles are checked first
+    const track = {
+      ...pulse(cycles),
+      keyframes: [
+        { offset: 0, value: 5 },
+        { offset: 1, value: 0 },
+      ],
+    };
+    for (const time of [undefined, 0]) {
+      const result = renderSvg(one(track), {
+        ...(time === undefined ? {} : { time }),
+      });
+      expect(result).toMatchObject({
+        ok: false,
+        issues: [{ path: "/layers/0/animate/opacity/cycles", code }],
+      });
+    }
+  });
+
+  test("32 keyframes x 1000 cycles of 1 ms render deterministically, one position step apart", () => {
+    const track = { ...longTrack((index) => index % 2), duration: 1, stagger: 0, cycles: 1000 };
+    const design = one(track);
+    const { value: first, ms: elapsed, scale } = timed(() => renderSvg(design));
+    expect(elapsed).toBeLessThan(1000 * scale);
+    if (!first.ok) throw new Error(JSON.stringify(first.issues));
+    const second = renderSvg(design);
+    expect(second.ok && second.svg).toBe(first.svg);
+    const positions = [...first.svg.matchAll(/([\d.]+)%/gu)].map((match) => Number(match[1]));
+    expect(positions.length).toBeGreaterThan(30_000);
+    for (let index = 1; index < positions.length; index++) {
+      expect(positions[index] ?? 0).toBeGreaterThan(positions[index - 1] ?? 0);
+    }
+    expect(positions.at(-1)).toBe(100);
+  });
 });
 
 describe("orbits (RM-111)", () => {

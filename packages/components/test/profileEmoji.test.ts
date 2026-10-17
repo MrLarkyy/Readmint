@@ -168,7 +168,8 @@ describe("emoji no template font covers", () => {
       expect(accented(without)).toBe(0);
       expect(without).toContain(">status<");
       const withMessage = renderProfile({ template: "horizon", design, data: withStatus("busy") });
-      expect(accented(withMessage)).toBe(3);
+      // the dot and its pulsing ring
+      expect(accented(withMessage)).toBe(2);
       const baseline = (svg: string) => {
         const match =
           /translate\(580 ([\d.]+)\)" clip-path="[^"]*"><g transform="translate\(-580 -226\)">.*?<tspan x="580 [^"]*" y="([\d.]+)">Open to/u.exec(

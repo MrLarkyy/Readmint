@@ -1220,3 +1220,50 @@ describe("a text layer's line cap (maxLines, RM-123)", () => {
     ]);
   });
 });
+
+describe("animation cycles (RM-143)", () => {
+  const cycled = (property: string, cycles: unknown, value: unknown = 0) => ({
+    ...base(),
+    animation: { duration: 1000 },
+    layers: [
+      rect({
+        animate: {
+          [property]: {
+            keyframes: [
+              { offset: 0, value },
+              { offset: 1, value },
+            ],
+            cycles,
+          },
+        },
+      }),
+    ],
+  });
+
+  test.each([1, 1000])("%d cycles are valid", (cycles) => {
+    expect(validateDesign(cycled("opacity", cycles)).ok).toBe(true);
+  });
+
+  test.each(["opacity", "x", "y", "scale", "rotation"])("a %s track takes cycles", (property) => {
+    expect(validateDesign(cycled(property, 3)).ok).toBe(true);
+  });
+
+  test.each(["fill", "stroke"])("a %s colour track takes cycles", (property) => {
+    expect(validateDesign(cycled(property, 3, "#0969da")).ok).toBe(true);
+  });
+
+  test.each([0, 1001, -1])("%d cycles are out of range", (cycles) => {
+    expect(issuesOf(cycled("opacity", cycles)).issues).toMatchObject([
+      { path: "/layers/0/animate/opacity/cycles", code: "range" },
+    ]);
+  });
+
+  test.each([1.5, "{{ 3 }}", "3", true, null])(
+    "cycles of %j are not a literal integer",
+    (cycles) => {
+      expect(issuesOf(cycled("opacity", cycles)).issues).toMatchObject([
+        { path: "/layers/0/animate/opacity/cycles", code: "type" },
+      ]);
+    },
+  );
+});

@@ -3,7 +3,7 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { defaultNodeTolerance } from "@readmint/golden";
 import { comparePng, rasterizeSvg } from "@readmint/golden/node";
-import { validateDesign, type Design } from "@readmint/format";
+import { validateDesign, type AnimationTrack, type Design, type Layer } from "@readmint/format";
 import { renderSvg, RenderLimits } from "@readmint/renderer";
 import { describe, expect, test } from "vitest";
 import { profileTemplates, type ProfileSection, type ProfileTemplate } from "../src/index.js";
@@ -129,6 +129,38 @@ describe.each(cases)("%s %s", (template, section) => {
       ...light,
       layers: [{ ...root, props: { ...root.props, theme: "dark" } }, ...light.layers.slice(1)],
     });
+  });
+
+  test("plays a periodic motion as one short cycle: no long track, no layer copied for the keyframe cap", () => {
+    const long: string[] = [];
+    const copied: string[] = [];
+    const jumpAtEnd: string[] = [];
+    const timelineEnd = loadProfile(template, section).animation?.duration ?? 0;
+    const visit = (layers: readonly Layer[] | undefined, path: string) => {
+      layers?.forEach((layer, index) => {
+        const at = `${path}/${String(index)}`;
+        const animate = ("animate" in layer ? layer.animate : undefined) as
+          Readonly<Record<string, AnimationTrack<unknown> | undefined>> | undefined;
+        const tracks = Object.entries(animate ?? {});
+        for (const [property, track] of tracks) {
+          if ((track?.keyframes.length ?? 0) > 8) long.push(`${at} ${property}`);
+          const offsets = track?.keyframes.map((keyframe) => keyframe.offset) ?? [];
+          const run = Number(track?.duration ?? 0) * (track?.cycles ?? 1);
+          const runsToEnd = run >= timelineEnd;
+          if (track?.cycles !== undefined && runsToEnd && offsets.slice(-2).join() === "1,1")
+            jumpAtEnd.push(`${at} ${property}`);
+        }
+        if (layer.repeat?.as === "loopCopy") copied.push(at);
+        if (layer.type === "group") visit(layer.children, `${at}/children`);
+      });
+    };
+    const design = loadProfile(template, section);
+    visit(design.layers, "/layers");
+    for (const [name, component] of Object.entries(design.components ?? {}))
+      visit(component.layers, `/components/${name}/layers`);
+    expect(long).toEqual([]);
+    expect(copied).toEqual([]);
+    expect(jumpAtEnd).toEqual([]);
   });
 
   test("has a reader-facing title and description", () => {
