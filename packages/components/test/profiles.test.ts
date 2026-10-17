@@ -3,6 +3,7 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { defaultNodeTolerance } from "@readmint/golden";
 import { comparePng, rasterizeSvg } from "@readmint/golden/node";
+import { parseSfnt } from "../../fonts/src/index.js";
 import { validateDesign, type AnimationTrack, type Design, type Layer } from "@readmint/format";
 import { renderSvg, RenderLimits } from "@readmint/renderer";
 import { describe, expect, test } from "vitest";
@@ -308,7 +309,7 @@ describe.each(names)("%s fonts", (template) => {
       expect(existsSync(file), src).toBe(true);
       expect(readme, src).toContain(sha256(readFileSync(file)));
       expect(family).toMatch(
-        /^(Archivo|Archivo SemiExpanded|Archivo SemiCondensed|Archivo ExtraCondensed|Noto Sans|Geist|Geist Mono)$/u,
+        /^(Archivo|Archivo SemiExpanded|Archivo SemiCondensed|Archivo ExtraCondensed|Noto Sans|Noto Sans Mono|Geist|Geist Mono)$/u,
       );
     }
     for (const theme of themes) {
@@ -340,7 +341,7 @@ describe.each(names)("%s fonts", (template) => {
     }
   });
 
-  test("each font may be embedded: fsType 0 (installable) and no Reserved Font Name in the licence records", () => {
+  test("each font may be embedded: fsType 0 (installable) and no Reserved Font Name in the name table (read as the renderer does)", () => {
     for (const src of used.keys()) {
       const bytes = readFileSync(join(folders, template, src));
       const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
@@ -352,7 +353,13 @@ describe.each(names)("%s fonts", (template) => {
       }
       expect(os2, src).toBeGreaterThan(0);
       expect(view.getUint16(os2 + 8), src).toBe(0);
-      expect(bytes.toString("latin1")).not.toMatch(/with Reserved Font Name/u);
+      const parsed = parseSfnt(new Uint8Array(bytes));
+      expect(parsed.ok, src).toBe(true);
+      if (parsed.ok) {
+        // the family name proves the name table was read: the flag is derived from the same strings
+        expect(parsed.font.familyName, src).toBe(used.get(src));
+        expect(parsed.font.reservedFontName, src).toBe(false);
+      }
     }
   });
 });

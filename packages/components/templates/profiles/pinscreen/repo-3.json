@@ -16,11 +16,12 @@
         "licence": {
           "embedding": "allowed",
           "name": "OFL-1.1"
-        }
+        },
+        "fallback": ["nm"]
       },
-      "g": {
-        "family": "Geist",
-        "src": "fonts/Geist-Regular.ttf",
+      "nm": {
+        "family": "Noto Sans Mono",
+        "src": "fonts/NotoSansMono-Regular.ttf",
         "weight": 400,
         "licence": {
           "embedding": "allowed",

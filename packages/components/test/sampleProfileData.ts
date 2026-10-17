@@ -459,19 +459,28 @@ export function repositoryTextsProfileData(name: string, description: string): P
   return { github: { ...data.github, repositories, pinned: repositories } };
 }
 
-/** Every letter of U+0400..045F (Cyrillic) and U+0386..03CE (modern Greek), in one repeating cycle. */
-const scriptCycle = [
-  ...Array.from({ length: 0x60 }, (_, index) => 0x400 + index),
-  ...Array.from({ length: 0x49 }, (_, index) => 0x386 + index),
-]
+/** Every letter of U+0400..045F (Cyrillic) and U+0386..03CE (modern Greek). */
+const cyrillicLetters = Array.from({ length: 0x60 }, (_, index) => 0x400 + index)
+  .map((code) => String.fromCodePoint(code))
+  .filter((char) => /^\p{L}$/u.test(char));
+const greekLetters = Array.from({ length: 0x49 }, (_, index) => 0x386 + index)
   .map((code) => String.fromCodePoint(code))
   .filter((char) => /^\p{L}$/u.test(char));
 
+/** Which script opens the repeating cycle: fields cut to 30 characters never see the second one. */
+export type ScriptCycleOrder = "cyrillic-first" | "greek-first";
+
 /**
  * The worst-case data with every text of the long kind (a run of "W", or the alternating "W"/"i" message) written in
- * Cyrillic and Greek instead: the fallback fonts must keep a section inside its budget as well.
+ * Cyrillic and Greek instead, in either order: the fallback fonts must keep a section inside its budget as well.
  */
-export function worstCaseScriptsProfileData(): ProfileData {
+export function worstCaseScriptsProfileData(
+  order: ScriptCycleOrder = "cyrillic-first",
+): ProfileData {
+  const scriptCycle =
+    order === "cyrillic-first"
+      ? [...cyrillicLetters, ...greekLetters]
+      : [...greekLetters, ...cyrillicLetters];
   const swap = (value: unknown): unknown => {
     if (typeof value === "string") {
       return value.length >= 64 && /^[Wi]+$/u.test(value)

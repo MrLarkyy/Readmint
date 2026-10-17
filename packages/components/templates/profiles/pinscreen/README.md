@@ -1,6 +1,6 @@
 # Pinscreen
 
-An editor-style profile in Geist and Geist Mono, with IntelliJ Light and Darcula syntax colours. The year is a 3D wall of pins, one a day, with a ripple running out from today; the repositories are Kotlin objects, recent commits a terminal `git log`, and the stack a `build.gradle.kts`. Geist and Geist Mono cover Latin, most of Latin Extended-A, Vietnamese and Cyrillic but only Λ, Ω, λ, μ and π (and ω in Geist) of Greek; emoji and CJK are not drawn.
+An editor-style profile in Geist and Geist Mono, with IntelliJ Light and Darcula syntax colours. The year is a 3D wall of pins, one a day, with a ripple running out from today; the repositories are Kotlin objects, recent commits a terminal `git log`, and the stack a `build.gradle.kts`. Geist and Geist Mono cover Latin, most of Latin Extended-A, Vietnamese and Cyrillic; Noto Sans and Noto Sans Mono, their fallbacks, draw the rest of Latin Extended-A, Cyrillic and Greek. Emoji and CJK are not drawn.
 
 Every section is a design of the public design format, drawn in a light and a dark variant (`<section>.json` and
 `<section>.dark.json`, which differ only in the root prop `theme`). Nothing in them names a person: the data comes
