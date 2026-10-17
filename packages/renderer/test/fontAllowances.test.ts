@@ -55,14 +55,18 @@ describe("decoded font bytes are bounded per render, not per asset", () => {
 
   test("small WOFF bombs, each under the per-font limit, stop at the asset that crosses the total", () => {
     const { design: many, options } = bombs(400, 6);
-    const { value: result, ms, scale } = timed(() => renderSvg(many, options));
+    const {
+      value: [result, again],
+      ms,
+      scale,
+    } = timed(() => [renderSvg(many, options), renderSvg(many, options)] as const);
     // 3.9 MB each: four fit in 16 MiB, the fifth (f4) crosses before it inflates.
     expect(result).toMatchObject({
       ok: false,
       issues: [{ path: "/assets/fonts/f4", code: "asset-too-large" }],
     });
     expect(result.ok ? "" : result.issues[0]?.message).toContain("maxTotalFontBytes");
-    expect(renderSvg(many, options)).toEqual(result);
+    expect(again).toEqual(result);
     // The refusal is the pin (before, all 400 decoded: 9.5 s, 1.5 GB); the ceiling only catches a late stop.
     expect(ms).toBeLessThan(10_000 * scale);
   });

@@ -373,12 +373,22 @@ describe("fonts that turn out broken or costly when their glyphs are read", () =
       expect(
         renderSvg(design({ f0: fonts.f0 ?? pathFont() }, layers.slice(0, 1)), options).ok,
       ).toBe(true);
-      const { value: result, ms, scale } = timed(() => renderSvg(design(fonts, layers), options));
+      const {
+        value: [result, again],
+        ms,
+        scale,
+      } = timed(
+        () =>
+          [
+            renderSvg(design(fonts, layers), options),
+            renderSvg(design(fonts, layers), options),
+          ] as const,
+      );
       expect(result).toMatchObject({
         ok: false,
         issues: [{ path: "/assets/fonts/f1", code: "asset-too-large" }],
       });
-      expect(renderSvg(design(fonts, layers), options)).toEqual(result);
+      expect(again).toEqual(result);
       expect(ms).toBeLessThan(15_000 * scale);
     },
   );
