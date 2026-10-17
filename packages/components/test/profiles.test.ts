@@ -18,10 +18,13 @@ import {
 import { profileExampleProps } from "@readmint/examples/props";
 import { sampleGitHubData } from "./sampleGitHubData.js";
 import {
+  noDaysProfileData,
+  oneDayStreakProfileData,
   otherProfileData,
   sampleProfileData,
   sparseProfileData,
   worstCaseProfileData,
+  zeroYearProfileData,
   type ProfileData,
 } from "./sampleProfileData.js";
 
@@ -487,7 +490,7 @@ describe("the animation of the profile sections", () => {
     },
   );
 
-  test("a streak of one day reads '1 day'", () => {
+  test("a streak of one day reads '1 day' in Horizon and is left out of the Year Ring legend", () => {
     const sample = sampleProfileData();
     const one = { length: 1, start: "2026-01-02", end: "2026-01-02" };
     const data = withPatch(sample, {
@@ -498,7 +501,7 @@ describe("the animation of the profile sections", () => {
     });
     const text = (template: ProfileTemplate) =>
       renderProfile({ template, design: loadProfile(template, "year"), data });
-    expect(text("year-ring")).toContain(">Longest streak, 1 day<");
+    expect(text("year-ring")).not.toContain("Longest streak");
     expect(text("horizon")).toContain(">1 DAY<");
     expect(text("year-ring")).not.toContain("1 days");
   });
@@ -762,20 +765,120 @@ describe("the page-coloured fades", () => {
 });
 
 describe("the year sections on a sparse, spiky calendar", () => {
-  test.each(names)(
-    "%s renders it in both themes within the budget and half the limits",
-    (template) => {
+  const calendars = [
+    ["sparse", sparseProfileData],
+    ["all-zero", zeroYearProfileData],
+    ["empty", noDaysProfileData],
+  ] as const;
+  test.each(
+    names.flatMap((template) => calendars.map((calendar) => [template, ...calendar] as const)),
+  )(
+    "%s renders the %s calendar in both themes within the budget and half the limits",
+    (template, _name, data) => {
       for (const theme of themes) {
         const svg = renderProfile({
           template,
           design: loadProfile(template, "year", theme),
-          data: sparseProfileData(),
+          data: data(),
           limits: halvedLimits,
         });
         expect(utf8Bytes(svg)).toBeLessThanOrEqual(sizeBudget);
       }
     },
   );
+});
+
+describe("the year sections on a year without contributions", () => {
+  const yearTexts = (template: ProfileTemplate, theme: ProfileTheme, data: ProfileData) =>
+    [
+      ...renderProfile({ template, design: loadProfile(template, "year", theme), data }).matchAll(
+        /<tspan[^>]*>([^<]*)<\/tspan>/gu,
+      ),
+    ].map((match) => match[1] ?? "");
+  const weekday = /\b(sun|mon|tues|wednes|thurs|fri|satur)days?\b/iu;
+  const empty = [
+    ["all-zero", zeroYearProfileData],
+    ["empty", noDaysProfileData],
+  ] as const;
+  const cross = names
+    .filter((template) => template !== "pinscreen")
+    .flatMap((template) => themes.map((theme) => [template, theme] as const));
+
+  test.each(
+    cross.flatMap(([template, theme]) => empty.map((e) => [template, theme, ...e] as const)),
+  )(
+    "%s %s names no weekday and no busiest day on the %s calendar",
+    (template, theme, _name, data) => {
+      const texts = yearTexts(template, theme, data());
+      expect(texts.filter((text) => weekday.test(text) || /busiest/iu.test(text))).toEqual([]);
+    },
+  );
+
+  test.each(themes)("year-ring %s keeps only Today in the legend of an all-zero year", (theme) => {
+    const texts = yearTexts("year-ring", theme, zeroYearProfileData());
+    expect(texts).toContain("Today");
+    expect(texts.some((text) => text.includes("Longest streak"))).toBe(false);
+  });
+
+  test.each(themes)("year-ring %s draws no legend for a calendar without days", (theme) => {
+    const texts = yearTexts("year-ring", theme, noDaysProfileData());
+    expect(texts).not.toContain("Today");
+    expect(texts.some((text) => text.includes("Longest streak"))).toBe(false);
+  });
+
+  test.each(themes)(
+    "year-ring %s shows Today and the busiest weekday but no streak for a single contribution day",
+    (theme) => {
+      const data = oneDayStreakProfileData();
+      const texts = yearTexts("year-ring", theme, data);
+      expect(texts).toContain("Today");
+      expect(texts).toContain("Busiest on Mondays");
+      expect(texts.some((text) => text.includes("Longest streak"))).toBe(false);
+      const svg = renderProfile({
+        template: "year-ring",
+        design: loadProfile("year-ring", "year", theme),
+        data,
+      });
+      expect(svg).not.toContain('width="2.8"');
+    },
+  );
+
+  test.each(themes)("year-ring %s centres the reduced legend row by the same estimate", (theme) => {
+    const svg = renderProfile({
+      template: "year-ring",
+      design: loadProfile("year-ring", "year", theme),
+      data: zeroYearProfileData(),
+    });
+    const row = /<g transform="translate\(([0-9.]+) 390\)"/u.exec(svg);
+    expect(row?.[1]).toBe("396.5");
+  });
+
+  test.each(themes)("horizon %s hides the busiest stat and keeps longest_streak", (theme) => {
+    for (const [, data] of empty) {
+      const texts = yearTexts("horizon", theme, data());
+      expect(texts).toContain("0 DAYS");
+      expect(texts).not.toContain("busiest_day");
+    }
+    const svg = renderProfile({
+      template: "horizon",
+      design: loadProfile("horizon", "year", theme),
+      data: zeroYearProfileData(),
+    });
+    expect(svg).toContain("longest_streak");
+  });
+
+  test.each(themes)("%s keeps the legend and busiest stat on the sample data", (theme) => {
+    const ring = yearTexts("year-ring", theme, sampleProfileData());
+    expect(ring).toContain("Today");
+    expect(ring.some((text) => /^Longest streak, \d+ days$/u.test(text))).toBe(true);
+    expect(ring.some((text) => /^Busiest on \w+s$/u.test(text))).toBe(true);
+    const svg = renderProfile({
+      template: "horizon",
+      design: loadProfile("horizon", "year", theme),
+      data: sampleProfileData(),
+    });
+    expect(svg).toContain("busiest_day");
+  });
 });
 
 /** Texts each section shows only with the example's personal texts set. */

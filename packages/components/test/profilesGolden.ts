@@ -18,6 +18,7 @@ import {
   sampleProfileData,
   sparseProfileData,
   worstCaseProfileData,
+  zeroYearProfileData,
 } from "./sampleProfileData.js";
 
 /** Chromium and resvg place the 11-13 px monospaced code and terminal text of pinscreen a sub-pixel apart. */
@@ -38,6 +39,7 @@ const longSections: Readonly<Record<ProfileTemplate, readonly ProfileSection[]>>
 const statusHeaders: readonly ProfileTemplate[] = ["horizon", "pinscreen"];
 
 /** The templates whose header reads the pushes. */
+const zeroYearTemplates: readonly ProfileTemplate[] = ["year-ring", "horizon"];
 const pushHeaders: readonly ProfileTemplate[] = ["pinscreen", "year-ring"];
 
 /** The templates whose header fits the location by drawn width, pinned with GitHub's longest values. */
@@ -86,7 +88,7 @@ function emojiProfileData(): ReturnType<typeof sampleProfileData> {
 
 /**
  * The golden suite of one profile template: every section in both themes with the example's personal texts, the
- * long ones on worst-case data, the year on a sparse, spiky calendar, the sections with personal texts left empty,
+ * long ones on worst-case data, the year on a sparse, spiky calendar and (Year Ring, Horizon) on one without a contribution, the sections with personal texts left empty,
  * the header with emoji no template font covers in the name, bio, status and latest push (each emoji is dropped and
  * takes no space; the spaces written between them stay, so the status shows "Shipping", four spaces and the keycap's
  * "1"), and a mid frame.
@@ -127,6 +129,10 @@ export function profileGoldenSuite(template: ProfileTemplate): GoldenSuite<Profi
       ...themes.map((theme) => ({
         name: `year-sparse-${theme}`,
         input: render("year", theme, { data: sparseProfileData() }),
+      })),
+      ...(zeroYearTemplates.includes(template) ? themes : []).map((theme) => ({
+        name: `year-zero-${theme}`,
+        input: render("year", theme, { data: zeroYearProfileData() }),
       })),
       ...personal.map((section) => ({
         name: `${section}-empty`,
