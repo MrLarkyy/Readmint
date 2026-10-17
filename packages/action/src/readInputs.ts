@@ -8,6 +8,7 @@ import {
   parseDataFeedArgs,
   parseDataJsonArgs,
   quoteForLog,
+  renderVariant,
 } from "@readmint/cli";
 import { GitHubLimits } from "@readmint/data-github";
 import type { ActionConfig } from "./ActionConfig.js";
@@ -151,6 +152,11 @@ export function readInputs(env: Env): ActionConfig {
     const reason = checkRelativePath(propsFile);
     if (reason !== undefined) problems.push(`input props-file ${quoteForLog(propsFile)} ${reason}`);
   }
+  const variantName = value("variant");
+  const variant = variantName === "" ? undefined : renderVariant(variantName);
+  if (variantName !== "" && variant === undefined) {
+    problems.push("input variant must be empty or one of: dark");
+  }
   const locale = value("locale");
   const localeReason = locale === "" ? undefined : localeProblem(locale);
   if (localeReason !== undefined)
@@ -209,6 +215,7 @@ export function readInputs(env: Env): ActionConfig {
     ...(dataJson.length === 0 ? {} : { dataJson }),
     ...(dataFeed.length === 0 ? {} : { dataFeed }),
     ...(propsFile === "" ? {} : { propsFile }),
+    ...(variant === undefined ? {} : { variant }),
     ...(locale === "" ? {} : { locale }),
     commitMessage,
     ...(branch === "" ? {} : { branch }),

@@ -1,4 +1,9 @@
-import { applyDesignProps, type DesignProps } from "@readmint/format";
+import {
+  applyDesignProps,
+  applyRenderVariant,
+  type DesignProps,
+  type RenderVariant,
+} from "@readmint/format";
 import type { RenderAssets } from "@readmint/renderer";
 import type { DesignArgs } from "./CliCommand.js";
 import { checkDataNamespaces } from "./checkDataNamespaces.js";
@@ -25,10 +30,14 @@ export interface RenderInput {
   readonly data?: Record<string, unknown>;
   /** Present when the settings file set props of the design: every issue of its render passes through it. */
   readonly settingsMask?: SettingsMask;
+  /** Notes for stderr or the log, never a value: a settings section overriding what the variant sets. */
+  readonly warnings?: readonly string[];
 }
 
 export interface RenderInputOptions {
   readonly cwd: string;
+  /** Render this variant of the design: its props are set before the settings section's. */
+  readonly variant?: RenderVariant;
   /** Called once the design file is valid, before its assets load (the preview watches them). */
   readonly onDesignFile?: (file: DesignFile) => void;
   /** Settings the caller already loaded (the Action's); used instead of `args.props`. */
@@ -63,7 +72,12 @@ export async function loadRenderInput(
   const props =
     options.props ??
     (args.props === undefined ? undefined : await loadDesignProps(args.props, options.cwd));
-  const { file, mask } = props === undefined ? { file: loaded } : withProps(loaded, props);
+  const varied = options.variant === undefined ? loaded : withVariant(loaded, options.variant);
+  const { file, mask } = props === undefined ? { file: varied } : withProps(varied, props);
+  const warnings =
+    options.variant === undefined || props === undefined
+      ? []
+      : overrides(varied, props, options.variant);
   options.onDesignFile?.(file);
   const fileAssets = await loadDesignAssets(file);
   if (options.data === undefined) {
@@ -76,7 +90,28 @@ export async function loadRenderInput(
     assets,
     ...(data === undefined ? {} : { data }),
     ...(mask === undefined ? {} : { settingsMask: mask }),
+    ...(warnings.length === 0 ? {} : { warnings }),
   };
+}
+
+function withVariant(file: DesignFile, variant: RenderVariant): DesignFile {
+  const result = applyRenderVariant(file.design, variant);
+  if (result.ok) return { ...file, design: result.value };
+  const lines = result.issues.map((issue) => formatIssue(file.name, issue, "error"));
+  if (result.truncated) lines.push(`${file.name}: more issues not shown`);
+  throw new CliError(ExitCode.invalid, lines);
+}
+
+function overrides(file: DesignFile, props: DesignProps, variant: RenderVariant): string[] {
+  const section = propsSection(file.name);
+  const own = Object.hasOwn(props, section) ? props[section] : undefined;
+  if (own === undefined) return [];
+  return Object.keys(variant.props)
+    .filter((name) => Object.hasOwn(own, name))
+    .map(
+      (name) =>
+        `${file.name}: settings section ${quoteForLog(section)} sets ${quoteForLog(name)}, which overrides the ${variant.name} variant`,
+    );
 }
 
 async function loadData(

@@ -344,3 +344,20 @@ describe("--data-feed", () => {
     }
   });
 });
+
+test("render takes --variant", () => {
+  expect(parseCliArgs(["render", "a.json", "--variant", "dark"])).toMatchObject({
+    variant: { name: "dark", props: { theme: "dark" } },
+  });
+  expect(parseCliArgs(["render", "a.json"])).not.toHaveProperty("variant");
+});
+
+test.each([["validate"], ["preview"]])("%s refuses --variant", (name) => {
+  expect(usageError([name, "a.json", "--variant", "dark"]).exitCode).toBe(ExitCode.usage);
+});
+
+test("--variant names a known variant without echoing the given text", () => {
+  const error = usageError(["render", "a.json", "--variant", "zzTOP"]);
+  expect(error.message).toContain("--variant must be one of: dark");
+  expect(error.message).not.toContain("zzTOP");
+});
