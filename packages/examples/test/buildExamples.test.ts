@@ -429,12 +429,10 @@ function withoutNewLayerProperties(node: unknown): boolean {
   const record = node as Record<string, unknown>;
   let removed = false;
   if (typeof record["type"] === "string") {
-    for (const key of ["maxLines", "let", "orbit"]) {
-      if (key in record) {
-        delete record[key];
-        removed = true;
-      }
-    }
+    removed = "maxLines" in record || "let" in record || "orbit" in record;
+    delete record["maxLines"];
+    delete record["let"];
+    delete record["orbit"];
   }
   return Object.values(record).map(withoutNewLayerProperties).some(Boolean) || removed;
 }
