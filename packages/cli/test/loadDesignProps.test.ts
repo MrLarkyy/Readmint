@@ -1,4 +1,6 @@
-import { afterEach, beforeEach, expect, test } from "vitest";
+import { symlink } from "node:fs/promises";
+import { join } from "node:path";
+import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import { CliError, ExitCode, loadDesignProps } from "../src/index.js";
 import { type CliTree, makeCliTree } from "./cliTree.js";
 
@@ -52,4 +54,46 @@ test("a wrongly shaped file reports the pointer, never the value", async () => {
 test("a file over the size bound is refused before decoding", async () => {
   await tree.file("big.json", new Uint8Array(3 * 4_194_304 + 4));
   expect(await failure("big.json")).toMatchObject({ exitCode: ExitCode.input });
+});
+
+describe("with confinedTo", () => {
+  async function confinedFailure(file: string): Promise<CliError> {
+    const error: unknown = await loadDesignProps(file, tree.root, {
+      confinedTo: join(tree.root, "ws"),
+    }).catch((reason: unknown) => reason);
+    expect(error).toBeInstanceOf(CliError);
+    return error as CliError;
+  }
+
+  test("a file inside is read", async () => {
+    await tree.file("ws/sub/s.json", { header: { w: 3 } });
+    const options = { confinedTo: join(tree.root, "ws") };
+    expect(await loadDesignProps("sub/s.json", tree.root, options)).toEqual({ header: { w: 3 } });
+  });
+
+  test("an absolute path is refused without naming the folder", async () => {
+    const outside = await tree.file("out.json", { header: { w: "s3cret-word" } });
+    const error = await confinedFailure(outside);
+    expect(error.exitCode).toBe(ExitCode.input);
+    expect(error.message).toMatch(/^settings file ".*" /);
+    expect(error.message).not.toContain("s3cret-word");
+    expect(error.message).not.toContain("ws");
+  });
+
+  test("a link leading outside is refused", async (context) => {
+    const outside = await tree.file("out.json", { header: { w: "s3cret-word" } });
+    await tree.file("ws/keep.json", {});
+    try {
+      await symlink(outside, join(tree.root, "ws", "s.json"), "file");
+    } catch (error) {
+      if (["EPERM", "EACCES"].includes((error as NodeJS.ErrnoException).code ?? "")) {
+        context.skip();
+        return;
+      }
+      throw error;
+    }
+    const error = await confinedFailure("s.json");
+    expect(error.exitCode).toBe(ExitCode.input);
+    expect(error.message).toBe('settings file "s.json" resolves outside the root');
+  });
 });
