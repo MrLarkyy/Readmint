@@ -43,7 +43,7 @@
         },
         "languageShare": {
           "type": "enum",
-          "values": ["bytes", "repositories"],
+          "values": ["bytes", "repositories", "authored"],
           "default": "bytes"
         },
         "plugin": {
@@ -461,7 +461,7 @@
             {
               "type": "group",
               "repeat": {
-                "each": "{{ [(props.languageShare == \"repositories\" ? (github.languagesByRepo || github.languages) : github.languages)[0], (props.languageShare == \"repositories\" ? (github.languagesByRepo || github.languages) : github.languages)[1], (props.languageShare == \"repositories\" ? (github.languagesByRepo || github.languages) : github.languages)[2], (props.languageShare == \"repositories\" ? (github.languagesByRepo || github.languages) : github.languages)[3]] }}",
+                "each": "{{ [(props.languageShare == \"authored\" ? (github.languagesAuthored || github.languages) : (props.languageShare == \"repositories\" ? (github.languagesByRepo || github.languages) : github.languages))[0], (props.languageShare == \"authored\" ? (github.languagesAuthored || github.languages) : (props.languageShare == \"repositories\" ? (github.languagesByRepo || github.languages) : github.languages))[1], (props.languageShare == \"authored\" ? (github.languagesAuthored || github.languages) : (props.languageShare == \"repositories\" ? (github.languagesByRepo || github.languages) : github.languages))[2], (props.languageShare == \"authored\" ? (github.languagesAuthored || github.languages) : (props.languageShare == \"repositories\" ? (github.languagesByRepo || github.languages) : github.languages))[3]] }}",
                 "as": "lang",
                 "index": "j"
               },
