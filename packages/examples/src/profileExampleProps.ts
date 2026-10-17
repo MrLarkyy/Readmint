@@ -52,9 +52,9 @@ export const profileExampleProps: Readonly<
     },
     footer: {
       headline: "Open to long-term collaborations.",
-      note: "Backend-heavy projects, tooling and infrastructure. Best reached on Discord.",
-      contactLabel: "Discord",
-      contactText: "discord.aquatic.gg",
+      note: "Backend-heavy projects, tooling and infrastructure. Best reached on LinkedIn.",
+      contactLabel: "LinkedIn",
+      contactText: "linkedin.com/in/tadeas-ganzwohl",
     },
   },
   horizon: {
@@ -92,8 +92,8 @@ export const profileExampleProps: Readonly<
     footer: {
       headline: "Open to long-term\ncollaborations.",
       note: "Backend-heavy projects,\ntooling and infrastructure.",
-      contactLabel: "discord",
-      contactText: "discord.aquatic.gg",
+      contactLabel: "linkedin",
+      contactText: "linkedin.com/in/tadeas-ganzwohl",
     },
   },
   pinscreen: {
@@ -127,8 +127,8 @@ export const profileExampleProps: Readonly<
     footer: {
       headline: "Open to long-term collaborations.",
       note: "Backend-heavy projects, tooling and infrastructure.",
-      contactLabel: "reach me",
-      contactText: "discord.aquatic.gg",
+      contactLabel: "linkedin",
+      contactText: "linkedin.com/in/tadeas-ganzwohl",
     },
   },
 };
