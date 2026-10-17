@@ -427,3 +427,35 @@ describe("readInputs variant", () => {
     ]);
   });
 });
+
+describe("readInputs manifest", () => {
+  test("the manifest takes the place of the designs", () => {
+    expect(readInputs(env({ manifest: "ws\\renders.json", token: "t" }))).toMatchObject({
+      designs: [],
+      manifest: "ws/renders.json",
+    });
+  });
+
+  test("designs and manifest exclude each other", () => {
+    expect(problems({ ...base, manifest: "renders.json" })).toEqual([
+      "inputs designs and manifest are exclusive; set one",
+    ]);
+  });
+
+  test("neither of them is the message of today", () => {
+    expect(problems({ token: "t" })).toEqual(["input designs lists no design file"]);
+  });
+
+  test("the manifest path must stay inside the workspace", () => {
+    expect(problems({ manifest: "../renders.json", token: "t" })).toEqual([
+      'input manifest "../renders.json" leaves the workspace (..)',
+    ]);
+    expect(problems({ manifest: "/abs/renders.json", token: "t" })).toEqual([
+      'input manifest "/abs/renders.json" is not a relative path',
+    ]);
+  });
+
+  test("without a manifest the config has none", () => {
+    expect(readInputs(env(base))).not.toHaveProperty("manifest");
+  });
+});

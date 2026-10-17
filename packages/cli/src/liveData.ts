@@ -17,7 +17,7 @@ import { partialDataWarning } from "./partialDataWarning.js";
  * never clash (`parseCliArgs` refuses that). `stop` ends the load early (the preview's signal).
  */
 export function liveData(
-  args: DesignArgs,
+  args: Partial<DesignArgs>,
   io: CliIo,
   stop?: AbortSignal,
 ): { readonly loadData?: () => Promise<Record<string, unknown>> } {
@@ -47,7 +47,7 @@ export function liveData(
 }
 
 function loadGitHub(
-  args: DesignArgs,
+  args: Partial<DesignArgs>,
   io: CliIo,
   stop: AbortSignal | undefined,
 ): Promise<Record<string, unknown>> {

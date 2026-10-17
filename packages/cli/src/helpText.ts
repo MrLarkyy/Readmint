@@ -3,6 +3,8 @@ export const helpText = `Usage: readmint <command> <design> [options]
 
 Commands:
   render <design>     Render the design to SVG (standard output or --out) or to a raster image (--out)
+  render --manifest <file> --out-dir <dir>
+                      Render the named renders of a manifest into a folder and print the <picture> snippet
   validate <design>   Check the design and load its assets; with data (--data, --github, --data-json or --data-feed)
                       also render it
   preview <design>    Serve a live preview on http://127.0.0.1:<port>/ (this computer only)
@@ -18,8 +20,11 @@ Options:
   --locale <tag>      Language tag for number and date filters (default: the design locale, else en)
   --time <ms>         Render one frame of the animation as a still image (render, validate)
   --out <file>        Write the output to this file instead of standard output (render)
+  --manifest <file>   Render manifest: a JSON file of named renders { name, design, props, variants }
+                      (render; instead of a design file; no --root or --out)
+  --out-dir <dir>     Folder the manifest renders are written to as <name>[.dark].<ext> (render --manifest)
   --format <name>     svg, png, webp, apng or gif (render; default: from the --out extension
-                      .png, .apng, .webp or .gif, else svg); raster formats need --out
+                      .png, .apng, .webp or .gif, else svg); raster formats need --out or --out-dir
   --scale <n>         Raster pixels per design pixel, 1..4 (raster formats; default 2)
   --frame-rate <n>    Frames per second of an animation, 1..60, gif 1..50 (raster formats;
                       default 30, gif 25, lowered to fit the limits)

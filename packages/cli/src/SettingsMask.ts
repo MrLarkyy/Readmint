@@ -32,18 +32,22 @@ const where =
  * never a value.
  */
 export class SettingsMask {
-  private readonly section: string;
+  private readonly label: string;
   private readonly pointers = new Map<string, string>();
   private readonly scopes = new Set<string>();
   private readonly traces: readonly Trace[];
 
-  /** `design` is the design `applyDesignProps` returned for `props`, the section `section` of the settings file. */
+  /**
+   * `design` is the design `applyDesignProps` returned for `props`, the section `section` of the settings file;
+   * `label` names the source of the props in a hidden message when it is not that section (a manifest render).
+   */
   constructor(
     section: string,
     props: Readonly<Record<string, ComponentPropValue>>,
     design: Design,
+    label?: string,
   ) {
-    this.section = section;
+    this.label = label ?? `settings section ${quoteForLog(section)}`;
     const refs: string[] = [];
     design.layers.forEach((layer, index) => {
       if (layer.type !== "component") return;
@@ -94,7 +98,7 @@ export class SettingsMask {
     const listed = [...names].sort().map(quoteForLog).join(", ");
     return {
       ...issue,
-      message: `a value of settings section ${quoteForLog(this.section)} (${names.size === 1 ? "prop" : "props"} ${listed}) is not valid here; the message is hidden so the value is not shown`,
+      message: `a value of ${this.label} (${names.size === 1 ? "prop" : "props"} ${listed}) is not valid here; the message is hidden so the value is not shown`,
     };
   }
 }

@@ -7,8 +7,11 @@ branding:
 
 inputs:
   designs:
-    description: Design files to render, one per line, relative to the workspace (at most 64). A `<name>.dark.<ext>` next to a design is rendered as its dark variant and wins over the `variant` input.
-    required: true
+    description: Design files to render, one per line, relative to the workspace (at most 64). Required unless `manifest` is set; not with it. A `<name>.dark.<ext>` next to a design is rendered as its dark variant and wins over the `variant` input.
+    required: false
+  manifest:
+    description: A render manifest, a JSON file of named renders `{ name, design, props, variants }` relative to the workspace (at most 64), instead of `designs`. Each render is written to `<output-dir>/<name>.<ext>` (and `<name>.dark.<ext>`); its designs lie in the manifest's folder; the `props-file` section named like a render applies to it.
+    required: false
   output-dir:
     description: Folder inside the workspace the output files are written to; created when missing.
     required: false

@@ -361,3 +361,38 @@ test("--variant names a known variant without echoing the given text", () => {
   expect(error.message).toContain("--variant must be one of: dark");
   expect(error.message).not.toContain("zzTOP");
 });
+
+test("render --manifest takes the manifest and the output folder, no design", () => {
+  expect(
+    parseCliArgs(["render", "--manifest", "renders.json", "--out-dir", "out", "--format", "png"]),
+  ).toEqual({
+    name: "render",
+    format: "png",
+    manifest: "renders.json",
+    outDir: "out",
+  });
+});
+
+test("render --manifest keeps the data, settings and variant options", () => {
+  expect(
+    parseCliArgs([
+      "render",
+      "--manifest",
+      "m.json",
+      "--out-dir",
+      "o",
+      "--data",
+      "d.json",
+      "--props",
+      "p.json",
+      "--variant",
+      "dark",
+    ]),
+  ).toMatchObject({ manifest: "m.json", outDir: "o", data: "d.json", props: "p.json" });
+});
+
+test("without --manifest render is parsed as before", () => {
+  const command = parseCliArgs(["render", "a.json", "--out", "a.svg"]);
+  expect(command).toEqual({ name: "render", design: "a.json", out: "a.svg", format: "svg" });
+  expect(command).not.toHaveProperty("manifest");
+});
