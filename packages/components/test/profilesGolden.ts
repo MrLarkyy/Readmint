@@ -1,6 +1,9 @@
+import type { RenderIssueCode } from "@readmint/renderer";
 import { defineGoldenSuite, type GoldenSuite } from "@readmint/golden";
 import { profileTemplates, type ProfileSection, type ProfileTemplate } from "../src/index.js";
 import { embeddedFonts } from "../../renderer/test/embeddedFonts.js";
+import { matchFontFamilies } from "../../raster/src/matchFontFamilies.js";
+import { rasterFonts } from "../../raster/src/rasterFonts.js";
 import {
   loadExampleProfile,
   loadProfile,
@@ -14,6 +17,7 @@ import {
   longLocationProfileData,
   longTextProfileData,
   noPushProfileData,
+  repositoryTextsProfileData,
   noStatusProfileData,
   sampleProfileData,
   sparseProfileData,
@@ -61,6 +65,18 @@ const languageSections: Readonly<Partial<Record<ProfileTemplate, readonly Profil
 const longLocation = "Llanfairpwllgwyngyllgogerychwyrndrobwllllantysiliogogogoch, Wales";
 const wideLocation = "W".repeat(255);
 
+/** Pinscreen's Geist has no Greek: the description's Greek words are dropped and the render warns. */
+const scriptsWarnings: Readonly<Record<ProfileTemplate, readonly RenderIssueCode[]>> = {
+  "year-ring": [],
+  horizon: [],
+  pinscreen: ["missing-glyph"],
+};
+
+/** A Cyrillic name and a Greek and Cyrillic description, then a name no template font has. */
+const scriptsName = "Привет-мир";
+const scriptsDescription = "Ωμέγα: κάρτες προφίλ · Привет, мир";
+const cjkName = "日本語-repo";
+
 /** A frame mid-animation of one section per template, so the motion itself is pinned, not only its end state. */
 const frames: Readonly<Record<ProfileTemplate, readonly [ProfileSection, number]>> = {
   "year-ring": ["year", 15000],
@@ -93,7 +109,9 @@ function emojiProfileData(): ReturnType<typeof sampleProfileData> {
  * long ones on worst-case data, the year on a sparse, spiky calendar and (Year Ring, Horizon) on one without a
  * contribution, the sections with personal texts left empty, the header with emoji no template font covers in the
  * name, bio, status and latest push (each emoji is dropped and takes no space; the spaces written between them stay,
- * so the status shows "Shipping", four spaces and the keycap's "1"), and a mid frame.
+ * so the status shows "Shipping", four spaces and the keycap's "1"), a repository card with a Cyrillic name and a
+ * Greek description (drawn by year-ring and horizon, Greek dropped with a warning by pinscreen) and one with a CJK name
+ * (always dropped, never a gap), and a mid frame.
  */
 export function profileGoldenSuite(template: ProfileTemplate): GoldenSuite<ProfileRender> {
   const data = sampleProfileData();
@@ -117,6 +135,8 @@ export function profileGoldenSuite(template: ProfileTemplate): GoldenSuite<Profi
     name: `profiles-${template}`,
     render: renderProfile,
     fontsFromSvg: embeddedFonts,
+    // The Action exports these sections as PNG, WebP and APNG too: the PNG golden is what raster export draws.
+    rasterCopy: (svg) => matchFontFamilies(svg, rasterFonts(svg)),
     ...(browserTolerances[template] === undefined
       ? {}
       : { browserTolerance: browserTolerances[template] }),
@@ -140,6 +160,22 @@ export function profileGoldenSuite(template: ProfileTemplate): GoldenSuite<Profi
         name: `${section}-empty`,
         input: render(section, "light", { design: loadProfile(template, section) }),
       })),
+      ...themes.map((theme) => ({
+        name: `repo-1-scripts-${theme}`,
+        input: render("repo-1", theme, {
+          design: loadProfile(template, "repo-1", theme),
+          data: repositoryTextsProfileData(scriptsName, scriptsDescription),
+          expectWarnings: scriptsWarnings[template],
+        }),
+      })),
+      {
+        name: "repo-1-cjk-light",
+        input: render("repo-1", "light", {
+          design: loadProfile(template, "repo-1"),
+          data: repositoryTextsProfileData(cjkName, scriptsDescription),
+          expectWarnings: ["missing-glyph"],
+        }),
+      },
       ...themes.map((theme) => ({
         name: `header-emoji-${theme}`,
         input: render("header", theme, {

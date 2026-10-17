@@ -16,7 +16,8 @@
         "licence": {
           "embedding": "allowed",
           "name": "OFL-1.1"
-        }
+        },
+        "fallback": ["nxb"]
       },
       "xbold": {
         "family": "Archivo ExtraCondensed",
@@ -25,11 +26,40 @@
         "licence": {
           "embedding": "allowed",
           "name": "OFL-1.1"
-        }
+        },
+        "fallback": ["nxbold"]
       },
       "reg": {
         "family": "Archivo",
         "src": "fonts/Archivo-Regular.ttf",
+        "weight": 400,
+        "licence": {
+          "embedding": "allowed",
+          "name": "OFL-1.1"
+        },
+        "fallback": ["nsc"]
+      },
+      "nxb": {
+        "family": "Noto Sans",
+        "src": "fonts/NotoSans-ExtraCondensedExtraBold.ttf",
+        "weight": 800,
+        "licence": {
+          "embedding": "allowed",
+          "name": "OFL-1.1"
+        }
+      },
+      "nxbold": {
+        "family": "Noto Sans",
+        "src": "fonts/NotoSans-ExtraCondensedBold.ttf",
+        "weight": 700,
+        "licence": {
+          "embedding": "allowed",
+          "name": "OFL-1.1"
+        }
+      },
+      "nsc": {
+        "family": "Noto Sans",
+        "src": "fonts/NotoSans-SemiCondensed.ttf",
         "weight": 400,
         "licence": {
           "embedding": "allowed",

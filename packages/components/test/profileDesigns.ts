@@ -82,25 +82,46 @@ export function loadExampleProfile(
   return result.value;
 }
 
-/** The font files of one template folder, by the relative `src` its designs give them. */
+/** Decoded font files by path: a template folder holds megabytes of fonts, and tests render thousands of times. */
+const decodedFonts = new Map<string, Uint8Array>();
+
+/** The bytes of a font file by its relative `src` in one template folder, decoded once; undefined when absent. */
+function profileFontFile(template: ProfileTemplate, src: string): Uint8Array | undefined {
+  const path = `${prefix}${template}/${src}`;
+  const uri = fontSources[path];
+  if (uri === undefined) return undefined;
+  let bytes = decodedFonts.get(path);
+  if (bytes === undefined) {
+    bytes = dataUriBytes(uri);
+    decodedFonts.set(path, bytes);
+  }
+  return bytes;
+}
+
+/** The font files of one template folder, by the relative `src` its designs give them (shared: never change them). */
 export function profileFontFiles(template: ProfileTemplate): Readonly<Record<string, Uint8Array>> {
   const folder = `${prefix}${template}/`;
   return Object.fromEntries(
-    Object.entries(fontSources)
-      .filter(([path]) => path.startsWith(folder))
-      .map(([path, uri]) => [path.slice(folder.length), dataUriBytes(uri)]),
+    Object.keys(fontSources)
+      .filter((path) => path.startsWith(folder))
+      .map((path) => {
+        const src = path.slice(folder.length);
+        return [src, profileFontFile(template, src) ?? new Uint8Array()];
+      }),
   );
 }
 
-/** The bytes of every font asset the design names, as the CLI and the Action supply them after reading the files. */
+/**
+ * The bytes of every font asset the design names, as the CLI and the Action supply them after reading the files
+ * (shared: never change them).
+ */
 export function profileFontAssets(
   template: ProfileTemplate,
   design: Design,
 ): Record<string, Uint8Array> {
-  const files = profileFontFiles(template);
   const assets: Record<string, Uint8Array> = {};
   for (const [id, font] of Object.entries(design.assets?.fonts ?? {})) {
-    const bytes = files[font.src];
+    const bytes = profileFontFile(template, font.src);
     if (bytes === undefined)
       throw new Error(`font asset ${id} names ${font.src}, not in ${template}/fonts`);
     assets[id] = bytes;

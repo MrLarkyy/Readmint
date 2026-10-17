@@ -13,6 +13,7 @@ import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import { defineGoldenSuite } from "../src/GoldenSuite.js";
 import { GoldenStore } from "../src/node/GoldenStore.js";
 import { checkNodeFixture, checkOrphans } from "../src/node/checkNodeFixture.js";
+import { rasterizeSvg } from "../src/node/rasterizeSvg.js";
 
 const open = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16">';
 const red = `${open}<rect width="16" height="16" fill="#ff0000"/></svg>`;
@@ -191,4 +192,16 @@ test("a suite with fontsFromSvg gives resvg the fonts it finds in each rendered 
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
+});
+
+test("a suite with rasterCopy draws the PNG golden from that copy and snapshots the rendered SVG", async () => {
+  const copied = defineGoldenSuite<string>({
+    name: "temp",
+    render: (svg) => svg,
+    rasterCopy: (svg) => svg.replace("#ff0000", "#0000ff"),
+    fixtures: [{ name: "box", input: red }],
+  });
+  expect((await checkNodeFixture(copied, box, store, "update")).problems).toEqual([]);
+  expect(readFileSync(store.svgPath("box"), "utf8")).toContain("#ff0000");
+  expect(readFileSync(store.pngPath("box")).equals(rasterizeSvg(blue))).toBe(true);
 });

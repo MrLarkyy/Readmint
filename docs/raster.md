@@ -148,9 +148,14 @@ a caller passes), a broken font, or text with no font at all is `raster-font`: r
 
 resvg matches a text's `font-family` against the family name inside the font file (name 16, else 1), while the
 renderer writes the asset's `family` (the `font-family-mismatch` warning of [renderer.md](renderer.md) when they
-differ). In its own copy of the SVG, raster export sets each text's family to the name inside the font the matching
-`@font-face` rule (family, weight, style) embeds, so such a text draws all the same; a text whose family no font
-carries is `raster-font`.
+differ). Among the fonts of one name it picks by the width inside the font (OS/2 usWidthClass) before the weight, and
+by the weight inside the font (usWeightClass) rather than the rule's: two faces of one family at different widths
+(Horizon's ExtraCondensed and SemiCondensed Noto Sans) or a face whose own weight is not its rule's would draw with
+the wrong face. In its own copy of the SVG, raster export picks for each `<text>`, and each `<tspan>` that sets a
+family, weight or style of its own, the `@font-face` rule a browser takes (family, then style, then weight in CSS
+order; a tspan inherits what it does not set) and names the face that rule embeds by what is inside it: its family,
+`font-stretch`, `font-weight` and `font-style`. Such a text draws as in a browser; a text or tspan whose family no
+font carries is `raster-font`.
 
 ## WebP images
 

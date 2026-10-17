@@ -146,7 +146,7 @@ Five complete designs that show what the format can do; each is an ordinary desi
   (SIL Open Font License 1.1, `OFL.txt` and the sha256 of each file beside them); their `src` is the relative path
   `fonts/Montserrat-Medium.ttf`, resolved against the design file by the CLI and the Action. The banner names its
   headline font `display`: replace its `src`, `family` and `licence` (keep `embedding: "allowed"` only for a font
-  you may embed) to set the banner in your own font. Montserrat has no CJK, Arabic, Devanagari or emoji glyphs: a name or bio in those is not drawn and the render warns `missing-glyph`. Add a font asset that has them and list it in the `fallback` of `body`, `bold` and `display` ([design format](design-format.md#assets)), and mind the size budget below.
+  you may embed) to set the banner in your own font. Montserrat has no CJK, Arabic, Devanagari or emoji glyphs and of Greek only Δ, Ω, μ and π: a name or bio in those is not drawn and the render warns `missing-glyph`. Add a font asset that has them and list it in the `fallback` of `body`, `bold` and `display` ([design format](design-format.md#assets)), and mind the size budget below.
 - **Long and missing data.** Names are cut with `truncate`, counts shortened with `compact`, the language list shows
   six rows (`repeat` with `if: {{ i < 6 }}`; a dropped copy takes no slot) or a "No language data yet." line, and a
   streak of 0 days shows "No streak". In `year-ring`, the repository names and push messages of recent work and the
@@ -164,11 +164,11 @@ Five complete designs that show what the format can do; each is an ordinary desi
 Three full README profiles, each a folder of designs under `@readmint/components/templates/profiles/<name>/`, built
 section by section to the approved prototype (version 6):
 
-| template    | look                                                                                                     | fonts (SIL OFL 1.1)                                         | year visual                                                                      |
-| ----------- | -------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- | -------------------------------------------------------------------------------- |
-| `year-ring` | calm and cobalt; a typed last push, an index table, recent work, repository cards with a 52-week line    | Archivo (normal and SemiExpanded)                           | a turning 3D ring, one line per day, the longest streak marked (runs of 2+ days) |
-| `horizon`   | an orange poster: the name full width, a commit ticker, repositories ranked by stars, stack, worked with | Archivo (ExtraCondensed, SemiCondensed, normal), Geist Mono | a lit, shaded 3D terrain whose peaks turn orange                                 |
-| `pinscreen` | an editor: a status bar, repositories as Kotlin objects, a terminal git log, a build script stack        | Geist, Geist Mono                                           | a wall of pins with a ripple running out from today                              |
+| template    | look                                                                                                     | fonts (SIL OFL 1.1)                                                             | year visual                                                                      |
+| ----------- | -------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| `year-ring` | calm and cobalt; a typed last push, an index table, recent work, repository cards with a 52-week line    | Archivo (normal and SemiExpanded), Noto Sans fallback                           | a turning 3D ring, one line per day, the longest streak marked (runs of 2+ days) |
+| `horizon`   | an orange poster: the name full width, a commit ticker, repositories ranked by stars, stack, worked with | Archivo (ExtraCondensed, SemiCondensed, normal), Geist Mono, Noto Sans fallback | a lit, shaded 3D terrain whose peaks turn orange                                 |
+| `pinscreen` | an editor: a status bar, repositories as Kotlin objects, a terminal git log, a build script stack        | Geist, Geist Mono                                                               | a wall of pins with a ripple running out from today                              |
 
 `profileTemplates` from `@readmint/components` maps each name to its sections (`ProfileTemplate`, `ProfileSection`).
 A folder holds, per section, `<section>.json` and its dark twin `<section>.dark.json`, an example `README.md` and
@@ -232,23 +232,34 @@ A folder holds, per section, `<section>.json` and its dark twin `<section>.dark.
 - **No user in a design.** No design contains a login, name, address or personal text; every other text comes from
   `github.*`, so another account's data needs no edit. The render date is `github.contributions.to`: a render reads no
   clock, so times are days ("today", "yesterday", "3 days ago", read from the calendar's own dates), never hours.
-- **Fonts.** Archivo (Omnibus-Type), Geist and Geist Mono (Vercel) are SIL OFL 1.1 static TTFs, byte copies of the
+- **Fonts.** Archivo (Omnibus-Type), Noto Sans (Noto Project), Geist and Geist Mono (Vercel) are SIL OFL 1.1 static TTFs, byte copies of the
   upstream files (origin, version and sha256 in each `fonts/README.md`), none with a Reserved Font Name and all with
   OS/2 `fsType` 0, so the renderer embeds a subset of the glyphs a section draws. The renderer reads static faces, not
   variable axes, so the prototype's Archivo widths are the static width instances: stretch 62-70 % is ExtraCondensed,
   90 % SemiCondensed, 108-116 % SemiExpanded, 100 % the normal width. Only the files a template names are in its
-  folder, with the licence text beside them. Archivo has no Cyrillic and none of the families has emoji or CJK glyphs:
-  such a name or commit message is not drawn and the render warns `missing-glyph` ([renderer](renderer.md)). Add a
-  font asset that has them and list it in the `fallback` of the design's fonts
-  ([design format](design-format.md#assets)), and mind the size budget below. A dropped emoji takes no space, so
+  folder, with the licence text beside them.
+  **Script coverage.** `year-ring` and `horizon` set their text in Archivo, which covers Latin, Latin Extended-A and
+  Vietnamese, no Cyrillic and of Greek only Δ, Ω, μ and π (in all ten Archivo files); every Archivo font asset lists a
+  Noto Sans file of its weight as its `fallback`, so Cyrillic and the other Greek letters of names, descriptions and
+  messages are drawn from Noto Sans in those two templates. In `year-ring` the Noto Sans files are the normal width; in
+  `horizon` the ExtraCondensed Archivo falls back to ExtraCondensed Noto Sans, and both the SemiCondensed and the
+  normal-width Archivo (`reg`) to SemiCondensed Noto Sans (the template carries no normal-width Noto Sans). The
+  `horizon` code and label text in Geist Mono and `pinscreen`'s Geist and Geist Mono cover Latin, most of Latin
+  Extended-A (not Ĕ ĕ Ĭ ĭ ĸ Ŀ ŀ ŉ Ŏ ŏ ſ, nor Ĳ ĳ in Geist Mono), Vietnamese and Cyrillic (the Slavic languages, not
+  every historic letter), but of Greek only Λ, Ω, λ, μ, π (and ω in Geist): other Greek letters in a Geist or Geist
+  Mono text are not drawn there. No
+  template font has emoji or CJK glyphs: such a name or commit message is not drawn, takes no space, and the render
+  warns `missing-glyph` ([renderer](renderer.md)). To cover more, add a font asset that has the script and list it in
+  the `fallback` of the design's fonts ([design format](design-format.md#assets);
+  [fonts](fonts.md#script-coverage-of-the-bundled-templates)), and mind the size budget below. A dropped emoji takes no space, so
   what follows a text in `pinscreen` (the status bar: separator, "last push", the ticker) is placed by the layout
   after the text as drawn. The `pinscreen` bar follows the branch as drawn (at least 80 px, wider for a long branch name), and without a GitHub status it closes up: the last push and its separator start right after the branch. Whatever follows the width of a text that may hold any character is bound to its drawn
   width (`textWidth`, `truncateWidth`, [expressions](expressions.md#filters)), so a dropped emoji moves nothing: the
   `horizon` name's font size, the slots of the `horizon` commit ticker and worked-with band, the `pinscreen`
   contact underline and stack parentheses, the `horizon` and `year-ring` contact pills, the contacts cut to their
   room (the `horizon` and `year-ring` ones are placed by their width, not wrapped in a box, so they never break), the
-  `pinscreen` ticker's cut and the `pinscreen` and `year-ring` ticker travel. A few texts that can only be ASCII
-  are still placed by counting characters: in `pinscreen`, a repository name and the login in Geist Mono (0.6 em a
+  `pinscreen` repository line (the `:`, `Project` and `{` after the name follow its drawn width, so a name with undrawn characters leaves no gap), the `pinscreen` ticker's cut and the `pinscreen` and `year-ring` ticker travel. A few texts that can only be ASCII
+  are still placed by counting characters: in `pinscreen`, the login in Geist Mono (0.6 em a
   character, exact); in `year-ring`, the row under the year (Today, the longest streak and the busiest weekday, all
   generated, in Archivo Regular 12) is centred by 6.2 px a character, an estimate that may leave it slightly off
   centre; it holds no free text, so no dropped character can move it. The row lists only what the year draws: Today
@@ -407,7 +418,7 @@ seconds of work for each export format.
   entries. The largest
   count of a year needs none: `days | max("count")` is one binding ([expressions.md](expressions.md)).
 - **Text without measuring.** Geist Mono advances 0.6 em, so a token of the Pinscreen code sits at `columns x 6.9`
-  pixels; short free text is cut by character count with `truncate` (the header, log, stack and repository texts, the
+  pixels (what follows a repository name sits after the name's drawn width instead); short free text is cut by character count with `truncate` (the header, log, stack and repository texts, the
   footer's contact label), and longer prose that is not cut (the header's role and intro, the footer's headline and note)
   is held in a `clip` group. Two texts are cut by drawn width instead (`truncateWidth`): the header's latest-push
   ticker (also in a `clip` group), to the room the status bar leaves it, and the footer's contact text, to 300 px after `truncate(34)`; the header's branch chip and status message and the stack's items are cut by count and
@@ -420,31 +431,33 @@ seconds of work for each export format.
 
 ### Bytes per section
 
-UTF-8 bytes of the animated SVG of the files as published, on the sample data of the tests and on the worst-case data
-(1024-character texts, counts of 10^15, 600 pushes, a 54-column calendar at 1000000 a day); every section is within
-the budget below. The repository slots weigh alike; `work` is 5 to 7 KB.
+UTF-8 bytes (KB of 1000) of the animated SVG of the files as published (both themes weigh alike), on the sample data
+of the tests and on the worst-case data (1024-character texts, counts of 10^15, 600 pushes, a 54-column calendar at
+1000000 a day), the larger of it in Latin and with the long texts in Cyrillic and Greek (every letter of U+0400..045F
+and U+0386..03CE, which embeds the most glyphs of the fallback fonts); every section is within the budget below. The
+repository slots weigh alike; `work` is 5 to 7 KB.
 
 | template    | section | sample | worst case |
 | ----------- | ------- | ------ | ---------- |
-| `year-ring` | header  | 151 KB | 162 KB     |
-| `year-ring` | year    | 168 KB | 184 KB     |
+| `year-ring` | header  | 149 KB | 188 KB     |
+| `year-ring` | year    | 167 KB | 184 KB     |
 | `year-ring` | index   | 10 KB  | 7 KB       |
-| `year-ring` | recent  | 28 KB  | 88 KB      |
-| `year-ring` | repo-1  | 16 KB  | 26 KB      |
-| `year-ring` | footer  | 10 KB  | 10 KB      |
-| `horizon`   | header  | 16 KB  | 24 KB      |
-| `horizon`   | ticker  | 34 KB  | 31 KB      |
-| `horizon`   | year    | 121 KB | 112 KB     |
-| `horizon`   | repo-1  | 45 KB  | 53 KB      |
+| `year-ring` | recent  | 29 KB  | 34 KB      |
+| `year-ring` | repo-1  | 16 KB  | 27 KB      |
+| `year-ring` | footer  | 10 KB  | 13 KB      |
+| `horizon`   | header  | 15 KB  | 24 KB      |
+| `horizon`   | ticker  | 34 KB  | 42 KB      |
+| `horizon`   | year    | 98 KB  | 92 KB      |
+| `horizon`   | repo-1  | 45 KB  | 54 KB      |
 | `horizon`   | stack   | 10 KB  | 9 KB       |
 | `horizon`   | worked  | 3 KB   | 3 KB       |
-| `horizon`   | footer  | 8 KB   | 8 KB       |
-| `pinscreen` | header  | 23 KB  | 30 KB      |
-| `pinscreen` | year    | 184 KB | 198 KB     |
-| `pinscreen` | repo-1  | 12 KB  | 12 KB      |
-| `pinscreen` | log     | 27 KB  | 27 KB      |
+| `horizon`   | footer  | 8 KB   | 11 KB      |
+| `pinscreen` | header  | 21 KB  | 41 KB      |
+| `pinscreen` | year    | 169 KB | 182 KB     |
+| `pinscreen` | repo-1  | 12 KB  | 15 KB      |
+| `pinscreen` | log     | 24 KB  | 29 KB      |
 | `pinscreen` | stack   | 13 KB  | 13 KB      |
-| `pinscreen` | footer  | 5 KB   | 5 KB       |
+| `pinscreen` | footer  | 5 KB   | 7 KB       |
 
 The ring of the Year Ring prototype was about 390 KB; sharing the turn rules between the days brought it to 241 KB with
 a dot for every day without commits, and drawing each day on an orbit (six groups instead of nine, no keyframes per

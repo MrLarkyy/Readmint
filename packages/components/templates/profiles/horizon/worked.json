@@ -16,6 +16,16 @@
         "licence": {
           "embedding": "allowed",
           "name": "OFL-1.1"
+        },
+        "fallback": ["nxbold"]
+      },
+      "nxbold": {
+        "family": "Noto Sans",
+        "src": "fonts/NotoSans-ExtraCondensedBold.ttf",
+        "weight": 700,
+        "licence": {
+          "embedding": "allowed",
+          "name": "OFL-1.1"
         }
       },
       "mono": {
