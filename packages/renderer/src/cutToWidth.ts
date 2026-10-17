@@ -16,7 +16,8 @@ export function cutToWidth(
   forced: boolean,
 ): string {
   if (forced) {
-    if (measure(text + ellipsis) <= width) return text.trimEnd() + ellipsis;
+    const marked = text.trimEnd() + ellipsis;
+    if (measure(marked) <= width) return marked;
   } else if (measure(text) <= width) {
     return text;
   }

@@ -124,6 +124,12 @@ describe("a text layer's maxLines", () => {
     expect(crlf.text).toBe("one\r\ntwo…");
   });
 
+  test("the … follows the last word, not the whitespace the cut line ends on", () => {
+    expect(shaped("one\ntwo \nthree", 200, 2).text).toBe("one\ntwo…");
+    expect(shaped("Visual \nStudio", undefined, 1).text).toBe("Visual…");
+    expect(shaped("Visual \nStudio", 200, 1).text).toBe("Visual…");
+  });
+
   test("without a width the … is appended to the last kept line", () => {
     const drawn = lines(render([text({ content: "one\ntwo\nthree", maxLines: 1 })]).svg);
     expect(drawn.map((line) => line.text)).toEqual(["one…"]);
