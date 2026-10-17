@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { profileTemplates, type ProfileTemplate } from "../src/index.js";
+import { profileTemplates, type ProfileSection, type ProfileTemplate } from "../src/index.js";
 import { loadProfile, renderProfile, type ProfileTheme } from "./profileDesigns.js";
 import { stripFontData } from "./stripFontData.js";
 import { sampleProfileData } from "./sampleProfileData.js";
@@ -8,6 +8,16 @@ import { sampleProfileData } from "./sampleProfileData.js";
 const pageBackground: Readonly<Record<ProfileTheme, string>> = {
   light: "#ffffff",
   dark: "#0d1117",
+};
+
+/**
+ * Surfaces a template draws behind its text besides the page: Pinscreen's code and terminal panels.
+ * The fills are asserted against a render below, so they cannot drift from the templates.
+ */
+const panelBackground: Readonly<
+  Partial<Record<ProfileTemplate, Readonly<Record<ProfileTheme, string>>>>
+> = {
+  pinscreen: { light: "#fafafa", dark: "#12161d" },
 };
 
 /** WCAG AA for small text; decorative text (line numbers, separators) is held to it too (docs/components.md). */
@@ -67,25 +77,46 @@ const cases = (Object.keys(profileTemplates) as ProfileTemplate[]).flatMap((temp
   ),
 );
 
+/** Sections that draw no text at all (shapes only); every other section must render some. */
+const withoutText: readonly string[] = ["horizon/worked"];
+
+function render(template: ProfileTemplate, section: ProfileSection, theme: ProfileTheme): string {
+  return stripFontData(
+    renderProfile({
+      template,
+      design: loadProfile(template, section, theme),
+      data: sampleProfileData(),
+    }),
+  );
+}
+
 test.each(cases)(
-  "every text of %s %s %s reaches 4.5:1 against the page",
+  "every text of %s %s %s reaches 4.5:1 against the page and the template panel",
   (template, section, theme) => {
-    const svg = stripFontData(
-      renderProfile({
-        template,
-        design: loadProfile(template, section, theme),
-        data: sampleProfileData(),
-      }),
+    const texts = textFills(render(template, section, theme));
+    if (withoutText.includes(`${template}/${section}`)) expect(texts).toEqual([]);
+    else expect(texts.length).toBeGreaterThan(0);
+    const surfaces = [pageBackground[theme], panelBackground[template]?.[theme]].filter(
+      (surface): surface is string => surface !== undefined,
     );
-    const texts = textFills(svg);
-    const below = texts
-      .map((entry) => ({ ...entry, ratio: contrast(entry.fill, pageBackground[theme]) }))
-      .filter((entry) => entry.ratio < minimumContrast)
-      .map(
-        (entry) =>
-          `${entry.fill} ${entry.ratio.toFixed(2)}:1 at ${entry.fontSize}px "${entry.text}"`,
-      );
+    const below = texts.flatMap((entry) =>
+      surfaces
+        .map((surface) => ({ ...entry, surface, ratio: contrast(entry.fill, surface) }))
+        .filter((measured) => measured.ratio < minimumContrast)
+        .map(
+          (measured) =>
+            `${measured.fill} on ${measured.surface} ${measured.ratio.toFixed(2)}:1 at ${measured.fontSize}px "${measured.text}"`,
+        ),
+    );
     expect(below).toEqual([]);
+  },
+);
+
+test.each(themes)(
+  "the pinscreen panel fill of the %s theme occurs in a rendered section",
+  (theme) => {
+    const fill = panelBackground.pinscreen?.[theme] ?? "";
+    expect(render("pinscreen", "repo-1", theme)).toContain(`fill="${fill}"`);
   },
 );
 

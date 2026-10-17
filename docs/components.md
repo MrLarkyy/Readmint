@@ -193,7 +193,8 @@ A folder holds, per section, `<section>.json` and its dark twin `<section>.dark.
 - **Links.** SVG links do not work inside an `<img>`, so a clickable element is a link around the image: the example
   `README.md` wraps each repository and the contact footer.
 - **Text contrast.** Every text of a profile design reaches a contrast of 4.5:1 (WCAG AA for small text) against the
-  page colour of its theme, `#ffffff` light and `#0d1117` dark, with no exception for decorative text: the code line
+  page colour of its theme, `#ffffff` light and `#0d1117` dark, and, for Pinscreen, against its code and terminal panel as well (`#fafafa` light,
+  `#12161d` dark), with no exception for decorative text: the code line
   numbers, the weekday letters and the `/` separators of the ticker are held to it too, so the secondary greys are
   dimmer than the body text but never fainter than 4.5:1. The footer credit, the Pinscreen code comments and the small
   orange text (the `today` label and the push hash of Horizon) use their own text shade; the orange of lines, dots and
