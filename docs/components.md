@@ -164,11 +164,11 @@ Five complete designs that show what the format can do; each is an ordinary desi
 Three full README profiles, each a folder of designs under `@readmint/components/templates/profiles/<name>/`, built
 section by section to the approved prototype (version 6):
 
-| template    | look                                                                                                     | fonts (SIL OFL 1.1)                                         | year visual                                                    |
-| ----------- | -------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- | -------------------------------------------------------------- |
-| `year-ring` | calm and cobalt; a typed last push, an index table, recent work, repository cards with a 52-week line    | Archivo (normal and SemiExpanded)                           | a turning 3D ring, one line per day, the longest streak marked |
-| `horizon`   | an orange poster: the name full width, a commit ticker, repositories ranked by stars, stack, worked with | Archivo (ExtraCondensed, SemiCondensed, normal), Geist Mono | a lit, shaded 3D terrain whose peaks turn orange               |
-| `pinscreen` | an editor: a status bar, repositories as Kotlin objects, a terminal git log, a build script stack        | Geist, Geist Mono                                           | a wall of pins with a ripple running out from today            |
+| template    | look                                                                                                     | fonts (SIL OFL 1.1)                                         | year visual                                                                      |
+| ----------- | -------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| `year-ring` | calm and cobalt; a typed last push, an index table, recent work, repository cards with a 52-week line    | Archivo (normal and SemiExpanded)                           | a turning 3D ring, one line per day, the longest streak marked (runs of 2+ days) |
+| `horizon`   | an orange poster: the name full width, a commit ticker, repositories ranked by stars, stack, worked with | Archivo (ExtraCondensed, SemiCondensed, normal), Geist Mono | a lit, shaded 3D terrain whose peaks turn orange                                 |
+| `pinscreen` | an editor: a status bar, repositories as Kotlin objects, a terminal git log, a build script stack        | Geist, Geist Mono                                           | a wall of pins with a ripple running out from today                              |
 
 `profileTemplates` from `@readmint/components` maps each name to its sections (`ProfileTemplate`, `ProfileSection`).
 A folder holds, per section, `<section>.json` and its dark twin `<section>.dark.json`, an example `README.md` and
@@ -249,9 +249,11 @@ A folder holds, per section, `<section>.json` and its dark twin `<section>.dark.
   room (the `horizon` and `year-ring` ones are placed by their width, not wrapped in a box, so they never break), the
   `pinscreen` ticker's cut and the `pinscreen` and `year-ring` ticker travel. A few texts that can only be ASCII
   are still placed by counting characters: in `pinscreen`, a repository name and the login in Geist Mono (0.6 em a
-  character, exact); in `year-ring`, the row under the year (the longest streak and the busiest weekday, both
+  character, exact); in `year-ring`, the row under the year (Today, the longest streak and the busiest weekday, all
   generated, in Archivo Regular 12) is centred by 6.2 px a character, an estimate that may leave it slightly off
-  centre; it holds no free text, so no dropped character can move it. Archivo has no arrow or star glyph
+  centre; it holds no free text, so no dropped character can move it. The row lists only what the year draws: Today
+  only when the calendar has days, the streak only for a run of two or more days (the same rule as its marker), the
+  busiest weekday only when a day has contributions; the remaining items are centred by the same estimate. Archivo has no arrow or star glyph
   either: the contact arrow and the worked-with stars are paths.
 
 ### Settings file

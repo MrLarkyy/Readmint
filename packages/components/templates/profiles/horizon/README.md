@@ -1,6 +1,6 @@
 # Horizon
 
-A poster profile in condensed Archivo with Geist Mono and an orange accent. The name runs the full width, the latest pushes run past in a ticker, and the year is a lit, shaded 3D terrain whose peaks turn orange. The repositories are ranked by stars, each with a bar code of its weeks.
+A poster profile in condensed Archivo with Geist Mono and an orange accent. The name runs the full width, the latest pushes run past in a ticker, and the year is a lit, shaded 3D terrain whose peaks turn orange; the longest streak and the busiest weekday stand beside it, and the weekday is left out (with its `busiest_day` label) for a year without contributions. The repositories are ranked by stars, each with a bar code of its weeks.
 
 Every section is a design of the public design format, drawn in a light and a dark variant (`<section>.json` and
 `<section>.dark.json`, which differ only in the root prop `theme`). Nothing in them names a person: the data comes
