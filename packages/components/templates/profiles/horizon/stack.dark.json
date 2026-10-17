@@ -85,6 +85,10 @@
           "values": ["bytes", "repositories", "authored"],
           "default": "bytes"
         },
+        "languagesHide": {
+          "type": "array",
+          "default": []
+        },
         "labels": {
           "type": "array",
           "default": []
@@ -125,9 +129,14 @@
         {
           "type": "group",
           "repeat": {
-            "each": "{{ [(props.languageShare == \"authored\" ? (github.languagesAuthored || github.languages) : (props.languageShare == \"repositories\" ? (github.languagesByRepo || github.languages) : github.languages))[0], (props.languageShare == \"authored\" ? (github.languagesAuthored || github.languages) : (props.languageShare == \"repositories\" ? (github.languagesByRepo || github.languages) : github.languages))[1], (props.languageShare == \"authored\" ? (github.languagesAuthored || github.languages) : (props.languageShare == \"repositories\" ? (github.languagesByRepo || github.languages) : github.languages))[2]] }}",
+            "each": "{{ [((props.languageShare == \"authored\" ? (github.languagesAuthored || github.languages) : (props.languageShare == \"repositories\" ? (github.languagesByRepo || github.languages) : github.languages)) | exclude(\"name\", props.languagesHide))[0], ((props.languageShare == \"authored\" ? (github.languagesAuthored || github.languages) : (props.languageShare == \"repositories\" ? (github.languagesByRepo || github.languages) : github.languages)) | exclude(\"name\", props.languagesHide))[1], ((props.languageShare == \"authored\" ? (github.languagesAuthored || github.languages) : (props.languageShare == \"repositories\" ? (github.languagesByRepo || github.languages) : github.languages)) | exclude(\"name\", props.languagesHide))[2]] }}",
             "as": "lang",
             "index": "li"
+          },
+          "let": {
+            "all": "{{ (props.languageShare == \"authored\" ? (github.languagesAuthored || github.languages) : (props.languageShare == \"repositories\" ? (github.languagesByRepo || github.languages) : github.languages)) }}",
+            "langs": "{{ all | exclude(\"name\", props.languagesHide) }}",
+            "lk": "{{ ((langs | length | default(0)) < (all | length | default(0)) && (langs | sum(\"share\")) > 0) ? 1 / (langs | sum(\"share\")) : 1 }}"
           },
           "if": "{{ lang }}",
           "children": [
@@ -161,7 +170,7 @@
                   "type": "text",
                   "x": 0,
                   "y": "{{ 92 + li * 23 - 14.01 }}",
-                  "content": "{{ lang.name | truncate(18) }} {{ lang.share * 100 | round }}%",
+                  "content": "{{ lang.name | truncate(18) }} {{ lang.share * lk * 100 | round }}%",
                   "font": "sc",
                   "fontSize": 15,
                   "fill": "{{ props.theme == \"dark\" ? \"#F0EEEA\" : \"#141414\" }}",
