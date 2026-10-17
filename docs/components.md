@@ -294,6 +294,38 @@ not read the status or the pinned items), when GitHub refused the request (`meta
 Without these, `year-ring` shows "No recent push yet." and "No recent pushes yet.", `horizon` "No commits to show yet."
 and `pinscreen` "no pushes yet" and "no commits yet"; the sections that do not read them render in full.
 
+### Raster export of the long loops
+
+A profile section that never stops moving loops over 54 or 60 seconds, and the loop is part of its look in SVG (the
+ring turns once a minute, the ticker runs whole runs, the year's total counts up again every minute), so the
+templates keep it. A WebP, APNG or GIF of one is a different matter: 30 frames a second of 60 seconds is 1800 frames,
+and at the default scale 2 even 3 frames a second of the widest sections nearly fill the pixel budget. Raster export
+therefore samples such a loop at the highest whole frame rate that fits the frame and pixel limits and says so
+([raster.md](raster.md#timing-and-looping)); the one-shot sections (footers, stacks, the repository slots of
+`horizon` and `pinscreen`, the index and recent work of `year-ring`) keep 30 frames a second (GIF 25). The limit that
+is left is the 5 MiB of the file, which depends on how much of the picture moves. The measured result at the defaults
+(light theme, the sample data, scale 2), by section; a rate is the frame rate of the fitted export and `x fps` the
+rate the error names, which then exports:
+
+| section                        | fitted rate | WebP and APNG                     | GIF                                                         |
+| ------------------------------ | ----------- | --------------------------------- | ----------------------------------------------------------- |
+| `year-ring` `repo-1`..`repo-6` | 16          | export                            | export, `repo-1`, `repo-2` and `repo-4` at 11, 9 and 11 fps |
+| `year-ring` `header`           | 5           | too large: 1 fps works            | too large: 2 fps                                            |
+| `year-ring` `year`             | 3           | SVG only (too large at 1 fps)     | too large: 1 fps                                            |
+| `horizon` `header`             | 5           | export                            | export                                                      |
+| `horizon` `ticker`             | 16          | too large: WebP 6 fps, APNG 3 fps | too large: 9 fps                                            |
+| `horizon` `year`               | 3           | export                            | too large: 1 fps                                            |
+| `horizon` `worked`             | 16          | too large: WebP 7 fps, APNG 3 fps | too large: 7 fps                                            |
+| `pinscreen` `header`           | 4           | export                            | too large: 2 fps                                            |
+| `pinscreen` `year` (54 s)      | 4           | export                            | export                                                      |
+| `pinscreen` `log`              | 5           | export                            | too large: 2 fps                                            |
+
+"Too large" ends with a `raster-output-too-large` error that names a rate (about, it is projected from the bytes
+written, and a second error names a lower one if it still does not fit) and writes no file; the table lists what was
+measured to export. `year-ring` `year` is SVG only at scale 2 for WebP and APNG; at scale 1 it exports as WebP or APNG
+at 1 frame a second. A `repo-N` slot of `year-ring` is 960 frames at 16 fps, and about 30 to 60 seconds of work for each
+export format in the Action.
+
 ### Writing a template like these
 
 - **The first frame is the final state.** The raster export draws frame 0, and so do a viewer that ignores CSS and a
@@ -308,7 +340,8 @@ and `pinscreen` "no pushes yet" and "no commits yet"; the sections that do not r
   54000 ms, six ripples), and its one-shots play again once per loop; every other section plays once, `loop: false`. A
   loop whose period is shorter than the timeline needs more keyframes than a track holds (32), so it is a few copies of
   its layer (a `repeat` over a short list with `stagger`), each playing a window of whole periods and invisible outside
-  it; every period divides the timeline, so the loop is seamless.
+  it; every period divides the timeline, so the loop is seamless. A loop is never shortened to suit the raster export:
+  it samples a long loop at a lower rate instead (above).
 - **Tickers by measured width.** A ticker gives each item a slot as wide as its texts as drawn (`textWidth` of the
   repository name and message, fixed widths for the hash, date and gaps), clipped to the slot, so the width of one run
   is known in the design and the band moves by whole runs per timeline.

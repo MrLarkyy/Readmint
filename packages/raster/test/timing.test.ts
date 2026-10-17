@@ -99,6 +99,27 @@ describe.each(animated)("%s timing", (format) => {
   });
 });
 
+describe.each(animated)("%s default rate", (format) => {
+  test("a design that fits at the default exports at it, byte for byte as with the rate given", async () => {
+    const wanted = format === "gif" ? 25 : 30;
+    const output = await exportRaster(designInput(loopDesign), { format, scale: 1 });
+    const explicit = await exportRaster(designInput(loopDesign), {
+      format,
+      frameRate: wanted,
+      scale: 1,
+    });
+    expect(output.frameRate).toBe(wanted);
+    expect(output.frameRateFitted).toBe(false);
+    expect(Buffer.from(output.bytes).equals(Buffer.from(explicit.bytes))).toBe(true);
+  });
+});
+
+test("a still image has no frame rate", async () => {
+  const output = await exportRaster(designInput(loopDesign), { format: "png", scale: 1 });
+  expect(output.frameRate).toBe(0);
+  expect(output.frameRateFitted).toBe(false);
+});
+
 test("a GIF frame rate above 50 is refused: centisecond delays below 2 are stretched by players", async () => {
   const failure = exportRaster(designInput(loopDesign), { format: "gif", frameRate: 60 });
   await expect(failure).rejects.toMatchObject({ code: "raster-options" });

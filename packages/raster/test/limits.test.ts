@@ -67,8 +67,31 @@ describe("raster limits", () => {
     expect(error.code).toBe("raster-too-many-frames");
     expect(error.message).toContain("15 frames at 30 fps");
     expect(error.message).toContain("the 10 allowed");
-    expect(error.message).toContain("lower the frame rate");
+    expect(error.message).toContain("lower the frame rate to 20 or less");
+    expect(error.message).not.toContain("--");
     expect(frames()).toBe(1);
+  });
+
+  test("the default rate is lowered to fit the frame limit and reported", async () => {
+    const { input } = counted(loopDesign);
+    const output = await exportRaster(input, { format: "apng", limits: { maxFrames: 10 } });
+    expect(output.frameRate).toBe(20);
+    expect(output.frameRateFitted).toBe(true);
+    expect(output.frames).toBe(10);
+    const same = await exportRaster(input, {
+      format: "apng",
+      frameRate: 20,
+      limits: { maxFrames: 10 },
+    });
+    expect(Buffer.from(output.bytes).equals(Buffer.from(same.bytes))).toBe(true);
+  });
+
+  test("when not even 1 fps fits, the error is the plain one", async () => {
+    const { input } = counted(loopDesign);
+    const error = await failure(input, { format: "apng", limits: { maxFrames: 0 } });
+    expect(error.code).toBe("raster-too-many-frames");
+    expect(error.message).toContain("1 frames at 1 fps");
+    expect(error.message).toMatch(/lower the frame rate$/);
   });
 
   test("a timeline over the limit fails before anything is rendered", async () => {
@@ -91,7 +114,21 @@ describe("raster limits", () => {
     expect(error.code).toBe("raster-too-many-pixels");
     expect(error.message).toContain("5760 pixels (5 frames of 48x24)");
     expect(error.message).toContain("the 5000 allowed");
+    expect(error.message).toContain("lower the frame rate to 8 or less, or the scale");
+    expect(error.message).not.toContain("--");
     expect(frames()).toBe(1);
+  });
+
+  test("the default rate is lowered to fit the pixel limit", async () => {
+    const { input } = counted(loopDesign);
+    const output = await exportRaster(input, {
+      format: "gif",
+      scale: 1,
+      limits: { maxTotalPixels: 5000 },
+    });
+    expect(output.frameRate).toBe(8);
+    expect(output.frameRateFitted).toBe(true);
+    expect(output.frames).toBe(4);
   });
 
   test.each(["png", "webp", "gif"] as const)(
@@ -135,6 +172,36 @@ describe("raster limits", () => {
     });
     expect(error.code).toBe("raster-output-too-large");
     expect(frames()).toBeLessThan(5);
+  });
+
+  test("an animation over the byte limit names a frame rate that fits", async () => {
+    const options = { format: "apng", scale: 1 } as const;
+    const full = await exportRaster(designInput(loopDesign), { ...options, frameRate: 20 });
+    const limit = Math.floor(full.bytes.length * 0.5);
+    const error = await failure(designInput(loopDesign), {
+      ...options,
+      frameRate: 20,
+      limits: { maxOutputBytes: limit },
+    });
+    expect(error.code).toBe("raster-output-too-large");
+    const named = Number(/about (\d+) fps fits at this size/.exec(error.message)?.[1]);
+    expect(named).toBeGreaterThanOrEqual(1);
+    expect(named).toBeLessThan(20);
+    expect(error.message).not.toContain("--");
+    const fitted = await exportRaster(designInput(loopDesign), {
+      ...options,
+      frameRate: named,
+      limits: { maxOutputBytes: limit },
+    });
+    expect(fitted.bytes.length).toBeLessThanOrEqual(limit);
+  });
+
+  test("a still image over the byte limit names no frame rate", async () => {
+    const error = await failure(designInput(shapesDesign), {
+      format: "png",
+      limits: { maxOutputBytes: 200 },
+    });
+    expect(error.message).not.toContain("fps");
   });
 
   test.each([

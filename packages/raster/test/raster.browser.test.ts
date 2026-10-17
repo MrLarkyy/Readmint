@@ -21,6 +21,7 @@ test("Chromium exports every parity case to the bytes Node pins", async () => {
     const output = await exportRaster(parityInput(item.design), {
       format: item.format,
       ...(item.name === "loop" ? { frameRate: 10 } : {}),
+      ...item.options,
     });
     expect(await sha256(output.bytes), parityKey(item)).toBe(parityPins[parityKey(item)]);
   }

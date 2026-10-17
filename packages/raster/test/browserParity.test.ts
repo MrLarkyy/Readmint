@@ -13,6 +13,7 @@ test.each(parityCases.map((item) => [parityKey(item), item] as const))(
     const output = await exportRaster(parityInput(item.design), {
       format: item.format,
       ...(item.name === "loop" ? { frameRate: 10 } : {}),
+      ...item.options,
     });
     const sha = createHash("sha256").update(output.bytes).digest("hex");
     expect(sha).toBe(parityPins[key]);
