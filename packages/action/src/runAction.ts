@@ -154,7 +154,7 @@ async function loadActionProps(
 ): Promise<DesignProps | undefined> {
   if (config.propsFile === undefined) return undefined;
   try {
-    return await loadDesignProps(config.propsFile, workspace);
+    return await loadDesignProps(config.propsFile, workspace, { confinedTo: workspace });
   } catch (error) {
     if (error instanceof CliError) throw new ActionError("input", error.lines);
     throw error;

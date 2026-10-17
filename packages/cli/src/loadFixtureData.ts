@@ -1,9 +1,8 @@
-import path from "node:path";
-import { DataSourceError, isDataNamespace } from "@readmint/data";
-import { workspaceFileReader } from "@readmint/data-json/node";
+import { isDataNamespace } from "@readmint/data";
 import { CliError } from "./CliError.js";
 import { ExitCode } from "./ExitCode.js";
 import { quoteForLog } from "./quoteForLog.js";
+import { readConfinedFile } from "./readConfinedFile.js";
 import { readUserFile } from "./readUserFile.js";
 
 /** Largest fixture data file in bytes. */
@@ -29,20 +28,8 @@ export async function loadFixtureData(
   const bytes =
     options?.confinedTo === undefined
       ? await readUserFile("fixture data", dataPath, cwd, maxFixtureBytes)
-      : await readConfined(dataPath, options.confinedTo);
+      : await readConfinedFile("fixture data", dataPath, options.confinedTo, maxFixtureBytes);
   return parseFixtureData(dataPath, bytes);
-}
-
-async function readConfined(dataPath: string, root: string): Promise<Uint8Array> {
-  try {
-    return await workspaceFileReader(path.resolve(root))(dataPath, maxFixtureBytes);
-  } catch (error) {
-    if (!(error instanceof DataSourceError)) throw error;
-    const prefix = `The JSON file ${JSON.stringify(dataPath)} `;
-    const message = error.message.endsWith(".") ? error.message.slice(0, -1) : error.message;
-    const reason = message.startsWith(prefix) ? message.slice(prefix.length) : message;
-    throw new CliError(ExitCode.input, `fixture data ${quoteForLog(dataPath)} ${reason}`);
-  }
 }
 
 function parseFixtureData(dataPath: string, bytes: Uint8Array): Record<string, unknown> {

@@ -57,7 +57,7 @@ inputs:
     description: Entries kept per feed, one per line as `<namespace>=<n>` with n from 1 to 50 (the CLI `--data-feed-limit`); a feed without a line keeps 5.
     required: false
   props-file:
-    description: Settings JSON file (the CLI `--props` format, root component props by section) merged into every listed design and its dark twin, for texts set once per template.
+    description: Settings JSON file (the CLI `--props` format, root component props by section) merged into every listed design and its dark twin, for texts set once per template; a path relative to the workspace, confined to it like data-file (no .., no absolute path, no link leading outside).
     required: false
   locale:
     description: BCP 47 tag for the number and date filters, checked as the CLI `--locale`; empty uses the design's locale, else en.

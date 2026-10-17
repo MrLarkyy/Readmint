@@ -147,6 +147,10 @@ export function readInputs(env: Env): ActionConfig {
   }
 
   const propsFile = value("props-file");
+  if (propsFile !== "") {
+    const reason = checkRelativePath(propsFile);
+    if (reason !== undefined) problems.push(`input props-file ${quoteForLog(propsFile)} ${reason}`);
+  }
   const locale = value("locale");
   const localeReason = locale === "" ? undefined : localeProblem(locale);
   if (localeReason !== undefined)
