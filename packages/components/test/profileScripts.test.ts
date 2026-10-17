@@ -5,6 +5,7 @@ import {
   loadExampleProfile,
   loadProfile,
   profileFontAssets,
+  renderProfile,
   type ProfileTheme,
 } from "./profileDesigns.js";
 import {
@@ -232,16 +233,16 @@ describe("Cyrillic and Greek texts of 1024 characters (RM-128)", () => {
     profileTemplates[template].map((section) => [template, section] as const),
   );
 
-  test.each(cases)("%s %s stays within 512 KiB and half the work limits", (template, section) => {
-    const design = loadProfile(template, section);
-    const result = renderSvg(design, {
-      data: worstCaseScriptsProfileData(),
-      assets: { fonts: profileFontAssets(template, design) },
-      limits: halved,
-    });
-    expect(result.ok, JSON.stringify(result.ok ? [] : result.issues)).toBe(true);
-    if (result.ok) {
-      expect(new TextEncoder().encode(result.svg).length).toBeLessThanOrEqual(sizeBudget);
-    }
-  });
+  test.each(cases)(
+    "%s %s draws every letter with no warning, within 512 KiB and half the work limits",
+    (template, section) => {
+      const svg = renderProfile({
+        template,
+        design: loadProfile(template, section),
+        data: worstCaseScriptsProfileData(),
+        limits: halved,
+      });
+      expect(new TextEncoder().encode(svg).length).toBeLessThanOrEqual(sizeBudget);
+    },
+  );
 });

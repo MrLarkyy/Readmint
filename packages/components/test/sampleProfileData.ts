@@ -459,8 +459,13 @@ export function repositoryTextsProfileData(name: string, description: string): P
   return { github: { ...data.github, repositories, pinned: repositories } };
 }
 
-/** Every Cyrillic and Greek letter a template font may have to draw, in one repeating cycle. */
-const scriptCycle = "Привет-мир Ωμέγα ёЁ ъЪ ςΣ ἀ";
+/** Every letter of U+0400..045F (Cyrillic) and U+0386..03CE (modern Greek), in one repeating cycle. */
+const scriptCycle = [
+  ...Array.from({ length: 0x60 }, (_, index) => 0x400 + index),
+  ...Array.from({ length: 0x49 }, (_, index) => 0x386 + index),
+]
+  .map((code) => String.fromCodePoint(code))
+  .filter((char) => /^\p{L}$/u.test(char));
 
 /**
  * The worst-case data with every text of the long kind (a run of "W", or the alternating "W"/"i" message) written in
