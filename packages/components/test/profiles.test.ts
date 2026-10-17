@@ -137,10 +137,11 @@ describe.each(cases)("%s %s", (template, section) => {
     const visit = (layers: readonly Layer[] | undefined, path: string) => {
       layers?.forEach((layer, index) => {
         const at = `${path}/${String(index)}`;
-        const animate: Readonly<Record<string, AnimationTrack<unknown>>> =
-          "animate" in layer ? (layer.animate ?? {}) : {};
-        for (const [property, track] of Object.entries(animate)) {
-          if (track.keyframes.length > 8) long.push(`${at} ${property}`);
+        const animate = ("animate" in layer ? layer.animate : undefined) as
+          Readonly<Record<string, AnimationTrack<unknown> | undefined>> | undefined;
+        const tracks = Object.entries(animate ?? {});
+        for (const [property, track] of tracks) {
+          if ((track?.keyframes.length ?? 0) > 8) long.push(`${at} ${property}`);
         }
         if (layer.repeat?.as === "loopCopy") copied.push(at);
         if (layer.type === "group") visit(layer.children, `${at}/children`);
