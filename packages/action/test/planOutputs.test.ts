@@ -1,3 +1,4 @@
+import { renderVariant } from "@readmint/cli";
 import { describe, expect, test } from "vitest";
 import { ActionError } from "../src/index.js";
 import { planOutputs } from "../src/planOutputs.js";
@@ -121,5 +122,48 @@ describe("planOutputs", () => {
     expect(
       await inputError(planOutputs(["a/card.json", "b/card.yaml"], "out", ["gif"], existing())),
     ).toEqual(['designs "a/card.json" and "b/card.yaml" both write "out/card.gif"']);
+  });
+});
+
+describe("planOutputs with a variant", () => {
+  const dark = renderVariant("dark");
+  if (dark === undefined) throw new Error("no dark variant");
+
+  test("a design without a twin gets the variant rendered from its own file", async () => {
+    expect(await planOutputs(["d/card.json"], "out", ["svg", "png"], existing(), dark)).toEqual([
+      {
+        stem: "card",
+        light: {
+          design: "d/card.json",
+          outputs: [
+            { format: "svg", output: "out/card.svg" },
+            { format: "png", output: "out/card.png" },
+          ],
+        },
+        dark: {
+          design: "d/card.json",
+          variant: dark,
+          outputs: [
+            { format: "svg", output: "out/card.dark.svg" },
+            { format: "png", output: "out/card.dark.png" },
+          ],
+        },
+      },
+    ]);
+  });
+
+  test("a twin found or listed wins and carries no variant", async () => {
+    for (const designs of [["card.json"], ["card.json", "card.dark.json"]]) {
+      const [entry] = await planOutputs(designs, "out", svg, existing("card.dark.json"), dark);
+      expect(entry?.dark).toEqual({
+        design: "card.dark.json",
+        outputs: [{ format: "svg", output: "out/card.dark.svg" }],
+      });
+    }
+  });
+
+  test("without a variant the plan is the one without a twin", async () => {
+    const [entry] = await planOutputs(["card.json"], "out", svg, existing());
+    expect(entry).not.toHaveProperty("dark");
   });
 });

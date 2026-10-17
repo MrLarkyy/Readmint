@@ -56,6 +56,7 @@ templates as working workflows ([components.md](components.md#the-examples-repos
 | `data-feed`            | none                             | RSS 2.0 or Atom 1.0 feeds to bind, one per line as `[<namespace>=]<https URL>` (the CLI [`--data-feed`](cli.md#feed-data)): each is bound as `{ version: 0, title, link, entries }` under its namespace (default `feed`), at most 8, added after the `data-json` documents ([Feed data](#feed-data))                                                                                                                                                                  |
 | `data-feed-limits`     | none                             | entries kept per feed, one per line as `<namespace>=<n>` with n from 1 to 50 (the CLI `--data-feed-limit`); a feed without a line keeps 5                                                                                                                                                                                                                                                                                                                             |
 | `props-file`           | none                             | settings JSON file (the CLI [`--props`](cli.md#settings-file) format: root component props by section) merged into every listed design and its dark twin, so personal texts are set once per template; a path relative to the workspace, checked like `data-file` (no `..`, no absolute or drive path, a link or junction leading outside refused), at most 4 Mi characters of text, as `--props`; a section no listed design has is warned about, without its values |
+| `variant`              | none                             | renders each listed design also as this named variant from the same file: `dark` sets its root prop `theme` to `dark` and writes `<stem>.dark.<ext>` (the CLI [`--variant`](cli.md#variants)); empty renders none. A `<stem>.dark.<ext>` design next to it wins ([Outputs on disk and the dark variant](#outputs-on-disk-and-the-dark-variant))                                                                                                                       |
 | `locale`               | none                             | BCP 47 tag for the `number`, `compact`, `percent` and `date` filters, checked as the CLI `--locale` (`en`, `de`, `fr`, `es`, `cs` or a region tag of one); none: the design's `locale`, else `en`                                                                                                                                                                                                                                                                     |
 | `commit-message`       | `Update Readmint graphics`       | message of the commit; at most 4096 characters                                                                                                                                                                                                                                                                                                                                                                                                                        |
 | `branch`               | the checked-out branch           | branch the commit is pushed to, without `refs/`; the checkout must be this branch at its latest commit on `origin` (see [Pushing](#pushing))                                                                                                                                                                                                                                                                                                                          |
@@ -101,6 +102,17 @@ snippet shows the first listed format; when that is a raster format, the `<img>`
 <img alt="card" src="readmint/card.png" width="420" height="120">
 ```
 
+The `variant` input makes the same pairing without a second file: for every listed design that has no dark twin,
+`<output-dir>/<stem>.dark.<ext>` is rendered from the design itself with its root prop `theme` set to `dark` (the
+variant is applied to the design first, then the `props-file` section, so the result is the bytes of the twin that would
+exist with the same settings), and the snippet is the one of a design with a twin. A real `card.dark.<ext>` next to the
+design, listed or not, wins: it is rendered as always and the log says `"card.dark.json" next to "card.json" wins over
+the dark variant`. Every listed design without a twin must have a top-level component that declares the prop `theme`,
+else the run fails and nothing is written. The lines are those of the CLI [Variants](cli.md#variants), the design name
+followed by `(dark variant)`: `card.json (dark variant): error unknown-property at /theme: variant dark: no top-level
+component of the design has the prop "theme"`, likewise `error enum` or `error type` when the prop does not accept
+`dark`, and `error unknown-property at /: variant dark: the design has no top-level component layer`. Without the input nothing changes: no extra file, no log line, the same snippet.
+
 Outputs of designs you remove from the list are not deleted.
 
 ## What a run does
@@ -112,7 +124,7 @@ Outputs of designs you remove from the list are not deleted.
 3. Loads the data once: the `data-file`, else the GitHub data of `login`, bound as `github` (see
    [data-github.md](data-github.md)). The load is given 5 minutes. Then each `data-json` source in the listed order,
    added under its namespace ([JSON data](#json-data)), then each `data-feed` feed ([Feed data](#feed-data)).
-4. Loads and renders every design and dark variant, in every listed format (a raster export samples an animated design
+4. Loads and renders every design and dark variant (a twin file, or the `variant` input's render of the design), in every listed format (a raster export samples an animated design
    at `frame-rate` and stays within the limits of [raster.md](raster.md)). Design files and their assets are read only inside the workspace,
    also through links ([asset-loading.md](asset-loading.md)). If any design fails, nothing is written and the run
    fails: the output set is never half updated.
@@ -133,7 +145,7 @@ command or GitHub request. The section of a design is its file name without the 
 dark twin share the entry, and the output is the same as the CLI `readmint render <design> --props <file>` gives
 ([cli.md](cli.md#settings-file)). A section no listed design has is a `::warning::` line naming the section only; a
 file that cannot be read or is invalid, or a prop a design does not declare or a wrongly typed value, fails the run
-before anything is written, with the section and prop in the message, never the value; a render error at a set prop, or
+before anything is written, with the section and prop in the message, never the value; a section that sets a prop the `variant` sets (`theme`) wins over the variant and is warned about, naming the section and the prop; a render error at a set prop, or
 inside its component with the value in the message, keeps its path but its message names only the section and props.
 
 ## Data and the token
@@ -263,11 +275,11 @@ example with `actions/upload-artifact`.
 
 A failed run exits with 1 and prints one `::error::` line per problem, each naming what it is about:
 
-- inputs: a missing or invalid input (all at once);
+- inputs: a missing or invalid input (all at once; a `variant` other than empty or `dark` is refused without being echoed);
 - data: the fixture file's problem, or `GitHub data (<code>): <message>` with the code of
   [data-github.md](data-github.md#errors), or `JSON data <namespace> (<code>): <message>` with a common code of
   [data-sources.md](data-sources.md#the-json-source), `Feed data <namespace> (<code>): <message>` with a common code of [data-sources.md](data-sources.md#the-feed-source), or a namespace both the `data-file` and `data-json` or `data-feed` give, or a `data-file` key equal to a `data-json` or `data-feed` namespace;
-- render: the design's issues, as `readmint render` prints them (an image bound to data that cannot be fetched as
+- render: the design's issues (a render of the `variant` input is named `<design> (dark variant)`), as `readmint render` prints them (an image bound to data that cannot be fetched as
   `<design>: error image-<reason> at /assets/images/<id>/src: <message>`), or a raster export over a limit (the
   measured value, the limit and a fix);
 - output: an output folder outside the workspace, an output that is not a regular file, a file that cannot be written;

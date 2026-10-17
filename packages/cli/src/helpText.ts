@@ -13,6 +13,8 @@ Options:
   --data <file>       Fixture data: a JSON object of data namespaces, at most 8 MiB
   --props <file>      Settings: a JSON object of root component props by section (the design file name
                       without .dark), merged into the design (render, validate, preview)
+  --variant <name>    Render a named variant of the design (render): dark sets the root prop theme to
+                      dark before --props; a <stem>.dark.<ext> design next to it wins
   --locale <tag>      Language tag for number and date filters (default: the design locale, else en)
   --time <ms>         Render one frame of the animation as a still image (render, validate)
   --out <file>        Write the output to this file instead of standard output (render)

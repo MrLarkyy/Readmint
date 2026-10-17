@@ -7,7 +7,7 @@ branding:
 
 inputs:
   designs:
-    description: Design files to render, one per line, relative to the workspace (at most 64). A `<name>.dark.<ext>` next to a design is rendered as its dark variant.
+    description: Design files to render, one per line, relative to the workspace (at most 64). A `<name>.dark.<ext>` next to a design is rendered as its dark variant and wins over the `variant` input.
     required: true
   output-dir:
     description: Folder inside the workspace the output files are written to; created when missing.
@@ -58,6 +58,9 @@ inputs:
     required: false
   props-file:
     description: Settings JSON file (the CLI `--props` format, root component props by section) merged into every listed design and its dark twin, for texts set once per template; a path relative to the workspace, confined to it like data-file (no .., no absolute path, no link leading outside).
+    required: false
+  variant:
+    description: Also render each listed design as this named variant from the same file; `dark` sets its root prop theme to dark and writes `<stem>.dark.<ext>`. Empty (default) renders none. A `<stem>.dark.<ext>` design next to it wins.
     required: false
   locale:
     description: BCP 47 tag for the number and date filters, checked as the CLI `--locale`; empty uses the design's locale, else en.

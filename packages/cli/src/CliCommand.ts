@@ -1,3 +1,4 @@
+import type { RenderVariant } from "@readmint/format";
 import type { OutputFormat } from "./OutputFormat.js";
 import type { DataFeedSpec } from "./parseDataFeedArgs.js";
 import type { DataJsonSpec } from "./parseDataJsonArgs.js";
@@ -47,6 +48,8 @@ export interface RenderArgs {
   readonly frameRate?: number;
   /** Lossy WebP quality, 1..100 (`--quality`); webp only. */
   readonly quality?: number;
+  /** Render this named variant of the design (`--variant`): its props are set before the settings file's. */
+  readonly variant?: RenderVariant;
 }
 
 /** A parsed command line. */

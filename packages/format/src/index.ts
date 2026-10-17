@@ -13,6 +13,8 @@ export type { QuoteOptions } from "./quoteInput.js";
 export type { JsonSchema } from "./schema/toJsonSchema.js";
 export type { ValueRange, ValueRangeName } from "./ValueRanges.js";
 export { applyDesignProps } from "./applyDesignProps.js";
+export { applyRenderVariant } from "./applyRenderVariant.js";
+export { renderVariant, renderVariants, type RenderVariant } from "./RenderVariant.js";
 export { designLocales } from "./designLocales.js";
 export { DesignLimits } from "./DesignLimits.js";
 export { LocalNames } from "./LocalNames.js";

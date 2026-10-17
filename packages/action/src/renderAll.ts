@@ -5,6 +5,7 @@ import {
   loadRenderInput,
   type OutputFormat,
   type RemoteImageOptions,
+  type RenderVariant,
   renderOutput,
 } from "@readmint/cli";
 import { ActionError } from "./ActionError.js";
@@ -58,18 +59,28 @@ export async function renderAll(
   const notes: string[] = [];
   const problems: string[] = [];
   for (const entry of plan) {
+    let lightLoaded = true;
     for (const planned of entry.dark === undefined ? [entry.light] : [entry.light, entry.dark]) {
+      // A variant of a design that did not load only repeats the light failure.
+      if (planned.variant !== undefined && !lightLoaded) continue;
+      let loaded = false;
       try {
         const input = await loadRenderInput(
           { design: planned.design },
           {
             cwd: workspace,
+            ...(planned.variant === undefined ? {} : { variant: planned.variant }),
             data,
             ...(props === undefined ? {} : { props }),
             ...(images === undefined ? {} : { images }),
           },
         );
-        const name = input.file.name;
+        loaded = true;
+        const name =
+          planned.variant === undefined
+            ? input.file.name
+            : `${input.file.name} (${planned.variant.name} variant)`;
+        warnings.push(...(input.warnings ?? []));
         const result = await renderOutput(
           input,
           planned.outputs.map((output) => output.format),
@@ -93,10 +104,23 @@ export async function renderAll(
         });
       } catch (error) {
         if (!(error instanceof CliError)) throw error;
-        problems.push(...error.lines);
+        if (planned === entry.light && !loaded) lightLoaded = false;
+        const { variant } = planned;
+        problems.push(
+          ...(variant === undefined
+            ? error.lines
+            : error.lines.map((line) => labelled(line, planned.design, variant))),
+        );
       }
     }
   }
   if (problems.length > 0) throw new ActionError("render", problems);
   return { files, warnings, notes };
+}
+
+/** The line of a variant render with the variant after the design file name, so it reads apart from the light one. */
+function labelled(line: string, design: string, variant: RenderVariant): string {
+  return line.startsWith(`${design}:`)
+    ? `${design} (${variant.name} variant)${line.slice(design.length)}`
+    : line;
 }

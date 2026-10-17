@@ -8,6 +8,7 @@ import { localeProblem } from "./localeProblem.js";
 import { type OutputFormat, outputFormats } from "./OutputFormat.js";
 import { type DataFeedSpec, parseDataFeedArgs } from "./parseDataFeedArgs.js";
 import { type DataJsonSpec, parseDataJsonArgs } from "./parseDataJsonArgs.js";
+import { renderVariant } from "@readmint/format";
 import { quoteForLog } from "./quoteForLog.js";
 
 type DesignCommand = "render" | "validate" | "preview";
@@ -15,6 +16,7 @@ type ValueOption =
   | "root"
   | "data"
   | "props"
+  | "variant"
   | "locale"
   | "time"
   | "out"
@@ -35,6 +37,7 @@ const valueOptions: ReadonlySet<string> = new Set<ValueOption>([
   "root",
   "data",
   "props",
+  "variant",
   "locale",
   "time",
   "out",
@@ -72,6 +75,7 @@ const allowed: Readonly<Record<DesignCommand, ReadonlySet<ValueOption>>> = {
     "root",
     "data",
     "props",
+    "variant",
     "locale",
     "time",
     "out",
@@ -311,9 +315,13 @@ function renderArgs(values: ReadonlyMap<ValueOption, string>): Omit<RenderArgs, 
   if (quality !== undefined && format !== "webp") {
     usage("option --quality applies to webp output only");
   }
+  const variantName = values.get("variant");
+  const variant = variantName === undefined ? undefined : renderVariant(variantName);
+  if (variantName !== undefined && variant === undefined) usage("--variant must be one of: dark");
   return {
     format,
     ...optional("out", out),
+    ...(variant === undefined ? {} : { variant }),
     ...(scale === undefined ? {} : { scale: parseScale(scale) }),
     ...(frameRate === undefined ? {} : { frameRate: parseFrameRate(frameRate, format) }),
     ...(quality === undefined ? {} : { quality: parseQuality(quality) }),

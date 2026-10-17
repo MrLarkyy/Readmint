@@ -412,3 +412,18 @@ describe("data-feed", () => {
     expect(listed.join("\n")).not.toContain("SECRETKEY");
   });
 });
+
+describe("readInputs variant", () => {
+  test("empty means none, dark is the dark variant", () => {
+    expect(readInputs(env({ ...base, variant: "" }))).not.toHaveProperty("variant");
+    expect(readInputs(env({ ...base, variant: "dark" }))).toMatchObject({
+      variant: { name: "dark", props: { theme: "dark" } },
+    });
+  });
+
+  test("another name is refused without echoing it", () => {
+    expect(problems({ ...base, variant: "zzTOP" })).toEqual([
+      "input variant must be empty or one of: dark",
+    ]);
+  });
+});

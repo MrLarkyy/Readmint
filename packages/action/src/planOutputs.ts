@@ -1,5 +1,5 @@
 import path from "node:path";
-import { type OutputFormat, outputExtension, quoteForLog } from "@readmint/cli";
+import { type OutputFormat, outputExtension, quoteForLog, type RenderVariant } from "@readmint/cli";
 import { ActionError } from "./ActionError.js";
 import type { PlannedDesign } from "./PlannedDesign.js";
 import type { PlannedFile } from "./PlannedFile.js";
@@ -11,13 +11,15 @@ const darkSuffix = ".dark";
  * writes `.png`), and with the dark twin `<stem>.dark.<ext>` next to a design when `exists` finds
  * it (`<stem>.dark.<ext>` outputs). A listed twin is used once, with its light design; a twin listed
  * without it, or two designs with one output name (case-insensitively: checkouts on Windows and
- * macOS fold case), is an input error. Order: as listed.
+ * macOS fold case), is an input error. With a `variant`, a design without a twin gets the variant
+ * rendered from its own file as `dark`. Order: as listed.
  */
 export async function planOutputs(
   designs: readonly string[],
   outputDir: string,
   formats: readonly OutputFormat[],
   exists: (design: string) => Promise<boolean>,
+  variant?: RenderVariant,
 ): Promise<PlannedDesign[]> {
   const listed = designs.map(normalize);
   const listedKeys = new Set(listed.map((design) => design.toLowerCase()));
@@ -25,9 +27,10 @@ export async function planOutputs(
   const planned: PlannedDesign[] = [];
   const outputs = new Map<string, string>();
 
-  const file = (design: string, name: string): PlannedFile => {
+  const file = (design: string, name: string, as?: RenderVariant): PlannedFile => {
     const planned = {
       design,
+      ...(as === undefined ? {} : { variant: as }),
       outputs: formats.map((format) => ({
         format,
         output: join(outputDir, `${name}.${outputExtension(format)}`),
@@ -69,6 +72,8 @@ export async function planOutputs(
     if (listedKeys.has(twin.toLowerCase()) || (await exists(twin))) {
       const dark = file(twin, `${stem}${darkSuffix}`);
       planned.push({ stem, light, dark });
+    } else if (variant !== undefined) {
+      planned.push({ stem, light, dark: file(design, `${stem}.${variant.name}`, variant) });
     } else {
       planned.push({ stem, light });
     }
