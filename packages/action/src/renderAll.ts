@@ -4,8 +4,9 @@ import {
   formatIssue,
   loadRenderInput,
   type OutputFormat,
-  quoteForLog,
+  designNameIn,
   relabelLine,
+  renderLabel,
   type RemoteImageOptions,
   renderOutput,
 } from "@readmint/cli";
@@ -110,7 +111,7 @@ export async function renderAll(
       } catch (error) {
         if (!(error instanceof CliError)) throw error;
         if (planned === entry.light && !loaded) lightLoaded = false;
-        const name = fileName(planned);
+        const name = designNameIn(planned.root, planned.design);
         const label = labelOf(planned, name);
         problems.push(
           ...(label === undefined
@@ -124,13 +125,6 @@ export async function renderAll(
   return { files, warnings, notes };
 }
 
-/** The design file as messages name it: relative to the manifest folder when there is one. */
-function fileName(planned: PlannedFile): string {
-  return planned.root === undefined || planned.root === "."
-    ? planned.design
-    : planned.design.slice(planned.root.length + 1);
-}
-
 /**
  * How a render reads in a message so it is told apart from the others of its design: the variant after the design file
  * name, the render name of a manifest entry; `undefined` for a plain light design.
@@ -138,7 +132,7 @@ function fileName(planned: PlannedFile): string {
 function labelOf(planned: PlannedFile, name: string): string | undefined {
   const { entry, variant } = planned;
   if (entry !== undefined) {
-    return `${name} (render ${quoteForLog(entry.name)}${variant === undefined ? "" : `, ${variant.name} variant`})`;
+    return renderLabel(name, entry.name, variant);
   }
   return variant === undefined ? undefined : `${name} (${variant.name} variant)`;
 }

@@ -9,7 +9,7 @@ import { parseJsonText } from "./parseJsonText.js";
 import type { RenderManifest, RenderManifestEntry } from "./RenderManifest.js";
 import { RenderManifestLimits } from "./RenderManifestLimits.js";
 import { renderVariant, type RenderVariant, renderVariants } from "./RenderVariant.js";
-import { isWindowsDeviceName } from "./windowsDeviceName.js";
+import { windowsDeviceName } from "./windowsDeviceName.js";
 
 const idPattern = /^[A-Za-z][A-Za-z0-9_-]{0,63}$/u;
 const idRule = "an id (a letter, then letters, digits, _ or -; at most 64)";
@@ -107,7 +107,7 @@ function readEntry(
       message: "the render needs a name",
     });
     ok = false;
-  } else if (!idPattern.test(name) || isWindowsDeviceName(name)) {
+  } else if (!idPattern.test(name) || windowsDeviceName(name) !== undefined) {
     issues.add({
       path: `${at}/name`,
       code: "pattern",
@@ -182,7 +182,9 @@ function designProblem(design: string): string | undefined {
   if (segments.some((segment) => segment === "" || segment === "." || segment === "..")) {
     return "no empty, . or .. segment";
   }
-  if (segments.some((segment) => /[. ]$/u.test(segment) || isWindowsDeviceName(segment))) {
+  if (
+    segments.some((segment) => /[. ]$/u.test(segment) || windowsDeviceName(segment) !== undefined)
+  ) {
     return "no segment ending in a dot or space, no Windows device name";
   }
   if (!designExtension.test(design)) return "a .json, .yaml or .yml file";

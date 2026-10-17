@@ -136,7 +136,7 @@ is the workspace: the manifest and its designs are read only inside it, and the 
 designs lie in.
 
 - A render named `repo-3` is written to `<output-dir>/repo-3.<ext>` for each format, and `<output-dir>/repo-3.dark.<ext>`
-  for its `variants: ["dark"]`; a render without `variants` takes the `variant` input, `[]` renders none. No
+  for its `variants: ["dark"]`; a render without `variants` takes the `variant` input (refused with the CLI's `duplicate-key` line when the render's `props` set the prop the variant sets, before any data is loaded), `[]` renders none. No
   `<name>.dark.<ext>` file is looked up; the dark output is the entry's own design with the variant.
 - Two renders can never write one file (the names are unique ignoring letter case), and an output that two renders would
   write is an input error all the same.

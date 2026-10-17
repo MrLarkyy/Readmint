@@ -51,6 +51,8 @@ export {
   RemoteImageLimits,
   type RemoteImageOptions,
 } from "./RemoteImageOptions.js";
+export { designNameIn } from "./designNameIn.js";
+export { renderLabel } from "./renderLabel.js";
 export { type RenderEntry } from "./RenderEntry.js";
 export { relabelLine } from "./relabelLine.js";
 export { renderInput } from "./renderInput.js";

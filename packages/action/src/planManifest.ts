@@ -7,15 +7,13 @@ import type { PlannedFile } from "./PlannedFile.js";
 
 /**
  * Pairs the renders of a loaded manifest with their outputs `<output-dir>/<name>.<ext>`, one per format, and with
- * `<name>.dark.<ext>` for the variant the render lists (a render without `variants` takes the `variant` input, an
- * empty list none). No twin file is looked up: the variant is rendered from the render's own design. Two renders with
+ * `<name>.dark.<ext>` for the variant the loaded render resolved (its own, else the run's). No twin file is looked up: the variant is rendered from the render's own design. Two renders with
  * one output name, ignoring letter case, are an input error. Order: as listed.
  */
 export function planManifest(
   manifest: LoadedRenderManifest,
   outputDir: string,
   formats: readonly OutputFormat[],
-  variant?: RenderVariant,
 ): PlannedDesign[] {
   const problems: string[] = [];
   const claims = new Map<string, string>();
@@ -42,7 +40,7 @@ export function planManifest(
       };
     };
     // `PlannedDesign` has one dark output; `dark` is the only variant there is.
-    const [dark] = render.variants ?? (variant === undefined ? [] : [variant]);
+    const [dark] = render.variants;
     planned.push({
       stem: render.name,
       light: file(render.name),

@@ -9,6 +9,7 @@ import {
   partialDataWarning,
   propsSection,
   quoteForLog,
+  type RenderVariant,
 } from "@readmint/cli";
 import type { ActionConfig } from "./ActionConfig.js";
 import type { ActionDeps } from "./ActionDeps.js";
@@ -57,10 +58,9 @@ export async function runAction(env: Env, deps: ActionDeps): Promise<number> {
             config.variant,
           )
         : planManifest(
-            await loadActionManifest(config.manifest, workspace),
+            await loadActionManifest(config.manifest, workspace, config.variant),
             config.outputDir,
             config.formats,
-            config.variant,
           );
     if (config.manifest === undefined && config.variant !== undefined) {
       for (const entry of plan) {
@@ -189,9 +189,13 @@ async function loadActionProps(
 async function loadActionManifest(
   manifest: string,
   workspace: string,
+  variant: RenderVariant | undefined,
 ): Promise<LoadedRenderManifest> {
   try {
-    return await loadRenderManifest(manifest, workspace, { confinedTo: workspace });
+    return await loadRenderManifest(manifest, workspace, {
+      confinedTo: workspace,
+      ...(variant === undefined ? {} : { variant }),
+    });
   } catch (error) {
     if (error instanceof CliError) throw new ActionError("input", error.lines);
     throw error;

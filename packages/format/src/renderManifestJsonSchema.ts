@@ -6,8 +6,9 @@ const scalar = { anyOf: [{ type: "string" }, { type: "number" }, { type: "boolea
 
 /**
  * The published JSON Schema of the render manifest (`schema/renders-v0.schema.json`). It states the shape and the
- * limits; the rules a schema cannot say (a name unique ignoring letter case, no Windows device name, a variant prop
- * set twice) are the parser's.
+ * limits, and the design path rules a pattern can say; the parser alone checks that a name is unique ignoring letter
+ * case, no name or path segment is a Windows device, no path holds an unpaired surrogate, a variant prop is not set
+ * twice and the props stay within their length.
  */
 export const renderManifestJsonSchema: JsonSchema = deepFreeze({
   $schema: "https://json-schema.org/draft/2020-12/schema",
@@ -32,7 +33,7 @@ export const renderManifestJsonSchema: JsonSchema = deepFreeze({
             minLength: 1,
             maxLength: RenderManifestLimits.maxDesignLength,
             pattern:
-              '^(?![A-Za-z]:)[^/\\u005c:*?"<>|\\u0000-\\u001f][^\\u005c:*?"<>|\\u0000-\\u001f]*[.](?:[Jj][Ss][Oo][Nn]|[Yy][Aa]?[Mm][Ll])$',
+              '^(?!.*[\\u0000-\\u001f\\u007f\\u005c:*?"<>|])(?![A-Za-z]:)(?!/)(?!(?:.*/)?[.]{1,2}(?:/|$))(?!.*//)(?!.*[. ](?:/|$)).+[.](?:[Jj][Ss][Oo][Nn]|[Yy][Aa]?[Mm][Ll])$',
           },
           props: {
             type: "object",

@@ -21,6 +21,8 @@ const maxManifestBytes = 3 * RenderManifestLimits.maxSourceLength + 3;
 /** `confinedTo`: a folder the manifest must stay inside (relative path, links resolved), as the Action's `manifest`. */
 export interface RenderManifestOptions {
   readonly confinedTo?: string;
+  /** The run's variant (`--variant`, the Action's `variant`): the variant of every render that lists none. */
+  readonly variant?: RenderVariant;
 }
 
 /** One render of a loaded manifest. */
@@ -29,7 +31,8 @@ export interface LoadedRenderEntry {
   /** The design file, relative to the working folder and `/`-separated: pass it with `folder` as the root. */
   readonly design: string;
   readonly props: Readonly<Record<string, ComponentPropValue>>;
-  readonly variants?: readonly RenderVariant[];
+  /** The variants rendered next to the light output: the render's own, else the run's, else none. */
+  readonly variants: readonly RenderVariant[];
   /** Pointer of the entry in the manifest (`/renders/<i>`). */
   readonly at: string;
 }
@@ -82,6 +85,7 @@ export async function loadRenderManifest(
   const folder = relativeFolder === "" ? "." : relativeFolder;
   const renders: LoadedRenderEntry[] = [];
   const problems: string[] = [];
+  const clashes: string[] = [];
   for (const [index, entry] of result.value.renders.entries()) {
     const at = `/renders/${String(index)}`;
     const fault = await designFault(folderPath, entry.design);
@@ -89,15 +93,29 @@ export async function loadRenderManifest(
       problems.push(formatIssue(label, { ...fault, path: `${at}/design` }, "error"));
       continue;
     }
+    const variants = entry.variants ?? (options?.variant === undefined ? [] : [options.variant]);
+    for (const variant of variants) {
+      for (const prop of Object.keys(variant.props)) {
+        if (!Object.hasOwn(entry.props, prop)) continue;
+        // The parse-time rule for the variants a render lists, applied to the run's variant too.
+        const issue: DesignIssue = {
+          path: `${at}/props/${prop}`,
+          code: "duplicate-key",
+          message: `the prop ${prop} is also set by the ${variant.name} variant; set it in one place`,
+        };
+        clashes.push(formatIssue(label, issue, "error"));
+      }
+    }
     renders.push({
       name: entry.name,
       design: folder === "." ? entry.design : `${folder}/${entry.design}`,
       props: entry.props,
-      ...(entry.variants === undefined ? {} : { variants: entry.variants }),
+      variants,
       at,
     });
   }
   if (problems.length > 0) throw new CliError(ExitCode.input, problems);
+  if (clashes.length > 0) throw new CliError(ExitCode.invalid, clashes);
   return { label, folder, renders };
 }
 

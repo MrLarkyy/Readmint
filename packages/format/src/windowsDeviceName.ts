@@ -13,9 +13,9 @@ const devices = new Set([
   ]),
 ]);
 
-/** Whether a file name (extension, trailing spaces and letter case ignored) is a Windows device. */
-export function isWindowsDeviceName(name: string): boolean {
+/** The Windows device a file name opens (extension, trailing spaces and letter case ignored), upper case; else `undefined`. */
+export function windowsDeviceName(name: string): string | undefined {
   const dot = name.indexOf(".");
   const stem = (dot === -1 ? name : name.slice(0, dot)).replace(/ +$/, "").toUpperCase();
-  return devices.has(stem);
+  return devices.has(stem) ? stem : undefined;
 }

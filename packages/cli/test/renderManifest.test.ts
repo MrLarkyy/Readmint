@@ -1,4 +1,4 @@
-import { cp, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -339,5 +339,76 @@ describe("usage", () => {
     const result = await run(tmpdir(), argv);
     expect(result.code).toBe(ExitCode.usage);
     expect(result.stderr).toContain(text);
+  });
+});
+
+describe("labels and repeated failures", () => {
+  const plain = {
+    version: 0,
+    canvas: { width: 20, height: 10 },
+    layers: [{ type: "rect", width: 10, height: 10, fill: "#1a7f37" }],
+  };
+
+  test("a manifest in a subfolder names the design relative to it, in every message", async () => {
+    const folder = await copyTemplate("horizon");
+    await mkdir(join(folder, "sub"));
+    await writeFile(join(folder, "sub", "card.json"), JSON.stringify(plain));
+    await writeFile(
+      join(folder, "sub", "renders.json"),
+      JSON.stringify({ renders: [{ name: "a", design: "card.json", variants: ["dark"] }] }),
+    );
+    const result = await run(folder, [
+      "render",
+      "--manifest",
+      "sub/renders.json",
+      "--out-dir",
+      "o",
+    ]);
+    expect(result.code).toBe(ExitCode.invalid);
+    expect(result.stderr).toBe(
+      'card.json (render "a", dark variant): error unknown-property at /: variant dark: the design has no top-level component layer\n',
+    );
+  });
+
+  test("a load failure is printed once, not for every variant", async () => {
+    const folder = await copyTemplate("horizon");
+    await writeFile(
+      join(folder, "renders.json"),
+      JSON.stringify({
+        renders: [
+          { name: "a", design: "repo-1.json", props: { slotz: 1 }, variants: ["dark"] },
+          { name: "b", design: "repo-1.json", props: { slotz: 2 } },
+        ],
+      }),
+    );
+    const result = await run(folder, ["render", "--manifest", "renders.json", "--out-dir", "o"]);
+    expect(result.code).toBe(ExitCode.invalid);
+    expect(result.stderr.trim().split("\n")).toEqual([
+      'manifest "renders.json": error unknown-property at /renders/0/props/slotz: no top-level component of the design has the prop "slotz"',
+      'manifest "renders.json": error unknown-property at /renders/1/props/slotz: no top-level component of the design has the prop "slotz"',
+    ]);
+  });
+
+  test("the run variant clash is refused before any data is loaded", async () => {
+    const folder = await copyTemplate("horizon");
+    await writeFile(
+      join(folder, "renders.json"),
+      JSON.stringify({
+        renders: [{ name: "a", design: "repo-1.json", props: { theme: "light" } }],
+      }),
+    );
+    const result = await run(folder, [
+      "render",
+      "--manifest",
+      "renders.json",
+      "--out-dir",
+      "o",
+      "--variant",
+      "dark",
+      "--data",
+      "missing-data.json",
+    ]);
+    expect(result.code).toBe(ExitCode.invalid);
+    expect(result.stderr).toContain("error duplicate-key at /renders/0/props/theme");
   });
 });

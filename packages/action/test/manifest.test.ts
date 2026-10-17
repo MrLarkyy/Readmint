@@ -185,6 +185,16 @@ describe("an invalid manifest", () => {
     expect(log).not.toContain("V4LUE-SENTINEL");
   });
 
+  test("the variant input clashing with a prop of a render without variants is refused", async () => {
+    const log = await failing(
+      { renders: [{ name: "a", design: "a.json", props: { theme: "light" } }] },
+      { variant: "dark" },
+    );
+    expect(log).toContain(
+      '::error::manifest "m.json": error duplicate-key at /renders/0/props/theme: the prop theme is also set by the dark variant; set it in one place',
+    );
+  });
+
   test("a manifest outside the workspace is refused", async () => {
     const run = await tree.run({ manifest: "../m.json", ...plain });
     expect(run.code).toBe(1);

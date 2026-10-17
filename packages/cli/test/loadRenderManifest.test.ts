@@ -1,7 +1,7 @@
 import { symlink } from "node:fs/promises";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
-import { CliError, ExitCode, loadRenderManifest } from "../src/index.js";
+import { CliError, ExitCode, loadRenderManifest, renderVariant } from "../src/index.js";
 import { type CliTree, makeCliTree, plainDesign } from "./cliTree.js";
 
 let tree: CliTree;
@@ -30,7 +30,15 @@ test("resolves the designs against the manifest folder", async () => {
   expect(await loadRenderManifest("ws/designs/renders.json", tree.root)).toEqual({
     label: 'manifest "ws/designs/renders.json"',
     folder: "ws/designs",
-    renders: [{ name: "a", design: "ws/designs/a.json", props: { slot: 2 }, at: "/renders/0" }],
+    renders: [
+      {
+        name: "a",
+        design: "ws/designs/a.json",
+        props: { slot: 2 },
+        variants: [],
+        at: "/renders/0",
+      },
+    ],
   });
 });
 
@@ -122,5 +130,36 @@ describe("confined to a folder", () => {
     }).catch((reason: unknown) => reason);
     expect(error).toBeInstanceOf(CliError);
     expect((error as CliError).exitCode).toBe(ExitCode.input);
+  });
+});
+
+describe("the run variant", () => {
+  const dark = renderVariant("dark");
+
+  test("is the variant of a render that lists none, and [] keeps none", async () => {
+    await tree.file("ws/designs/m.json", {
+      renders: [
+        { name: "open", design: "a.json" },
+        { name: "none", design: "a.json", variants: [] },
+      ],
+    });
+    const loaded = await loadRenderManifest("ws/designs/m.json", tree.root, {
+      ...(dark === undefined ? {} : { variant: dark }),
+    });
+    expect(loaded.renders.map((render) => render.variants.length)).toEqual([1, 0]);
+  });
+
+  test("clashing with a prop of a render without variants is refused, exit 1", async () => {
+    await tree.file("ws/designs/m.json", {
+      renders: [{ name: "a", design: "a.json", props: { theme: "light" } }],
+    });
+    const error: unknown = await loadRenderManifest("ws/designs/m.json", tree.root, {
+      ...(dark === undefined ? {} : { variant: dark }),
+    }).catch((reason: unknown) => reason);
+    expect(error).toBeInstanceOf(CliError);
+    expect((error as CliError).exitCode).toBe(ExitCode.invalid);
+    expect((error as CliError).lines).toEqual([
+      'manifest "ws/designs/m.json": error duplicate-key at /renders/0/props/theme: the prop theme is also set by the dark variant; set it in one place',
+    ]);
   });
 });

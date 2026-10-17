@@ -13,7 +13,7 @@ const manifest = (...renders: { name: string; variants?: "dark"[] }[]) => ({
     name: render.name,
     design: "ws/repo.json",
     props: { slot: index },
-    ...(render.variants === undefined ? {} : { variants: render.variants.map(() => dark) }),
+    variants: (render.variants ?? []).map(() => dark),
     at: `/renders/${String(index)}`,
   })),
 });
@@ -48,15 +48,9 @@ describe("planManifest", () => {
     expect(second).not.toHaveProperty("dark");
   });
 
-  test("a render without variants takes the run variant, an empty list none", () => {
-    const plan = planManifest(
-      manifest({ name: "open" }, { name: "none", variants: [] }),
-      ".",
-      ["svg"],
-      dark,
-    );
-    expect(plan[0]?.dark?.outputs[0]?.output).toBe("open.dark.svg");
-    expect(plan[1]).not.toHaveProperty("dark");
+  test("a render with no resolved variant has no dark output", () => {
+    const plan = planManifest(manifest({ name: "none" }), ".", ["svg"]);
+    expect(plan[0]).not.toHaveProperty("dark");
   });
 
   test("no twin file is involved: the dark render is the design with the variant", () => {

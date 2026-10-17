@@ -33,5 +33,6 @@ export { parseDesignSourceAsync } from "./parseDesignSourceAsync.js";
 export { isPathTemplate, PathData } from "./PathData.js";
 export { quoteInput } from "./quoteInput.js";
 export { stringifyDesignYamlAsync } from "./stringifyDesignYamlAsync.js";
+export { windowsDeviceName } from "./windowsDeviceName.js";
 export { validateDesign } from "./validateDesign.js";
 export { ValueRanges } from "./ValueRanges.js";

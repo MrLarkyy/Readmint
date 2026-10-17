@@ -236,17 +236,17 @@ width and height), with the paths as `--out-dir` was typed:
 | `variants` | optional, the variants rendered next to the light output: `["dark"]`; absent: the run's `--variant`; `[]`: none                                                                             |
 
 Unknown keys are refused, so a later key (such as a version) can be added without changing what a file means. The file is
-JSON, UTF-8, at most 1 Mi characters; the limits are `RenderManifestLimits` in `@readmint/format`, and the same rules are
-published as a JSON Schema, `packages/format/schema/renders-v0.schema.json` (the package exports it as
-`@readmint/format/schema/renders-v0.schema.json`). A schema cannot say that a name is unique ignoring letter case, is no
-device name, or that a prop is set once, so the parser checks those.
+JSON, UTF-8, at most 1 Mi characters; the limits are `RenderManifestLimits` in `@readmint/format`, and the shape, the limits and the
+design path rules are published as a JSON Schema, `packages/format/schema/renders-v0.schema.json` (the package exports it as
+`@readmint/format/schema/renders-v0.schema.json`). Only the parser checks that a name is unique ignoring letter case, that no name or path segment is a Windows device,
+that a path holds no unpaired surrogate, that a prop is set once and that the props stay within their length.
 
 **Order.** For each render: the design, then the entry's `props` (on the root component layers, as
 [`--props`](#settings-file) does), then the variant, then the settings section named like the render (`--props`
 file; `"repo-3"` for the render `repo-3`). A settings section that sets a prop of the entry wins, and one stderr line
 names the section and the prop, never the value. A prop the entry sets and one of its variants sets too is refused
-(`duplicate-key`), as is the run's `--variant` when it sets a prop of an entry without `variants`, so the order never
-changes a byte. The manifest is explicit: no `<name>.dark.json` is looked up, each variant is rendered from the entry's
+(`duplicate-key`), as is the run's `--variant` (the Action's `variant`) when it sets a prop of an entry without `variants`, before any data is
+loaded, so the order never changes a byte. The manifest is explicit: no `<name>.dark.json` is looked up, each variant is rendered from the entry's
 own design.
 
 **Everything or nothing.** The manifest and every design it lists are read and checked before any data is loaded or
@@ -443,7 +443,7 @@ problems; at most `maxDataJsonSources`), `loadJsonArgs(specs, options)` (the `--
 problems; at most `maxDataFeedSources`), `loadFeedArgs(specs, options)` (the `--data-feed` load, `FeedArgsOptions` with
 `fetch` and `signal`; a failure is a `CliError` with exit code 4), `mergeDataNamespaces(fixture, loaded)`
 (adds loaded namespaces to fixture data; a clash is a `CliError` with exit code 3),
-`loadRenderManifest(file, cwd, options?)` (the `--manifest` file as a `LoadedRenderManifest` of `LoadedRenderEntry`s, designs checked inside its folder; with `{ confinedTo }` a relative path inside that folder, as the Action's `manifest`; whose `RenderEntry` in `RenderInputOptions.entry` sets an entry's props and names the settings section), `pictureHtml(entries)` (the `<picture>` HTML of `PictureEntry`s, also the Action's snippet) and `relabelLine(line, design, label)` (a message line with a render label in place of the design name), `partialDataWarning(parts)` (the one warning line for `meta.partial`, also the Action's),
+`loadRenderManifest(file, cwd, options?)` (with `{ variant }` the run's variant becomes that of every render that lists none, and a clash with its props is refused; the `--manifest` file as a `LoadedRenderManifest` of `LoadedRenderEntry`s, designs checked inside its folder; with `{ confinedTo }` a relative path inside that folder, as the Action's `manifest`; whose `RenderEntry` in `RenderInputOptions.entry` sets an entry's props and names the settings section), `pictureHtml(entries)` (the `<picture>` HTML of `PictureEntry`s, also the Action's snippet) `designNameIn(root, design)` and `renderLabel(design, name, variant?)` (how a message names a render of a manifest, also the Action's) and `relabelLine(line, design, label)` (a message line with a render label in place of the design name), `partialDataWarning(parts)` (the one warning line for `meta.partial`, also the Action's),
 `redactSecrets(text, secrets)` (the redaction of standard error, also the Action's log), `loadRenderInput` (design file, assets, fixture data and the images bound to data in one call; `RenderInput`,
 `RenderInputOptions`, whose `images` fetches them, whose `data` stands in for `--data`, and whose `loadData` loads it
 once the design and its assets are valid, as `--github` does), `fetchBoundImages` and its
