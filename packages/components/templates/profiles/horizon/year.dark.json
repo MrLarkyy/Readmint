@@ -244,7 +244,7 @@
                       "content": "today",
                       "font": "mono",
                       "fontSize": 10.5,
-                      "fill": "{{ props.theme == \"dark\" ? \"#FF8A3D\" : \"#E8590C\" }}"
+                      "fill": "{{ props.theme == \"dark\" ? \"#FF8A3D\" : \"#C8460A\" }}"
                     }
                   ]
                 }

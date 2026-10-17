@@ -160,7 +160,7 @@
                               "content": "1",
                               "font": "mono",
                               "fontSize": 11,
-                              "fill": "{{ props.theme == \"dark\" ? \"#5B5B63\" : \"#A1A1AA\" }}"
+                              "fill": "{{ props.theme == \"dark\" ? \"#84848E\" : \"#71717A\" }}"
                             },
                             {
                               "type": "text",
@@ -258,7 +258,7 @@
                               "content": "{{ 0 + sh + 1 }}",
                               "font": "mono",
                               "fontSize": 11,
-                              "fill": "{{ props.theme == \"dark\" ? \"#5B5B63\" : \"#A1A1AA\" }}"
+                              "fill": "{{ props.theme == \"dark\" ? \"#84848E\" : \"#71717A\" }}"
                             },
                             {
                               "type": "text",
@@ -365,7 +365,7 @@
                               "content": "{{ 1 + sh + 1 }}",
                               "font": "mono",
                               "fontSize": 11,
-                              "fill": "{{ props.theme == \"dark\" ? \"#5B5B63\" : \"#A1A1AA\" }}"
+                              "fill": "{{ props.theme == \"dark\" ? \"#84848E\" : \"#71717A\" }}"
                             },
                             {
                               "type": "text",
@@ -463,7 +463,7 @@
                               "content": "{{ 2 + sh + 1 }}",
                               "font": "mono",
                               "fontSize": 11,
-                              "fill": "{{ props.theme == \"dark\" ? \"#5B5B63\" : \"#A1A1AA\" }}"
+                              "fill": "{{ props.theme == \"dark\" ? \"#84848E\" : \"#71717A\" }}"
                             },
                             {
                               "type": "text",
@@ -561,7 +561,7 @@
                               "content": "{{ 3 + sh + 1 }}",
                               "font": "mono",
                               "fontSize": 11,
-                              "fill": "{{ props.theme == \"dark\" ? \"#5B5B63\" : \"#A1A1AA\" }}"
+                              "fill": "{{ props.theme == \"dark\" ? \"#84848E\" : \"#71717A\" }}"
                             },
                             {
                               "type": "text",
@@ -659,7 +659,7 @@
                               "content": "{{ 4 + sh + 1 }}",
                               "font": "mono",
                               "fontSize": 11,
-                              "fill": "{{ props.theme == \"dark\" ? \"#5B5B63\" : \"#A1A1AA\" }}"
+                              "fill": "{{ props.theme == \"dark\" ? \"#84848E\" : \"#71717A\" }}"
                             },
                             {
                               "type": "text",
@@ -726,7 +726,7 @@
                   "content": "1",
                   "font": "mono",
                   "fontSize": 11,
-                  "fill": "{{ props.theme == \"dark\" ? \"#5B5B63\" : \"#A1A1AA\" }}"
+                  "fill": "{{ props.theme == \"dark\" ? \"#84848E\" : \"#71717A\" }}"
                 },
                 {
                   "type": "text",
@@ -735,7 +735,7 @@
                   "content": "// no repository in this slot yet",
                   "font": "mono",
                   "fontSize": 11.5,
-                  "fill": "{{ props.theme == \"dark\" ? \"#808080\" : \"#8C8C8C\" }}"
+                  "fill": "{{ props.theme == \"dark\" ? \"#888888\" : \"#6B6B6B\" }}"
                 }
               ]
             }

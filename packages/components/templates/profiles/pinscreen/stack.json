@@ -182,7 +182,7 @@
                   "content": "{{ li + 1 }}",
                   "font": "mono",
                   "fontSize": 11,
-                  "fill": "{{ props.theme == \"dark\" ? \"#5B5B63\" : \"#A1A1AA\" }}"
+                  "fill": "{{ props.theme == \"dark\" ? \"#84848E\" : \"#71717A\" }}"
                 }
               ]
             },
@@ -193,7 +193,7 @@
               "content": "// build.gradle.kts, the stack behind my work",
               "font": "mono",
               "fontSize": 11.5,
-              "fill": "{{ props.theme == \"dark\" ? \"#808080\" : \"#8C8C8C\" }}"
+              "fill": "{{ props.theme == \"dark\" ? \"#888888\" : \"#6B6B6B\" }}"
             },
             {
               "type": "group",
@@ -311,7 +311,7 @@
                       "content": "{{ \"// \" + (gl | truncate(24)) }}",
                       "font": "mono",
                       "fontSize": 11.5,
-                      "fill": "{{ props.theme == \"dark\" ? \"#808080\" : \"#8C8C8C\" }}"
+                      "fill": "{{ props.theme == \"dark\" ? \"#888888\" : \"#6B6B6B\" }}"
                     }
                   ]
                 },
@@ -342,7 +342,7 @@
                   "content": "{{ \"// \" + (nl | truncate(20)) + \":\" + ((ni == sr) ? \"\" : \" \" + (props.noteItems[ni] | default(\"\") | truncate(60))) }}",
                   "font": "mono",
                   "fontSize": 11.5,
-                  "fill": "{{ props.theme == \"dark\" ? \"#808080\" : \"#8C8C8C\" }}"
+                  "fill": "{{ props.theme == \"dark\" ? \"#888888\" : \"#6B6B6B\" }}"
                 },
                 {
                   "type": "group",
@@ -364,7 +364,7 @@
                           "content": "{{ \"//   \" + (cap | truncate(12)) }}",
                           "font": "mono",
                           "fontSize": 11.5,
-                          "fill": "{{ props.theme == \"dark\" ? \"#808080\" : \"#8C8C8C\" }}"
+                          "fill": "{{ props.theme == \"dark\" ? \"#888888\" : \"#6B6B6B\" }}"
                         },
                         {
                           "type": "group",
@@ -410,7 +410,7 @@
                                         {
                                           "type": "path",
                                           "d": "{{ props.logoLayers[li] }}",
-                                          "fill": "{{ props.theme == \"dark\" ? (props.logoFillsDark[li] || props.logoFills[li] || \"#808080\") : (props.logoFills[li] || \"#8C8C8C\") }}"
+                                          "fill": "{{ props.theme == \"dark\" ? (props.logoFillsDark[li] || props.logoFills[li] || \"#888888\") : (props.logoFills[li] || \"#6B6B6B\") }}"
                                         }
                                       ]
                                     }
@@ -419,7 +419,7 @@
                                 {
                                   "type": "path",
                                   "d": "{{ props.logos[k] }}",
-                                  "fill": "{{ props.theme == \"dark\" ? \"#808080\" : \"#8C8C8C\" }}",
+                                  "fill": "{{ props.theme == \"dark\" ? \"#888888\" : \"#6B6B6B\" }}",
                                   "if": "{{ !props.logoLayers[4 * k] && props.logos[k] }}"
                                 },
                                 {
@@ -427,7 +427,7 @@
                                   "content": "{{ name | truncate(24) }}",
                                   "font": "mono",
                                   "fontSize": 11.5,
-                                  "fill": "{{ props.theme == \"dark\" ? \"#808080\" : \"#8C8C8C\" }}",
+                                  "fill": "{{ props.theme == \"dark\" ? \"#888888\" : \"#6B6B6B\" }}",
                                   "if": "{{ !(props.logoLayers[4 * k] || props.logos[k]) || props.logoWithName[k] }}"
                                 }
                               ]
@@ -455,7 +455,7 @@
               "content": "// languages",
               "font": "mono",
               "fontSize": 11.5,
-              "fill": "{{ props.theme == \"dark\" ? \"#808080\" : \"#8C8C8C\" }}"
+              "fill": "{{ props.theme == \"dark\" ? \"#888888\" : \"#6B6B6B\" }}"
             },
             {
               "type": "group",
