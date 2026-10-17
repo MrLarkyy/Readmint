@@ -1,3 +1,4 @@
+import path from "node:path";
 import { describe, expect, test } from "vitest";
 import { ActionError, readInputs } from "../src/index.js";
 
@@ -462,8 +463,19 @@ describe("readInputs manifest", () => {
 
 describe("cache-dir", () => {
   test("is read as given and absent when blank", () => {
-    expect(readInputs(env({ ...base, "cache-dir": " c/d " }))).toMatchObject({ cacheDir: "c/d" });
+    const config = readInputs(env({ ...base, "cache-dir": " ../c/d " }), "/w/space");
+    expect(config.cacheDir).toBe(path.resolve("/w/space", "../c/d"));
     expect(readInputs(env({ ...base, "cache-dir": " " }))).not.toHaveProperty("cacheDir");
+  });
+
+  test("the workspace, a folder inside it and ~ are input problems; a sibling is not", () => {
+    const ws = path.resolve("/w/space");
+    const run = (dir: string) => readInputs(env({ ...base, "cache-dir": dir }), ws);
+    for (const bad of [".", "c", "docs/x", path.join(ws, "x"), path.join(ws, "..x"), ws, "~/c"]) {
+      expect(() => run(bad), bad).toThrow(ActionError);
+    }
+    expect(run("../c").cacheDir).toBe(path.resolve("/w/c"));
+    expect(run(`${ws}-cache`).cacheDir).toBe(`${ws}-cache`);
   });
 
   test("a control character or data-file is an input problem", () => {

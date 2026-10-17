@@ -17,7 +17,7 @@ type Env = Readonly<Record<string, string | undefined>>;
  * the workspace like the `data-json` files; no token, no GitHub API), else the GitHub data of `login` bound as `{ github: data }` by `loadLiveData`, the
  * load `readmint --github` uses; then each `data-json` source in order (`loadJsonArgs`, files
  * confined to the workspace, header values from `env`), then each `data-feed` feed in order
- * (`loadFeedArgs`), added to it. `cacheDir` (absolute, from `resolveCacheDir`) lets the GitHub load keep its answers. A failure becomes `ActionError` (data) carrying the loader's
+ * (`loadFeedArgs`), added to it. `config.cacheDir` (absolute) lets the GitHub load keep its answers. A failure becomes `ActionError` (data) carrying the loader's
  * lines only: `CliError` holds `GitHub data (<code>): <redacted message>`, `JSON data <ns>
  * (<code>): <message>`, `Feed data <ns> (<code>): <message>` (never the URL) or names the file
  * and the reason.
@@ -28,7 +28,6 @@ export async function loadActionData(
   fetch?: GitHubFetch,
   onPartial?: (parts: readonly GitHubPartialPart[]) => void,
   env: Env = {},
-  cacheDir?: string,
 ): Promise<Record<string, unknown>> {
   try {
     const base =
@@ -43,7 +42,7 @@ export async function loadActionData(
             ...(config.languageCommitCap === undefined
               ? {}
               : { languageCommitCap: config.languageCommitCap }),
-            ...(cacheDir === undefined ? {} : { cacheDir }),
+            ...(config.cacheDir === undefined ? {} : { cacheDir: config.cacheDir }),
             ...(fetch === undefined ? {} : { fetch }),
             ...(onPartial === undefined ? {} : { onPartial }),
           });

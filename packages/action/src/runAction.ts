@@ -23,7 +23,6 @@ import { pictureSnippet } from "./pictureSnippet.js";
 import type { PlannedDesign } from "./PlannedDesign.js";
 import { planManifest } from "./planManifest.js";
 import { planOutputs } from "./planOutputs.js";
-import { resolveCacheDir } from "./resolveCacheDir.js";
 import { readInputs } from "./readInputs.js";
 import { renderAll } from "./renderAll.js";
 import { type ActionOutputValues, writeActionOutputs } from "./writeActionOutputs.js";
@@ -42,14 +41,13 @@ export async function runAction(env: Env, deps: ActionDeps): Promise<number> {
   const secrets = [env.INPUT_TOKEN ?? "", env.INPUT_TOKEN?.trim() ?? ""];
   const log = new ActionLog(deps.write, secrets);
   try {
-    const config = readInputs(env);
+    const workspace = path.resolve(deps.cwd, nonEmpty(env.GITHUB_WORKSPACE) ?? ".");
+    const config = readInputs(env, workspace);
     // Before any load: a header value must be masked before anything could print it.
     for (const name of new Set(config.dataJson?.flatMap((spec) => Object.values(spec.headers)))) {
       const value = Object.hasOwn(env, name) ? env[name] : undefined;
       if (value !== undefined) log.mask(value);
     }
-    const workspace = path.resolve(deps.cwd, nonEmpty(env.GITHUB_WORKSPACE) ?? ".");
-    const cacheDir = resolveCacheDir(config, workspace);
     const plan =
       config.manifest === undefined
         ? await planOutputs(
@@ -97,7 +95,6 @@ export async function runAction(env: Env, deps: ActionDeps): Promise<number> {
         log.warning(partialDataWarning(parts));
       },
       env,
-      cacheDir,
     );
     if (config.formats.some((format) => format !== "svg")) await loadRaster(deps);
     const rendered = await renderAll(plan, workspace, data, {

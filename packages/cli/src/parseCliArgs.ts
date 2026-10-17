@@ -434,7 +434,7 @@ function languageCommitCapArgs(value: string | undefined): { languageCommitCap?:
 function cacheDirArgs(value: string | undefined): { cacheDir?: string } {
   if (value === undefined) return {};
   // eslint-disable-next-line no-control-regex
-  if (value === "" || /[ -]/.test(value)) {
+  if (value === "" || /[\u0000-\u001f\u007f]/.test(value)) {
     usage(
       `--cache-dir must be a folder path without control characters, got ${quoteForLog(value)}`,
     );

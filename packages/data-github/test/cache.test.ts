@@ -7,10 +7,12 @@ import { cacheKey } from "../src/cacheKey.js";
 import { allQueries, profileQuery } from "../src/githubQueries.js";
 import { loadGitHubData, MemoryCache, type GitHubCache } from "../src/index.js";
 import { FILE_CACHE_MAX_ENTRY_BYTES, FileCache } from "../src/node/index.js";
+import { commit, contribution, weeksFor, weeksNode, withActivity } from "./activityBodies.js";
 import { item, withBody, withViewer } from "./fixtureBodies.js";
 import {
   exchange,
   FIXTURE_LOGIN,
+  pageExchanges,
   replayFetch,
   successExchanges,
   type Exchange,
@@ -137,6 +139,53 @@ describe("loading through a cache", () => {
     expect(replay.pending()).toBe(0);
     expect(result.meta.fromCache).toBe(false);
     expect(JSON.stringify(result.data)).toBe(expectedText);
+  });
+
+  test.each([
+    ["private pins", () => exchange("activity-private"), ["secret-plans"]],
+    ["an organization status", () => exchange("activity-org-status"), ["Only for the team"]],
+    [
+      "a private repository with its commit headlines",
+      () =>
+        withActivity((user) => {
+          const hidden = contribution("hidden-repo", [
+            commit(
+              "0000000000000000000000000000000000000001",
+              "2026-10-10T10:00:00Z",
+              "PRIVATE-HEADLINE",
+            ),
+          ]);
+          hidden.repository.isPrivate = true;
+          user.contributionsCollection.commitContributionsByRepository.push(hidden);
+        }),
+      ["PRIVATE-HEADLINE", "hidden-repo"],
+    ],
+  ])("the stored entry holds nothing the parser drops: %s", async (_name, activity, hidden) => {
+    const stored: string[] = [];
+    const inner = new MemoryCache();
+    const cache: GitHubCache = {
+      get: (key) => inner.get(key),
+      set: (key, value, ttl) => {
+        stored.push(value);
+        return inner.set(key, value, ttl);
+      },
+    };
+    const exchanges = (): Exchange[] => [
+      ...pageExchanges(),
+      activity(),
+      hidden[0] === "secret-plans"
+        ? weeksFor(["R_dotfiles"], [weeksNode("R_dotfiles", 2)])
+        : exchange("weeks"),
+    ];
+    const first = await load(cache, FIXTURE_LOGIN, exchanges());
+    expect(stored).toHaveLength(1);
+    for (const text of hidden) {
+      expect(stored[0]).not.toContain(text);
+      expect(JSON.stringify(first.result.data)).not.toContain(text);
+    }
+    const second = await load(cache, FIXTURE_LOGIN, []);
+    expect(second.result.meta.fromCache).toBe(true);
+    expect(JSON.stringify(second.result.data)).toBe(JSON.stringify(first.result.data));
   });
 
   test("an app token owned by a bot is cached and hits on the second load", async () => {

@@ -1,5 +1,5 @@
 import { readdir, readFile, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import { type ActionTree, CANARY, makeActionTree } from "./actionTree.js";
 import { authoredFetch } from "./authoredFetch.js";
@@ -15,11 +15,14 @@ beforeEach(async () => {
 });
 afterEach(() => tree.remove());
 
+/** A folder next to the workspace, so outside it. */
+const outside = (): string => join(dirname(tree.root), "cache");
+
 const inputs = (extra: Record<string, string> = {}): Record<string, string> => ({
   designs: "card.json",
   login: "readmint-fixture",
   "language-commit-cap": "3",
-  "cache-dir": "cache",
+  "cache-dir": outside(),
   "dry-run": "true",
   token: CANARY,
   ...extra,
@@ -42,7 +45,7 @@ describe("cache-dir", () => {
     expect(two.outputs.snippet).toBe(one.outputs.snippet);
     expect(await tree.read("readmint/card.svg")).toBe(svg);
 
-    const entries = await readdir(join(tree.root, "cache"), {
+    const entries = await readdir(outside(), {
       recursive: true,
       withFileTypes: true,
     });
@@ -61,7 +64,7 @@ describe("cache-dir", () => {
   });
 
   test("a cache path that is a file is a data error before any request", async () => {
-    await writeFile(join(tree.root, "cache"), "x");
+    await writeFile(outside(), "x");
     const replay = authoredFetch();
     const run = await tree.run(inputs(), { ...noGit, fetch: replay.fetch });
     expect(run.code).toBe(1);
@@ -72,27 +75,44 @@ describe("cache-dir", () => {
   test.each([
     ["data-file", { "data-file": "card.json" }],
     ["the workspace itself", { "cache-dir": "." }],
+    ["a folder in the workspace", { "cache-dir": "cache" }],
+    ["a nested folder in the workspace", { "cache-dir": "docs/x" }],
     ["output-dir", { "cache-dir": "readmint" }],
-    ["inside output-dir", { "cache-dir": "readmint/x" }],
-    ["inside a custom output-dir", { "cache-dir": "out/a/b", "output-dir": "out" }],
+    ["~", { "cache-dir": "~/cache" }],
   ])("%s is an input error with no request", async (_name, extra) => {
     const replay = authoredFetch();
     const run = await tree.run(inputs(extra), { ...noGit, fetch: replay.fetch });
     expect(run.code).toBe(1);
-    expect(run.log).toContain("::error::");
-    expect(run.log).toContain("cache-dir");
+    expect(run.log).toContain("::error::input cache-dir");
     expect(replay.urls).toEqual([]);
   });
 
+  test("an absolute path inside the workspace is refused, a sibling named like it is not", async () => {
+    const inside = await tree.run(inputs({ "cache-dir": join(tree.root, "x") }), {
+      ...noGit,
+      fetch: authoredFetch().fetch,
+    });
+    expect(inside.code).toBe(1);
+    const sibling = await tree.run(inputs({ "cache-dir": `${tree.root}-cache` }), {
+      ...noGit,
+      fetch: authoredFetch().fetch,
+    });
+    expect(sibling.code).toBe(0);
+    const dots = await tree.run(inputs({ "cache-dir": join(tree.root, "..x") }), {
+      ...noGit,
+      fetch: authoredFetch().fetch,
+    });
+    expect(dots.code).toBe(1);
+  });
+
   test.runIf(process.platform === "win32")(
-    "output-dir is compared ignoring case on Windows",
+    "the workspace is compared ignoring case on Windows",
     async () => {
-      const run = await tree.run(inputs({ "cache-dir": "Readmint/x" }), {
+      const run = await tree.run(inputs({ "cache-dir": join(tree.root.toUpperCase(), "x") }), {
         ...noGit,
         fetch: authoredFetch().fetch,
       });
       expect(run.code).toBe(1);
-      expect(run.log).toContain("output-dir");
     },
   );
 });
