@@ -695,16 +695,21 @@ describe("orbits (RM-111)", () => {
     ["the animated SVG", undefined],
     ["a frame", 500],
   ] as const)("100000 moving, fading copies stop %s at a limit fast", (_name, time) => {
-    const started = performance.now();
-    const result = renderSvg(design, {
-      data: huge,
-      ...(time === undefined ? {} : { time }),
-    });
+    const {
+      value: result,
+      ms: elapsed,
+      scale,
+    } = timed(() =>
+      renderSvg(design, {
+        data: huge,
+        ...(time === undefined ? {} : { time }),
+      }),
+    );
     expect(result).toMatchObject({
       ok: false,
       issues: [{ path: "/layers/0/children/0/orbit/fade", code: "too-large" }],
     });
-    expect(performance.now() - started).toBeLessThan(2000 * loadScale());
+    expect(elapsed).toBeLessThan(2000 * scale);
   });
 
   test("each copy counts 2 keyframes per moving turn and its fade's keyframes", () => {
