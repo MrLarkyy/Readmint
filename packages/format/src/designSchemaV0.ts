@@ -154,7 +154,13 @@ function gradient(type: string, properties: Record<string, SchemaNode>): ObjectN
 }
 
 const defs = new Map<string, SchemaNode>([
-  [bindingDef, string("a {{binding}}", { maxLength: 2048, pattern: "^\\{\\{[\\s\\S]+\\}\\}$" })],
+  [
+    bindingDef,
+    string("a {{binding}}", {
+      maxLength: DesignLimits.maxBindingLength,
+      pattern: "^\\{\\{[\\s\\S]+\\}\\}$",
+    }),
+  ],
   ["Id", idKey],
   [
     "Colour",

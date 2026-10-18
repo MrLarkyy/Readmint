@@ -13,8 +13,6 @@ export interface LayerField {
   readonly options?: readonly string[];
   /** Whether the format requires it: an empty input then does not remove it. */
   readonly required?: boolean;
-  /** Shown, never edited here (an object the panel has no editor for): the design keeps it as it is. */
-  readonly readOnly?: boolean;
 }
 
 /** Choices that come from the design (its font, image and component ids). */
@@ -45,16 +43,8 @@ const size = (required: boolean): LayerField[] => [
   { key: "height", kind: "number", required },
 ];
 
-/** A layer's orbit, as compact JSON: the panel lists it when the layer has one, read-only. */
-const orbit: LayerField = { key: "orbit", kind: "text", readOnly: true };
-
 /** The fields the property panel shows for a layer, by type, as `Design.ts` defines them. */
 export function layerFields(layer: Layer, sources: FieldSources): LayerField[] {
-  const own = ownFields(layer, sources);
-  return layer.orbit === undefined ? own : [...own, orbit];
-}
-
-function ownFields(layer: Layer, sources: FieldSources): LayerField[] {
   switch (layer.type) {
     case "rect":
       return [...common, ...size(true), { key: "radius", kind: "number" }, ...shape];

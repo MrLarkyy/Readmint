@@ -20,7 +20,9 @@ import {
   resizeLayer,
   selectLayer,
   setFontAsset,
+  setLayerLet,
   setLayerProperty,
+  setPalette,
   undo,
   uploadFont,
   uploadImage,
@@ -58,6 +60,13 @@ const commands: readonly (readonly [string, Command])[] = [
   ["uploadFont", (s) => uploadFont(s, testFonts.otf)],
   ["setFontAsset", (s) => setFontAsset(s, "Montserrat-Medium", { embedding: "restricted" })],
   ["uploadImage", (s) => uploadImage(s, testImages.png)],
+  ["setLayerLet", (s) => setLayerLet(s, "/layers/0", [["n", "{{ 1 }}"]])],
+  ["setPalette (add a palette)", (s) => setPalette(s, [["light", []]])],
+  [
+    "setLayerProperty (add an orbit)",
+    (s) =>
+      setLayerProperty(s, "/layers/0", "orbit", { center: { x: 0, y: 0 }, radius: 0, angle: 0 }),
+  ],
 ];
 
 describe("every editing command can be undone and redone", () => {

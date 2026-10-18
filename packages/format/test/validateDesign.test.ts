@@ -574,6 +574,15 @@ describe("local bindings (let, RM-118)", () => {
     ]);
   });
 
+  test("a binding of maxBindingLength characters is valid, one more a length issue", () => {
+    const binding = (length: number) => `{{${" ".repeat(length - 5)}1}}`;
+    const max = DesignLimits.maxBindingLength;
+    valid(withLayers(rect({ let: { a: binding(max) } })));
+    expect(codes(withLayers(rect({ let: { a: binding(max + 1) } })))).toEqual([
+      { path: "/layers/0/let/a", code: "length" },
+    ]);
+  });
+
   test("a value must be a binding", () => {
     expect(codes(withLayers(rect({ let: { a: 3, b: "abc", c: "{{ 1 }}" } })))).toEqual([
       { path: "/layers/0/let/a", code: "type" },
