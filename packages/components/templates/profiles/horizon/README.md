@@ -51,7 +51,7 @@ jobs:
 
 The repository rows rank the first six of `github.pinned` (else of `github.repositories`, which the loader produces today) by stars: `repo-1` shows the most starred, `repo-6` the sixth. Each slot's design differs only in its root prop `slot` (0 to 5).
 
-The sections `header`, `repo-1` to `repo-6`, `ticker`, `worked` and `year` bind values with the layer property `let`, which needs the Action v0.4.0 or newer; an older Action refuses them with `unknown-property`.
+The sections `header`, `repo-1` to `repo-6`, `ticker`, `worked` and `year` bind values with the layer property `let`, which needs the Action v0.4.0 or newer; an older Action refuses them with `unknown-property`. The `stack` section also uses the filters `exclude` and `sum` (the prop `languagesHide`) and needs the Action v0.5.0 or newer; an older Action refuses it even with an empty list.
 
 ## Your texts
 

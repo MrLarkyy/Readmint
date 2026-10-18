@@ -5,7 +5,7 @@
   "description": "Key facts in rows, with the languages of the public repositories and a bar of their shares.",
   "canvas": {
     "width": 840,
-    "height": "{{ 39 + 36 * ((props.labels | length) + ((github.languages | exclude(\"name\", props.languagesHide) | length | default(0)) > 0 ? 1 : 0) | min(8)) + (((props.logoNames | length | min(12)) > 0 && props.logosRow >= 0 && props.logosRow < (props.labels | length) && props.logosRow == (props.logosRow | floor) && (props.logosRow < props.languagesAfter ? props.logosRow : props.logosRow + ((github.languages | exclude(\"name\", props.languagesHide) | length | default(0)) > 0 ? 1 : 0)) < 8) ? 24 * ((props.logoLabels | length | clamp(1, 4)) - 1) : 0) }}"
+    "height": "{{ 39 + 36 * ((props.labels | length) + (((props.languageShare == \"authored\" ? (github.languagesAuthored || github.languages) : (props.languageShare == \"repositories\" ? (github.languagesByRepo || github.languages) : github.languages)) | exclude(\"name\", props.languagesHide) | length | default(0)) > 0 ? 1 : 0) | min(8)) + (((props.logoNames | length | min(12)) > 0 && props.logosRow >= 0 && props.logosRow < (props.labels | length) && props.logosRow == (props.logosRow | floor) && (props.logosRow < props.languagesAfter ? props.logosRow : props.logosRow + (((props.languageShare == \"authored\" ? (github.languagesAuthored || github.languages) : (props.languageShare == \"repositories\" ? (github.languagesByRepo || github.languages) : github.languages)) | exclude(\"name\", props.languagesHide) | length | default(0)) > 0 ? 1 : 0)) < 8) ? 24 * ((props.logoLabels | length | clamp(1, 4)) - 1) : 0) }}"
   },
   "assets": {
     "fonts": {
@@ -129,7 +129,7 @@
             "s0": "{{ (langs[0].share | default(0)) * lk }}",
             "s1": "{{ (langs[1].share | default(0)) * lk }}",
             "s2": "{{ (langs[2].share | default(0)) * lk }}",
-            "nl": "{{ github.languages | exclude(\"name\", props.languagesHide) | length | default(0) }}",
+            "nl": "{{ langs | length | default(0) }}",
             "sr": "{{ ((props.logoNames | length | min(12)) > 0 && props.logosRow >= 0 && props.logosRow < (props.labels | length) && props.logosRow == (props.logosRow | floor) && (props.logosRow < props.languagesAfter ? props.logosRow : props.logosRow + (nl > 0 ? 1 : 0)) < 8) ? props.logosRow : -1 }}"
           },
           "children": [

@@ -107,6 +107,38 @@ describe("hostile expressions are bounded in time and memory", () => {
     );
   });
 
+  test("exclude over 200000 items exhausts the budget before scanning", () => {
+    const list = Array.from({ length: 200_000 }, () => ({ name: "a" }));
+    expectBounded("{{ list | exclude('name', ['b']) }}", { list }, "budget");
+  });
+
+  test("exclude with a 20M-character value exhausts the budget", () => {
+    expectBounded(
+      "{{ list | exclude('name', [value]) }}",
+      { list: [{ name: "a" }], value: "v".repeat(20_000_000) },
+      "budget",
+    );
+  });
+
+  test("exclude near the budget with long strings finishes within the wall clock", () => {
+    const list = Array.from({ length: 150 }, (_, index) => ({ name: `${String(index)}${long}` }));
+    const values = Array.from({ length: 100 }, (_, index) => `${String(index)}${long}`);
+    const budget = createBudget();
+    const {
+      value: result,
+      ms: elapsed,
+      scale,
+    } = timed(() => {
+      const template = compileTemplate("{{ list | exclude('name', values) | length }}");
+      return template.ok
+        ? template.value.evaluate(createScope({ list, values }, { budget }))
+        : template;
+    });
+    if (!result.ok) expect(result.error.code).toBe("budget");
+    expect(budget.used).toBeLessThanOrEqual(ExpressionLimits.maxSteps + 2_000_000);
+    expect(elapsed).toBeLessThan(wallClockMs * scale);
+  });
+
   test("max with a key charges the items plus the key once", () => {
     const budget = createBudget();
     const template = compileTemplate("{{ list | max('count') }}");

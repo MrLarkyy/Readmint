@@ -169,4 +169,69 @@ describe.each(cases)("%s %s languagesHide", (template, section) => {
     expect(svg).not.toContain("TypeScript");
     expect(percentages(svg)).toEqual(expectedShares(template, ["TypeScript"]));
   });
+  describe.each(themes)("an authored list of another length than the bytes list, %s", (theme) => {
+    const bytes = (names: readonly string[]) =>
+      withLanguages(names.map((name) => ({ name, share: 1 / names.length })));
+    const authoredData = (
+      byteNames: readonly string[],
+      authored: readonly Language[],
+    ): Record<string, unknown> => ({
+      github: {
+        ...bytes(byteNames).github,
+        languagesAuthored: authored.map((language) => ({
+          ...language,
+          color: "#3178c6",
+          additions: Math.round(language.share * 1_000_000),
+        })),
+      },
+    });
+    const longer: readonly Language[] = [
+      { name: "TypeScript", share: 0.25 },
+      { name: "Kotlin", share: 0.25 },
+      { name: "Rust", share: 0.25 },
+      { name: "Go", share: 0.25 },
+    ];
+
+    test("hiding the only authored language draws no languages row", () => {
+      const data = authoredData(["TypeScript", "Go"], [{ name: "TypeScript", share: 1 }]);
+      const svg = render(
+        template,
+        section,
+        theme,
+        { languageShare: "authored", languagesHide: ["TypeScript"] },
+        data,
+      );
+      expect(svg).toBe(render(template, section, theme, {}, withLanguages([])));
+    });
+
+    test("a longer authored list keeps its rows when the shorter bytes list is hidden", () => {
+      const data = authoredData(["TypeScript"], longer);
+      const svg = render(
+        template,
+        section,
+        theme,
+        { languageShare: "authored", languagesHide: ["TypeScript"] },
+        data,
+      );
+      expect(svg).toBe(
+        render(
+          template,
+          section,
+          theme,
+          {},
+          withLanguages([
+            { name: "Kotlin", share: 1 / 3 },
+            { name: "Rust", share: 1 / 3 },
+            { name: "Go", share: 1 / 3 },
+          ]),
+        ),
+      );
+    });
+
+    test("a longer authored list is sized like the same bytes list", () => {
+      const data = authoredData(["TypeScript"], longer);
+      const svg = render(template, section, theme, { languageShare: "authored" }, data);
+      expect(svg).toBe(render(template, section, theme, {}, withLanguages(longer)));
+    });
+  });
 });
