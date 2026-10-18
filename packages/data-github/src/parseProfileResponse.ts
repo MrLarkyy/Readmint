@@ -44,14 +44,17 @@ export function parseProfileResponse(data: unknown): ProfileRecord {
 
 function parseContributions(collection: ResponseReader): ContributionsRecord {
   const calendar = collection.field("contributionCalendar");
-  const total = calendar.field("totalContributions").count();
+  const reported = calendar.field("totalContributions").count();
   const weeks = calendar.field("weeks").items(GitHubLimits.maxCalendarWeeks);
   const days = weeks.flatMap((week, index) => parseWeek(week, index));
   checkCalendar(days, calendar.field("weeks"));
   const sum = days.reduce((accumulated, day) => accumulated + day.count, 0);
-  if (sum !== total) calendar.field("totalContributions").fail("the sum of the day counts");
+  // GitHub counts the whole requested window, but the calendar grid can start a day or two later
+  // (on the first Sunday inside it); a total below the days is the malformed case, the rest is the edge.
+  if (sum > reported)
+    calendar.field("totalContributions").fail("at least the sum of the day counts");
   return {
-    total,
+    total: sum,
     commits: collection.field("totalCommitContributions").count(),
     pullRequests: collection.field("totalPullRequestContributions").count(),
     issues: collection.field("totalIssueContributions").count(),

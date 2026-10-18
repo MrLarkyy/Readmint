@@ -343,7 +343,7 @@ the value; a `graphql` message quotes GitHub's own error messages, redacted and 
 | `too-large`              | a response body over 8 MiB                                                                                                                        |
 
 Every value is validated before use: types, non-negative integer counts, dates and timestamps, a calendar without gaps
-whose weekdays match the dates and whose day counts add up to the total, `https://` URLs, and `#rrggbb` colours.
+whose weekdays match the dates and whose day counts do not exceed the total GitHub reports (`contributions.total` is the sum of the calendar days; GitHub counts its whole window, which can reach a day or two before the first calendar column), `https://` URLs, and `#rrggbb` colours.
 Values that GitHub passes through from users (`websiteUrl`, `homepageUrl`, colours) become `null` instead of failing.
 Strings are otherwise kept as GitHub returns them; the renderer escapes them.
 
