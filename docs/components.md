@@ -315,7 +315,7 @@ pnpm examples <path to a clone of the examples repository> --check
 The first writes the files (and removes the generated ones that are no longer produced, never `<template>/readmint/`);
 `--check` writes nothing, lists each missing, differing or stale file and exits 1 when the clone is not in sync. Run it
 after changing a template or `profileExampleProps`, then commit and push the clone. `--login` and `--action` set the
-account and the Action reference (`MrLarkyy` and `MrLarkyy/Readmint@v0.5.0` by default). The generator refuses an Action reference pinned to a release older than the filters the templates use
+account and the Action reference (`MrLarkyy` and `MrLarkyy/Readmint@v0.5.1` by default). The generator refuses an Action reference pinned to a release older than the filters the templates use
 (`textWidth`, `truncateWidth`; `exclude` and `sum` of the `languagesHide` sections, v0.5.0), than the layer properties they set (`let` of the Horizon and Pinscreen sections and of the Year Ring ones,
 `orbit` of the Year Ring year and header, `maxLines` of its repository cards, all v0.4.0; looked up as keys of the
 layers, not in texts), than a root `palette` (v0.4.0; looked up as a key of the document only) or than `props-file`
