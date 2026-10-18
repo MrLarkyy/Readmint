@@ -122,10 +122,10 @@ describe("invalid responses fail with invalid-response and the JSON path", () =>
       "weeks[5].contributionDays[2].weekday",
     ],
     [
-      "a total that is not the sum of the days",
+      "a total below the sum of the days",
       [
         withCalendar(profile(), (calendar) => {
-          calendar.totalContributions += 1;
+          calendar.totalContributions -= 1;
         }),
       ],
       "contributionCalendar.totalContributions",
@@ -236,6 +236,16 @@ describe("hostile values are neutralised", () => {
     expect(data.websiteUrl).toBeNull();
     const readmint = data.repositories.find((repository) => repository.name === "readmint");
     expect(readmint?.homepageUrl).toBeNull();
+  });
+
+  test("a total above the days (the window edge GitHub counts) is the sum of the days", async () => {
+    const source = withCalendar(profile(), (calendar) => {
+      calendar.totalContributions += 30;
+    });
+    const pages = successExchanges().slice(1);
+    const { data } = await load(replayFetch([source, ...pages]).fetch);
+    const sum = data.contributions.days.reduce((accumulated, day) => accumulated + day.count, 0);
+    expect(data.contributions.total).toBe(sum);
   });
 
   test("__proto__ keys pollute nothing and are not copied", async () => {
