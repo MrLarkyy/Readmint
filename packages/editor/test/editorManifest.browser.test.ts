@@ -227,3 +227,35 @@ test("Export PNG refuses a variant the chosen render does not list", async () =>
   expect(images).toHaveLength(0);
   expect(find('[aria-label="Issues"]').textContent).toContain("does not list");
 });
+
+test(
+  "Export PNG of a render needs the section the CLI uses: its name, or none when the file lacks it",
+  async () => {
+    await open();
+    await upload("load-settings", "settings.json", JSON.stringify({ "card-a": {}, card: {} }));
+    const section = find('select[data-action="settings-section"]') as HTMLSelectElement;
+    await chooseRender("plain");
+    expect(editor.state.settings?.section).toBeUndefined();
+    await userEvent.selectOptions(section, "card");
+    await editor.settled();
+    await userEvent.click(find('[data-action="export-png"]'));
+    await editor.settled();
+    expect(images).toHaveLength(0);
+    expect(find('[aria-label="Issues"]').textContent).toContain(
+      "uses no settings section, as readmint render --manifest does",
+    );
+    await userEvent.selectOptions(section, "");
+    await editor.settled();
+    await userEvent.click(find('[data-action="export-png"]'));
+    await editor.settled();
+    expect(images.map((image) => image.name)).toEqual(["plain.png"]);
+    await chooseRender("card-a");
+    await userEvent.selectOptions(section, "card");
+    await editor.settled();
+    await userEvent.click(find('[data-action="export-png"]'));
+    await editor.settled();
+    expect(find('[aria-label="Issues"]').textContent).toContain('the settings section "card-a"');
+    expect(images).toHaveLength(1);
+  },
+  slow,
+);

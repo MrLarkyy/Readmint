@@ -16,6 +16,7 @@ import {
   type EditorState,
 } from "../src/index.js";
 import { RenderManifestLimits } from "@readmint/format";
+import { renderSection } from "../src/renderSection.js";
 import { manifestDesign, manifestSettingsText, manifestText } from "./settingsDesign.js";
 
 const base = createEditorState(manifestDesign);
@@ -240,5 +241,21 @@ describe("a session input", () => {
     const forth = back === undefined ? undefined : redo(back.history, back.state);
     expect(forth?.state.manifest).toBe(chosen.manifest);
     expect(JSON.stringify(chosen.design)).not.toContain("card-a");
+  });
+});
+
+describe("renderSection", () => {
+  test("is the render's name when the settings file has it, else none; absent without a render", () => {
+    const settings = loadSettings(loaded, manifestSettingsText);
+    expect(renderSection(settings)).toBeUndefined();
+    expect(renderSection(chooseRender(settings, "card-a", "card.json"))).toEqual({
+      section: "card-a",
+    });
+    expect(renderSection(chooseRender(settings, "plain", "card.json"))).toEqual({
+      section: undefined,
+    });
+    expect(renderSection(chooseRender(loaded, "card-a", "card.json"))).toEqual({
+      section: undefined,
+    });
   });
 });

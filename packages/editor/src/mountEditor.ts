@@ -48,6 +48,7 @@ import { RasterClient, type RasterWorker } from "./RasterClient.js";
 import { chosenRender, rendersOfFile } from "./rendersOfFile.js";
 import { removeLayer } from "./removeLayer.js";
 import { reorderLayer } from "./reorderLayer.js";
+import { renderSection } from "./renderSection.js";
 import { resizeLayer } from "./resizeLayer.js";
 import { selectLayer } from "./selectLayer.js";
 import { setFontAsset } from "./setFontAsset.js";
@@ -195,6 +196,18 @@ export function mountEditor(root: HTMLElement, options: MountEditorOptions = {})
       report(
         "export",
         `the ${format} export needs render ${JSON.stringify(render.name)} to apply; fix the manifest or choose another render (${manifestIssues.map((issue) => issue.message).join("; ")})`,
+      );
+      return;
+    }
+    const expected = renderSection(state);
+    if (
+      render !== undefined &&
+      expected !== undefined &&
+      state.settings?.section !== expected.section
+    ) {
+      report(
+        "export",
+        `the ${format} export of render ${JSON.stringify(render.name.slice(0, 64))} uses ${expected.section === undefined ? "no settings section" : `the settings section ${JSON.stringify(expected.section.slice(0, 64))}`}, as readmint render --manifest does; choose it in the Settings section list`,
       );
       return;
     }
