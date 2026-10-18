@@ -1,7 +1,9 @@
 import { renderVariants, type RenderVariant } from "@readmint/format";
 import type { NewLayerType } from "./addLayer.js";
+import type { EditorManifest } from "./EditorManifest.js";
 import type { EditorSettings } from "./EditorSettings.js";
 import { element, takeFile } from "./dom.js";
+import { designFileOf } from "./rendersOfFile.js";
 
 /** What the toolbar asks the editor to do. */
 export interface ToolbarActions {
@@ -19,6 +21,8 @@ export interface ToolbarActions {
   uploadImage(file: File): void;
   loadFixture(file: File): void;
   loadSettings(file: File): void;
+  loadManifest(file: File): void;
+  chooseRender(name: string | undefined): void;
   chooseSection(section: string | undefined): void;
   chooseVariant(name: string | undefined): void;
   zoom(zoom: number): void;
@@ -29,7 +33,7 @@ const zooms = [0.5, 1, 2, 4];
 
 /**
  * New, import, undo, redo, export (JSON, YAML, PNG, WebP, the settings file), add a layer, upload a font or an image, load fixture data, load a settings file and
- * pick its section, switch the render variant (Light or a named variant, disabled with its reason when the design
+ * pick its section, load a render manifest and choose one of its renders, switch the render variant (Light or a named variant, disabled with its reason when the design
  * cannot take one), zoom.
  */
 export class Toolbar {
@@ -37,10 +41,12 @@ export class Toolbar {
   private readonly undoButton: HTMLButtonElement;
   private readonly redoButton: HTMLButtonElement;
   private readonly exportSettingsButton: HTMLButtonElement;
+  private readonly renderSelect: HTMLSelectElement;
   private readonly sectionSelect: HTMLSelectElement;
   private readonly variantSelect: HTMLSelectElement;
   private readonly variantReason: HTMLElement;
   private sectionsKey: string | undefined;
+  private rendersKey: string | undefined;
 
   constructor(parent: Element, actions: ToolbarActions) {
     this.root = element(parent, "div", {
@@ -91,6 +97,17 @@ export class Toolbar {
     this.file("Load settings", "load-settings", ".json,application/json", (file) => {
       actions.loadSettings(file);
     });
+    this.file("Load manifest", "load-manifest", ".json,application/json", (file) => {
+      actions.loadManifest(file);
+    });
+    const renderLabel = element(this.root, "label", { text: "Render " });
+    this.renderSelect = element(renderLabel, "select", {
+      attributes: { "data-action": "render" },
+    });
+    this.renderSelect.addEventListener("change", () => {
+      actions.chooseRender(this.renderSelect.value === "" ? undefined : this.renderSelect.value);
+    });
+    this.setRenders(undefined, undefined);
     const sectionLabel = element(this.root, "label", { text: "Settings section " });
     this.sectionSelect = element(sectionLabel, "select", {
       attributes: { "data-action": "settings-section" },
@@ -133,6 +150,33 @@ export class Toolbar {
     this.redoButton.disabled = !canRedo;
   }
 
+  /**
+   * Lists the renders of the loaded manifest (`<name> (<design>)`, as text only) and shows the chosen one; a render of
+   * another design file than `designFile` is disabled with its reason. Without a manifest the list is disabled.
+   */
+  setRenders(manifest: EditorManifest | undefined, designFile: string | undefined): void {
+    const select = this.renderSelect;
+    const renders = manifest?.renders ?? [];
+    const key = JSON.stringify([renders.map((entry) => [entry.name, entry.design]), designFile]);
+    // Rebuilt only when the list changes, so an open dropdown survives a refresh.
+    if (key !== this.rendersKey) {
+      this.rendersKey = key;
+      select.replaceChildren();
+      element(select, "option", { text: "No render" }).value = "";
+      for (const entry of renders) {
+        const option = element(select, "option", { text: `${entry.name} (${entry.design})` });
+        option.value = entry.name;
+        const file = designFileOf(entry.design);
+        if (file !== designFile) {
+          option.disabled = true;
+          option.title = `renders design file ${JSON.stringify(file)}; import it first`;
+        }
+      }
+    }
+    select.value = manifest?.render ?? "";
+    select.disabled = manifest === undefined;
+  }
+
   /** Lists the sections of the loaded settings file and shows the applied one; without a file the list is disabled. */
   setSections(settings: EditorSettings | undefined): void {
     const select = this.sectionSelect;
@@ -154,12 +198,24 @@ export class Toolbar {
    * Shows the chosen variant. Without one the switch is disabled while `reason` says the design cannot take a variant
    * (shown, and the select's title); with one it stays enabled so the user can return to Light.
    */
-  setVariant(current: RenderVariant | undefined, reason: string | undefined): void {
-    const blocked = reason !== undefined && current === undefined;
+  setVariant(
+    current: RenderVariant | undefined,
+    reason: string | undefined,
+    listed?: { readonly render: string; readonly variants: readonly RenderVariant[] },
+  ): void {
+    const none = listed !== undefined && listed.variants.length === 0;
+    const why = none ? `render ${JSON.stringify(listed.render)} lists no variants` : reason;
+    for (const option of this.variantSelect.options) {
+      option.disabled =
+        listed !== undefined &&
+        option.value !== "" &&
+        !listed.variants.some((variant) => variant.name === option.value);
+    }
+    const blocked = why !== undefined && (current === undefined || none);
     this.variantSelect.value = current?.name ?? "";
     this.variantSelect.disabled = blocked;
-    this.variantSelect.title = blocked ? reason : "";
-    this.variantReason.textContent = blocked ? reason : "";
+    this.variantSelect.title = blocked ? why : "";
+    this.variantReason.textContent = blocked ? why : "";
   }
 
   private button(text: string, action: string, run: () => void): HTMLButtonElement {

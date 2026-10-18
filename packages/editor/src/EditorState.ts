@@ -2,6 +2,7 @@ import type { Design, RenderVariant } from "@readmint/format";
 import type { RenderAssets } from "@readmint/renderer";
 import type { EditorSettings } from "./EditorSettings.js";
 import type { EditorIssue } from "./EditorIssue.js";
+import type { EditorManifest } from "./EditorManifest.js";
 import type { FontCheck } from "./FontCheck.js";
 
 /**
@@ -16,6 +17,8 @@ export interface EditorState {
   readonly data: Readonly<Record<string, unknown>>;
   /** A settings file and its applied section; rendered with, never part of the design. */
   readonly settings?: EditorSettings;
+  /** A render manifest and the render applied (props, variants, the settings section named like it); session only, never part of the design, its history or an export. */
+  readonly manifest?: EditorManifest;
   /** The render variant the preview and the raster export apply (`--variant`); session only, never part of the design, its history or an export. */
   readonly variant?: RenderVariant;
   /** Bytes the user attached for path-sourced assets in this session; never exported. */

@@ -8,6 +8,7 @@ export type EditorIssueSource =
   | "fixture"
   | "settings"
   | "variant"
+  | "manifest"
   | "preview"
   | "export";
 

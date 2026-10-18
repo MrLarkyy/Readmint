@@ -7,6 +7,8 @@ import {
 import { declaredProps, layerValue, undeclaredProps } from "./declaredProps.js";
 import type { EditorIssue } from "./EditorIssue.js";
 import type { EditorState } from "./EditorState.js";
+import { renderEntryDesign } from "./renderEntryDesign.js";
+import { chosenRender } from "./rendersOfFile.js";
 import { variantDesign } from "./variantDesign.js";
 
 /** The design a render shows, why the chosen variant or settings section could not be applied, and what it only warns about. */
@@ -21,17 +23,22 @@ export interface EffectiveDesign {
 }
 
 /**
- * The design the preview and the raster export render: the state's design with its variant applied (as `readmint
- * render --variant`), then the chosen settings section (`applyDesignProps`, as `--props`; a section prop wins over
- * the variant's, with a warning), but only the props the design declares: a prop it does not
- * declare is a warning and `unknownProps`, a declared prop the section lacks a warning too. When the variant or the section does not
- * apply, that part is left out, the other still applies, and the reasons are given (a message never quotes a value).
+ * The design the preview and the raster export render, in the order of `readmint render --manifest`: the chosen
+ * render's props (`applyDesignProps`, unfiltered), then the variant (`applyRenderVariant`, as `--variant`), then the chosen settings
+ * section (`applyDesignProps`, as `--props`; a section prop wins over the render's and the variant's, with a warning),
+ * but only the props the design declares: a prop it does not
+ * declare is a warning and `unknownProps`, a declared prop the section lacks a warning too. When a part does not
+ * apply, it is left out, the others still apply, and the reasons are given (a message never quotes a value).
  */
 export function effectiveDesign(state: EditorState): EffectiveDesign {
-  const varied = variantDesign(state);
-  const result = withSection(state, varied.design, varied.issues.length === 0);
-  if (varied.issues.length === 0) return result;
-  return { ...result, issues: [...varied.issues, ...result.issues] };
+  const entered = renderEntryDesign(state, state.design);
+  const varied = entered.variantClash
+    ? { design: entered.design, issues: [] }
+    : variantDesign(state, entered.design);
+  const applied = varied.issues.length === 0 && !entered.variantClash;
+  const result = withSection(state, varied.design, applied);
+  const before = [...entered.issues, ...varied.issues];
+  return before.length === 0 ? result : { ...result, issues: [...before, ...result.issues] };
 }
 
 function withSection(state: EditorState, base: Design, variantApplied: boolean): EffectiveDesign {
@@ -40,7 +47,7 @@ function withSection(state: EditorState, base: Design, variantApplied: boolean):
   if (settings === undefined || section === undefined) return plain(base);
   const props = settings.sections[section];
   if (props === undefined) return plain(base);
-  const overridden =
+  const overridden: string[] =
     variantApplied && state.variant !== undefined
       ? Object.keys(state.variant.props)
           .filter((name) => Object.hasOwn(props, name))
@@ -49,6 +56,17 @@ function withSection(state: EditorState, base: Design, variantApplied: boolean):
               `settings /${section}/${name}: the section sets it, which overrides the ${state.variant?.name ?? ""} variant`,
           )
       : [];
+  const render = chosenRender(state.manifest)?.entry;
+  const overriddenRender =
+    render === undefined
+      ? []
+      : Object.keys(render.props)
+          .filter((name) => Object.hasOwn(props, name))
+          .map(
+            (name) =>
+              `settings /${section}/${name}: the section sets it, which overrides the props of render ${JSON.stringify(render.name)}`,
+          );
+  overridden.unshift(...overriddenRender);
   if (!base.layers.some((layer) => layer.type === "component")) {
     return fromResult(base, section, applyDesignProps(base, props), overridden, []);
   }
