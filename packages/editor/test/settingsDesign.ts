@@ -56,3 +56,48 @@ export const noDarkDesign: Design = {
     },
   },
 };
+
+/** A design whose root component declares the enum prop `theme` and the number `slot`, as a manifest render sets them. */
+export const manifestDesign: Design = {
+  version: 0,
+  canvas: { width: 120, height: 40 },
+  components: {
+    card: {
+      props: {
+        theme: { type: "enum", values: ["light", "dark"], default: "light" },
+        slot: { type: "number", default: 0 },
+      },
+      layers: [
+        {
+          type: "rect",
+          width: "{{ props.slot * 20 + 20 }}",
+          height: 30,
+          x: 5,
+          y: 5,
+          fill: '{{ props.theme == "dark" ? "#101820" : "#f0f4f8" }}',
+        },
+      ],
+    },
+  },
+  layers: [{ type: "component", ref: "card" }],
+};
+
+/** Renders of `manifestDesign` saved as `card.json`: props, a listed variant, none listed, an empty list, another file. */
+export const manifestRenders = {
+  renders: [
+    { name: "card-a", design: "card.json", props: { slot: 1 }, variants: ["dark"] },
+    { name: "card-b", design: "card.json", props: { slot: 2 } },
+    { name: "plain", design: "card.json", variants: [] },
+    { name: "themed", design: "card.json", props: { theme: "dark" } },
+    { name: "other", design: "sub/other.json" },
+  ],
+};
+
+export const manifestText = JSON.stringify(manifestRenders);
+
+/** Settings with a section named like a render (and one named like the design file). */
+export const manifestSettingsText = JSON.stringify({
+  "card-a": { slot: 3 },
+  "card-b": {},
+  card: { slot: 4 },
+});

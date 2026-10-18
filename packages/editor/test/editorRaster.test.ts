@@ -1,15 +1,34 @@
 import { createHash } from "node:crypto";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { cp, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { ExitCode, runCli } from "@readmint/cli";
 import { initRaster } from "@readmint/raster/browser";
 import { resolveRasterWasm } from "@readmint/raster";
-import { afterEach, beforeEach, expect, test } from "vitest";
-import { exportDesign } from "../src/index.js";
+import { afterEach, beforeEach, describe, expect, test } from "vitest";
+import {
+  attachAsset,
+  chooseRender,
+  createEditorState,
+  effectiveDesign,
+  exportDesign,
+  importDesign,
+  loadFixture,
+  loadManifest,
+  setVariant,
+  type EditorState,
+} from "../src/index.js";
+import { profileFontFiles, profileSource } from "./profileFiles.js";
+import { sampleProfileData } from "../../components/test/sampleProfileData.js";
 import { renderRasterExport } from "../src/renderRasterExport.js";
-import { appRasterPins, editorRasterPins, pinKey } from "./editorRasterParity.js";
+import {
+  appRasterPins,
+  editorRasterPins,
+  manifestRasterPins,
+  pinKey,
+} from "./editorRasterParity.js";
 import { appSession, editorSession } from "./editorSession.js";
+import { manifestDesign, manifestRenders } from "./settingsDesign.js";
 
 let folder: string;
 
@@ -80,3 +99,97 @@ test.each(["png", "webp"] as const)(
     expect(sha(cli)).toBe(appRasterPins[format]);
   },
 );
+
+describe("the export of a manifest render", () => {
+  const renders = manifestRenders.renders.filter((entry) => entry.name === "card-a");
+
+  function chosen(variant?: "dark"): EditorState {
+    const loaded = loadManifest(createEditorState(manifestDesign), JSON.stringify({ renders }));
+    const state = chooseRender(loaded, "card-a", "card.json");
+    expect(state.issues).toEqual([]);
+    return variant === undefined ? state : setVariant(state, variant);
+  }
+
+  async function editorBytes(state: EditorState, format: "png" | "webp"): Promise<Uint8Array> {
+    const effective = effectiveDesign(state);
+    expect(effective.issues).toEqual([]);
+    const output = await renderRasterExport({
+      design: effective.design,
+      data: state.data,
+      sessionAssets: state.sessionAssets,
+      format,
+    });
+    return output.bytes;
+  }
+
+  test.each(["png", "webp"] as const)(
+    "equals readmint render --manifest --format %s, file for file, and the pins",
+    async (format) => {
+      await writeFile(join(folder, "card.json"), exportDesign(manifestDesign));
+      await writeFile(join(folder, "renders.json"), JSON.stringify({ renders }));
+      const code = await runCli(
+        ["render", "--manifest", "renders.json", "--out-dir", "out", "--format", format],
+        { cwd: folder, stdout: () => undefined, stderr: () => undefined },
+      );
+      expect(code).toBe(ExitCode.ok);
+      const names = await readdir(join(folder, "out"));
+      const light = `card-a.${format}`;
+      const dark = `card-a.dark.${format}`;
+      expect(names.sort()).toEqual([dark, light]);
+      const cliLight = await readFile(join(folder, "out", light));
+      const cliDark = await readFile(join(folder, "out", dark));
+      expect(sha(cliLight)).toBe(manifestRasterPins[light]);
+      expect(Buffer.from(await editorBytes(chosen(), format)).equals(cliLight)).toBe(true);
+      if (format === "webp") return;
+      expect(sha(cliDark)).toBe(manifestRasterPins[dark]);
+      expect(Buffer.from(await editorBytes(chosen("dark"), format)).equals(cliDark)).toBe(true);
+    },
+  );
+
+  test("one profile render, dark, equals the CLI's PNG", async () => {
+    const template = "horizon";
+    const source = join(
+      import.meta.dirname,
+      "..",
+      "..",
+      "components",
+      "templates",
+      "profiles",
+      template,
+    );
+    await cp(join(source, "fonts"), join(folder, "fonts"), { recursive: true });
+    await cp(join(source, "repo.json"), join(folder, "repo.json"));
+    const entry = { name: "repo-3", design: "repo.json", props: { slot: 2 }, variants: ["dark"] };
+    await writeFile(join(folder, "renders.json"), JSON.stringify({ renders: [entry] }));
+    await writeFile(join(folder, "data.json"), JSON.stringify(sampleProfileData()));
+    const code = await runCli(
+      [
+        "render",
+        "--manifest",
+        "renders.json",
+        "--out-dir",
+        "out",
+        "--format",
+        "png",
+        "--data",
+        "data.json",
+      ],
+      { cwd: folder, stdout: () => undefined, stderr: () => undefined },
+    );
+    expect(code).toBe(ExitCode.ok);
+    const cli = await readFile(join(folder, "out", "repo-3.dark.png"));
+
+    const imported = await importDesign(profileSource(template, "repo-3"));
+    if (!imported.ok) throw new Error(JSON.stringify(imported.issues));
+    let state = createEditorState(imported.value);
+    const files = profileFontFiles(template);
+    for (const [id, font] of Object.entries(imported.value.assets?.fonts ?? {})) {
+      state = attachAsset(state, "fonts", id, files[font.src] ?? new Uint8Array());
+    }
+    state = loadFixture(state, JSON.stringify(sampleProfileData()));
+    state = loadManifest(state, JSON.stringify({ renders: [entry] }));
+    state = setVariant(chooseRender(state, "repo-3", "repo.json"), "dark");
+    expect(state.issues).toEqual([]);
+    expect(Buffer.from(await editorBytes(state, "png")).equals(cli)).toBe(true);
+  }, 120_000);
+});
