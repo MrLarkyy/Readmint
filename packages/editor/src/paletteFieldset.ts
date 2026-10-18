@@ -16,9 +16,9 @@ import type { PanelContext } from "./PanelContext.js";
 const shownName = 64;
 
 /**
- * The design's palette as a grid: a row per token, a column per mode, a text input and a colour picker per cell.
- * Every operation replaces the palette whole through `setPalette`, so the modes keep the same tokens and an edit is
- * one undo step.
+ * The design's palette: the modes (a name input and Remove each), then a group per token with its name input and
+ * Remove and one row per mode (mode label, colour text, colour picker). Every operation replaces the palette whole
+ * through `setPalette`, so the modes keep the same tokens and an edit is one undo step.
  */
 export function paletteFieldset(form: HTMLElement, context: PanelContext): void {
   const { actions } = context;
@@ -40,20 +40,17 @@ export function paletteFieldset(form: HTMLElement, context: PanelContext): void 
     });
     return;
   }
-  const scroll = element(box, "div", { className: "rm-palette-scroll" });
-  const table = element(scroll, "table", { attributes: { "aria-label": "Palette" } });
-  const head = element(element(table, "thead"), "tr");
-  element(head, "th", { text: "token" });
+  const modesBox = element(box, "div", { className: "rm-palette-modes" });
   for (const [mode] of entries) {
-    const cell = element(head, "th");
-    const input = element(cell, "input", {
+    const row = element(modesBox, "div", { className: "rm-palette-row" });
+    const input = element(row, "input", {
       attributes: { name: "mode-name", "aria-label": `Mode ${mode.slice(0, shownName)}` },
     });
     input.value = mode;
     input.addEventListener("change", () => {
       actions.setPalette(renameMode(entriesNow(), mode, input.value));
     });
-    const remove = element(cell, "button", {
+    const remove = element(row, "button", {
       text: "Remove",
       attributes: {
         type: "button",
@@ -65,19 +62,18 @@ export function paletteFieldset(form: HTMLElement, context: PanelContext): void 
       actions.setPalette(removeMode(entriesNow(), mode));
     });
   }
-  const body = element(table, "tbody");
   const tokens = entries[0]?.[1] ?? [];
   for (const [token] of tokens) {
-    const tr = element(body, "tr");
-    const nameCell = element(tr, "th");
-    const name = element(nameCell, "input", {
+    const group = element(box, "div", { className: "rm-palette-token" });
+    const head = element(group, "div", { className: "rm-palette-row" });
+    const name = element(head, "input", {
       attributes: { name: "token-name", "aria-label": `Token ${token.slice(0, shownName)}` },
     });
     name.value = token;
     name.addEventListener("change", () => {
       actions.setPalette(renameToken(entriesNow(), token, name.value));
     });
-    const remove = element(nameCell, "button", {
+    const remove = element(head, "button", {
       text: "Remove",
       attributes: {
         type: "button",
@@ -90,15 +86,14 @@ export function paletteFieldset(form: HTMLElement, context: PanelContext): void 
     });
     for (const [mode] of entries) {
       const label = `${token.slice(0, shownName)} in ${mode.slice(0, shownName)}`;
-      const cell = element(tr, "td");
-      const text = element(cell, "input", {
-        attributes: { name: "colour", "aria-label": label },
-      });
+      const row = element(group, "div", { className: "rm-palette-cell" });
+      element(row, "span", { className: "rm-palette-mode", text: mode });
+      const text = element(row, "input", { attributes: { name: "colour", "aria-label": label } });
       context.bind(text, () => colourNow(mode, token));
       text.addEventListener("change", () => {
         actions.setPalette(setColour(entriesNow(), mode, token, text.value));
       });
-      const picker = element(cell, "input", {
+      const picker = element(row, "input", {
         className: "rm-picker",
         attributes: { type: "color", "aria-label": `Pick ${label}` },
       });
@@ -110,13 +105,11 @@ export function paletteFieldset(form: HTMLElement, context: PanelContext): void 
       });
     }
   }
-  const modeCap = entries.length >= DesignLimits.maxPaletteModes;
-  const tokenCap = tokens.length >= DesignLimits.maxPaletteTokens;
   const addModeButton = element(box, "button", {
     text: "Add mode",
     attributes: { type: "button", "data-action": "add-mode" },
   });
-  if (modeCap) {
+  if (entries.length >= DesignLimits.maxPaletteModes) {
     addModeButton.disabled = true;
     addModeButton.title = `a palette may have at most ${String(DesignLimits.maxPaletteModes)} modes`;
   }
@@ -127,7 +120,7 @@ export function paletteFieldset(form: HTMLElement, context: PanelContext): void 
     text: "Add token",
     attributes: { type: "button", "data-action": "add-token" },
   });
-  if (tokenCap) {
+  if (tokens.length >= DesignLimits.maxPaletteTokens) {
     addTokenButton.disabled = true;
     addTokenButton.title = `a palette mode may have at most ${String(DesignLimits.maxPaletteTokens)} tokens`;
   }

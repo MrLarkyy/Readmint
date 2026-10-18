@@ -58,17 +58,33 @@ body {
   width: 100%;
   min-width: 0;
 }
-.rm-palette-scroll {
-  overflow-x: auto;
+.rm-palette-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 4px;
+  margin-bottom: 4px;
 }
-.rm-palette table {
-  border-collapse: collapse;
+.rm-palette-token {
+  margin: 8px 0;
+  padding-top: 4px;
+  border-top: 1px solid #d0d7de;
 }
-.rm-palette td,
-.rm-palette th {
-  padding: 2px;
-  text-align: left;
+.rm-palette-cell {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr) auto;
+  gap: 4px;
+  align-items: center;
+  margin-bottom: 4px;
+}
+.rm-palette-mode {
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
+}
+.rm-palette input:not([type="color"]) {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
 }
 .rm-picker {
   width: 28px;

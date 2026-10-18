@@ -582,3 +582,27 @@ test("the properties of a layer on an orbit edit every orbit value, undoably, an
     orbit: { center: { x: 0, y: 0 }, radius: 0, angle: 0 },
   });
 });
+
+test("a focused but untouched field shows the new value after a drag", async () => {
+  await click('[data-action="add-rect"]');
+  await click('[data-pointer="/layers/0"] [data-action="select"]');
+  const x = find('[aria-label="Properties"] [name="x"]') as HTMLInputElement;
+  x.focus();
+  expect(x.value).toBe("20");
+  await drag(find('[data-testid="overlay"]'), 50, 50, 30, 0);
+  expect(editor.state.design.layers[0]).toMatchObject({ x: 50 });
+  expect((find('[aria-label="Properties"] [name="x"]') as HTMLInputElement).value).toBe("50");
+});
+
+test("a field with text typed since the last commit keeps it when the design changes", async () => {
+  await click('[data-action="add-rect"]');
+  await click('[data-pointer="/layers/0"] [data-action="select"]');
+  const x = find('[aria-label="Properties"] [name="x"]') as HTMLInputElement;
+  await userEvent.fill(x, "77");
+  editor.dispatch((state) => ({
+    ...state,
+    design: { ...state.design, canvas: { ...state.design.canvas, width: 410 } },
+  }));
+  await editor.settled();
+  expect((find('[aria-label="Properties"] [name="x"]') as HTMLInputElement).value).toBe("77");
+});

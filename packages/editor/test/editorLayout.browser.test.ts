@@ -46,19 +46,24 @@ const design = {
 const widths = [1280, 375] as const;
 
 for (const width of widths) {
-  test(`at ${String(width)} px the page does not scroll sideways and the palette grid scrolls in its wrapper`, async () => {
+  test(`at ${String(width)} px the page does not scroll sideways and every palette colour input and picker is visible`, async () => {
     await page.viewport(width, 800);
     editor = mountEditor(root, { initial: design });
     await editor.settled();
     const overflow = () => document.documentElement.scrollWidth - window.innerWidth;
     expect(overflow()).toBeLessThanOrEqual(0);
-    const scroll = root.querySelector<HTMLElement>(".rm-palette-scroll");
-    if (scroll === null) throw new Error("no palette grid");
     const panel = root.querySelector<HTMLElement>(".rm-properties");
-    expect(scroll.scrollWidth).toBeGreaterThan(scroll.clientWidth);
-    expect(scroll.getBoundingClientRect().right).toBeLessThanOrEqual(
-      (panel?.getBoundingClientRect().right ?? 0) + 1,
-    );
+    const limit = Math.min(panel?.getBoundingClientRect().right ?? Infinity, window.innerWidth);
+    const pickers = [...root.querySelectorAll<HTMLElement>(".rm-picker")];
+    expect(pickers).toHaveLength(48);
+    for (const picker of pickers) {
+      const box = picker.getBoundingClientRect();
+      expect(box.width).toBeGreaterThan(0);
+      expect(box.right).toBeLessThanOrEqual(limit + 1);
+    }
+    for (const input of root.querySelectorAll<HTMLElement>('.rm-palette [name="colour"]')) {
+      expect(input.getBoundingClientRect().width).toBeGreaterThan(40);
+    }
     const select = root.querySelector<HTMLElement>(
       '[data-pointer="/layers/0"] [data-action="select"]',
     );

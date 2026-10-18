@@ -16,7 +16,8 @@ const controls = "input, select, textarea, button";
  * The properties of the selected layer, or of the canvas when none is selected. A number field takes a literal or a
  * `{{binding}}`; a change is committed when the field loses focus or Enter is pressed. An edit that keeps the panel's
  * structure (the same fields, let names, palette modes and tokens) only refreshes the values, so the focused field
- * stays; otherwise the panel is rebuilt and the focus returns to the control at the same place.
+ * stays; otherwise the panel is rebuilt and the focus returns to the same control (by name, action and label), or to
+ * nothing when that control is gone.
  */
 export class PropertyPanel {
   readonly root: HTMLElement;
@@ -43,8 +44,15 @@ export class PropertyPanel {
         return this.latest;
       },
       bind: (input, read) => {
+        let typed = false;
+        input.addEventListener("input", () => {
+          typed = true;
+        });
+        input.addEventListener("change", () => {
+          typed = false;
+        });
         const apply = () => {
-          if (input.ownerDocument.activeElement !== input) input.value = read();
+          if (!(typed && input.ownerDocument.activeElement === input)) input.value = read();
         };
         input.value = read();
         this.syncs.push(apply);
@@ -97,8 +105,7 @@ export class PropertyPanel {
     fields: readonly LayerField[],
   ): void {
     const active = this.form.ownerDocument.activeElement;
-    const before = [...this.form.querySelectorAll(controls)];
-    const at = active === null ? -1 : before.indexOf(active);
+    const kept = active !== null && this.form.contains(active) ? identity(active) : undefined;
     clear(this.form);
     this.syncs = [];
     const layer = isLayer ? findLayer(state.design, pointer) : undefined;
@@ -116,7 +123,12 @@ export class PropertyPanel {
       orbitFieldset(this.form, this.context, pointer);
       letFieldset(this.form, this.context, pointer);
     }
-    if (at >= 0) (this.form.querySelectorAll<HTMLElement>(controls)[at] ?? null)?.focus();
+    if (kept !== undefined) {
+      const same = [...this.form.querySelectorAll<HTMLElement>(controls)].filter(
+        (control) => identity(control) === kept,
+      );
+      if (same.length === 1) same[0]?.focus();
+    }
   }
 
   private field(pointer: string, field: LayerField): void {
@@ -162,6 +174,16 @@ export class PropertyPanel {
       commit(input.value);
     });
   }
+}
+
+/** What names a control across a rebuild: its kind, name, action and label; never its position. */
+function identity(control: Element): string {
+  return [
+    control.tagName,
+    control.getAttribute("name"),
+    control.getAttribute("data-action"),
+    control.getAttribute("aria-label"),
+  ].join("|");
 }
 
 /** A choice's current value when it is not among the options: it is then an extra option of the select. */

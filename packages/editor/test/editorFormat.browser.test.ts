@@ -244,3 +244,42 @@ test("typing the same fade numbers again records no undo entry", async () => {
   await current().settled();
   expect(JSON.stringify(current().state.design)).not.toContain("fade");
 });
+
+test("Enter twice on Add token adds two tokens: the focus stays on the button", async () => {
+  await mount(paletteDesign);
+  find('[data-action="add-token"]').focus();
+  await userEvent.keyboard("{Enter}");
+  await current().settled();
+  expect(document.activeElement).toBe(find('[data-action="add-token"]'));
+  await userEvent.keyboard("{Enter}");
+  await current().settled();
+  expect(Object.keys(current().state.design.palette?.["light"] ?? {})).toEqual([
+    "bg",
+    "ink",
+    "token1",
+    "token2",
+  ]);
+});
+
+test("Remove orbit does not move the focus to another control", async () => {
+  await mount({
+    ...letDesign,
+    layers: [
+      {
+        type: "rect",
+        width: 10,
+        height: 40,
+        fill: "#000000",
+        orbit: { center: { x: 50, y: 20 }, radius: 10, angle: 0 },
+      },
+    ],
+  } as unknown as Design);
+  await click('[data-pointer="/layers/0"] [data-action="select"]');
+  find('[data-action="remove-orbit"]').focus();
+  await userEvent.keyboard("{Enter}");
+  await current().settled();
+  expect(document.activeElement).not.toBe(find('[data-action="add-let"]'));
+  expect(root.contains(document.activeElement) && document.activeElement !== document.body).toBe(
+    false,
+  );
+});
