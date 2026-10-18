@@ -227,7 +227,11 @@ A folder holds, per section, `<section>.json` and its dark twin `<section>.dark.
   `authored` (`github.languagesAuthored`, the lines you added per language, see
   [data-github.md](data-github.md#languages-from-your-own-commits); it is empty unless the loader reads commits). Data
   without `languagesByRepo` or with an empty `languagesAuthored` (an older Action, a fixture, no commit cap) draws the bytes list, and the default renders as before. The generic
-  `language-bars` template stays on bytes.
+  `language-bars` template stays on bytes. The same sections take the array prop `languagesHide`: language names, exactly
+  as GitHub writes them (`TypeScript`, `Jupyter Notebook`), left out of the rows and of the `year-ring` bar, the shares
+  of the rest recomputed to 100 % (`exclude` and `sum`, see [expressions.md](expressions.md#filters)); the row counts
+  and heights count only the languages left, so with every language hidden a section draws as it does without
+  languages. Empty (the default) or names that are not in the list render as before.
 - **A logo card is path data in props.** The `year-ring` index and the `pinscreen` stack take `logoNames`, `logoLayers`, `logoFills`, `logoFillsDark`, `logoWithName`, `logos`, `logoLabels`, `logoLines` (arrays) and `logosRow` (a number, default -1): the row `logosRow` of the `labels` (`year-ring`) or of the `noteLabels` (`pinscreen`, whose label line stays) shows a business card of up to four lines. The expression language has no split or count, so the grouping is explicit: `logoLabels` holds one caption per line (an empty caption continues the line above, none at all gives one line without a caption column) and `logoLines` the line index of each name, a number or its text (a missing entry is line 0, a line the captions do not give is not drawn). A name is drawn as up to 4 stacked colour layers (`logoLayers`: 4 slots per name, name k at 4k to 4k+3, painted bottom to top, slot 0 the whole silhouette and each later slot what the next colour covers; origin at 0 0, 14 px tall, absolute `M`/`L`/`C`/`Z`, at most 6000 characters per name), each filled with the `#RRGGBB` at the same index of `logoFills`, or of `logoFillsDark` first in the dark design; an empty fill draws in the ink of that row, so a neutral part of a mark follows the theme. With `logoWithName` set the name is drawn next to its logo (an icon), else the logo replaces it (a wordmark); a name without layers falls back to one ink path in `logos` and then to text. A fill that is not a colour fails the render. At most 12 names are drawn, and each line is clipped at the panel edge. A row that is not a whole number, outside the rows, or (`year-ring`) hidden by the 8-row cap shows no card and adds no height. No renderer feature is behind it: a `repeat` of lines, of names and of the four slots, with `path` layers whose `d` and `fill` are placeholders. The canvas grows by 24 px per line after the first (`year-ring`, 399 at most) or one code line per line (`pinscreen`, up to 19 lines, 476). The logos of the example are recorded in `packages/examples/src/profileLogos.ts` with their source, date, hash, licence as the source states it, mark owner and who answers for showing it; a mark that could not be found or verified shows as text. The colours are traced from the file named there, merged to at most 4, and a colour too close to the card gets a lightness-shifted twin in the dark or light fill.
 - **No user in a design.** No design contains a login, name, address or personal text; every other text comes from
   `github.*`, so another account's data needs no edit. The render date is `github.contributions.to`: a render reads no
@@ -304,12 +308,15 @@ The first writes the files (and removes the generated ones that are no longer pr
 `--check` writes nothing, lists each missing, differing or stale file and exits 1 when the clone is not in sync. Run it
 after changing a template or `profileExampleProps`, then commit and push the clone. `--login` and `--action` set the
 account and the Action reference (`MrLarkyy` and `MrLarkyy/Readmint@v0.4.0` by default). The generator refuses an Action reference pinned to a release older than the filters the templates use
-(`textWidth`, `truncateWidth`), than the layer properties they set (`let` of the Horizon and Pinscreen sections and of the Year Ring ones,
+(`textWidth`, `truncateWidth`; `exclude` and `sum` of the `languagesHide` sections, v0.5.0), than the layer properties they set (`let` of the Horizon and Pinscreen sections and of the Year Ring ones,
 `orbit` of the Year Ring year and header, `maxLines` of its repository cards, all v0.4.0; looked up as keys of the
 layers, not in texts), than a root `palette` (v0.4.0; looked up as a key of the document only) or than `props-file`
 (v0.3.0), which the generated `settings.json` needs, for the write and for `--check`. Examples that use `maxLines`,
 `let`, `orbit` or `palette` need the v0.4.0 tag or newer and refuse every earlier pin: the Action bundle exists only
-on release tags ([action](action.md#releases)), and the default is bumped with every release.
+on release tags ([action](action.md#releases)), and the default is bumped with every release. The `year-ring` index and
+the `horizon` and `pinscreen` stacks use `exclude` and `sum`, so they need v0.5.0 and refuse every earlier pin, the
+default included: until v0.5.0 is cut no reference runs them, and the examples are generated after that release with
+the bumped default.
 
 ### Data the templates read
 

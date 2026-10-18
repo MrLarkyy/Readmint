@@ -1,6 +1,7 @@
 import { dateFilters } from "./dateFilters.js";
 import type { FilterDefinition } from "./FilterDefinition.js";
 import { generalFilters } from "./generalFilters.js";
+import { listFilters } from "./listFilters.js";
 import { measureFilters } from "./measureFilters.js";
 import { numberFilters } from "./numberFilters.js";
 import { stringFilters } from "./stringFilters.js";
@@ -10,7 +11,7 @@ import { stringFilters } from "./stringFilters.js";
  * of something inherited from `Object.prototype`.
  */
 export const filterRegistry: ReadonlyMap<string, FilterDefinition> = new Map(
-  [numberFilters, dateFilters, stringFilters, generalFilters, measureFilters].flatMap((group) =>
-    Object.entries(group),
+  [numberFilters, dateFilters, stringFilters, generalFilters, listFilters, measureFilters].flatMap(
+    (group) => Object.entries(group),
   ),
 );

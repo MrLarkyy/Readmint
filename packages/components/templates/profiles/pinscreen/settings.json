@@ -13,6 +13,7 @@
   },
   "stack": {
     "languageShare": "bytes",
+    "languagesHide": [],
     "plugin": "",
     "labels": [],
     "items": [],

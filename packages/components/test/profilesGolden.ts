@@ -1,3 +1,4 @@
+import { applyDesignProps, type Design } from "@readmint/format";
 import { defineGoldenSuite, type GoldenSuite } from "@readmint/golden";
 import { profileTemplates, type ProfileSection, type ProfileTemplate } from "../src/index.js";
 import { embeddedFonts } from "../../renderer/test/embeddedFonts.js";
@@ -60,6 +61,20 @@ const languageSections: Readonly<Partial<Record<ProfileTemplate, readonly Profil
   "year-ring": ["index"],
 };
 
+/** The sections whose language rows take `languagesHide`, pinned with the top language of the sample hidden. */
+const hideSections: Readonly<Record<ProfileTemplate, readonly ProfileSection[]>> = {
+  "year-ring": ["index"],
+  horizon: ["stack"],
+  pinscreen: ["stack"],
+};
+
+/** A section with TypeScript, the sample's top language, left out of its rows. */
+function withoutTypeScript(design: Design): Design {
+  const result = applyDesignProps(design, { languagesHide: ["TypeScript"] });
+  if (!result.ok) throw new Error(`languagesHide does not apply: ${JSON.stringify(result.issues)}`);
+  return result.value;
+}
+
 /** 64 characters of a real place name, and 255 (GitHub's limit) of the widest capital. */
 const longLocation = "Llanfairpwllgwyngyllgogerychwyrndrobwllllantysiliogogogoch, Wales";
 const wideLocation = "W".repeat(255);
@@ -113,7 +128,7 @@ function emojiProfileData(): ReturnType<typeof sampleProfileData> {
  * so the status shows "Shipping", four spaces and the keycap's "1"), a repository card with a Cyrillic name and a
  * Greek description (drawn by every template through its Noto Sans and Noto Sans Mono fallbacks), a pinscreen card with
  * a Greek name, a horizon header with a Greek location in its monospaced text, a repository card with a CJK name
- * (always dropped, never a gap), and a mid frame.
+ * (always dropped, never a gap), the language section with TypeScript hidden, and a mid frame.
  */
 export function profileGoldenSuite(template: ProfileTemplate): GoldenSuite<ProfileRender> {
   const data = sampleProfileData();
@@ -222,6 +237,14 @@ export function profileGoldenSuite(template: ProfileTemplate): GoldenSuite<Profi
         themes.map((theme) => ({
           name: `${section}-long-languages-${theme}`,
           input: render(section, theme, { data: longLanguageProfileData() }),
+        })),
+      ),
+      ...hideSections[template].flatMap((section) =>
+        themes.map((theme) => ({
+          name: `${section}-languages-hidden-${theme}`,
+          input: render(section, theme, {
+            design: withoutTypeScript(loadExampleProfile(template, section, theme)),
+          }),
         })),
       ),
       {

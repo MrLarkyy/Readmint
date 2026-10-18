@@ -3,6 +3,7 @@ import type { ExprValue } from "./ExprValue.js";
 import type { FilterContext, FilterFailure, FilterOutcome } from "./FilterDefinition.js";
 import type { LocaleData } from "./LocaleData.js";
 import { resolveLocale, supportedLocales } from "./locales.js";
+import { textSteps } from "./textSteps.js";
 import { typeName } from "./typeName.js";
 
 /** A checked input or argument. Messages name the filter and the argument, never the value. */
@@ -74,6 +75,22 @@ export function stringArgument(
   if (value === null) return { ok: true, value: fallback };
   if (typeof value === "string") return { ok: true, value };
   return failure("argument", `${argumentName(filter, index)} must be a string`);
+}
+
+/** The property key of argument `index`: a string, or `null` (missing or `null`) for the items themselves. */
+export function keyArgument(
+  filter: string,
+  args: readonly ExprValue[],
+  index: number,
+): Checked<string | null> {
+  const value = args[index] ?? null;
+  if (value === null || typeof value === "string") return { ok: true, value };
+  return failure("argument", `${argumentName(filter, index)} must be a string`);
+}
+
+/** The steps a filter walking `items` items charges up front: one per item, plus the key once. */
+export function itemSteps(items: number, key: string | null): number {
+  return key === null ? items : items + textSteps(key.length);
 }
 
 /** The locale named by argument `index`, else the scope's locale. */

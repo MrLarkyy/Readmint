@@ -391,10 +391,32 @@ describe("runExamples", () => {
 
   it("writes the pinned default Action reference without --action", () => {
     expect(defaultActionRef).toBe("MrLarkyy/Readmint@v0.4.0");
+    // The templates as the pinned release accepts them: without the filters it predates (exclude, sum: v0.5.0).
+    const dir = temp();
+    cpSync(templatesDir, dir, { recursive: true });
+    const profiles = join(dir, "profiles");
+    for (const folder of readdirSync(profiles, { withFileTypes: true }).filter((entry) =>
+      entry.isDirectory(),
+    )) {
+      const root = join(profiles, folder.name);
+      for (const file of readdirSync(root).filter((name) => name.endsWith(".json"))) {
+        const text = readFileSync(join(root, file), "utf8");
+        const stripped = withoutNewFilters(text);
+        if (stripped !== text) writeFileSync(join(root, file), stripped);
+      }
+    }
     const out = temp();
-    expect(run(templatesDir, out).code).toBe(0);
+    expect(run(dir, out).code).toBe(0);
     const workflow = readFileSync(join(out, ".github", "workflows", "readmint.yml"), "utf8");
     expect(workflow).toContain(`uses: ${defaultActionRef}`);
+  });
+
+  it("refuses the default pin over the real templates until the release that brings exclude and sum", () => {
+    const { code, err } = run(templatesDir, temp());
+    expect(code).toBe(1);
+    expect(err).toMatch(
+      /@v0\.4\.0 predates (exclude|sum) \(Action v0\.5\.0\), which (horizon|pinscreen|year-ring)\/[a-z0-9-]+(\.dark)?\.json uses/,
+    );
   });
 
   it("refuses an Action pin older than the layer properties the real templates use", () => {
@@ -411,3 +433,8 @@ describe("runExamples", () => {
     expect(err).toContain("nowhere");
   });
 });
+
+/** A design text without its `| exclude(...)` and `| sum(...)` pipes; the generator copies texts, it never evaluates them. */
+function withoutNewFilters(text: string): string {
+  return text.replace(/\s*\|\s*(?:exclude|sum)\b(?:\([^()]*\))?/g, "");
+}

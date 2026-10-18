@@ -105,6 +105,8 @@ The hyphen rule keeps ids usable as names: `props.my-label` and `repo-index` are
 | `join(separator=", ")`                              | array                 | the items written as in text, separated; arrays and objects in it are a `type` error                                                                            |
 | `first`                                             | array or string       | the first item (`null` when empty) or code point                                                                                                                |
 | `last`                                              | array or string       | the last item (`null` when empty) or code point                                                                                                                 |
+| `exclude(key, values)`                              | array                 | the items whose `key` (the item itself for a `null` key) is strictly equal to no item of `values`                                                               |
+| `sum`, `sum(key)`                                   | array                 | the sum of its numbers (of `key`), added left to right; `0` when empty                                                                                          |
 | `textWidth(font, size, letterSpacing=0)`            | string                | the width in pixels the text takes drawn with font asset `font` at `size` (see below)                                                                           |
 | `truncateWidth(width, font, size, letterSpacing=0)` | string                | the text when it fits `width` pixels, else its longest start of whole clusters (minus the whitespace it ends on) plus `…` that does; `""` when `…` does not fit |
 
@@ -113,6 +115,16 @@ The hyphen rule keeps ids usable as names: `props.my-label` and `repo-index` are
 an item that is not an object, or a missing or non-number property, is a `type` error, and the key is read like `.key`
 (never a getter or a prototype). A key that is not a string is an `argument` error, as is a number without `b`. The key
 is charged once, on top of one step per item.
+
+`sum` reads its items (with `key`, their property) exactly like `min` and `max` and has the same `type` and `argument`
+errors; a sum past the number range is `not-finite`.
+
+`exclude` drops the items whose key value equals a value of the array `values` by type and value, case included:
+`github.languages | exclude("name", ["TypeScript"])` leaves out TypeScript, `"1"` does not match `1`, and a `null` key
+compares the items themselves. With a key, an item that is not an object is a `type` error, a missing property reads
+`null`, and an item whose key value is an array or object is kept. A `values` that is not an array, or one holding an
+array or object, is an `argument` error. The result is a new array in the order of the input. Both filters charge one
+step per item, `exclude` one more per value, and each string compared or looked up costs its length as in text filters.
 
 Arguments are expressions; a `null` argument means its default. Decimals, lengths and widths must be integers. Number
 filters round with `toFixed` (exact on the binary value: `1.005 | number(2)` is `1.00`); from `1e21` on a number is
