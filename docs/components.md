@@ -171,8 +171,10 @@ section by section to the approved prototype (version 6):
 | `pinscreen` | an editor: a status bar, repositories as Kotlin objects, a terminal git log, a build script stack        | Geist, Geist Mono, Noto Sans and Noto Sans Mono fallbacks                                           | a wall of pins with a ripple running out from today                              |
 
 `profileTemplates` from `@readmint/components` maps each name to its sections (`ProfileTemplate`, `ProfileSection`).
-A folder holds, per section, `<section>.json` and its dark twin `<section>.dark.json`, an example `README.md` and
-`fonts/` (the TTF files the designs name, the licence of each family and the sha256 of every file):
+A folder holds one design per distinct section (`<section>.json`, and `repo.json` for the six repository cards), the
+render manifest `renders.json` that names the renders and their dark variant, the personal-text `settings.json`, an
+example `README.md` and `fonts/` (the TTF files the designs name, the licence of each family and the sha256 of every
+file). The sections of the table are the render names of `renders.json`, in README order:
 
 | template    | sections                                                                              |
 | ----------- | ------------------------------------------------------------------------------------- |
@@ -189,9 +191,11 @@ A folder holds, per section, `<section>.json` and its dark twin `<section>.dark.
   transparent: on another page colour (GitHub's dimmed themes) they show as a soft shade, never as a box.
   `work` is the heading strip above the repositories. The Action writes `readmint/<section>.svg` and
   `readmint/<section>.dark.svg` and prints the `<picture>` snippet that switches on `prefers-color-scheme`
-  ([action.md](action.md#outputs-on-disk-and-the-dark-variant)): list only the light designs. The dark twin is the
-  light file with the root prop `theme` set to `"dark"`, nothing else (a test compares them); the colours are chosen
-  from that prop inside the design.
+  ([action.md](action.md#outputs-on-disk-and-the-dark-variant)): the workflow names `renders.json` with the input
+  `manifest`, and the CLI renders the same file with `readmint render --manifest`. Every entry lists the variant
+  `dark`, which sets the root prop `theme` to `"dark"` and nothing else (a test pins that the dark render is the light
+  design with only that prop changed); the colours are chosen from that prop inside the design. No `*.dark.json` file
+  exists in the folders.
 - **Links.** SVG links do not work inside an `<img>`, so a clickable element is a link around the image: the example
   `README.md` wraps each repository and the contact footer.
 - **Text contrast.** Every text of a profile design reaches a contrast of 4.5:1 (WCAG AA for small text) against the
@@ -203,8 +207,9 @@ A folder holds, per section, `<section>.json` and its dark twin `<section>.dark.
   fills stays as it was. `profileContrast.test.ts` renders every section in both themes and fails on any text fill
   below that. It reads the fill, not the opacity: the 0.15 opacity of the Year Ring `MAR`/`OCT` labels is a depth
   cue (not part of this rule) and the animations start their text at opacity 0.
-- **Repository slots.** `repo-1` to `repo-6` are the same design with the root prop `slot` 0 to 5 (a test pins that
-  they differ in nothing else). A slot reads `github.pinned` (the loader fills it, see
+- **Repository slots.** `repo-1` to `repo-6` are six renders of the one `repo.json`, each with the manifest `props`
+  `{ "slot": 0 }` to `{ "slot": 5 }` (a test pins that the manifest sets nothing else and that the renders differ in
+  nothing else). A slot reads `github.pinned` (the loader fills it, see
   [pinned repositories, pushes and status](data-github.md#pinned-repositories-pushes-and-status)), or
   `github.repositories` where the data has no pinned list. In `year-ring` and `pinscreen` slot n shows the n-th of that list;
   `horizon` ranks its first six by stars (ties keep their order) and slot n shows the n-th. A slot past the list shows
@@ -213,7 +218,7 @@ A folder holds, per section, `<section>.json` and its dark twin `<section>.dark.
 - **Personal texts are root props.** What only a person can say (an introduction, a role, index rows, stack groups,
   the people worked with, the footer and the contact) is a prop of the root instance, declared per section with a
   default (empty for the texts); an empty prop hides its block (an empty introduction falls back to `github.bio`, an empty contact to
-  the GitHub address). They are set once per template in its `settings.json` (below), which covers the light design and its twin alike. Array props hold strings only, so a
+  the GitHub address). They are set once per template in its `settings.json` (below), which covers the light and the dark render alike. Array props hold strings only, so a
   table is two arrays of the same length (`labels`, `values`), and a multi-line item is one string with line breaks.
   Each template's `README.md` lists its props with neutral examples. The canvas height binds to the root props, so
   the sections whose rows come from props grow with them: the `year-ring` index is `39 + 36` per row (the labels plus
@@ -284,19 +289,22 @@ you to fill in once.
 ```
 
 Pass it as the Action input `props-file` (`props-file: readmint/designs/year-ring/settings.json`) or the CLI option
-`--props`. Each entry is merged into the root component of the section's light design and its `.dark` twin, wins over
-the same prop in the design, and is checked like any prop: an undeclared prop or a wrong type fails, naming the section
+`--props`. Each entry is merged into the root component of the render of that name, light and dark, wins over
+the same prop in the design and in the manifest entry (a section that sets a prop of its entry is warned about by name), and is checked like any prop: an undeclared prop or a wrong type fails, naming the section
 and the prop ([cli.md](cli.md#settings-file), [action.md](action.md#settings-file)). `theme` and `slot` are not in the
-file; they stay in the designs (a test pins that the file covers every other root prop at its component default). The
+file; they stay in the designs and the manifest (a test pins that the file covers every other root prop at its component default). The
 design format is unchanged: a merged design is an ordinary design, and the preview and a render of a design with the
 props written into it are byte-identical.
 
 ### The examples repository
 
 [MrLarkyy/readmint-template-test](https://github.com/MrLarkyy/readmint-template-test) runs the three templates with the Action: per template its `designs/` (the
-folder above: the template designs byte for byte, the fonts, and a `settings.json` with the personal texts of `profileExampleProps`, set through the Action input `props-file`, which the pinned release carries), the SVGs the Action wrote to
-`readmint/`, a README with the snippet and one workflow with a step per template. To use one, copy its `designs/`
-folder and its step. The designs and READMEs there are generated, never edited by hand, from the template folders by
+folder above: the template designs and `renders.json` byte for byte, the fonts, and a `settings.json` with the personal texts of `profileExampleProps`, set through the Action input `props-file`, which the pinned release carries), the SVGs the Action wrote to
+`readmint/`, a README with the snippet and one workflow with a step per template, which names the template's
+`renders.json` with the Action input `manifest` (v0.4.0; the generator refuses an older pin) and carries no `designs:`
+list. To use one, copy its `designs/` folder and its step. A workflow copied from an earlier version lists the designs
+with `designs:` (the `repo-2` to `repo-6` and `.dark.json` files no longer exist): replace that list with the
+`manifest:` line. The designs and READMEs there are generated, never edited by hand, from the template folders by
 `@readmint/examples` (a package of this repository, not published):
 
 ```

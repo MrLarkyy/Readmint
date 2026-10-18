@@ -196,7 +196,9 @@ Action takes the same variant as [`variant`](action.md#inputs).
 
 One design often serves several outputs that differ in a few root props (the six repository cards `repo-1` to
 `repo-6` differ only in `slot`). A render manifest lists them: a JSON file, conventionally `renders.json`, named
-explicitly with `--manifest` (never found by itself), next to the designs.
+explicitly with `--manifest` (never found by itself), next to the designs. The three profile templates ship one each
+(`packages/components/templates/profiles/<name>/renders.json`, [components.md](components.md#profile-templates)): one
+`repo.json`, six renders with `slot` 0 to 5, and the dark variant on every render, with no `*.dark.json` file.
 
 ```json
 {

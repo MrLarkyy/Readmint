@@ -30,7 +30,7 @@ test("the template files are exactly the calendar and starter templates, plus th
   );
 });
 
-test("each profile template folder holds a light and a dark design per section, a README, its settings and its fonts", () => {
+test("each profile template folder holds one design per distinct section, renders.json, a README, its settings and its fonts", () => {
   const folders = readdirSync(join(templates, "profiles"), { withFileTypes: true });
   expect(folders.every((entry) => entry.isDirectory())).toBe(true);
   expect(folders.map((entry) => entry.name).sort()).toEqual(Object.keys(profileTemplates).sort());
@@ -44,8 +44,13 @@ test("each profile template folder holds a light and a dark design per section, 
         .sort(),
     ).toEqual(
       [
-        ...sections.flatMap((section) => [`${section}.json`, `${section}.dark.json`]),
+        ...new Set(
+          sections.map((section) =>
+            section.startsWith("repo-") ? "repo.json" : `${section}.json`,
+          ),
+        ),
         "README.md",
+        "renders.json",
         "settings.json",
       ].sort(),
     );

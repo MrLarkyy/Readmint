@@ -10,10 +10,14 @@ import { assertNoLink } from "./assertNoLink.js";
 import { exampleWorkflow } from "./exampleWorkflow.js";
 import { assertActionSupportsSettings } from "./assertActionSupportsSettings.js";
 import { assertActionSupportsDesigns } from "./assertActionSupportsDesigns.js";
+import { assertActionSupportsManifest } from "./assertActionSupportsManifest.js";
+import { parseRenderManifest } from "@readmint/format";
 
 const byCodeUnit = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
 /** The template's own settings (`--props`): not a design; the examples get a generated one with the personal texts. */
 const settingsFile = "settings.json";
+/** The template's render manifest: not a design; it names the renders and is copied as it is. */
+const manifestFile = "renders.json";
 const readText = (path: string): string => readFileSync(path, "utf8").replace(/\r\n/g, "\n");
 
 /** The template folders of `profilesDir`: those named in `props` first, in its order, then the rest sorted. */
@@ -34,30 +38,52 @@ function discoverTemplates(profilesDir: string, props: ExamplesOptions["props"])
 }
 
 /**
- * The examples repository for the template folders of `<templatesDir>/profiles`: per template the designs byte for byte, a
+ * The examples repository for the template folders of `<templatesDir>/profiles`: per template the designs and their `renders.json` byte for byte, a
  * `designs/settings.json` with the personal texts, the fonts, a README, plus the root README and the workflow. Pure and deterministic.
  */
 export function buildExamples(templatesDir: string, options: ExamplesOptions): ExampleFile[] {
   const profilesDir = join(templatesDir, "profiles");
   const files: ExampleFile[] = [];
-  const summaries: { name: string; title: string; designs: string[]; hasSettings: boolean }[] = [];
+  const summaries: { name: string; title: string; hasSettings: boolean }[] = [];
   for (const name of discoverTemplates(profilesDir, options.props)) {
     const dir = join(profilesDir, name);
     const all = listFiles(dir);
     const designFiles = all.filter(
-      (file) => !file.includes("/") && file.endsWith(".json") && file !== settingsFile,
+      (file) =>
+        !file.includes("/") &&
+        file.endsWith(".json") &&
+        file !== settingsFile &&
+        file !== manifestFile,
     );
-    const light = designFiles.filter((file) => !file.endsWith(".dark.json"));
-    for (const file of light) {
-      const twin = file.replace(/\.json$/, ".dark.json");
-      if (!designFiles.includes(twin)) throw new Error(`${name}/${file}: no ${twin}`);
+    if (!all.includes(manifestFile)) throw new Error(`${name}: no ${manifestFile}`);
+    const manifestText = readText(join(dir, manifestFile));
+    const manifest = parseRenderManifest(manifestText);
+    if (!manifest.ok) {
+      const issues = manifest.issues.map((issue) => `${issue.path} ${issue.message}`);
+      throw new Error(`${name}/${manifestFile} does not validate: ${issues.join("; ")}`);
+    }
+    const renders = manifest.value.renders;
+    for (const render of renders) {
+      if (!designFiles.includes(render.design)) {
+        throw new Error(
+          `${name}/${manifestFile}: render ${render.name} names ${render.design}, no design file`,
+        );
+      }
+    }
+    for (const file of designFiles) {
+      if (!renders.some((render) => render.design === file)) {
+        throw new Error(`${name}/${file} is listed by no render of ${manifestFile}`);
+      }
     }
     const templateProps = options.props[name] ?? {};
     for (const section of Object.keys(templateProps)) {
-      if (!light.includes(`${section}.json`)) {
-        throw new Error(`example props for ${name}/${section}, which has no design file`);
+      if (!renders.some((render) => render.name === section)) {
+        throw new Error(
+          `example props for ${name}/${section}, which is no render of ${manifestFile}`,
+        );
       }
     }
+    files.push({ path: `${name}/designs/${manifestFile}`, content: manifestText });
     for (const file of designFiles) {
       const raw = readFileSync(join(dir, file));
       assertActionSupportsDesigns(options.actionRef, [
@@ -73,6 +99,7 @@ export function buildExamples(templatesDir: string, options: ExamplesOptions): E
         content: `${JSON.stringify(templateProps, null, 2)}\n`,
       });
     }
+    assertActionSupportsManifest(options.actionRef);
     for (const file of all.filter((path) => path.startsWith("fonts/"))) {
       files.push({ path: `${name}/designs/${file}`, content: readFileSync(join(dir, file)) });
     }
@@ -81,7 +108,7 @@ export function buildExamples(templatesDir: string, options: ExamplesOptions): E
       path: `${name}/README.md`,
       content: exampleTemplateReadme(readme, name, options),
     });
-    summaries.push({ name, title: readmeTitle(readme, name), designs: light, hasSettings });
+    summaries.push({ name, title: readmeTitle(readme, name), hasSettings });
   }
   files.push({
     path: "README.md",

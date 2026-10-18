@@ -206,11 +206,14 @@ describe("the examples generator", () => {
     const body =
       '{"layers":[{"type":"component","props":{"t":"{{ a | truncateWidth(\\"reg\\", 1) }}"}}]}\n';
     writeFileSync(join(template, "a.json"), body);
-    writeFileSync(join(template, "a.dark.json"), body);
+    writeFileSync(
+      join(template, "renders.json"),
+      '{"renders":[{"name":"a","design":"a.json","variants":["dark"]}]}\n',
+    );
     const options = { login: "octo", actionRef: "owner/action@v0.2.0", props: {} };
-    expect(() => buildExamples(dir, options)).toThrow(/truncateWidth.*demo\/a(\.dark)?\.json/);
+    expect(() => buildExamples(dir, options)).toThrow(/truncateWidth.*demo\/a\.json/);
     expect(() =>
-      buildExamples(dir, { ...options, actionRef: "owner/action@v0.3.0" }),
+      buildExamples(dir, { ...options, actionRef: "owner/action@v0.4.0" }),
     ).not.toThrow();
   });
 

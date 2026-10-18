@@ -1,7 +1,8 @@
 /**
  * The full-profile templates, each a folder `@readmint/components/templates/profiles/<name>/` of designs in the public
- * format: one design per README section plus its `.dark` twin, an example `README.md` and the `fonts/` they name
- * (docs/components.md). The sections are listed in README order.
+ * format: one design per distinct section, a `renders.json` render manifest naming the renders (the six repository
+ * cards are one `repo.json` with a slot each; the dark look is the manifest's `dark` variant), an example `README.md`
+ * and the `fonts/` they name (docs/components.md). The sections are the render names, listed in README order.
  */
 export const profileTemplates = Object.freeze({
   "year-ring": Object.freeze([

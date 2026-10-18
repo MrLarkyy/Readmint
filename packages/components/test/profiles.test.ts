@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { defaultNodeTolerance } from "@readmint/golden";
 import { comparePng, rasterizeSvg } from "@readmint/golden/node";
 import { parseSfnt } from "../../fonts/src/index.js";
-import { validateDesign, type AnimationTrack, type Design, type Layer } from "@readmint/format";
+import { validateDesign, type AnimationTrack, type Layer } from "@readmint/format";
 import { renderSvg, RenderLimits } from "@readmint/renderer";
 import { describe, expect, test } from "vitest";
 import { profileTemplates, type ProfileSection, type ProfileTemplate } from "../src/index.js";
@@ -49,10 +49,6 @@ const halvedLimits = {
 
 const utf8Bytes = (svg: string) => new TextEncoder().encode(svg).length;
 const sha256 = (bytes: Uint8Array) => createHash("sha256").update(bytes).digest("hex");
-
-function fileJson(template: ProfileTemplate, file: string): unknown {
-  return JSON.parse(readFileSync(join(folders, template, file), "utf8"));
-}
 
 /** The sections with a motion that never ends (tickers, pulses, the turning ring, the ripple, a blinking caret). */
 const loops: Readonly<Record<ProfileTemplate, readonly ProfileSection[]>> = {
@@ -102,9 +98,7 @@ function pixelsEqual(left: string, right: string): void {
 
 describe.each(cases)("%s %s", (template, section) => {
   test.each(themes)("the %s design validates with no issues", (theme) => {
-    expect(validateDesign(JSON.parse(profileSource(template, section, theme)))).toMatchObject({
-      ok: true,
-    });
+    expect(validateDesign(loadProfile(template, section, theme))).toMatchObject({ ok: true });
   });
 
   test("has a transparent canvas and a theme enum on its one root instance", () => {
@@ -127,9 +121,9 @@ describe.each(cases)("%s %s", (template, section) => {
     }
   });
 
-  test("the dark twin is the light design with the root prop theme dark, nothing else", () => {
-    const light = fileJson(template, `${section}.json`) as Design;
-    const dark = fileJson(template, `${section}.dark.json`) as Design;
+  test("the dark render is the light design with the root prop theme dark, nothing else", () => {
+    const light = loadProfile(template, section);
+    const dark = loadProfile(template, section, "dark");
     const [root] = light.layers;
     if (root?.type !== "component") throw new Error("the root layer is not a component");
     expect(dark).toEqual({
@@ -181,14 +175,12 @@ describe.each(cases)("%s %s", (template, section) => {
   });
 
   test("contains no login, name, address or personal text of any user", () => {
-    for (const theme of themes) {
-      const body = JSON.parse(profileSource(template, section, theme)) as Record<string, unknown>;
-      delete body["$schema"];
-      expect(JSON.stringify(body)).not.toMatch(
-        /https?:|MrLarkyy|readmint-sample|other-dev|Sample Developer|Other Developer/iu,
-      );
-      expect(JSON.stringify(body)).not.toMatch(exampleValues);
-    }
+    const body = JSON.parse(profileSource(template, section)) as Record<string, unknown>;
+    delete body["$schema"];
+    expect(JSON.stringify(body)).not.toMatch(
+      /https?:|MrLarkyy|readmint-sample|other-dev|Sample Developer|Other Developer/iu,
+    );
+    expect(JSON.stringify(body)).not.toMatch(exampleValues);
   });
 
   test.each(themes)("renders the sample in the %s theme, the same bytes twice", (theme) => {
@@ -268,27 +260,72 @@ describe.each(cases)("%s %s", (template, section) => {
   });
 });
 
-describe.each(names)("%s repository slots", (template) => {
+describe.each(names)("%s render manifest", (template) => {
+  const folder = join(folders, template);
+  const manifest = () =>
+    JSON.parse(readFileSync(join(folder, "renders.json"), "utf8")) as {
+      renders: {
+        name: string;
+        design: string;
+        props?: Record<string, unknown>;
+        variants?: string[];
+      }[];
+    };
   const slots = profileTemplates[template].filter((section) => section.startsWith("repo-"));
 
-  test.each(themes.flatMap((theme) => slots.slice(1).map((slot) => [theme, slot] as const)))(
-    "the %s design of %s is repo-1 with the slot prop changed, nothing else",
-    (theme, slot) => {
-      const file = (section: string) =>
-        theme === "dark" ? `${section}.dark.json` : `${section}.json`;
-      const first = fileJson(template, file("repo-1")) as Design;
-      const other = fileJson(template, file(slot)) as Design;
-      const [root] = first.layers;
-      if (root?.type !== "component") throw new Error("the root layer is not a component");
-      expect(other).toEqual({
-        ...first,
-        layers: [
-          { ...root, props: { ...root.props, slot: Number(slot.slice(5)) - 1 } },
-          ...first.layers.slice(1),
-        ],
+  test("renders.json lists the sections of profileTemplates in order, each with variants dark", () => {
+    expect(manifest().renders.map((render) => render.name)).toEqual([
+      ...profileTemplates[template],
+    ]);
+    for (const render of manifest().renders) expect(render.variants).toEqual(["dark"]);
+  });
+
+  test("repo-1..repo-6 render repo.json with slot 0..5 and no other prop", () => {
+    expect(slots).toHaveLength(6);
+    for (const [index, slot] of slots.entries()) {
+      expect(manifest().renders.find((render) => render.name === slot)).toMatchObject({
+        design: "repo.json",
+        props: { slot: index },
       });
-    },
-  );
+      expect(
+        Object.keys(manifest().renders.find((render) => render.name === slot)?.props ?? {}),
+      ).toEqual(["slot"]);
+    }
+    for (const render of manifest().renders) {
+      if (!slots.includes(render.name as ProfileSection))
+        expect(render).toEqual({
+          name: render.name,
+          design: `${render.name}.json`,
+          variants: ["dark"],
+        });
+    }
+  });
+
+  test("the folder holds only the manifest's designs, renders.json, settings.json, README.md and fonts/", () => {
+    const designs = new Set(manifest().renders.map((render) => render.design));
+    expect(readdirSync(folder).sort()).toEqual(
+      ["README.md", "fonts", "renders.json", "settings.json", ...designs].sort(),
+    );
+    expect([...designs].filter((file) => /\.dark\.json$|^repo-\d\.json$/u.test(file))).toEqual([]);
+  });
+
+  test("the six repository cards differ only in the slot the manifest sets", () => {
+    for (const theme of themes) {
+      const [first, ...others] = slots.map((slot) => loadProfile(template, slot, theme));
+      const [root] = first?.layers ?? [];
+      if (first === undefined || root?.type !== "component")
+        throw new Error("the root layer is not a component");
+      others.forEach((other, index) => {
+        expect(other).toEqual({
+          ...first,
+          layers: [
+            { ...root, props: { ...root.props, slot: index + 1 } },
+            ...first.layers.slice(1),
+          ],
+        });
+      });
+    }
+  });
 });
 
 describe.each(names)("%s fonts", (template) => {
@@ -569,11 +606,16 @@ describe.each(names)("%s example README", (template) => {
     );
   });
 
-  test("lists the light designs for the Action and no dark twin", () => {
-    const listed = [...readme.matchAll(/^\s+readmint\/designs\/(\S+)$/gmu)].map(
-      (match) => match[1],
+  test("names the render manifest for the Action, no designs list and no dark twin", () => {
+    expect(readme).toContain(`          manifest: readmint/designs/${template}/renders.json\n`);
+    expect(readme).not.toMatch(/^\s+designs: \|/mu);
+    expect([...readme.matchAll(/^\s+readmint\/designs\/(\S+)$/gmu)]).toEqual([]);
+  });
+
+  test("tells a workflow copied before to swap the designs list for manifest", () => {
+    expect(readme).toMatch(
+      /replace that list with\s+`manifest: readmint\/designs\/[a-z-]+\/renders\.json`/u,
     );
-    expect(listed).toEqual(sections.map((section) => `${template}/${section}.json`));
   });
 });
 
