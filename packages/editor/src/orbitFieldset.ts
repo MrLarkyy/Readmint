@@ -17,7 +17,11 @@ export function orbitFieldset(form: HTMLElement, context: PanelContext, pointer:
   if (orbitNow() === undefined) {
     const add = element(box, "button", {
       text: "Add orbit",
-      attributes: { type: "button", "data-action": "add-orbit" },
+      attributes: {
+        type: "button",
+        "data-action": "add-orbit",
+        "data-home": `orbit.${orbitFields[0]?.label ?? ""}`,
+      },
     });
     add.addEventListener("click", () => {
       actions.set(pointer, "orbit", structuredClone(newOrbit));
@@ -82,7 +86,7 @@ export function orbitFieldset(form: HTMLElement, context: PanelContext, pointer:
   for (const input of inputs) input.addEventListener("change", commitFade);
   const remove = element(box, "button", {
     text: "Remove orbit",
-    attributes: { type: "button", "data-action": "remove-orbit" },
+    attributes: { type: "button", "data-action": "remove-orbit", "data-home": "add-orbit" },
   });
   remove.addEventListener("click", () => {
     actions.set(pointer, "orbit", undefined);

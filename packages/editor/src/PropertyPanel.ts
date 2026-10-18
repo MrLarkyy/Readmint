@@ -1,5 +1,6 @@
 import type { Design } from "@readmint/format";
 import { childPointer, getAt } from "./designPointer.js";
+import { controlKey, focusControl, type ControlKey } from "./ControlKey.js";
 import { clear, element } from "./dom.js";
 import type { EditorState } from "./EditorState.js";
 import { findLayer, placedByLayout } from "./layerAccess.js";
@@ -10,14 +11,13 @@ import { paletteFieldset } from "./paletteFieldset.js";
 import type { PanelContext } from "./PanelContext.js";
 import type { PropertyActions } from "./PropertyActions.js";
 
-const controls = "input, select, textarea, button";
-
 /**
  * The properties of the selected layer, or of the canvas when none is selected. A number field takes a literal or a
  * `{{binding}}`; a change is committed when the field loses focus or Enter is pressed. An edit that keeps the panel's
- * structure (the same fields, let names, palette modes and tokens) only refreshes the values, so the focused field
- * stays; otherwise the panel is rebuilt and the focus returns to the same control (by name, action and label), or to
- * nothing when that control is gone.
+ * structure (the same fields and as many let rows, palette modes and tokens; a rename keeps it) only refreshes the
+ * values and labels, so the focused field stays and Tab moves on from it; otherwise the panel is rebuilt and the
+ * focus returns to the control at the same place (`ControlKey`): the next row or the group's Add button after a
+ * removal.
  */
 export class PropertyPanel {
   readonly root: HTMLElement;
@@ -26,6 +26,7 @@ export class PropertyPanel {
   private structure = "";
   private latest: EditorState | undefined;
   private syncs: (() => void)[] = [];
+  private followed: ControlKey | undefined;
   private readonly context: PanelContext;
 
   constructor(
@@ -57,10 +58,19 @@ export class PropertyPanel {
         input.value = read();
         this.syncs.push(apply);
       },
+      refresh: (apply) => {
+        apply();
+        this.syncs.push(apply);
+      },
+      focusAfter: (kind, at) => {
+        this.followed = { kind, at, home: [] };
+      },
     };
   }
 
   update(state: EditorState): void {
+    const followed = this.followed;
+    this.followed = undefined;
     this.latest = state;
     const pointer = state.selection ?? "/canvas";
     const target = getAt(state.design, pointer);
@@ -81,21 +91,19 @@ export class PropertyPanel {
       layer?.type,
       placedByLayout(state.design, pointer),
       fields.map((field) => [field.key, field.kind, field.options, choiceExtra(field, target)]),
-      layer === undefined ? null : [layer.orbit !== undefined, Object.keys(layer.let ?? {})],
-      layer === undefined
-        ? Object.entries(state.design.palette ?? {}).map(([mode, tokens]) => [
-            mode,
-            Object.keys(tokens),
-          ])
-        : null,
+      layer === undefined ? null : [layer.orbit !== undefined, Object.keys(layer.let ?? {}).length],
+      layer === undefined ? paletteShape(state.design) : null,
       state.design.palette === undefined,
     ]);
     if (structure === this.structure) {
       for (const sync of this.syncs) sync();
+      const active = this.form.ownerDocument.activeElement;
+      if (followed !== undefined && active !== null && this.form.contains(active))
+        focusControl(this.form, followed);
       return;
     }
     this.structure = structure;
-    this.rebuild(state, pointer, layer !== undefined, fields);
+    this.rebuild(state, pointer, layer !== undefined, fields, followed);
   }
 
   private rebuild(
@@ -103,9 +111,11 @@ export class PropertyPanel {
     pointer: string,
     isLayer: boolean,
     fields: readonly LayerField[],
+    followed: ControlKey | undefined,
   ): void {
     const active = this.form.ownerDocument.activeElement;
-    const kept = active !== null && this.form.contains(active) ? identity(active) : undefined;
+    const focused = active !== null && this.form.contains(active) ? controlKey(active) : undefined;
+    const kept = focused === undefined ? undefined : (followed ?? focused);
     clear(this.form);
     this.syncs = [];
     const layer = isLayer ? findLayer(state.design, pointer) : undefined;
@@ -123,12 +133,7 @@ export class PropertyPanel {
       orbitFieldset(this.form, this.context, pointer);
       letFieldset(this.form, this.context, pointer);
     }
-    if (kept !== undefined) {
-      const same = [...this.form.querySelectorAll<HTMLElement>(controls)].filter(
-        (control) => identity(control) === kept,
-      );
-      if (same.length === 1) same[0]?.focus();
-    }
+    if (kept !== undefined) focusControl(this.form, kept);
   }
 
   private field(pointer: string, field: LayerField): void {
@@ -176,14 +181,10 @@ export class PropertyPanel {
   }
 }
 
-/** What names a control across a rebuild: its kind, name, action and label; never its position. */
-function identity(control: Element): string {
-  return [
-    control.tagName,
-    control.getAttribute("name"),
-    control.getAttribute("data-action"),
-    control.getAttribute("aria-label"),
-  ].join("|");
+/** How many modes and tokens the palette has: a rename keeps the shape, so the panel keeps its elements. */
+function paletteShape(design: Design): [number, number] {
+  const modes = Object.values(design.palette ?? {});
+  return [modes.length, Object.keys(modes[0] ?? {}).length];
 }
 
 /** A choice's current value when it is not among the options: it is then an extra option of the select. */

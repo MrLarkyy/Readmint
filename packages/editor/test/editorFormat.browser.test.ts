@@ -261,7 +261,133 @@ test("Enter twice on Add token adds two tokens: the focus stays on the button", 
   ]);
 });
 
-test("Remove orbit does not move the focus to another control", async () => {
+const orbitDesign = {
+  ...letDesign,
+  layers: [
+    {
+      type: "rect",
+      width: 10,
+      height: 40,
+      fill: "#000000",
+      orbit: { center: { x: 50, y: 20 }, radius: 10, angle: 0 },
+    },
+  ],
+} as unknown as Design;
+
+/** The focused control's place: its key and position, e.g. `remove-token@1`. */
+function focusedKey(): string {
+  const active = document.activeElement;
+  if (active === null || !root.contains(active)) return "(outside the editor)";
+  const kind =
+    active.getAttribute("data-key") ??
+    active.getAttribute("name") ??
+    active.getAttribute("data-action");
+  const at = active.getAttribute("data-at") ?? "";
+  return at === "" ? String(kind) : `${String(kind)}@${at}`;
+}
+
+async function press(selector: string, keys: string): Promise<void> {
+  find(selector).focus();
+  await userEvent.keyboard(keys);
+  await current().settled();
+}
+
+async function rename(label: string, value: string, key: "{Enter}" | "{Tab}"): Promise<void> {
+  await userEvent.fill(find(labelled(label)), value);
+  await userEvent.keyboard(key);
+  await current().settled();
+}
+
+const lets = () => Object.keys((current().state.design.layers[0] as { let: object }).let);
+
+test("Remove orbit hands the focus to Add orbit, and Add orbit to the first orbit field", async () => {
+  await mount(orbitDesign);
+  await click('[data-pointer="/layers/0"] [data-action="select"]');
+  await press('[data-action="remove-orbit"]', "{Enter}");
+  expect(current().state.design.layers[0]).not.toHaveProperty("orbit");
+  expect(focusedKey()).toBe("add-orbit");
+  await userEvent.keyboard("{Enter}");
+  await current().settled();
+  expect(focusedKey()).toBe("orbit.center.x");
+  await userEvent.keyboard("{Enter}");
+  await current().settled();
+  expect(current().state.design.layers[0]).toHaveProperty("orbit");
+});
+
+/** No layer reads a token, so a token can be renamed or removed. */
+const unusedPalette: Design = { ...paletteDesign, layers: [] };
+
+test("renaming a token or a mode keeps the focus in its input, with Enter and with Tab", async () => {
+  await mount(unusedPalette);
+  await rename("Token bg", "paper", "{Enter}");
+  expect(Object.keys(current().state.design.palette?.["light"] ?? {})).toEqual(["paper", "ink"]);
+  expect(document.activeElement).toBe(find(labelled("Token paper")));
+  await rename("Token ink", "text", "{Tab}");
+  expect(Object.keys(current().state.design.palette?.["dark"] ?? {})).toEqual(["paper", "text"]);
+  expect(document.activeElement).toBe(find(labelled("Remove token text")));
+  await rename("Mode dark", "night", "{Enter}");
+  expect(Object.keys(current().state.design.palette ?? {})).toEqual(["light", "night"]);
+  expect(document.activeElement).toBe(find(labelled("Mode night")));
+  await rename("Mode light", "day", "{Tab}");
+  expect(Object.keys(current().state.design.palette ?? {})).toEqual(["day", "night"]);
+  expect(document.activeElement).toBe(find(labelled("Remove mode day")));
+});
+
+test("renaming a let binding keeps the focus in its row, with Enter and with Tab", async () => {
+  await mount({
+    ...letDesign,
+    layers: [
+      { type: "rect", width: 10, height: 40, fill: "#000", let: { a: "{{ 1 }}", b: "{{ 2 }}" } },
+    ],
+  });
+  await click('[data-pointer="/layers/0"] [data-action="select"]');
+  await rename("Let name a", "first", "{Enter}");
+  expect(lets()).toEqual(["first", "b"]);
+  expect(document.activeElement).toBe(find(labelled("Let name first")));
+  await rename("Let name b", "second", "{Tab}");
+  expect(lets()).toEqual(["first", "second"]);
+  expect(document.activeElement).toBe(find(labelled("Let expression second")));
+});
+
+test("Remove token hands the focus to the next token's Remove, the last one to Add token", async () => {
+  await mount(unusedPalette);
+  await press(labelled("Remove token bg"), "{Enter}");
+  expect(Object.keys(current().state.design.palette?.["light"] ?? {})).toEqual(["ink"]);
+  expect(document.activeElement).toBe(find(labelled("Remove token ink")));
+  await userEvent.keyboard("{Enter}");
+  await current().settled();
+  expect(current().state.design.palette?.["light"]).toEqual({});
+  expect(focusedKey()).toBe("add-token");
+});
+
+test("Remove mode hands the focus to the next mode's Remove, the last mode to Add palette", async () => {
+  await mount(unusedPalette);
+  await press(labelled("Remove mode light"), "{Enter}");
+  expect(document.activeElement).toBe(find(labelled("Remove mode dark")));
+  await userEvent.keyboard("{Enter}");
+  await current().settled();
+  expect(current().state.design.palette).toBeUndefined();
+  expect(focusedKey()).toBe("add-palette");
+});
+
+test("Remove let hands the focus to the next row's Remove, the last row to Add binding", async () => {
+  await mount({
+    ...letDesign,
+    layers: [
+      { type: "rect", width: 10, height: 40, fill: "#000", let: { a: "{{ 1 }}", b: "{{ 2 }}" } },
+    ],
+  });
+  await click('[data-pointer="/layers/0"] [data-action="select"]');
+  await press(labelled("Remove a"), "{Enter}");
+  expect(lets()).toEqual(["b"]);
+  expect(document.activeElement).toBe(find(labelled("Remove b")));
+  await userEvent.keyboard("{Enter}");
+  await current().settled();
+  expect(current().state.design.layers[0]).not.toHaveProperty("let");
+  expect(focusedKey()).toBe("add-let");
+});
+
+test("Move up keeps the focus on the moved row", async () => {
   await mount({
     ...letDesign,
     layers: [
@@ -269,17 +395,17 @@ test("Remove orbit does not move the focus to another control", async () => {
         type: "rect",
         width: 10,
         height: 40,
-        fill: "#000000",
-        orbit: { center: { x: 50, y: 20 }, radius: 10, angle: 0 },
+        fill: "#000",
+        let: { a: "{{ 1 }}", b: "{{ 2 }}", c: "{{ 3 }}" },
       },
     ],
-  } as unknown as Design);
+  });
   await click('[data-pointer="/layers/0"] [data-action="select"]');
-  find('[data-action="remove-orbit"]').focus();
+  await press(labelled("Move c up"), "{Enter}");
+  expect(lets()).toEqual(["a", "c", "b"]);
+  expect(document.activeElement).toBe(find(labelled("Move c up")));
   await userEvent.keyboard("{Enter}");
   await current().settled();
-  expect(document.activeElement).not.toBe(find('[data-action="add-let"]'));
-  expect(root.contains(document.activeElement) && document.activeElement !== document.body).toBe(
-    false,
-  );
+  expect(lets()).toEqual(["c", "a", "b"]);
+  expect(document.activeElement).toBe(find(labelled("Let name c")));
 });

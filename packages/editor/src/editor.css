@@ -76,10 +76,10 @@ body {
   align-items: center;
   margin-bottom: 4px;
 }
-.rm-palette-mode {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.rm-palette-cell-mode,
+.rm-toolbar-palette-mode {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 .rm-palette input:not([type="color"]) {
   box-sizing: border-box;

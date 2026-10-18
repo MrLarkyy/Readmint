@@ -64,6 +64,23 @@ for (const width of widths) {
     for (const input of root.querySelectorAll<HTMLElement>('.rm-palette [name="colour"]')) {
       expect(input.getBoundingClientRect().width).toBeGreaterThan(40);
     }
+    const unclipped = (shown: HTMLElement) => {
+      expect(shown.scrollWidth).toBeLessThanOrEqual(shown.clientWidth + 1);
+      expect(shown.getBoundingClientRect().right).toBeLessThanOrEqual(window.innerWidth);
+    };
+    const modeLabel = root.querySelector<HTMLElement>('[data-role="palette-mode"]');
+    if (modeLabel === null) throw new Error("no palette mode label");
+    expect(modeLabel.textContent).toBe("Palette mode: a-rather-long-mode-name-0");
+    unclipped(modeLabel);
+    const firstToken = root.querySelector<HTMLElement>(".rm-palette-token");
+    const rowLabels = [
+      ...(firstToken?.querySelectorAll<HTMLElement>(".rm-palette-cell-mode") ?? []),
+    ];
+    expect(rowLabels.map((label) => label.textContent)).toEqual(Object.keys(modes));
+    for (const label of rowLabels) {
+      expect(label.title).toBe(label.textContent);
+      unclipped(label);
+    }
     const select = root.querySelector<HTMLElement>(
       '[data-pointer="/layers/0"] [data-action="select"]',
     );

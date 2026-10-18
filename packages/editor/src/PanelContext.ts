@@ -11,4 +11,11 @@ export interface PanelContext {
    * has focus; the panel keeps the same elements then, so focus and typed text survive an edit.
    */
   bind(input: HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement, read: () => string): void;
+  /** Runs `apply` now and on every update that keeps the panel's structure: labels that show a name use it. */
+  refresh(apply: () => void): void;
+  /**
+   * After the rebuild the next action causes, focuses the control of `kind` at `at` instead of the one at the focused
+   * control's place: a control that moves its row follows it.
+   */
+  focusAfter(kind: string, at: readonly number[]): void;
 }

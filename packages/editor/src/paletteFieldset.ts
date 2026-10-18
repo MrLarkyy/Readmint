@@ -1,4 +1,5 @@
 import { DesignLimits } from "@readmint/format";
+import { keyAttributes } from "./ControlKey.js";
 import { element } from "./dom.js";
 import {
   addMode,
@@ -33,78 +34,106 @@ export function paletteFieldset(form: HTMLElement, context: PanelContext): void 
   if (context.latest().design.palette === undefined) {
     const add = element(box, "button", {
       text: "Add palette",
-      attributes: { type: "button", "data-action": "add-palette" },
+      attributes: { type: "button", "data-action": "add-palette", "data-home": "add-token" },
     });
     add.addEventListener("click", () => {
       actions.setPalette([["light", []]]);
     });
     return;
   }
+  const modeNow = (modeAt: number) => entriesNow()[modeAt]?.[0] ?? "";
+  const tokenNow = (tokenAt: number) => entriesNow()[0]?.[1][tokenAt]?.[0] ?? "";
+  const shown = (name: string) => name.slice(0, shownName);
   const modesBox = element(box, "div", { className: "rm-palette-modes" });
-  for (const [mode] of entries) {
+  const modeHome = ["add-mode", "add-palette"];
+  entries.forEach((_, modeAt) => {
     const row = element(modesBox, "div", { className: "rm-palette-row" });
     const input = element(row, "input", {
-      attributes: { name: "mode-name", "aria-label": `Mode ${mode.slice(0, shownName)}` },
+      attributes: { ...keyAttributes("mode-name", [modeAt], modeHome), name: "mode-name" },
     });
-    input.value = mode;
+    context.bind(input, () => modeNow(modeAt));
     input.addEventListener("change", () => {
-      actions.setPalette(renameMode(entriesNow(), mode, input.value));
+      actions.setPalette(renameMode(entriesNow(), modeNow(modeAt), input.value));
     });
     const remove = element(row, "button", {
       text: "Remove",
       attributes: {
+        ...keyAttributes("remove-mode", [modeAt], modeHome),
         type: "button",
         "data-action": "remove-mode",
-        "aria-label": `Remove mode ${mode.slice(0, shownName)}`,
       },
     });
     remove.addEventListener("click", () => {
-      actions.setPalette(removeMode(entriesNow(), mode));
+      actions.setPalette(removeMode(entriesNow(), modeNow(modeAt)));
     });
-  }
+    context.refresh(() => {
+      input.setAttribute("aria-label", `Mode ${shown(modeNow(modeAt))}`);
+      remove.setAttribute("aria-label", `Remove mode ${shown(modeNow(modeAt))}`);
+    });
+  });
   const tokens = entries[0]?.[1] ?? [];
-  for (const [token] of tokens) {
+  const tokenHome = ["add-token"];
+  tokens.forEach((_, tokenAt) => {
     const group = element(box, "div", { className: "rm-palette-token" });
     const head = element(group, "div", { className: "rm-palette-row" });
     const name = element(head, "input", {
-      attributes: { name: "token-name", "aria-label": `Token ${token.slice(0, shownName)}` },
+      attributes: { ...keyAttributes("token-name", [tokenAt], tokenHome), name: "token-name" },
     });
-    name.value = token;
+    context.bind(name, () => tokenNow(tokenAt));
     name.addEventListener("change", () => {
-      actions.setPalette(renameToken(entriesNow(), token, name.value));
+      actions.setPalette(renameToken(entriesNow(), tokenNow(tokenAt), name.value));
     });
     const remove = element(head, "button", {
       text: "Remove",
       attributes: {
+        ...keyAttributes("remove-token", [tokenAt], tokenHome),
         type: "button",
         "data-action": "remove-token",
-        "aria-label": `Remove token ${token.slice(0, shownName)}`,
       },
     });
     remove.addEventListener("click", () => {
-      actions.setPalette(removeToken(entriesNow(), token));
+      actions.setPalette(removeToken(entriesNow(), tokenNow(tokenAt)));
     });
-    for (const [mode] of entries) {
-      const label = `${token.slice(0, shownName)} in ${mode.slice(0, shownName)}`;
+    context.refresh(() => {
+      name.setAttribute("aria-label", `Token ${shown(tokenNow(tokenAt))}`);
+      remove.setAttribute("aria-label", `Remove token ${shown(tokenNow(tokenAt))}`);
+    });
+    entries.forEach((_, modeAt) => {
+      const colour = () => colourNow(modeNow(modeAt), tokenNow(tokenAt));
       const row = element(group, "div", { className: "rm-palette-cell" });
-      element(row, "span", { className: "rm-palette-mode", text: mode });
-      const text = element(row, "input", { attributes: { name: "colour", "aria-label": label } });
-      context.bind(text, () => colourNow(mode, token));
+      const modeLabel = element(row, "span", { className: "rm-palette-cell-mode" });
+      const text = element(row, "input", {
+        attributes: { ...keyAttributes("colour", [tokenAt, modeAt], tokenHome), name: "colour" },
+      });
+      context.bind(text, colour);
       text.addEventListener("change", () => {
-        actions.setPalette(setColour(entriesNow(), mode, token, text.value));
+        actions.setPalette(setColour(entriesNow(), modeNow(modeAt), tokenNow(tokenAt), text.value));
       });
       const picker = element(row, "input", {
         className: "rm-picker",
-        attributes: { type: "color", "aria-label": `Pick ${label}` },
+        attributes: { ...keyAttributes("picker", [tokenAt, modeAt], tokenHome), type: "color" },
       });
-      context.bind(picker, () => pickerValue(colourNow(mode, token)));
+      context.bind(picker, () => pickerValue(colour()));
       picker.addEventListener("change", () => {
         actions.setPalette(
-          setColour(entriesNow(), mode, token, withPicked(colourNow(mode, token), picker.value)),
+          setColour(
+            entriesNow(),
+            modeNow(modeAt),
+            tokenNow(tokenAt),
+            withPicked(colour(), picker.value),
+          ),
         );
       });
-    }
-  }
+      context.refresh(() => {
+        const mode = modeNow(modeAt);
+        const label = `${shown(tokenNow(tokenAt))} in ${shown(mode)}`;
+        modeLabel.textContent = mode;
+        modeLabel.title = mode;
+        text.setAttribute("aria-label", label);
+        picker.setAttribute("aria-label", `Pick ${label}`);
+      });
+    });
+  });
   const addModeButton = element(box, "button", {
     text: "Add mode",
     attributes: { type: "button", "data-action": "add-mode" },

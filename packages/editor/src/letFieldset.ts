@@ -1,4 +1,5 @@
 import { DesignLimits, LocalNames } from "@readmint/format";
+import { keyAttributes } from "./ControlKey.js";
 import { element } from "./dom.js";
 import { findLayer } from "./layerAccess.js";
 import type { PanelContext } from "./PanelContext.js";
@@ -14,7 +15,10 @@ function freshName(taken: readonly string[]): string {
   }
 }
 
-/** The `let` of a layer: a row per binding (name, expression, Move up, Remove) and "Add binding". */
+/**
+ * The `let` of a layer: a row per binding (name, expression, Move up, Remove) and "Add binding". A row edits the
+ * binding at its position, so a rename or a move keeps the rows and only refreshes their values and labels.
+ */
 export function letFieldset(form: HTMLElement, context: PanelContext, pointer: string): void {
   const entriesNow = (): LetEntries =>
     Object.entries(findLayer(context.latest().design, pointer)?.let ?? {});
@@ -24,13 +28,13 @@ export function letFieldset(form: HTMLElement, context: PanelContext, pointer: s
   const change = (next: LetEntries) => {
     context.actions.setLet(pointer, next);
   };
-  entries.forEach(([name], index) => {
-    const shown = name.slice(0, LocalNames.maxLength);
+  entries.forEach((_, index) => {
     const row = element(box, "div", { className: "rm-let-row" });
+    const key = (kind: string) => keyAttributes(kind, [index], ["add-let"]);
     const nameInput = element(row, "input", {
       attributes: {
+        ...key("let-name"),
         name: "let-name",
-        "aria-label": `Let name ${shown}`,
         maxlength: String(LocalNames.maxLength),
       },
     });
@@ -40,8 +44,8 @@ export function letFieldset(form: HTMLElement, context: PanelContext, pointer: s
     });
     const expressionInput = element(row, "textarea", {
       attributes: {
+        ...key("let-expression"),
         name: "let-expression",
-        "aria-label": `Let expression ${shown}`,
         maxlength: String(DesignLimits.maxBindingLength),
         rows: "2",
       },
@@ -54,22 +58,36 @@ export function letFieldset(form: HTMLElement, context: PanelContext, pointer: s
     });
     const up = element(row, "button", {
       text: "Move up",
-      attributes: { type: "button", "data-action": "let-up", "aria-label": `Move ${shown} up` },
+      attributes: {
+        ...key("let-up"),
+        type: "button",
+        "data-action": "let-up",
+      },
     });
     up.disabled = index === 0;
     up.addEventListener("click", () => {
       const next = [...entriesNow()];
       const [moved] = next.splice(index, 1);
       if (moved !== undefined) next.splice(index - 1, 0, moved);
+      // The moved row keeps the focus; at the top its Move up is disabled, so its name takes it.
+      if (index > 1) context.focusAfter("let-up", [index - 1]);
+      else context.focusAfter("let-name", [0]);
       change(next);
     });
     const remove = element(row, "button", {
       text: "Remove",
       attributes: {
+        ...key("let-remove"),
         type: "button",
         "data-action": "let-remove",
-        "aria-label": `Remove ${shown}`,
       },
+    });
+    context.refresh(() => {
+      const shown = (entriesNow()[index]?.[0] ?? "").slice(0, LocalNames.maxLength);
+      nameInput.setAttribute("aria-label", `Let name ${shown}`);
+      expressionInput.setAttribute("aria-label", `Let expression ${shown}`);
+      up.setAttribute("aria-label", `Move ${shown} up`);
+      remove.setAttribute("aria-label", `Remove ${shown}`);
     });
     remove.addEventListener("click", () => {
       change(entriesNow().filter((_, at) => at !== index));

@@ -36,6 +36,10 @@ workspace and no UI framework: the DOM views are small classes that dispatch com
     the last mode removes the palette. Over `maxPaletteModes` / `maxPaletteTokens` the add buttons are disabled and an
     edit is refused. Removing a token a binding still reads is refused by the format.
     Each change is one undoable edit; editing these keeps the layer's `animate` as it is.
+  - **Keyboard focus**: renaming a mode, token or binding keeps the focus in its input (Tab moves on as usual) and
+    "Move up" keeps it on the moved row. After a Remove the focus goes to the next row's Remove, else to the group's
+    Add button ("Add token", "Add mode", "Add binding", "Add orbit"); after "Add orbit" to the first orbit field.
+    Long mode names wrap, and each mode label shows the full name as a tooltip.
 - **Fonts**: upload a TTF, OTF, WOFF or WOFF2 file (see below).
 - **Images**: upload a PNG, JPEG, GIF or WebP file; it is embedded in the design with an image layer showing it
   ([below](#images)).

@@ -134,7 +134,7 @@ export class Toolbar {
       attributes: { "aria-live": "polite" },
     });
     this.paletteMode = element(this.root, "span", {
-      className: "rm-palette-mode",
+      className: "rm-toolbar-palette-mode",
       attributes: { "data-role": "palette-mode", "aria-live": "polite" },
     });
     const label = element(this.root, "label", { text: "Zoom " });
