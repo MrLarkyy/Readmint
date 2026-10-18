@@ -1,16 +1,18 @@
 import type { ComponentPropDefinition, ComponentPropValue } from "@readmint/format";
 import { declaredProps, layerValue, undeclaredProps } from "./declaredProps.js";
 import type { EditorState } from "./EditorState.js";
+import { renderEntryDesign } from "./renderEntryDesign.js";
+import { chosenRender } from "./rendersOfFile.js";
 import { variantDesign } from "./variantDesign.js";
 
 /** One prop the design declares, as the settings form shows it. */
 export interface SettingsField {
   readonly name: string;
   readonly definition: ComponentPropDefinition;
-  /** What renders: the section's value, else the applied variant's, else the layer's own, else the definition's default; none when in none. */
+  /** What renders: the section's value, else the applied variant's, else the chosen render's, else the layer's own, else the definition's default; none when in none. */
   readonly value?: ComponentPropValue;
-  /** Where `value` comes from: the section, the chosen variant (which sits under the section), the top-level component layer's own props, the definition's default, or nowhere. */
-  readonly from: "settings" | "variant" | "layer" | "default" | "none";
+  /** Where `value` comes from: the section, the chosen variant (which sits under the section), the chosen manifest render's props, the top-level component layer's own props, the definition's default, or nowhere. */
+  readonly from: "settings" | "variant" | "render" | "layer" | "default" | "none";
 }
 
 /**
@@ -28,7 +30,12 @@ export function settingsFields(state: EditorState): {
   const section = settings?.section === undefined ? undefined : settings.sections[settings.section];
   if (section === undefined) return { fields: [], unknown: [], truncated: false };
   const declared = declaredProps(state.design);
-  const variant = variantDesign(state).issues.length === 0 ? state.variant : undefined;
+  const entered = renderEntryDesign(state, state.design);
+  const variant =
+    !entered.variantClash && variantDesign(state, entered.design).issues.length === 0
+      ? state.variant
+      : undefined;
+  const render = entered.propsApplied ? chosenRender(state.manifest)?.entry.props : undefined;
   const fields: SettingsField[] = [];
   for (const [name, definition] of declared) {
     const own = layerValue(state.design, name);
@@ -43,6 +50,8 @@ export function settingsFields(state: EditorState): {
       });
     } else if (variantValue !== undefined) {
       fields.push({ name, definition, value: variantValue, from: "variant" });
+    } else if (render !== undefined && Object.hasOwn(render, name)) {
+      fields.push({ name, definition, value: render[name] as ComponentPropValue, from: "render" });
     } else if (own !== undefined) {
       fields.push({ name, definition, value: own, from: "layer" });
     } else if (definition.default !== undefined) {

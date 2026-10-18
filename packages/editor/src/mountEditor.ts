@@ -10,6 +10,7 @@ import { AssetPanel } from "./AssetPanel.js";
 import { attachAsset } from "./attachAsset.js";
 import { CanvasView } from "./CanvasView.js";
 import { refuse } from "./commitDesign.js";
+import { chooseRender } from "./chooseRender.js";
 import { chooseSection } from "./chooseSection.js";
 import { createPreviewWorker } from "./createPreviewWorker.js";
 import { createRasterWorker } from "./createRasterWorker.js";
@@ -36,6 +37,7 @@ import { IssueList } from "./IssueList.js";
 import { findLayer } from "./layerAccess.js";
 import { LayerTreeView } from "./LayerTreeView.js";
 import { loadFixture } from "./loadFixture.js";
+import { loadManifest } from "./loadManifest.js";
 import { loadSettings } from "./loadSettings.js";
 import { moveLayer } from "./moveLayer.js";
 import { newDesign } from "./newDesign.js";
@@ -43,8 +45,10 @@ import { PreviewClient, type PreviewOutcome, type PreviewWorker } from "./Previe
 import { PropertyPanel } from "./PropertyPanel.js";
 import type { EditorRasterFormat } from "./RasterExportInput.js";
 import { RasterClient, type RasterWorker } from "./RasterClient.js";
+import { chosenRender, rendersOfFile } from "./rendersOfFile.js";
 import { removeLayer } from "./removeLayer.js";
 import { reorderLayer } from "./reorderLayer.js";
+import { renderSection } from "./renderSection.js";
 import { resizeLayer } from "./resizeLayer.js";
 import { selectLayer } from "./selectLayer.js";
 import { setFontAsset } from "./setFontAsset.js";
@@ -76,7 +80,7 @@ export interface MountEditorOptions {
   readonly save?: (file: SavedDesign) => void;
   /** Receives the exported settings file (`settings.json`); default a download in the browser. */
   readonly saveSettings?: (file: SavedDesign) => void;
-  /** Receives the exported image (`design.png`, `design.webp`; `design.dark.png` with the dark variant); default a download in the browser. */
+  /** Receives the exported image (`design.png`, `design.webp`; `design.dark.png` with the dark variant; `<render>.png` and `<render>.dark.png` with a manifest render chosen); default a download in the browser. */
   readonly saveImage?: (file: SavedImage) => void;
   /** The raster worker; default the bundled `rasterWorker`, started for each export. */
   readonly createRasterWorker?: () => RasterWorker;
@@ -118,7 +122,7 @@ export function mountEditor(root: HTMLElement, options: MountEditorOptions = {})
   const pending = new Set<Promise<unknown>>();
   const shell = element(root, "div", { className: "rm-editor" });
 
-  /** Renders what the state shows: the design with the chosen variant, then the settings section, applied. */
+  /** Renders what the state shows: the design with the chosen render's props, the variant, then the settings section, applied. */
   const render = (current: EditorState) => {
     const effective = effectiveDesign(current);
     settingsIssues = effective.issues;
@@ -139,6 +143,7 @@ export function mountEditor(root: HTMLElement, options: MountEditorOptions = {})
       state.data !== before.data ||
       state.settings !== before.settings ||
       state.variant !== before.variant ||
+      state.manifest !== before.manifest ||
       state.sessionAssets !== before.sessionAssets
     ) {
       render(state);
@@ -185,6 +190,39 @@ export function mountEditor(root: HTMLElement, options: MountEditorOptions = {})
     }
     const { design, issues, unknownProps } = effectiveDesign(state);
     const variant = state.variant;
+    const render = chosenRender(state.manifest)?.entry;
+    const manifestIssues = issues.filter((issue) => issue.source === "manifest");
+    if (render !== undefined && manifestIssues.length > 0) {
+      report(
+        "export",
+        `the ${format} export needs render ${JSON.stringify(render.name)} to apply; fix the manifest or choose another render (${manifestIssues.map((issue) => issue.message).join("; ")})`,
+      );
+      return;
+    }
+    const expected = renderSection(state);
+    if (
+      render !== undefined &&
+      expected !== undefined &&
+      state.settings?.section !== expected.section
+    ) {
+      report(
+        "export",
+        `the ${format} export of render ${JSON.stringify(render.name.slice(0, 64))} uses ${expected.section === undefined ? "no settings section" : `the settings section ${JSON.stringify(expected.section.slice(0, 64))}`}, as readmint render --manifest does; choose it in the Settings section list`,
+      );
+      return;
+    }
+    const listed = render?.variants;
+    if (
+      variant !== undefined &&
+      listed !== undefined &&
+      !listed.some((one) => one.name === variant.name)
+    ) {
+      report(
+        "export",
+        `the ${format} export needs the ${variant.name} variant, which render ${JSON.stringify(render?.name ?? "")} does not list; choose Light or another render`,
+      );
+      return;
+    }
     const variantIssues = issues.filter((issue) => issue.source === "variant");
     if (variant !== undefined && variantIssues.length > 0) {
       report(
@@ -212,8 +250,10 @@ export function mountEditor(root: HTMLElement, options: MountEditorOptions = {})
       raster.export({ design, data, sessionAssets, format }).then((outcome) => {
         switch (outcome.kind) {
           case "exported": {
+            const stem = render?.name ?? "design";
             const image = {
-              name: variant === undefined ? `design.${format}` : `design.${variant.name}.${format}`,
+              name:
+                variant === undefined ? `${stem}.${format}` : `${stem}.${variant.name}.${format}`,
               mimeType: outcome.file.mimeType,
               bytes: outcome.file.bytes,
             };
@@ -284,6 +324,8 @@ export function mountEditor(root: HTMLElement, options: MountEditorOptions = {})
             designFileName = file.name;
             apply((current) => {
               const next = withSession(createEditorState(result.value), current);
+              const render = renderFor(current, file.name);
+              if (render !== undefined) return chooseRender(next, render, file.name);
               return next.settings === undefined
                 ? next
                 : chooseSection(next, defaultSection(next.settings.sections, file.name));
@@ -389,6 +431,33 @@ export function mountEditor(root: HTMLElement, options: MountEditorOptions = {})
         "fixture data could not be read",
       );
     },
+    loadManifest: (file) => {
+      if (file.size > EditorLimits.maxManifestBytes) {
+        report(
+          "manifest",
+          `manifest is larger than ${String(EditorLimits.maxManifestBytes)} bytes`,
+        );
+        return;
+      }
+      track(
+        file.arrayBuffer().then((buffer) => {
+          let text: string;
+          try {
+            // As the CLI reads it: strict UTF-8, a BOM dropped.
+            text = new TextDecoder("utf-8", { fatal: true }).decode(buffer);
+          } catch {
+            report("manifest", "manifest is not valid UTF-8");
+            return;
+          }
+          dispatch((current) => loadManifest(current, text, designFileName));
+        }),
+        "manifest",
+        "manifest could not be read",
+      );
+    },
+    chooseRender: (name) => {
+      dispatch((current) => chooseRender(current, name, designFileName));
+    },
     loadSettings: (file) => {
       if (file.size > EditorLimits.maxSettingsBytes) {
         report(
@@ -411,7 +480,8 @@ export function mountEditor(root: HTMLElement, options: MountEditorOptions = {})
             loadSettings(
               current,
               text,
-              designFileName === undefined ? undefined : propsSection(designFileName),
+              chosenRender(current.manifest)?.entry.name ??
+                (designFileName === undefined ? undefined : propsSection(designFileName)),
             ),
           );
         }),
@@ -498,9 +568,14 @@ export function mountEditor(root: HTMLElement, options: MountEditorOptions = {})
   const show = () => {
     toolbar.update(canUndo(history), canRedo(history));
     toolbar.setSections(state.settings);
+    toolbar.setRenders(state.manifest, designFileName);
+    const listed = chosenRender(state.manifest)?.entry;
     toolbar.setVariant(
       state.variant,
       variantReason(state.design, renderVariants[0] as RenderVariant),
+      listed?.variants === undefined
+        ? undefined
+        : { render: listed.name, variants: listed.variants },
     );
     tree.update(state);
     assets.update(state);
@@ -570,7 +645,7 @@ export function mountEditor(root: HTMLElement, options: MountEditorOptions = {})
 
 /**
  * A fresh state that keeps the session inputs of `previous`: fixture data, the settings file with no section chosen,
- * and the variant when the fresh design declares what it sets.
+ * the manifest with no render chosen, and the variant when the fresh design declares what it sets.
  */
 function withSession(fresh: EditorState, previous: EditorState): EditorState {
   const variant = previous.variant;
@@ -583,7 +658,18 @@ function withSession(fresh: EditorState, previous: EditorState): EditorState {
     ...(previous.settings === undefined
       ? {}
       : { settings: withSection(previous.settings, undefined) }),
+    ...(previous.manifest === undefined
+      ? {}
+      : { manifest: { renders: previous.manifest.renders } }),
   };
+}
+
+/** The render an imported design file takes: the chosen one when it names the file, else the first that does. */
+function renderFor(state: EditorState, fileName: string): string | undefined {
+  const manifest = state.manifest;
+  if (manifest === undefined) return undefined;
+  const named = rendersOfFile(manifest, fileName);
+  return named.find((entry) => entry.name === manifest.render)?.name ?? named[0]?.name;
 }
 
 /** The section of the settings a design file name picks, when the file has it. */

@@ -1,23 +1,31 @@
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 // Reached through the workspace alias, not a dependency: no browser-side package may list the CLI.
 import { ExitCode, runCli } from "@readmint/cli";
-import { afterEach, beforeEach, expect, test } from "vitest";
+import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import {
+  chooseRender,
   chooseSection,
   createEditorState,
   effectiveDesign,
   exportDesign,
   importDesign,
   exportSettings,
+  loadManifest,
   loadSettings,
   renderPreview,
   setSettingsProp,
   setVariant,
 } from "../src/index.js";
 import { editorSession, imageSession } from "./editorSession.js";
-import { settingsDesign, settingsText, themeDesign } from "./settingsDesign.js";
+import {
+  manifestDesign,
+  manifestRenders,
+  settingsDesign,
+  settingsText,
+  themeDesign,
+} from "./settingsDesign.js";
 
 let folder: string;
 
@@ -211,4 +219,89 @@ test("a dark twin imported with Light renders the CLI's bytes for the twin", asy
   expect(previewOf(createEditorState(imported.value))).toBe(
     (await cli(["render", "card.dark.json"])).stdout,
   );
+});
+
+describe("a manifest render", () => {
+  const renders = manifestRenders.renders.filter((entry) => entry.design === "card.json");
+  const settings = JSON.stringify({ "card-a": { slot: 3 } });
+
+  function renderState(name: string, variant?: "dark") {
+    const manifest = loadManifest(createEditorState(manifestDesign), JSON.stringify({ renders }));
+    const chosen = chooseRender(loadSettings(manifest, settings), name, "card.json");
+    expect(chosen.issues).toEqual([]);
+    return variant === undefined ? chosen : setVariant(chosen, variant);
+  }
+
+  async function files(extra: string[] = []): Promise<Record<string, string>> {
+    await writeFile(join(folder, "card.json"), exportDesign(manifestDesign));
+    await writeFile(join(folder, "renders.json"), JSON.stringify({ renders }));
+    await writeFile(join(folder, "settings.json"), settings);
+    await writeFile(join(folder, "data.json"), "{}");
+    await cli([
+      "render",
+      "--manifest",
+      "renders.json",
+      "--out-dir",
+      "out",
+      "--format",
+      "svg",
+      "--data",
+      "data.json",
+      "--props",
+      "settings.json",
+      ...extra,
+    ]);
+    const names = await readdir(join(folder, "out"));
+    return Object.fromEntries(
+      await Promise.all(
+        names.map(async (name): Promise<[string, string]> => [
+          name,
+          await readFile(join(folder, "out", name), "utf8"),
+        ]),
+      ),
+    );
+  }
+
+  test("every file readmint render --manifest writes equals the editor's preview", async () => {
+    const written = await files();
+    expect(Object.keys(written).sort()).toEqual([
+      "card-a.dark.svg",
+      "card-a.svg",
+      "card-b.svg",
+      "plain.svg",
+      "themed.svg",
+    ]);
+    expect(previewOf(renderState("card-a"))).toBe(written["card-a.svg"]);
+    expect(previewOf(renderState("card-a", "dark"))).toBe(written["card-a.dark.svg"]);
+    expect(previewOf(renderState("card-b"))).toBe(written["card-b.svg"]);
+    expect(previewOf(renderState("plain"))).toBe(written["plain.svg"]);
+    expect(previewOf(renderState("themed"))).toBe(written["themed.svg"]);
+    expect(written["card-a.svg"]).not.toBe(written["card-b.svg"]);
+    expect(written["card-a.dark.svg"]).not.toBe(written["card-a.svg"]);
+  });
+
+  test("a run variant that clashes with the props of a render without variants fails in both", async () => {
+    await writeFile(join(folder, "card.json"), exportDesign(manifestDesign));
+    await writeFile(join(folder, "renders.json"), JSON.stringify({ renders }));
+    let stderr = "";
+    const code = await runCli(
+      ["render", "--manifest", "renders.json", "--out-dir", "out", "--variant", "dark"],
+      {
+        cwd: folder,
+        stdout: () => undefined,
+        stderr: (text) => {
+          stderr += text;
+        },
+      },
+    );
+    expect(code).toBe(ExitCode.invalid);
+    const issue = effectiveDesign(setVariant(renderState("themed"), "dark")).issues[0];
+    expect(issue?.source).toBe("manifest");
+    const pointer = issue?.path ?? "";
+    expect(pointer).toBe("/renders/3/props/theme");
+    expect(stderr).toContain(pointer);
+    const sentence = "the prop theme is also set by the dark variant; set it in one place";
+    expect(stderr).toContain(sentence);
+    expect(issue?.message).toBe(`manifest ${pointer}: ${sentence}`);
+  });
 });

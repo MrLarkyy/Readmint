@@ -41,7 +41,7 @@ export class SettingsPanel {
   }
 
   update(state: EditorState): void {
-    const key = [state.settings, state.design, state.variant];
+    const key = [state.settings, state.design, state.variant, state.manifest];
     if (key.every((item, index) => item === this.shown[index])) return;
     this.shown = key;
     const settings = state.settings;
@@ -111,9 +111,13 @@ export class SettingsPanel {
       unset.disabled = next.from !== "settings";
       row.classList.toggle(
         "rm-default",
-        next.from === "default" || next.from === "layer" || next.from === "variant",
+        next.from === "default" ||
+          next.from === "layer" ||
+          next.from === "variant" ||
+          next.from === "render",
       );
       row.classList.toggle("rm-unset", next.from === "none");
+      row.dataset["from"] = next.from;
     };
     if (definition.type === "array") return this.list(row, field, set, mark);
     if (definition.type === "boolean") {

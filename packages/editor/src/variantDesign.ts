@@ -18,16 +18,19 @@ export function variantReason(design: Design, variant: RenderVariant): string | 
 }
 
 /**
- * The state's design with its variant applied (`applyRenderVariant`, as `readmint render --variant`). Without a
+ * `base` (default the state's design) with the state's variant applied (`applyRenderVariant`, as `readmint render --variant`). Without a
  * variant, or when it does not fit, the design as it is; the issues say why (a message never quotes a value).
  */
-export function variantDesign(state: EditorState): {
+export function variantDesign(
+  state: EditorState,
+  base: Design = state.design,
+): {
   design: Design;
   issues: readonly EditorIssue[];
 } {
   const variant = state.variant;
-  if (variant === undefined) return { design: state.design, issues: [] };
-  const result = applyRenderVariant(state.design, variant);
+  if (variant === undefined) return { design: base, issues: [] };
+  const result = applyRenderVariant(base, variant);
   if (result.ok) return { design: result.value, issues: [] };
   const issues: EditorIssue[] = result.issues.slice(0, DesignLimits.maxIssues).map((issue) => ({
     source: "variant",
@@ -35,5 +38,5 @@ export function variantDesign(state: EditorState): {
   }));
   if (result.truncated)
     issues.push({ source: "variant", message: "more variant issues not shown" });
-  return { design: state.design, issues };
+  return { design: base, issues };
 }
