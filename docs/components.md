@@ -194,7 +194,7 @@ file). The sections of the table are the render names of `renders.json`, in READ
   ([action.md](action.md#outputs-on-disk-and-the-dark-variant)): the workflow names `renders.json` with the input
   `manifest`, and the CLI renders the same file with `readmint render --manifest`. Every entry lists the variant
   `dark`, which sets the root prop `theme` to `"dark"` and nothing else (a test pins that the dark render is the light
-  design with only that prop changed); the colours are chosen from that prop inside the design. No `*.dark.json` file
+  design with only that prop changed); the colours are chosen from that prop inside the design (the Year Ring and Horizon year, the Horizon repository cards and ticker and the Pinscreen year name them once per mode in a root [`palette`](design-format.md#palette) and read `{{ palette.<token> }}`). No `*.dark.json` file
   exists in the folders.
 - **Links.** SVG links do not work inside an `<img>`, so a clickable element is a link around the image: the example
   `README.md` wraps each repository and the contact footer.

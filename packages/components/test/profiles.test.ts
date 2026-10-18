@@ -770,8 +770,34 @@ describe("the repository slots without a pinned list", () => {
   });
 });
 
+describe("the ring-heavy designs name their colours in a palette", () => {
+  const rewritten = [
+    ["year-ring", "year"],
+    ["horizon", "year"],
+    ["horizon", "repo-1"],
+    ["horizon", "ticker"],
+    ["pinscreen", "year"],
+  ] as const;
+
+  test.each(rewritten)(
+    "%s %s reads colours from the palette, no theme ternary for a colour literal left",
+    (template, section) => {
+      const source = profileSource(template, section);
+      expect(source).not.toMatch(/props\.theme == \\"dark\\" \? \\"#/u);
+      const design = JSON.parse(source) as { palette?: Record<string, Record<string, string>> };
+      expect(Object.keys(design.palette ?? {})).toEqual(["light", "dark"]);
+      const tokens = Object.keys(design.palette?.["light"] ?? {});
+      expect(tokens.length).toBeGreaterThan(0);
+      expect(Object.keys(design.palette?.["dark"] ?? {})).toEqual(tokens);
+      for (const token of tokens) {
+        expect(source, token).toContain(`palette.${token}`);
+      }
+    },
+  );
+});
+
 describe("the page-coloured fades", () => {
-  const page = /#ffffff|#0d1117/u;
+  const page = /#ffffff|#0d1117|palette\.page\b/u;
   type Painted = { type?: string; x?: unknown; width?: unknown; fill?: unknown };
   type Gradient = { type: string; stops: readonly { color: string }[] };
   const gradients = (node: unknown, out: { layer: Painted; fill: Gradient }[] = []) => {
