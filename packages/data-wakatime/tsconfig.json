@@ -1,0 +1,14 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2023", "DOM"],
+    "composite": false,
+    "noEmit": true,
+    "types": ["node"],
+    "paths": {
+      "@readmint/data": ["../data/src/index.ts"],
+      "@readmint/data/node": ["../data/src/node/index.ts"]
+    }
+  },
+  "include": ["src", "test"]
+}

@@ -4,11 +4,12 @@ A data source loads data from one upstream service and returns a plain-JSON data
 namespace (`github.*`). Sources are plugins (`data-*` packages) that implement one small interface from
 `@readmint/data`; hosts (CLI, Action, editor) consume sources only through it. `@readmint/data` has no dependencies and
 its main entry imports no `node:` module, so it runs in Node 22 and in the browser; the `@readmint/data/node` subpath
-holds `FileCache` for Node only. Three sources exist: the GitHub source,
+holds `FileCache` for Node only. Four sources exist: the GitHub source,
 [`@readmint/data-github`](data-github.md); the JSON source, `@readmint/data-json`
-([The JSON source](#the-json-source)), which binds any JSON document, a repository file or an https URL; and the feed
+([The JSON source](#the-json-source)), which binds any JSON document, a repository file or an https URL; the feed
 source, `@readmint/data-feed` ([The feed source](#the-feed-source)), which binds the latest entries of an RSS or Atom
-feed.
+feed; and the WakaTime source, `@readmint/data-wakatime` ([The WakaTime source](#the-wakatime-source)), which binds
+the coding time, languages, editors and operating systems of a WakaTime account.
 
 ## The interface
 
@@ -244,7 +245,7 @@ A URL load without headers uses `cache` when one is given: the key is `dataSourc
 version, the URL and `maxBytes` (no header name or value), the value the response text, parsed and checked again on
 read (a bad entry is a miss). A URL load with headers never reads or writes the cache, since its answer depends on a
 credential and a cache may be shared. The key and the entry name never hold the URL or its query; the cached body is as sensitive as
-the URL. The CLI and the Action pass no cache to JSON and feed loads (their cache folder serves GitHub data only): each run loads the documents again.
+the URL. The CLI and the Action pass no cache to JSON and feed loads (their cache folder serves GitHub and WakaTime data only): each run loads the documents again.
 
 ### Editor
 
@@ -358,9 +359,133 @@ from the source itself becomes `invalid-response` "The feed load failed.".
 With a `cache` the raw document is stored under `dataSourceCacheKey` of the namespace, the data version, the URL and
 `maxBytes`, never `limit`, and only once it parsed: a cached feed is parsed again on every read, under the same rules
 and with the limit of that load (a bad entry is a miss). The key and the entry name never hold the URL or its query; the
-cached feed is as sensitive as the URL. The CLI and the Action pass no cache to JSON and feed loads (their cache folder serves GitHub data only): each run loads the feeds again.
+cached feed is as sensitive as the URL. The CLI and the Action pass no cache to JSON and feed loads (their cache folder serves GitHub and WakaTime data only): each run loads the feeds again.
 
 ### Feeds in the editor
 
 The editor never fetches: a feed is given to it as fixture data under its namespace, as
 `{ "<namespace>": { "version": 0, "title": ..., "link": ..., "entries": [...] } }` ([editor.md](editor.md)).
+
+## The WakaTime source
+
+`@readmint/data-wakatime` binds the coding stats of one WakaTime account for a range (time spent coding, its biggest
+languages, editors and operating systems), under a namespace the host chooses. It is what the CLI `--data-wakatime`
+([cli.md](cli.md#wakatime-data)) and the Action `data-wakatime` input ([action.md](action.md#wakatime-data)) load. Its
+only entry is browser-safe (global `fetch`, no `node:` module, no `process`), and it has no dependency but
+`@readmint/data`.
+
+```ts
+import { loadWakaTimeData, wakaTimeDataSource } from "@readmint/data-wakatime";
+
+const { data, meta } = await loadWakaTimeData({
+  apiKey: process.env.WAKATIME_API_KEY ?? "",
+  namespace: "wakatime",
+  range: "last_30_days",
+});
+// data = { version: 0, range: "last_30_days", totalSeconds: 98766, humanReadableTotal: "27 hrs 26 mins",
+//   dailyAverageSeconds: 14109, languages: [{ name: "TypeScript", percent: 53, seconds: 52346 }, ...],
+//   editors: [...], operatingSystems: [...] }, bound as { wakatime: data }
+// meta = { requests: 1, fromCache: false, partial: false }
+```
+
+`wakaTimeDataSource` is the frozen descriptor (`namespace` `wakatime`, `dataVersion` 0, `load` = `loadWakaTimeData`).
+A design shows the total as `{{ wakatime.humanReadableTotal }}`, and the languages with
+`repeat: { each: "{{ wakatime.languages }}", as: "lang", index: "i" }` and `if: "{{ i < 5 }}"`; the coding-time card
+template ([components.md](components.md#coding-time-card)) does this.
+
+### WakaTime options
+
+| option            | default        | meaning                                                                                           |
+| ----------------- | -------------- | ------------------------------------------------------------------------------------------------- |
+| `apiKey`          | (required)     | the account's API key, trimmed; printable ASCII without spaces                                    |
+| `namespace`       | `wakatime`     | the namespace errors name and the host binds the data under; must pass `isDataNamespace`          |
+| `range`           | `last_7_days`  | one of `WAKATIME_RANGES`: `last_7_days`, `last_30_days`, `last_6_months`, `last_year`, `all_time` |
+| `fetch`           | global `fetch` | injectable for tests                                                                              |
+| `sleep`           | a timer        | the wait before a retry; injectable for tests                                                     |
+| `maxBytes`        | 2 MiB          | answer size, 1 byte to 8 MiB                                                                      |
+| `timeoutMs`       | 15000          | the whole load, the retry, the waits and the body included, 1000 to 60000                         |
+| `cache`           | none           | a `DataSourceCache`                                                                               |
+| `cacheTtlSeconds` | 3600           | 1 to 604800                                                                                       |
+| `signal`          | none           | ends the load early (`timeout`)                                                                   |
+
+Every option is checked before any I/O: an empty key is `missing-token`; a key with a space, a control character (a
+CR or LF could add a header) or a non-ASCII character, an unknown range or namespace and an out-of-range number are
+`invalid-option`; no message quotes the key. The user is always `current`, the key's own account: another user's stats
+(a leaderboard) and other WakaTime-compatible services are out of scope. The limits are `WakaTimeLimits`.
+
+The hosts never take the key as an argument: the CLI and the Action take the name of an environment variable that holds
+it, read it, and hide every form of it (`wakaTimeSecretForms(key)`: as given, trimmed, its base64 with and without
+padding, and the whole `Authorization` value) from their messages; the Action masks them all before any load.
+
+### WakaTime request
+
+One request, `GET https://wakatime.com/api/v1/users/current/stats/<range>` (`wakaTimeStatsUrl`): the URL is a constant
+plus the checked range, never with a query, so the host is fixed and the key is never in a URL. The key goes only into
+`Authorization: Basic <base64 of the key>` (`wakaTimeAuthorization`), with `accept: application/json` and
+`user-agent: readmint`; no cookies. No redirect is followed: a 3xx answer is `invalid-response` "The WakaTime API
+redirected; no redirect is followed." after that one request, so the key never reaches another host. One `timeoutMs`
+covers every attempt, wait and body. A 2xx answer must be `application/json` (or `application/*+json`) with no
+charset or UTF-8, read through [`readBodyCapped`](#response-bodies).
+
+| answer                 | result                                                                                                           |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| 200                    | the data; `meta.partial` when the stats say `is_up_to_date: false`                                               |
+| 202                    | WakaTime is still calculating: the data it sent, or the empty object, with `meta.partial`                        |
+| 401                    | `unauthorized` "WakaTime rejected the API key (HTTP 401)."                                                       |
+| 402, 403               | `forbidden`: the account's plan may not cover the range                                                          |
+| 404                    | `not-found`                                                                                                      |
+| 429                    | waited out once when `Retry-After` is at most 10 seconds; else, or a second time, `rate-limited` naming the wait |
+| 500, 502, 503, 504     | retried once after 1 second, then `invalid-response` naming the status                                           |
+| 3xx, any other status  | `invalid-response`                                                                                               |
+| a body over `maxBytes` | `too-large`                                                                                                      |
+| no answer              | `network`, or `timeout` once `timeoutMs` passed or the signal aborted                                            |
+
+Errors are fixed text plus a status or a field name, never the URL, a header, the key or the upstream body; an error
+that does not come from the source itself becomes `invalid-response` "The WakaTime load failed.".
+
+### WakaTime data object
+
+`{ version: 0, range, totalSeconds, humanReadableTotal, dailyAverageSeconds, languages, editors, operatingSystems }`
+(`WakaTimeData`, `WAKATIME_DATA_VERSION`), each list entry `{ name, percent, seconds }` (`WakaTimeEntry`). The object,
+its lists and every entry are frozen.
+
+| field                 | from the stats answer (`data.*`)                 | rule                                                 |
+| --------------------- | ------------------------------------------------ | ---------------------------------------------------- |
+| `range`               | the range asked for                              |                                                      |
+| `totalSeconds`        | `total_seconds`                                  | whole seconds                                        |
+| `humanReadableTotal`  | `human_readable_total`                           | plain text, at most 64 code points; `""` when absent |
+| `dailyAverageSeconds` | `daily_average`                                  | whole seconds                                        |
+| `languages`           | `languages[]` `{ name, total_seconds, percent }` | see below                                            |
+| `editors`             | `editors[]`, the same fields                     | see below                                            |
+| `operatingSystems`    | `operating_systems[]`, the same fields           | see below                                            |
+
+- Field names follow the public WakaTime API v1 documentation of the stats endpoint; the test fixture
+  (`packages/data-wakatime/test/fixtures/stats-last_7_days.json`) is shaped after it. Only these fields are read:
+  projects, machines, dependencies, the user name and everything else in the answer never reach the data or the cache.
+- Every number must be finite and not negative, else `invalid-response` naming the field; a missing list is empty.
+  Seconds are rounded to whole seconds and `percent` to two decimals.
+- A name is plain one-line text: control characters removed, every run of whitespace one space, trimmed, at most 100
+  code points (a longer one is cut at a code point to 99 and ends in `…`); an entry whose name is then empty is
+  dropped.
+- **Order**: most seconds first, equal seconds by name in UTF-16 code-unit order (never the locale's), then the first
+  20 are kept. The same answer gives the same object, so the same stats render the same SVG bytes.
+- A 202 answer without a `data` object, or without a body, is the empty object (zeros, `humanReadableTotal` `""`,
+  empty lists) with `meta.partial`; in a 202 an absent number is 0. The CLI prints one `warning:` line and the Action
+  one `::warning::` line for a partial load, and the run succeeds.
+
+`meta` is `WakaTimeLoadMeta`: `{ requests, fromCache, partial }`.
+
+### WakaTime cache
+
+With a `cache`, the normalised data object (not the raw answer) is stored under `dataSourceCacheKey` of the namespace,
+the data version, the user `current`, the range, `maxBytes` and an account digest: the SHA-256 of
+`readmint-wakatime-account`, a NUL and the key. Two keys never share an entry, and neither the key nor its plain digest
+is in the cache key or a `FileCache` file name. An entry is checked and rebuilt on read like an answer (a bad one is a
+miss). A partial answer is never stored. The CLI `--cache-dir` and the Action `cache-dir` give WakaTime loads a
+`FileCache` in that folder.
+
+### WakaTime in the editor
+
+The editor never fetches and never takes a key: WakaTime stats are given to it as fixture data under the namespace, as
+`{ "wakatime": { "version": 0, "range": "last_7_days", "totalSeconds": ..., "humanReadableTotal": ..., ... } }`
+([editor.md](editor.md)).

@@ -5,8 +5,8 @@ Commands:
   render <design>     Render the design to SVG (standard output or --out) or to a raster image (--out)
   render --manifest <file> --out-dir <dir>
                       Render the named renders of a manifest into a folder and print the <picture> snippet
-  validate <design>   Check the design and load its assets; with data (--data, --github, --data-json or --data-feed)
-                      also render it
+  validate <design>   Check the design and load its assets; with data (--data, --github, --data-json, --data-feed
+                      or --data-wakatime) also render it
   preview <design>    Serve a live preview on http://127.0.0.1:<port>/ (this computer only)
   help                Show this help
 
@@ -42,8 +42,9 @@ Options:
   --language-commit-cap <n>
                       Own commits (0..2000, default 0 = off) --github reads, one request each,
                       to fill github.languagesAuthored with the lines you added per language
-  --cache-dir <dir>   Folder where --github keeps validated GitHub answers and commit sums between
-                      runs (created when missing; never holds the token)
+  --cache-dir <dir>   Folder where --github keeps validated GitHub answers and commit sums, and
+                      --data-wakatime its stats, between runs (created when missing; never holds
+                      the token or the key)
   --data-json [<ns>=]<source>
                       Load a JSON document as { <ns>: { version: 0, document } } (default ns json):
                       a file inside --root (path relative to --root) or an https URL; repeatable, at most 8, added to
@@ -57,14 +58,23 @@ Options:
                       first; repeatable, at most 8, added to --data or --github data
   --data-feed-limit <ns>=<n>
                       Entries kept from the feed of <ns>, 1..50 (default 5); repeatable
+  --data-wakatime [<ns>=]<ENV_NAME>
+                      Load WakaTime coding stats as { <ns>: { version: 0, range, totalSeconds,
+                      humanReadableTotal, dailyAverageSeconds, languages, editors, operatingSystems } }
+                      (default ns wakatime) with the API key read from the environment variable
+                      ENV_NAME; repeatable, at most 4, added to --data or --github data
+  --data-wakatime-range <ns>=<range>
+                      Range of the WakaTime source <ns>: last_7_days (default), last_30_days,
+                      last_6_months, last_year or all_time; repeatable
   -h, --help          Show this help
   --version           Show the version
 
 An animated design becomes an animated webp, apng or gif; png is always a still image.
 The token is never an argument: only --github uses GH_TOKEN or GITHUB_TOKEN, and no message
-shows it, nor a --data-json-header value, nor a --data-feed URL. The CLI makes network requests
-only with --github (GitHub API, with the token), --data-json with an https URL (its headers
-only), --data-feed (no credentials) and --fetch-images (image requests, never with
+shows it, nor a --data-json-header value, nor a --data-feed URL, nor a WakaTime key. The CLI
+makes network requests only with --github (GitHub API, with the token), --data-json with an
+https URL (its headers only), --data-feed (no credentials), --data-wakatime (wakatime.com only,
+the key in the Authorization header) and --fetch-images (image requests, never with
 credentials). A --data-json file path is relative to --root, not to the current folder.
 
 Exit codes: 0 ok, 1 invalid design or failed render, 2 usage, 3 file or port problem, 4 data source, 70 internal error.

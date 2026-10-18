@@ -1,13 +1,15 @@
+import { GITHUB_DATA_NAMESPACE } from "@readmint/data-github";
 import type { DesignArgs } from "./CliCommand.js";
 import { loadFixtureData } from "./loadFixtureData.js";
-import { mergeDataNamespaces } from "./mergeDataNamespaces.js";
+import { checkFixtureNamespaces, mergeDataNamespaces } from "./mergeDataNamespaces.js";
 
 /**
  * The data of a run: the fixture file `args.data` and, when `loadData` is given, the namespaces it loads added to the
- * fixture; `undefined` when there is neither.
+ * fixture; `undefined` when there is neither. A fixture key equal to a namespace of `args` (`--github`, `--data-json`,
+ * `--data-feed`, `--data-wakatime`) fails before `loadData` sends any request.
  */
 export async function loadInputData(
-  args: Pick<DesignArgs, "data">,
+  args: Pick<DesignArgs, "data" | "github" | "dataJson" | "dataFeed" | "dataWakaTime">,
   options: {
     readonly cwd: string;
     readonly loadData?: () => Promise<Record<string, unknown>>;
@@ -16,6 +18,18 @@ export async function loadInputData(
   const fixture =
     args.data === undefined ? undefined : await loadFixtureData(args.data, options.cwd);
   if (options.loadData === undefined) return fixture;
+  if (fixture !== undefined) checkFixtureNamespaces(fixture, sourceNamespaces(args));
   const loaded = await options.loadData();
   return fixture === undefined ? loaded : mergeDataNamespaces(fixture, loaded);
+}
+
+function sourceNamespaces(
+  args: Pick<DesignArgs, "github" | "dataJson" | "dataFeed" | "dataWakaTime">,
+): string[] {
+  return [
+    ...(args.github === true ? [GITHUB_DATA_NAMESPACE] : []),
+    ...[...(args.dataJson ?? []), ...(args.dataFeed ?? []), ...(args.dataWakaTime ?? [])].map(
+      (spec) => spec.namespace,
+    ),
+  ];
 }

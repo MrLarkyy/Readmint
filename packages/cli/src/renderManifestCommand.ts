@@ -44,7 +44,7 @@ export async function renderManifestCommand(
   });
   for (const entry of manifest.renders) {
     const file = await loadDesignFile(entry.design, { cwd: io.cwd, root: manifest.folder });
-    checkDataNamespaces(file, args.dataJson ?? [], args.dataFeed ?? []);
+    checkDataNamespaces(file, args.dataJson ?? [], args.dataFeed ?? [], args.dataWakaTime ?? []);
   }
   const props = args.props === undefined ? undefined : await loadDesignProps(args.props, io.cwd);
   const data = await loadInputData(args, { cwd: io.cwd, ...liveData(args, io) });
