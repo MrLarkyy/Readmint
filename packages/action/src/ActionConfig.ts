@@ -1,4 +1,10 @@
-import type { DataFeedSpec, DataJsonSpec, OutputFormat, RenderVariant } from "@readmint/cli";
+import type {
+  DataFeedSpec,
+  DataJsonSpec,
+  DataWakaTimeSpec,
+  OutputFormat,
+  RenderVariant,
+} from "@readmint/cli";
 
 /** The inputs of one run, read and checked by `readInputs`. */
 export interface ActionConfig {
@@ -24,7 +30,7 @@ export interface ActionConfig {
   readonly excludeRepositories?: readonly string[];
   /** Own commits read for `github.languagesAuthored`, 1..2000; absent: not loaded. */
   readonly languageCommitCap?: number;
-  /** Folder for the GitHub load's cache, absolute, outside the workspace; absent: no cache. */
+  /** Folder for the GitHub and WakaTime loads' cache, absolute, outside the workspace; absent: no cache. */
   readonly cacheDir?: string;
   /** Fixture data file instead of a GitHub load. */
   readonly dataFile?: string;
@@ -32,6 +38,8 @@ export interface ActionConfig {
   readonly dataJson?: readonly DataJsonSpec[];
   /** Feeds of `data-feed` with the limits of `data-feed-limits`, added after the JSON sources. */
   readonly dataFeed?: readonly DataFeedSpec[];
+  /** WakaTime sources of `data-wakatime` with the ranges of `data-wakatime-ranges`, added after the feeds. */
+  readonly dataWakaTime?: readonly DataWakaTimeSpec[];
   /** Settings file merged into every design (the CLI `--props`); with a manifest, a section per render name. */
   readonly propsFile?: string;
   /** Also render every design without a dark twin, and every manifest render without `variants`, as this variant. */

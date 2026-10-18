@@ -8,6 +8,7 @@ import { localeProblem } from "./localeProblem.js";
 import { type OutputFormat, outputFormats } from "./OutputFormat.js";
 import { type DataFeedSpec, parseDataFeedArgs } from "./parseDataFeedArgs.js";
 import { type DataJsonSpec, parseDataJsonArgs } from "./parseDataJsonArgs.js";
+import { type DataWakaTimeSpec, parseDataWakaTimeArgs } from "./parseDataWakaTimeArgs.js";
 import { renderVariant } from "@readmint/format";
 import { quoteForLog } from "./quoteForLog.js";
 
@@ -34,7 +35,9 @@ type ValueOption =
   | "data-json"
   | "data-json-header"
   | "data-feed"
-  | "data-feed-limit";
+  | "data-feed-limit"
+  | "data-wakatime"
+  | "data-wakatime-range";
 
 const valueOptions: ReadonlySet<string> = new Set<ValueOption>([
   "root",
@@ -59,6 +62,8 @@ const valueOptions: ReadonlySet<string> = new Set<ValueOption>([
   "data-json-header",
   "data-feed",
   "data-feed-limit",
+  "data-wakatime",
+  "data-wakatime-range",
 ]);
 /** Value options that may be given more than once; each use adds one value. */
 const repeatableOptions: ReadonlySet<string> = new Set<ValueOption>([
@@ -66,6 +71,8 @@ const repeatableOptions: ReadonlySet<string> = new Set<ValueOption>([
   "data-json-header",
   "data-feed",
   "data-feed-limit",
+  "data-wakatime",
+  "data-wakatime-range",
 ]);
 const flagOptions: ReadonlySet<string> = new Set([
   "help",
@@ -99,6 +106,8 @@ const allowed: Readonly<Record<DesignCommand, ReadonlySet<ValueOption>>> = {
     "data-json-header",
     "data-feed",
     "data-feed-limit",
+    "data-wakatime",
+    "data-wakatime-range",
   ]),
   validate: new Set([
     "root",
@@ -114,6 +123,8 @@ const allowed: Readonly<Record<DesignCommand, ReadonlySet<ValueOption>>> = {
     "data-json-header",
     "data-feed",
     "data-feed-limit",
+    "data-wakatime",
+    "data-wakatime-range",
   ]),
   preview: new Set([
     "root",
@@ -129,6 +140,8 @@ const allowed: Readonly<Record<DesignCommand, ReadonlySet<ValueOption>>> = {
     "data-json-header",
     "data-feed",
     "data-feed-limit",
+    "data-wakatime",
+    "data-wakatime-range",
   ]),
 };
 /** Prefixes of GitHub tokens (classic, OAuth, user-to-server, server-to-server, refresh, fine-grained). */
@@ -229,9 +242,12 @@ export function parseCliArgs(argv: readonly string[]): CliCommand {
   if (!github && values.has("language-commit-cap")) {
     usage("option --language-commit-cap needs --github");
   }
-  if (!github && values.has("cache-dir")) usage("option --cache-dir needs --github");
   const dataJson = dataJsonArgs(repeated, github);
   const dataFeed = dataFeedArgs(repeated, github, dataJson);
+  const dataWakaTime = dataWakaTimeArgs(repeated, github, dataJson, dataFeed);
+  if (!github && dataWakaTime.length === 0 && values.has("cache-dir")) {
+    usage("option --cache-dir needs --github or --data-wakatime");
+  }
   const shared: Omit<DesignArgs, "design"> = {
     ...optional("root", values.get("root")),
     ...optional("data", values.get("data")),
@@ -245,6 +261,7 @@ export function parseCliArgs(argv: readonly string[]): CliCommand {
     ...cacheDirArgs(values.get("cache-dir")),
     ...(dataJson.length === 0 ? {} : { dataJson }),
     ...(dataFeed.length === 0 ? {} : { dataFeed }),
+    ...(dataWakaTime.length === 0 ? {} : { dataWakaTime }),
   };
   const time = values.get("time");
   const timeArgs = time === undefined ? {} : { time: parseTime(time) };
@@ -333,6 +350,36 @@ function dataFeedArgs(
   }
   if (github && specs.some((spec) => spec.namespace === GITHUB_DATA_NAMESPACE)) {
     usage("--data-feed namespace github clashes with --github; name the feed another namespace");
+  }
+  return specs;
+}
+
+function dataWakaTimeArgs(
+  repeated: ReadonlyMap<ValueOption, readonly string[]>,
+  github: boolean,
+  dataJson: readonly DataJsonSpec[],
+  dataFeed: readonly DataFeedSpec[],
+): readonly DataWakaTimeSpec[] {
+  const { specs, problems } = parseDataWakaTimeArgs(
+    repeated.get("data-wakatime") ?? [],
+    repeated.get("data-wakatime-range") ?? [],
+  );
+  const [problem] = problems;
+  if (problem !== undefined) usage(`--data-wakatime: ${problem}`);
+  const taken = new Map<string, string>([
+    ...dataJson.map((spec) => [spec.namespace, "--data-json"] as const),
+    ...dataFeed.map((spec) => [spec.namespace, "--data-feed"] as const),
+  ]);
+  const clash = specs.find((spec) => taken.has(spec.namespace));
+  if (clash !== undefined) {
+    usage(
+      `--data-wakatime namespace ${clash.namespace} is also a ${taken.get(clash.namespace) ?? ""} namespace; name one of them another namespace`,
+    );
+  }
+  if (github && specs.some((spec) => spec.namespace === GITHUB_DATA_NAMESPACE)) {
+    usage(
+      "--data-wakatime namespace github clashes with --github; name the WakaTime source another namespace",
+    );
   }
   return specs;
 }

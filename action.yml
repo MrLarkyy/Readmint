@@ -45,7 +45,7 @@ inputs:
     description: Own commits (a whole number 0..2000; empty or 0 = off) read, one GitHub request each, to fill github.languagesAuthored with the lines you added per language; the run takes about 0.3-0.6 seconds per commit; with your own token it also counts private repositories (language names and sums only, no repository name); a slow run ends the reading early with a warning; not with data-file.
     required: false
   cache-dir:
-    description: Folder outside the workspace (absolute, or relative to the workspace with ..; ~ is not expanded) where the GitHub load keeps its answers and the commits read between runs, so a later run sends no request for them, e.g. restored by actions/cache with a path under runner.temp; it never holds the token; not with data-file.
+    description: Folder outside the workspace (absolute, or relative to the workspace with ..; ~ is not expanded) where the GitHub load keeps its answers and the commits read between runs, and the data-wakatime loads their stats, so a later run sends no request for them, e.g. restored by actions/cache with a path under runner.temp; it never holds the token or a key; with data-file only together with data-wakatime.
     required: false
   data-file:
     description: Fixture data JSON file (the CLI `--data` format) used instead of loading GitHub data; a file inside the workspace.
@@ -61,6 +61,12 @@ inputs:
     required: false
   data-feed-limits:
     description: Entries kept per feed, one per line as `<namespace>=<n>` with n from 1 to 50 (the CLI `--data-feed-limit`); a feed without a line keeps 5.
+    required: false
+  data-wakatime:
+    description: WakaTime coding stats to bind, one per line as `[<namespace>=]<ENV_NAME>` (the CLI `--data-wakatime`; default namespace wakatime, at most 4) - ENV_NAME names the step environment variable that holds the API key. Keep the key in a repository secret and pass it in the workflow with `env` (WAKATIME_API_KEY set from the secrets context), then name the variable here, never the key; the Action masks it and sends it only to wakatime.com. Each is bound as `{ version, range, totalSeconds, humanReadableTotal, dailyAverageSeconds, languages, editors, operatingSystems }`, added after the feeds.
+    required: false
+  data-wakatime-ranges:
+    description: Range per WakaTime source, one per line as `<namespace>=<range>` with range last_7_days, last_30_days, last_6_months, last_year or all_time (the CLI `--data-wakatime-range`); a source without a line takes last_7_days.
     required: false
   props-file:
     description: Settings JSON file (the CLI `--props` format, root component props by section) merged into every listed design and its dark twin, for texts set once per template; a path relative to the workspace, confined to it like data-file (no .., no absolute path, no link leading outside).

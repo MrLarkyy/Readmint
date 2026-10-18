@@ -15,8 +15,8 @@ import { validateCommand } from "./validateCommand.js";
 
 /**
  * Runs one `readmint` command line (without node and the script) against `io` and returns the
- * exit code; never throws. Every message line is escaped (`escapeForLog`) and has the token variables and the
- * `--data-json-header` variables redacted (`redactSecrets`); the SVG is written as is. A system error writing standard output (EPIPE, a full disk) is exit
+ * exit code; never throws. Every message line is escaped (`escapeForLog`) and has the token variables, the
+ * `--data-json-header` variables and the `--data-wakatime` keys redacted (`redactSecrets`); the SVG is written as is. A system error writing standard output (EPIPE, a full disk) is exit
  * code 3 for every command.
  */
 export async function runCli(argv: readonly string[], cliIo: CliIo): Promise<ExitCode> {
@@ -29,8 +29,17 @@ export async function runCli(argv: readonly string[], cliIo: CliIo): Promise<Exi
   };
   try {
     const command = parseCliArgs(argv);
-    if ("dataJson" in command)
-      secrets.splice(0, secrets.length, ...cliSecrets(env, command.dataJson));
+    if ("dataJson" in command || "dataWakaTime" in command) {
+      secrets.splice(
+        0,
+        secrets.length,
+        ...cliSecrets(
+          env,
+          "dataJson" in command ? command.dataJson : [],
+          "dataWakaTime" in command ? command.dataWakaTime : [],
+        ),
+      );
+    }
     switch (command.name) {
       case "help":
         await io.stdout(helpText);

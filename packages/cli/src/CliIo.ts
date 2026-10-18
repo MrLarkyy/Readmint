@@ -13,19 +13,21 @@ export interface CliIo {
   /** How often `preview` checks its input files for changes, in milliseconds; default 300. */
   readonly pollIntervalMs?: number;
   /**
-   * `fetch` for `--fetch-images`, `--github`, `--data-json` and `--data-feed` URLs, the only network use of the CLI;
+   * `fetch` for `--fetch-images`, `--github`, `--data-json`, `--data-feed` and `--data-wakatime` requests, the only
+   * network use of the CLI;
    * the global one when absent.
    */
   readonly fetch?: ImageFetch;
   /**
-   * Opens the `preview --open` address in a browser (with a secret path, from `--github`, `--data-json` or `--data-feed`, the one-time launch address, never the secret
+   * Opens the `preview --open` address in a browser (with a secret path, from `--github`, `--data-json`, `--data-feed` or `--data-wakatime`, the one-time launch address, never the secret
    * one); `openInBrowser` when absent, tests inject one.
    */
   readonly openUrl?: (url: string) => Promise<void>;
   /**
    * The environment: `GH_TOKEN`, else `GITHUB_TOKEN`, is the token of `--github`; the GitHub load reads it only with
    * `--github`. `runCli` reads both in every run only to redact them from standard error and the preview page. The
-   * variables `--data-json-header` names hold header values: read for that load and redacted the same way.
+   * variables `--data-json-header` names hold header values, and those `--data-wakatime` names the WakaTime keys: read
+   * for that load and redacted the same way.
    * `preview --open` on Windows also reads `SystemRoot` (the path of the opener). No other variable is read.
    */
   readonly env?: Readonly<Record<string, string | undefined>>;

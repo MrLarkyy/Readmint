@@ -2,6 +2,7 @@ import type { RenderVariant } from "@readmint/format";
 import type { OutputFormat } from "./OutputFormat.js";
 import type { DataFeedSpec } from "./parseDataFeedArgs.js";
 import type { DataJsonSpec } from "./parseDataJsonArgs.js";
+import type { DataWakaTimeSpec } from "./parseDataWakaTimeArgs.js";
 
 /** Arguments every design command takes. */
 export interface DesignArgs {
@@ -24,7 +25,7 @@ export interface DesignArgs {
   readonly excludeRepositories?: readonly string[];
   /** `--language-commit-cap`: own commits `--github` reads for `github.languagesAuthored`, 0 to 2000. */
   readonly languageCommitCap?: number;
-  /** `--cache-dir`: folder where `--github` keeps its answers between runs, relative to the current folder. */
+  /** `--cache-dir`: folder where `--github` and `--data-wakatime` keep their answers between runs, relative to the current folder. */
   readonly cacheDir?: string;
   /**
    * `--data-json` with its `--data-json-header` headers: JSON documents loaded live, each under its namespace, added
@@ -36,6 +37,11 @@ export interface DesignArgs {
    * after the JSON documents to `--data` or `--github` data.
    */
   readonly dataFeed?: readonly DataFeedSpec[];
+  /**
+   * `--data-wakatime` with its `--data-wakatime-range` ranges: WakaTime coding stats loaded live with the API key of
+   * the named environment variable, each under its namespace, added after the feeds to `--data` or `--github` data.
+   */
+  readonly dataWakaTime?: readonly DataWakaTimeSpec[];
 }
 
 /** `readmint render` beyond the design arguments. */

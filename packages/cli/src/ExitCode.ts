@@ -8,7 +8,10 @@ export const ExitCode = Object.freeze({
   usage: 2,
   /** A file, folder or port could not be used (missing design, bad fixture data, port in use). */
   input: 3,
-  /** `--github` without a token, the GitHub data, a `--data-json` source or a `--data-feed` feed could not be loaded. */
+  /**
+   * `--github` without a token, `--data-wakatime` without its key, or the GitHub data, a `--data-json` source, a
+   * `--data-feed` feed or a `--data-wakatime` source could not be loaded.
+   */
   data: 4,
   /** A bug in Readmint (sysexits EX_SOFTWARE). */
   internal: 70,

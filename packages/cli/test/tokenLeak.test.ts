@@ -1,5 +1,6 @@
 import { request } from "node:http";
 import { setTimeout as sleep } from "node:timers/promises";
+import { wakaTimeSecretForms } from "@readmint/data-wakatime";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import { ExitCode, type ImageFetch, runCli } from "../src/index.js";
 import { boundDesign, type CliRun, type CliTree, makeCliTree, png } from "./cliTree.js";
@@ -447,6 +448,98 @@ test("standard error never shows a --data-feed URL or its key", async () => {
       expect(run.stderr).toMatch(/^Feed data feed \(/);
       expect(run.stderr).not.toContain(key);
       expect(run.stderr).not.toContain("feeds.example");
+      expectNoToken(run);
+    }
+  }
+});
+
+test("the preview page and standard error never show a --data-wakatime key in any form", async () => {
+  const key = "waka_LEAK00rm158-0000-4000-8000-c4n4ryk3y000";
+  const forms = wakaTimeSecretForms(key);
+  await tree.file("waka/design.json", boundDesign("{{ wakatime.languages[0].name }}"));
+  await tree.file("waka/logo.png", png);
+  const controller = new AbortController();
+  let stderr = "";
+  const exit = runCli(
+    ["preview", "waka/design.json", "--data-wakatime", "WAKATIME_API_KEY", "--port", "0"],
+    {
+      stdout: () => undefined,
+      stderr: (text) => {
+        stderr += text;
+      },
+      cwd: tree.root,
+      signal: controller.signal,
+      pollIntervalMs: 20,
+      env: { WAKATIME_API_KEY: key },
+      // An upstream that echoes the header it got into a language name.
+      fetch: (_url, init) =>
+        Promise.resolve(
+          Response.json({
+            data: {
+              total_seconds: 1,
+              daily_average: 1,
+              languages: [
+                {
+                  name: `${key} ${new Headers(init.headers).get("authorization") ?? ""}`,
+                  total_seconds: 1,
+                  percent: 100,
+                },
+              ],
+            },
+          }),
+        ),
+    },
+  );
+  try {
+    const deadline = Date.now() + 10_000;
+    let printed: RegExpExecArray | null = null;
+    let issues: string[] = [];
+    while (issues.length === 0) {
+      if (Date.now() > deadline) throw new Error("timed out waiting for the preview");
+      printed ??= /preview: http:\/\/127\.0\.0\.1:(\d+)\/([A-Za-z0-9_-]{43})\/\n/.exec(stderr);
+      if (printed !== null)
+        ({ issues } = await previewStatus(Number(printed[1]), printed[2] ?? ""));
+      await sleep(10);
+    }
+    const page = JSON.stringify(issues);
+    expect(page).toContain("***");
+    for (const form of forms) expect(page).not.toContain(form);
+  } finally {
+    controller.abort();
+  }
+  expect(await exit).toBe(ExitCode.ok);
+  for (const form of forms) expect(stderr).not.toContain(form);
+});
+
+test("standard error never shows a --data-wakatime key, whatever fails", async () => {
+  const key = "waka_ERR000rm158-0000-4000-8000-c4n4ryk3y000";
+  const echo =
+    (status: number, type = "application/json"): ImageFetch =>
+    (_url, init) =>
+      Promise.resolve(
+        new Response(`{"error":"${key} ${new Headers(init.headers).get("authorization") ?? ""}"}`, {
+          status,
+          headers: { "content-type": type },
+        }),
+      );
+  const answers: ImageFetch[] = [
+    echo(401),
+    echo(200, "text/html"),
+    echo(200),
+    () => Promise.reject(new TypeError(`connect ECONNREFUSED ${key}`)),
+  ];
+  for (const fetch of answers) {
+    for (const command of ["render", "validate"]) {
+      const run = await tree.run(
+        [command, "bound/design.json", "--data-wakatime", "WAKATIME_API_KEY"],
+        { env: { ...env, WAKATIME_API_KEY: key }, fetch },
+      );
+      expect(run.code).toBe(ExitCode.data);
+      expect(run.stderr).toMatch(/^WakaTime data wakatime \(/);
+      for (const form of wakaTimeSecretForms(key)) {
+        expect(run.stderr).not.toContain(form);
+        expect(run.stdout).not.toContain(form);
+      }
       expectNoToken(run);
     }
   }

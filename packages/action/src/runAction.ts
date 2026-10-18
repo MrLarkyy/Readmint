@@ -10,7 +10,9 @@ import {
   propsSection,
   quoteForLog,
   type RenderVariant,
+  wakaTimePartialWarning,
 } from "@readmint/cli";
+import { wakaTimeSecretForms } from "@readmint/data-wakatime";
 import type { ActionConfig } from "./ActionConfig.js";
 import type { ActionDeps } from "./ActionDeps.js";
 import { ActionError } from "./ActionError.js";
@@ -43,10 +45,14 @@ export async function runAction(env: Env, deps: ActionDeps): Promise<number> {
   try {
     const workspace = path.resolve(deps.cwd, nonEmpty(env.GITHUB_WORKSPACE) ?? ".");
     const config = readInputs(env, workspace);
-    // Before any load: a header value must be masked before anything could print it.
+    // Before any load: a header value or a WakaTime key must be masked before anything could print it.
     for (const name of new Set(config.dataJson?.flatMap((spec) => Object.values(spec.headers)))) {
       const value = Object.hasOwn(env, name) ? env[name] : undefined;
       if (value !== undefined) log.mask(value);
+    }
+    for (const name of new Set(config.dataWakaTime?.map((spec) => spec.variable))) {
+      const value = Object.hasOwn(env, name) ? env[name] : undefined;
+      if (value !== undefined) for (const form of wakaTimeSecretForms(value)) log.mask(form);
     }
     const plan =
       config.manifest === undefined
@@ -95,6 +101,9 @@ export async function runAction(env: Env, deps: ActionDeps): Promise<number> {
         log.warning(partialDataWarning(parts));
       },
       env,
+      (namespace) => {
+        log.warning(wakaTimePartialWarning(namespace));
+      },
     );
     if (config.formats.some((format) => format !== "svg")) await loadRaster(deps);
     const rendered = await renderAll(plan, workspace, data, {
