@@ -50,6 +50,9 @@ importers:
       '@readmint/data-json':
         specifier: workspace:*
         version: link:../data-json
+      '@readmint/data-wakatime':
+        specifier: workspace:*
+        version: link:../data-wakatime
       '@readmint/raster':
         specifier: workspace:*
         version: link:../raster
@@ -75,6 +78,9 @@ importers:
       '@readmint/data-json':
         specifier: workspace:*
         version: link:../data-json
+      '@readmint/data-wakatime':
+        specifier: workspace:*
+        version: link:../data-wakatime
       '@readmint/expr':
         specifier: workspace:*
         version: link:../expr
@@ -97,6 +103,9 @@ importers:
       '@readmint/data-github':
         specifier: workspace:*
         version: link:../data-github
+      '@readmint/data-wakatime':
+        specifier: workspace:*
+        version: link:../data-wakatime
       '@readmint/examples':
         specifier: workspace:*
         version: link:../examples
@@ -125,6 +134,12 @@ importers:
         version: link:../data
 
   packages/data-json:
+    dependencies:
+      '@readmint/data':
+        specifier: workspace:*
+        version: link:../data
+
+  packages/data-wakatime:
     dependencies:
       '@readmint/data':
         specifier: workspace:*
