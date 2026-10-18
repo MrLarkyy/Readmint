@@ -35,7 +35,7 @@ export function settingsFields(state: EditorState): {
     !entered.variantClash && variantDesign(state, entered.design).issues.length === 0
       ? state.variant
       : undefined;
-  const render = chosenRender(state.manifest)?.entry.props;
+  const render = entered.propsApplied ? chosenRender(state.manifest)?.entry.props : undefined;
   const fields: SettingsField[] = [];
   for (const [name, definition] of declared) {
     const own = layerValue(state.design, name);

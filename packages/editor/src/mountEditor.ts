@@ -198,6 +198,18 @@ export function mountEditor(root: HTMLElement, options: MountEditorOptions = {})
       );
       return;
     }
+    const listed = render?.variants;
+    if (
+      variant !== undefined &&
+      listed !== undefined &&
+      !listed.some((one) => one.name === variant.name)
+    ) {
+      report(
+        "export",
+        `the ${format} export needs the ${variant.name} variant, which render ${JSON.stringify(render?.name ?? "")} does not list; choose Light or another render`,
+      );
+      return;
+    }
     const variantIssues = issues.filter((issue) => issue.source === "variant");
     if (variant !== undefined && variantIssues.length > 0) {
       report(
@@ -418,13 +430,13 @@ export function mountEditor(root: HTMLElement, options: MountEditorOptions = {})
         file.arrayBuffer().then((buffer) => {
           let text: string;
           try {
-            // As the CLI reads it: strict UTF-8.
-            text = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(buffer);
+            // As the CLI reads it: strict UTF-8, a BOM dropped.
+            text = new TextDecoder("utf-8", { fatal: true }).decode(buffer);
           } catch {
             report("manifest", "manifest is not valid UTF-8");
             return;
           }
-          dispatch((current) => loadManifest(current, text));
+          dispatch((current) => loadManifest(current, text, designFileName));
         }),
         "manifest",
         "manifest could not be read",

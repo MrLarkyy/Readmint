@@ -121,6 +121,12 @@ test("a render without listed variants keeps Dark; one with an empty list disabl
   expect(variant().disabled).toBe(false);
   const dark = [...variant().options].find((option) => option.value === "dark");
   expect(dark?.disabled).toBe(false);
+  await chooseRender("card-b");
+  await userEvent.selectOptions(variant(), "dark");
+  await editor.settled();
+  expect(editor.state.variant?.name).toBe("dark");
+  expect(variant().disabled).toBe(false);
+  expect(variant().value).toBe("dark");
 });
 
 test("importing a design file picks the first render naming it and keeps the chosen one", async () => {
@@ -159,4 +165,51 @@ test("a manifest that does not parse is shown as an issue and keeps the list", a
   await upload("load-manifest", "renders.json", '{"renders": [{"name": "a"}]}');
   expect(find('[aria-label="Issues"]').textContent).toContain("manifest ");
   expect(editor.state.manifest?.renders).toHaveLength(5);
+});
+
+test("Export PNG of a render whose variant clashes is refused for that reason", async () => {
+  await open();
+  await chooseRender("themed");
+  await userEvent.selectOptions(variant(), "dark");
+  await editor.settled();
+  await userEvent.click(find('[data-action="export-png"]'));
+  await editor.settled();
+  expect(images).toHaveLength(0);
+  expect(find('[aria-label="Issues"]').textContent).toContain(
+    'the png export needs render "themed" to apply',
+  );
+});
+
+test("a manifest that is not UTF-8 is refused and the loaded one stays", async () => {
+  await open();
+  await userEvent.upload(
+    find('input[data-action="load-manifest"]'),
+    new File([new Uint8Array([0xff])], "renders.json", { type: "application/json" }),
+  );
+  await editor.settled();
+  expect(find('[aria-label="Issues"]').textContent).toContain("manifest is not valid UTF-8");
+  expect(editor.state.manifest?.renders).toHaveLength(5);
+});
+
+test("a manifest over the size cap is refused before it is read", async () => {
+  await open();
+  const big = new File([new Uint8Array(3 * 1_048_576 + 4)], "renders.json");
+  await userEvent.upload(find('input[data-action="load-manifest"]'), big);
+  await editor.settled();
+  expect(find('[aria-label="Issues"]').textContent).toContain("manifest is larger than");
+  expect(editor.state.manifest?.renders).toHaveLength(5);
+});
+
+test("a reload where the render lists no variants drops Dark and keeps the switch usable", async () => {
+  await open();
+  await chooseRender("card-b");
+  await userEvent.selectOptions(variant(), "dark");
+  await editor.settled();
+  await upload(
+    "load-manifest",
+    "renders.json",
+    JSON.stringify({ renders: [{ name: "card-b", design: "card.json", variants: [] }] }),
+  );
+  expect(editor.state.variant).toBeUndefined();
+  expect(variant().value).toBe("");
 });

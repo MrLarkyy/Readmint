@@ -9,6 +9,8 @@ export interface RenderEntryDesign {
   readonly issues: readonly EditorIssue[];
   /** The chosen variant clashes with a prop of a render that lists no variants: the CLI refuses it, the preview leaves it out. */
   readonly variantClash: boolean;
+  /** The render has no props or they applied; false when they were left out. */
+  readonly propsApplied: boolean;
 }
 
 /**
@@ -17,7 +19,7 @@ export interface RenderEntryDesign {
  */
 export function renderEntryDesign(state: EditorState, design: Design): RenderEntryDesign {
   const chosen = chosenRender(state.manifest);
-  if (chosen === undefined) return { design, issues: [], variantClash: false };
+  if (chosen === undefined) return { design, issues: [], variantClash: false, propsApplied: true };
   const { entry, index } = chosen;
   const at = `/renders/${String(index)}`;
   const issues: EditorIssue[] = [];
@@ -35,9 +37,11 @@ export function renderEntryDesign(state: EditorState, design: Design): RenderEnt
     });
   }
   const variantClash = clashes.length > 0;
-  if (Object.keys(entry.props).length === 0) return { design, issues, variantClash };
+  if (Object.keys(entry.props).length === 0) {
+    return { design, issues, variantClash, propsApplied: true };
+  }
   const result = applyDesignProps(design, entry.props);
-  if (result.ok) return { design: result.value, issues, variantClash };
+  if (result.ok) return { design: result.value, issues, variantClash, propsApplied: true };
   for (const issue of result.issues.slice(0, DesignLimits.maxIssues)) {
     issues.push({
       source: "manifest",
@@ -47,5 +51,5 @@ export function renderEntryDesign(state: EditorState, design: Design): RenderEnt
   }
   if (result.truncated)
     issues.push({ source: "manifest", message: "more manifest issues not shown" });
-  return { design, issues, variantClash };
+  return { design, issues, variantClash, propsApplied: false };
 }

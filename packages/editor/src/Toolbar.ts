@@ -211,7 +211,7 @@ export class Toolbar {
         option.value !== "" &&
         !listed.variants.some((variant) => variant.name === option.value);
     }
-    const blocked = why !== undefined && (current === undefined || none);
+    const blocked = why !== undefined && current === undefined;
     this.variantSelect.value = current?.name ?? "";
     this.variantSelect.disabled = blocked;
     this.variantSelect.title = blocked ? why : "";

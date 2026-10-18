@@ -15,6 +15,7 @@ import {
   undo,
   type EditorState,
 } from "../src/index.js";
+import { RenderManifestLimits } from "@readmint/format";
 import { manifestDesign, manifestSettingsText, manifestText } from "./settingsDesign.js";
 
 const base = createEditorState(manifestDesign);
@@ -58,11 +59,44 @@ describe("loadManifest", () => {
     expect(next.issues[0]?.message).toMatch(/larger than/u);
   });
 
-  test("keeps the chosen render when the new manifest has it, else none", () => {
+  test("keeps the chosen render when the new manifest has it for this design file, else none", () => {
     const chosen = chooseRender(loaded, "card-a", "card.json");
-    expect(loadManifest(chosen, manifestText).manifest?.render).toBe("card-a");
+    expect(loadManifest(chosen, manifestText, "card.json").manifest?.render).toBe("card-a");
     const without = JSON.stringify({ renders: [{ name: "x", design: "card.json" }] });
-    expect(loadManifest(chosen, without).manifest?.render).toBeUndefined();
+    expect(loadManifest(chosen, without, "card.json").manifest?.render).toBeUndefined();
+  });
+
+  test("a reload applies the rules of choosing the render", () => {
+    const text = (entry: object) =>
+      JSON.stringify({ renders: [{ name: "b", design: "card.json", ...entry }] });
+    const chosen = setVariant(chooseRender(loadManifest(base, text({})), "b", "card.json"), "dark");
+    expect(chosen.variant?.name).toBe("dark");
+    // The render now lists no variants: Dark goes.
+    const empty = loadManifest(chosen, text({ variants: [] }), "card.json");
+    expect(empty.manifest?.render).toBe("b");
+    expect(empty.variant).toBeUndefined();
+    // The render now names another design file: it is no longer chosen.
+    const moved = loadManifest(chosen, text({ design: "other.json" }), "card.json");
+    expect(moved.manifest?.render).toBeUndefined();
+    expect(rootProps(moved)).toEqual({ theme: "dark" });
+    // Without the render the section is the file's own, as choosing none.
+    const settings = loadSettings(
+      chooseRender(loaded, "card-a", "card.json"),
+      manifestSettingsText,
+    );
+    const section = chooseRender(settings, "card-a", "card.json");
+    expect(section.settings?.section).toBe("card-a");
+    const gone = loadManifest(section, text({}), "card.json");
+    expect(gone.manifest?.render).toBeUndefined();
+    expect(gone.settings?.section).toBe("card");
+    expect(rootProps(gone)).toEqual({ slot: 4 });
+  });
+
+  test("a BOM and the longest source the format takes load, as in the CLI", () => {
+    const pad = " ".repeat(RenderManifestLimits.maxSourceLength - manifestText.length);
+    const next = loadManifest(base, "﻿" + manifestText + pad);
+    expect(next.issues).toEqual([]);
+    expect(next.manifest?.renders).toHaveLength(5);
   });
 });
 
@@ -166,6 +200,19 @@ describe("variants of a render", () => {
 });
 
 describe("the form", () => {
+  test("a render whose props do not apply shows no value from it", () => {
+    const text = JSON.stringify({
+      renders: [{ name: "bad", design: "card.json", props: { slot: "abc" } }],
+    });
+    const settings = loadSettings(loadManifest(base, text), JSON.stringify({ bad: {} }));
+    const chosen = chooseRender(settings, "bad", "card.json");
+    expect(chosen.settings?.section).toBe("bad");
+    expect(settingsFields(chosen).fields.find((field) => field.name === "slot")).toMatchObject({
+      value: 0,
+      from: "default",
+    });
+  });
+
   test("shows a render prop the section lacks as coming from the render", () => {
     const settings = loadSettings(loaded, manifestSettingsText);
     const chosen = chooseRender(settings, "card-b", "card.json");
