@@ -75,6 +75,15 @@ describe("setPalette", () => {
     ).toContain("twice");
   });
 
+  test("a refusal escapes invisible characters of the name it quotes", () => {
+    const message = refused([
+      ["a‮", []],
+      ["a‮", []],
+    ]);
+    expect(message).toContain(String.raw`\u202e`);
+    expect(message.includes("‮")).toBe(false);
+  });
+
   test("a bad colour is refused with the format's message", () => {
     const next = setPalette(state, paletteEdits.setColour(entries, "light", "bg", "red"));
     expect(next.design).toBe(state.design);

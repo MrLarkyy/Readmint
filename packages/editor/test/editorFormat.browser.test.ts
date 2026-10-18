@@ -4,7 +4,7 @@ import type { Binding, Design, Palette } from "@readmint/format";
 import { mountEditor, type EditorHandle } from "../src/index.js";
 
 let root: HTMLElement;
-let editor: EditorHandle;
+let editor: EditorHandle | undefined;
 
 beforeEach(() => {
   root = document.createElement("div");
@@ -12,13 +12,19 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  editor.destroy();
+  editor?.destroy();
   root.remove();
 });
 
 async function mount(design: Design): Promise<void> {
+  editor?.destroy();
   editor = mountEditor(root, { initial: design });
-  await editor.settled();
+  await current().settled();
+}
+
+function current(): EditorHandle {
+  if (editor === undefined) throw new Error("no editor");
+  return editor;
 }
 
 function find(selector: string): HTMLElement {
@@ -31,14 +37,14 @@ const labelled = (label: string) => `[aria-label="${label}"]`;
 
 async function click(selector: string): Promise<void> {
   await userEvent.click(find(selector));
-  await editor.settled();
+  await current().settled();
 }
 
 /** Types into the control with this aria-label and leaves it, which commits the change. */
 async function fill(label: string, value: string): Promise<void> {
   await userEvent.fill(find(labelled(label)), value);
   await userEvent.tab();
-  await editor.settled();
+  await current().settled();
 }
 
 async function previewSvg(): Promise<string> {
@@ -83,21 +89,21 @@ test("a let row edit reaches the preview and one undo takes it back", async () =
   await fill("Let expression w", "{{ 30 }}");
   expect(await previewSvg()).toContain('width="30"');
   await click('[data-action="add-let"]');
-  expect(Object.keys((editor.state.design.layers[0] as { let: object }).let)).toEqual([
+  expect(Object.keys((current().state.design.layers[0] as { let: object }).let)).toEqual([
     "w",
     "local1",
   ]);
-  editor.undo();
-  await editor.settled();
-  expect(Object.keys((editor.state.design.layers[0] as { let: object }).let)).toEqual(["w"]);
+  current().undo();
+  await current().settled();
+  expect(Object.keys((current().state.design.layers[0] as { let: object }).let)).toEqual(["w"]);
 });
 
 test("an invalid let name is listed with the format's message and the design is unchanged", async () => {
   await mount(letDesign);
   await click('[data-pointer="/layers/0"] [data-action="select"]');
-  const before = editor.state.design;
+  const before = current().state.design;
   await fill("Let name w", "props");
-  expect(editor.state.design).toBe(before);
+  expect(current().state.design).toBe(before);
   expect(find(labelled("Issues")).textContent).toContain("reserved");
 });
 
@@ -109,16 +115,20 @@ test("a palette text edit and a picker edit change the fill", async () => {
   const picker = find(labelled("Pick bg in light")) as HTMLInputElement;
   picker.value = "#00ff00";
   picker.dispatchEvent(new Event("change", { bubbles: true }));
-  await editor.settled();
+  await current().settled();
   expect(await previewSvg()).toContain('fill="#00ff00"');
-  expect(editor.state.design.palette?.["light"]?.["bg"]).toBe("#00ff00");
+  expect(current().state.design.palette?.["light"]?.["bg"]).toBe("#00ff00");
 });
 
 test("Add token adds a row to every mode", async () => {
   await mount(paletteDesign);
   await click('[data-action="add-token"]');
   for (const mode of ["light", "dark"]) {
-    expect(Object.keys(editor.state.design.palette?.[mode] ?? {})).toEqual(["bg", "ink", "token1"]);
+    expect(Object.keys(current().state.design.palette?.[mode] ?? {})).toEqual([
+      "bg",
+      "ink",
+      "token1",
+    ]);
   }
   expect(root.querySelector(labelled("token1 in dark"))).not.toBeNull();
 });
@@ -128,7 +138,7 @@ test("the palette mode is shown next to the Variant list: the first mode, then d
   const label = find('[data-role="palette-mode"]');
   expect(label.textContent).toBe("Palette mode: light");
   await userEvent.selectOptions(find('[data-action="variant"]'), "dark");
-  await editor.settled();
+  await current().settled();
   expect(label.textContent).toBe("Palette mode: dark");
 });
 
@@ -136,7 +146,7 @@ test("a design without a palette shows no palette mode and can add one", async (
   await mount(letDesign);
   expect(find('[data-role="palette-mode"]').textContent).toBe("");
   await click('[data-action="add-palette"]');
-  expect(editor.state.design.palette).toEqual({ light: {} });
+  expect(current().state.design.palette).toEqual({ light: {} });
   expect(find('[data-role="palette-mode"]').textContent).toBe("Palette mode: light");
 });
 
@@ -164,7 +174,73 @@ test("the add buttons are disabled at the format's caps", async () => {
 test("renaming a mode that a theme prop names lists the render issue", async () => {
   await mount(themed("dark"));
   await fill("Mode dark", "night");
-  expect(Object.keys(editor.state.design.palette ?? {})).toEqual(["light", "night"]);
+  expect(Object.keys(current().state.design.palette ?? {})).toEqual(["light", "night"]);
   expect(find('[data-role="palette-mode"]').textContent).toBe("");
   expect(find(labelled("Issues")).textContent).toContain("names no palette mode");
+});
+
+test("after a commit with Tab the focus lands on the next field, in let, orbit and palette", async () => {
+  await mount({
+    ...letDesign,
+    palette,
+    layers: [
+      {
+        type: "rect",
+        width: "{{ w }}",
+        height: 40,
+        fill: "#000000",
+        let: { w: "{{ 10 }}" },
+        orbit: { center: { x: 50, y: 20 }, radius: 10, angle: 0 },
+      },
+    ],
+  } as unknown as Design);
+  await fill("bg in light", "#abcdef");
+  expect(document.activeElement).toBe(find(labelled("Pick bg in light")));
+  await click('[data-pointer="/layers/0"] [data-action="select"]');
+  await userEvent.fill(find('[name="orbit.angle"]'), "45");
+  await userEvent.tab();
+  await current().settled();
+  expect(document.activeElement).toBe(find('[name="orbit.speed"]'));
+  await userEvent.fill(find(labelled("Let expression w")), "{{ 12 }}");
+  await userEvent.tab();
+  await current().settled();
+  expect(document.activeElement).toBe(find('[data-action="let-remove"]'));
+});
+
+test("a click right after typing still reaches the button", async () => {
+  await mount(letDesign);
+  await click('[data-pointer="/layers/0"] [data-action="select"]');
+  await userEvent.fill(find(labelled("Let expression w")), "{{ 12 }}");
+  await userEvent.click(find('[data-action="add-let"]'));
+  await current().settled();
+  const bindings = (current().state.design.layers[0] as { let: Record<string, string> }).let;
+  expect(bindings).toEqual({ w: "{{ 12 }}", local1: "{{ null }}" });
+});
+
+test("typing the same fade numbers again records no undo entry", async () => {
+  await mount({
+    ...letDesign,
+    layers: [
+      {
+        type: "rect",
+        width: 10,
+        height: 40,
+        fill: "#000000",
+        orbit: { center: { x: 50, y: 20 }, radius: 10, angle: 0 },
+      },
+    ],
+  } as unknown as Design);
+  await click('[data-pointer="/layers/0"] [data-action="select"]');
+  await userEvent.fill(find('[name="orbit.fade.from"]'), "-1");
+  await userEvent.fill(find('[name="orbit.fade.to"]'), "1");
+  await userEvent.tab();
+  await current().settled();
+  const withFade = current().state.design;
+  await userEvent.fill(find('[name="orbit.fade.to"]'), "1");
+  await userEvent.tab();
+  await current().settled();
+  expect(current().state.design).toBe(withFade);
+  current().undo();
+  await current().settled();
+  expect(JSON.stringify(current().state.design)).not.toContain("fade");
 });

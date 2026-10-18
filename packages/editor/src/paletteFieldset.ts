@@ -1,4 +1,4 @@
-import { DesignLimits, type Palette } from "@readmint/format";
+import { DesignLimits } from "@readmint/format";
 import { element } from "./dom.js";
 import {
   addMode,
@@ -11,7 +11,7 @@ import {
   setColour,
 } from "./paletteEdits.js";
 import { pickerValue, withPicked } from "./pickerColour.js";
-import type { PropertyActions } from "./PropertyActions.js";
+import type { PanelContext } from "./PanelContext.js";
 
 const shownName = 64;
 
@@ -20,15 +20,17 @@ const shownName = 64;
  * Every operation replaces the palette whole through `setPalette`, so the modes keep the same tokens and an edit is
  * one undo step.
  */
-export function paletteFieldset(
-  form: HTMLElement,
-  actions: PropertyActions,
-  palette: Palette | undefined,
-): void {
+export function paletteFieldset(form: HTMLElement, context: PanelContext): void {
+  const { actions } = context;
+  const entriesNow = () => paletteEntries(context.latest().design.palette);
+  const colourNow = (mode: string, token: string) =>
+    entriesNow()
+      .find(([name]) => name === mode)?.[1]
+      .find(([name]) => name === token)?.[1] ?? "";
   const box = element(form, "fieldset", { className: "rm-fieldset rm-palette" });
   element(box, "legend", { text: "Palette" });
-  const entries = paletteEntries(palette);
-  if (palette === undefined) {
+  const entries = entriesNow();
+  if (context.latest().design.palette === undefined) {
     const add = element(box, "button", {
       text: "Add palette",
       attributes: { type: "button", "data-action": "add-palette" },
@@ -49,7 +51,7 @@ export function paletteFieldset(
     });
     input.value = mode;
     input.addEventListener("change", () => {
-      actions.setPalette(renameMode(entries, mode, input.value));
+      actions.setPalette(renameMode(entriesNow(), mode, input.value));
     });
     const remove = element(cell, "button", {
       text: "Remove",
@@ -60,7 +62,7 @@ export function paletteFieldset(
       },
     });
     remove.addEventListener("click", () => {
-      actions.setPalette(removeMode(entries, mode));
+      actions.setPalette(removeMode(entriesNow(), mode));
     });
   }
   const body = element(table, "tbody");
@@ -73,7 +75,7 @@ export function paletteFieldset(
     });
     name.value = token;
     name.addEventListener("change", () => {
-      actions.setPalette(renameToken(entries, token, name.value));
+      actions.setPalette(renameToken(entriesNow(), token, name.value));
     });
     const remove = element(nameCell, "button", {
       text: "Remove",
@@ -84,26 +86,27 @@ export function paletteFieldset(
       },
     });
     remove.addEventListener("click", () => {
-      actions.setPalette(removeToken(entries, token));
+      actions.setPalette(removeToken(entriesNow(), token));
     });
-    for (const [mode, modeTokens] of entries) {
-      const colour = modeTokens.find(([name]) => name === token)?.[1] ?? "";
+    for (const [mode] of entries) {
       const label = `${token.slice(0, shownName)} in ${mode.slice(0, shownName)}`;
       const cell = element(tr, "td");
       const text = element(cell, "input", {
         attributes: { name: "colour", "aria-label": label },
       });
-      text.value = colour;
+      context.bind(text, () => colourNow(mode, token));
       text.addEventListener("change", () => {
-        actions.setPalette(setColour(entries, mode, token, text.value));
+        actions.setPalette(setColour(entriesNow(), mode, token, text.value));
       });
       const picker = element(cell, "input", {
         className: "rm-picker",
         attributes: { type: "color", "aria-label": `Pick ${label}` },
       });
-      picker.value = pickerValue(colour);
+      context.bind(picker, () => pickerValue(colourNow(mode, token)));
       picker.addEventListener("change", () => {
-        actions.setPalette(setColour(entries, mode, token, withPicked(colour, picker.value)));
+        actions.setPalette(
+          setColour(entriesNow(), mode, token, withPicked(colourNow(mode, token), picker.value)),
+        );
       });
     }
   }
@@ -118,7 +121,7 @@ export function paletteFieldset(
     addModeButton.title = `a palette may have at most ${String(DesignLimits.maxPaletteModes)} modes`;
   }
   addModeButton.addEventListener("click", () => {
-    actions.setPalette(addMode(entries));
+    actions.setPalette(addMode(entriesNow()));
   });
   const addTokenButton = element(box, "button", {
     text: "Add token",
@@ -129,6 +132,6 @@ export function paletteFieldset(
     addTokenButton.title = `a palette mode may have at most ${String(DesignLimits.maxPaletteTokens)} tokens`;
   }
   addTokenButton.addEventListener("click", () => {
-    actions.setPalette(addToken(entries));
+    actions.setPalette(addToken(entriesNow()));
   });
 }

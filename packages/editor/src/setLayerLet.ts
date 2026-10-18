@@ -1,4 +1,4 @@
-import { DesignLimits, LocalNames } from "@readmint/format";
+import { DesignLimits, LocalNames, quoteInput } from "@readmint/format";
 import { commitDesign, refuse } from "./commitDesign.js";
 import { childPointer, getAt, setAt } from "./designPointer.js";
 import type { EditorState } from "./EditorState.js";
@@ -7,13 +7,6 @@ import { sameJson } from "./sameJson.js";
 
 /** A layer's `let` as the panel edits it: names and expressions in evaluation order. */
 export type LetEntries = readonly (readonly [string, string])[];
-
-/** Characters of an input value a refusal may echo. */
-const shown = 64;
-
-function echo(value: string): string {
-  return JSON.stringify(value.length > shown ? `${value.slice(0, shown)}...` : value);
-}
 
 /**
  * Replaces the `let` of the layer at `pointer` with `entries` (an empty list removes it); only `let` changes, every
@@ -47,14 +40,14 @@ export function setLayerLet(state: EditorState, pointer: string, entries: LetEnt
     }
     const [name, expression] = item as [string, string];
     if (names.has(name)) {
-      return refuse(state, "design", `the let name ${echo(name)} is used twice`, path);
+      return refuse(state, "design", `the let name ${quoteInput(name)} is used twice`, path);
     }
     names.add(name);
     if (name.length > LocalNames.maxLength) {
       return refuse(
         state,
         "design",
-        `the let name ${echo(name)} is longer than ${String(LocalNames.maxLength)} characters`,
+        `the let name ${quoteInput(name)} is longer than ${String(LocalNames.maxLength)} characters`,
         path,
       );
     }
@@ -62,7 +55,7 @@ export function setLayerLet(state: EditorState, pointer: string, entries: LetEnt
       return refuse(
         state,
         "design",
-        `the expression of ${echo(name)} is longer than ${String(DesignLimits.maxBindingLength)} characters`,
+        `the expression of ${quoteInput(name)} is longer than ${String(DesignLimits.maxBindingLength)} characters`,
         childPointer(path, name),
       );
     }

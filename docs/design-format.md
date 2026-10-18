@@ -85,17 +85,17 @@ Validation runs in this order and stops at the first stage with issues: source l
 
 ## Values used below
 
-| name     | accepted                                                                                                            |
-| -------- | ------------------------------------------------------------------------------------------------------------------- |
-| id       | `^[A-Za-z][A-Za-z0-9_-]{0,63}$`: layer ids, style, asset, component and prop names                                  |
-| binding  | a string starting with `{{` and ending with `}}`, at most 2048 (`maxBindingLength`) ([expressions](expressions.md)) |
-| colour   | `#rgb`, `#rgba`, `#rrggbb` or `#rrggbbaa`                                                                           |
-| paint    | a colour, `"none"`, a binding or a gradient                                                                         |
-| position | a number in [-100000, 100000]                                                                                       |
-| size     | a number in (0, 100000]                                                                                             |
-| length   | a number in [0, 100000]                                                                                             |
-| unit     | a number in [0, 1]                                                                                                  |
-| `B<x>`   | bindable: the literal `x` or a binding                                                                              |
+| name     | accepted                                                                                                                       |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| id       | `^[A-Za-z][A-Za-z0-9_-]{0,63}$`: layer ids, style, asset, component and prop names                                             |
+| binding  | a string starting with `{{` and ending with `}}`, at most 2048 characters (`maxBindingLength`) ([expressions](expressions.md)) |
+| colour   | `#rgb`, `#rgba`, `#rrggbb` or `#rrggbbaa`                                                                                      |
+| paint    | a colour, `"none"`, a binding or a gradient                                                                                    |
+| position | a number in [-100000, 100000]                                                                                                  |
+| size     | a number in (0, 100000]                                                                                                        |
+| length   | a number in [0, 100000]                                                                                                        |
+| unit     | a number in [0, 1]                                                                                                             |
+| `B<x>`   | bindable: the literal `x` or a binding                                                                                         |
 
 Every numeric, colour and boolean property of the canvas, layers, styles, layouts and gradients is bindable, and so are
 keyframe values and track timing (`duration`, `delay`, `stagger`); asset and component-definition metadata, the

@@ -102,6 +102,17 @@ describe("setLayerLet", () => {
     ).toContain("twice");
   });
 
+  test("a refusal escapes control and invisible characters of the name it quotes", () => {
+    const name = "a‮";
+    const message = refused([
+      [name, "{{ 1 }}"],
+      [name, "{{ 2 }}"],
+    ]);
+    expect(message).toContain(String.raw`\u0007`);
+    expect(message).toContain(String.raw`\u202e`);
+    expect(message.includes("") || message.includes("‮")).toBe(false);
+  });
+
   test("non-string items and a non-layer pointer are refused", () => {
     refused([["a", 1]] as unknown as LetEntries);
     refused(["a"] as unknown as LetEntries);

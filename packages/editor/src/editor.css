@@ -34,19 +34,29 @@ body {
 }
 .rm-field {
   display: grid;
-  grid-template-columns: 100px 1fr;
+  grid-template-columns: 100px minmax(0, 1fr);
   gap: 4px;
   margin-bottom: 4px;
 }
 .rm-fieldset {
+  min-width: 0;
   margin: 8px 0;
   padding: 4px 8px;
 }
 .rm-let-row {
   display: grid;
-  grid-template-columns: 1fr 2fr auto auto;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) auto auto;
   gap: 4px;
   margin-bottom: 4px;
+}
+.rm-field input,
+.rm-field textarea,
+.rm-field select,
+.rm-let-row input,
+.rm-let-row textarea {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
 }
 .rm-palette-scroll {
   overflow-x: auto;
@@ -121,7 +131,7 @@ body {
 
 @media (max-width: 700px) {
   .rm-let-row {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
   .rm-picker {
     width: 32px;
