@@ -2,16 +2,20 @@
 
 A poster profile in condensed Archivo with Geist Mono and an orange accent. The name runs the full width, the latest pushes run past in a ticker, and the year is a lit, shaded 3D terrain whose peaks turn orange; the longest streak and the busiest weekday stand beside it, and the weekday is left out (with its `busiest_day` label) for a year without contributions. The repositories are ranked by stars, each with a bar code of its weeks. Archivo covers Latin, Latin Extended-A and Vietnamese (of Greek only Δ, Ω, μ and π) and Noto Sans, its fallback, Cyrillic and Greek; the Geist Mono text (code and labels) covers Latin, most of Latin Extended-A, Vietnamese and Cyrillic, and Noto Sans Mono, its fallback, draws the rest of Latin Extended-A, Cyrillic and Greek; emoji and CJK are not drawn.
 
-Every section is a design of the public design format, drawn in a light and a dark variant (`<section>.json` and
-`<section>.dark.json`, which differ only in the root prop `theme`). Nothing in them names a person: the data comes
+Every section is a design of the public design format, one file each (`<section>.json`; the six repository cards share
+`repo.json`). `renders.json`, a render manifest, names the renders, sets the `slot` of each repository card and
+gives every render a dark variant (the root prop `theme` set to `dark`), so the light and the dark look come from the same
+file. Nothing in them names a person: the data comes
 from the `github.*` object of the account the Action runs for, and your own texts go into the root props below.
 
 ## Use it
 
 1. Copy this folder, with its `fonts/`, to `readmint/designs/horizon/` in your profile repository.
 2. Fill in your texts once in `settings.json` (below): they apply to every section, light and dark.
-3. Add the workflow below. Only the light designs are listed; the Action finds each `.dark.json` next to its light
-   design and writes both, and `props-file` merges your texts from `settings.json` into each of them.
+3. Add the workflow below. It names `renders.json` with `manifest` (Action v0.4.0 or newer); the Action renders every entry light and dark, and
+   `props-file` merges your texts from `settings.json` into each of them. A workflow copied from an earlier version of
+   this README lists the designs with `designs:` (and `repo-2.json` to `repo-6.json`, `.dark.json` twins that no longer
+   exist): replace that list with `manifest: readmint/designs/horizon/renders.json`.
 4. Paste the snippet below into your profile `README.md`, with your own login and repository addresses.
 
 ```yaml
@@ -32,37 +36,25 @@ jobs:
       - uses: actions/checkout@v7
       - uses: MrLarkyy/Readmint@vX.Y.Z
         with:
-          designs: |
-            readmint/designs/horizon/header.json
-            readmint/designs/horizon/ticker.json
-            readmint/designs/horizon/year.json
-            readmint/designs/horizon/work.json
-            readmint/designs/horizon/repo-1.json
-            readmint/designs/horizon/repo-2.json
-            readmint/designs/horizon/repo-3.json
-            readmint/designs/horizon/repo-4.json
-            readmint/designs/horizon/repo-5.json
-            readmint/designs/horizon/repo-6.json
-            readmint/designs/horizon/stack.json
-            readmint/designs/horizon/worked.json
-            readmint/designs/horizon/footer.json
+          manifest: readmint/designs/horizon/renders.json
           props-file: readmint/designs/horizon/settings.json
 ```
 
-The repository rows rank the first six of `github.pinned` (else of `github.repositories`, which the loader produces today) by stars: `repo-1` shows the most starred, `repo-6` the sixth. Each slot's design differs only in its root prop `slot` (0 to 5).
+The repository rows rank the first six of `github.pinned` (else of `github.repositories`, which the loader produces today) by stars: `repo-1` shows the most starred, `repo-6` the sixth. The six repository renders use `repo.json` and differ only in the `slot` the manifest gives them (0 to 5).
 
 The sections `header`, `repo-1` to `repo-6`, `ticker`, `worked` and `year` bind values with the layer property `let`, which needs the Action v0.4.0 or newer; an older Action refuses them with `unknown-property`. The `stack` section also uses the filters `exclude` and `sum` (the prop `languagesHide`) and needs the Action v0.5.0 or newer; an older Action refuses it even with an empty list.
 
 ## Your texts
 
 The personal texts are set once, in `settings.json` next to the designs: an object with one entry per section (the
-design's file name without `.json` and `.dark`), each holding that section's props. The Action input `props-file`
-(CLI: `--props`) merges a section's props into the root component of its light design **and** its `.dark` twin, so
+render name, which is the section name), each holding that section's props. The Action input `props-file`
+(CLI: `--props`) merges a section's props into the root component of the render of that name, light **and** dark, so
 you write every text once. They are empty in this folder, and an empty text hides its block; the file lists every
 prop of every section that has one, at its component default. Delete what you do not use, a prop left out keeps the
 design's own value. A value in `settings.json` wins over the same prop written in a design, an unknown section
 is ignored by the CLI and warned about by the Action, and a prop a section does not have fails the render. `theme`
-stays in the design (it is what makes the twin dark); `slot` of the repository sections may be set in either.
+stays in the design (the manifest's dark variant sets it to `dark`); `slot` of the repository sections is set by the
+manifest, and a settings section that sets it wins and is warned about by name.
 
 | section  | prop              | type   | what it shows                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | example                        |
 | -------- | ----------------- | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------ |

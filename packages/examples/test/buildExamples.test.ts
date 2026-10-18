@@ -53,20 +53,19 @@ const templates = readdirSync(profilesDir, { withFileTypes: true })
 describe("buildExamples over the real templates", () => {
   const files = buildExamples(templatesDir, options);
 
-  it("has a folder per template with every design and a dark twin of each light design", () => {
+  it("has a folder per template with every design, renders.json and no dark twin", () => {
     expect(templates.length).toBeGreaterThan(0);
     for (const template of templates) {
       const designs = readdirSync(join(profilesDir, template)).filter(
         (f) => f.endsWith(".json") && f !== "settings.json",
       );
+      expect(designs).toContain("renders.json");
       for (const design of designs) {
         expect(
           files.map((f) => f.path),
           design,
         ).toContain(`${template}/designs/${design}`);
-        if (!design.endsWith(".dark.json")) {
-          expect(designs).toContain(design.replace(/\.json$/, ".dark.json"));
-        }
+        expect(design).not.toMatch(/\.dark\.json$/u);
       }
       expect(files.map((f) => f.path)).toContain(`${template}/README.md`);
     }
@@ -100,9 +99,13 @@ describe("buildExamples over the real templates", () => {
       expect(content).toBe(`${JSON.stringify(props, null, 2)}\n`);
       for (const section of Object.keys(JSON.parse(content) as object)) {
         const paths = files.map((f) => f.path);
-        expect(paths, `${template}/${section}`).toContain(`${template}/designs/${section}.json`);
+        const renders = JSON.parse(text(files, `${template}/designs/renders.json`)) as {
+          renders: { name: string; design: string }[];
+        };
+        const render = renders.renders.find((entry) => entry.name === section);
+        expect(render, `${template}/${section}`).toBeDefined();
         expect(paths, `${template}/${section}`).toContain(
-          `${template}/designs/${section}.dark.json`,
+          `${template}/designs/${render?.design ?? ""}`,
         );
       }
     }
@@ -120,21 +123,15 @@ describe("buildExamples over the real templates", () => {
     }
   });
 
-  it("lists every light design of every template in the workflow, with the given action", () => {
+  it("renders the manifest of every template in the workflow, with the given action", () => {
     const workflow = text(files, ".github/workflows/readmint.yml");
     expect(workflow).toContain("uses: owner/action@v9.9.9");
     expect(workflow).not.toContain(".dark.json");
+    expect(workflow).not.toContain("designs: |");
     for (const template of templates) {
       expect(workflow).toContain(`output-dir: ${template}/readmint`);
-      for (const design of readdirSync(join(profilesDir, template))) {
-        if (
-          design.endsWith(".json") &&
-          !design.endsWith(".dark.json") &&
-          design !== "settings.json"
-        ) {
-          expect(workflow).toContain(`            ${template}/designs/${design}\n`);
-        }
-      }
+      expect(workflow).toContain(`          manifest: ${template}/designs/renders.json
+`);
     }
   });
 
@@ -187,7 +184,10 @@ describe("buildExamples on a broken template folder", () => {
     mkdirSync(template, { recursive: true });
     writeFileSync(join(template, "README.md"), "# T\n\n## The README\n\n```html\n<img>\n```\n");
     writeFileSync(join(template, "a.json"), JSON.stringify(design));
-    writeFileSync(join(template, "a.dark.json"), JSON.stringify(design));
+    writeFileSync(
+      join(template, "renders.json"),
+      JSON.stringify({ renders: [{ name: "a", design: "a.json", variants: ["dark"] }] }),
+    );
     for (const [name, content] of Object.entries(extra))
       writeFileSync(join(template, name), content);
     return dir;
@@ -199,7 +199,8 @@ describe("buildExamples on a broken template folder", () => {
       ...options,
       props: { t: { a: { x: "1" } } },
     });
-    expect(files.map((f) => f.path)).toContain("t/designs/a.dark.json");
+    expect(files.map((f) => f.path)).toContain("t/designs/renders.json");
+    expect(files.map((f) => f.path)).not.toContain("t/designs/a.dark.json");
   });
 
   it("does not treat the template's own settings.json as a design", () => {
@@ -224,13 +225,13 @@ describe("buildExamples on a broken template folder", () => {
       buildExamples(fixture(component), { ...options, actionRef: "o/a@v0.2.0", props }),
     ).toThrow(/v0\.2\.0 predates props-file/);
     expect(
-      buildExamples(fixture(component), { ...options, actionRef: "o/a@v0.3.0", props }),
+      buildExamples(fixture(component), { ...options, actionRef: "o/a@v0.4.0", props }),
     ).not.toHaveLength(0);
     expect(
       buildExamples(fixture(component), { ...options, actionRef: "o/a@main", props }),
     ).not.toHaveLength(0);
     expect(
-      buildExamples(fixture(component), { ...options, actionRef: "o/a@v0.2.0", props: {} }),
+      buildExamples(fixture(component), { ...options, actionRef: "o/a@v0.4.0", props: {} }),
     ).not.toHaveLength(0);
   });
 
@@ -246,9 +247,47 @@ describe("buildExamples on a broken template folder", () => {
     );
   });
 
-  it("throws when a light design has no dark twin", () => {
+  it("throws when a design is listed by no render", () => {
     const dir = fixture(component, { "b.json": "{}" });
-    expect(() => buildExamples(dir, { ...options, props: {} })).toThrow(/b\.dark\.json/);
+    expect(() => buildExamples(dir, { ...options, props: {} })).toThrow(
+      /b\.json is listed by no render/,
+    );
+  });
+
+  it("throws when a render names a missing design or the manifest is missing or invalid", () => {
+    const missing = fixture(component, {
+      "renders.json": JSON.stringify({ renders: [{ name: "a", design: "gone.json" }] }),
+    });
+    expect(() => buildExamples(missing, { ...options, props: {} })).toThrow(/no design file/);
+    const invalid = fixture(component, { "renders.json": "{" });
+    expect(() => buildExamples(invalid, { ...options, props: {} })).toThrow(
+      /renders\.json does not validate/,
+    );
+    const dir = fixture(component);
+    rmSync(join(dir, "profiles", "t", "renders.json"));
+    expect(() => buildExamples(dir, { ...options, props: {} })).toThrow(/t: no renders[.]json/);
+  });
+
+  it("refuses a pinned Action older than manifest, accepts v0.4.0 and @main", () => {
+    expect(() =>
+      buildExamples(fixture(component), { ...options, actionRef: "o/a@v0.3.0", props: {} }),
+    ).toThrow(/v0[.]3[.]0 predates manifest [(]Action v0[.]4[.]0[)]/);
+    for (const actionRef of ["o/a@v0.4.0", "o/a@main"]) {
+      expect(
+        buildExamples(fixture(component), { ...options, actionRef, props: {} }),
+      ).not.toHaveLength(0);
+    }
+  });
+
+  it("has a workflow step with manifest and props-file, no designs list", () => {
+    const files = buildExamples(fixture(component), {
+      ...options,
+      props: { t: { a: { x: "1" } } },
+    });
+    const workflow = text(files, ".github/workflows/readmint.yml");
+    expect(workflow).toContain("          manifest: t/designs/renders.json\n");
+    expect(workflow).toContain("          props-file: t/designs/settings.json\n");
+    expect(workflow).not.toContain("designs: |");
   });
 });
 

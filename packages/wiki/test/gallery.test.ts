@@ -130,11 +130,10 @@ describe("the gallery list", () => {
         expect(template.items).toEqual([template.name]);
         continue;
       }
-      const sections = readdirSync(`${templatesDir}profiles/${template.name}`)
-        .filter((file) => file.endsWith(".json") && !file.endsWith(".dark.json"))
-        .map((file) => file.slice(0, -".json".length))
-        .filter((name) => name !== "settings");
-      expect([...template.items].sort(), template.name).toEqual(sections.sort());
+      const manifest = JSON.parse(
+        readFileSync(`${templatesDir}profiles/${template.name}/renders.json`, "utf8"),
+      ) as { renders: { name: string }[] };
+      expect([...template.items], template.name).toEqual(manifest.renders.map((r) => r.name));
     }
   });
 

@@ -103,7 +103,7 @@ const pin = (name: string) =>
   );
 
 test("shipped settings that lack a defaulted or layer-set prop (theme) show no warning", async () => {
-  for (const file of ["header.json", "header.dark.json"]) {
+  for (const file of ["header.json"]) {
     const imported = await importDesign(pin(file));
     if (!imported.ok) throw new Error("pinscreen design does not import");
     const state = loadSettings(createEditorState(imported.value), pin("settings.json"), "header");

@@ -698,7 +698,7 @@ describe("profileLogos", () => {
 
   test.each(strips)("the card panel of %o is the colour the fills are checked against", (strip) => {
     for (const theme of themes) {
-      expect(profileSource(strip.template, strip.section, theme).toLowerCase()).toContain(
+      expect(profileSource(strip.template, strip.section).toLowerCase()).toContain(
         strip.panel[theme].toLowerCase(),
       );
     }
@@ -744,20 +744,17 @@ describe("profileLogos", () => {
 });
 
 describe("the templates", () => {
-  test.each(strips.flatMap((strip) => themes.map((theme) => [strip, theme] as const)))(
-    "%o (%s) declare the colour logo props with an empty default",
-    (strip, theme) => {
-      const design = JSON.parse(profileSource(strip.template, strip.section, theme)) as {
-        components: Record<string, { props?: Record<string, { default?: unknown }> }>;
-      };
-      const declared = Object.values(design.components).flatMap((component) =>
-        Object.entries(component.props ?? {}),
-      );
-      for (const name of ["logoLayers", "logoFills", "logoFillsDark", "logoWithName"]) {
-        const found = declared.filter(([key]) => key === name);
-        expect(found.length, name).toBeGreaterThan(0);
-        for (const [, prop] of found) expect(prop.default).toEqual([]);
-      }
-    },
-  );
+  test.each(strips)("%o declare the colour logo props with an empty default", (strip) => {
+    const design = JSON.parse(profileSource(strip.template, strip.section)) as {
+      components: Record<string, { props?: Record<string, { default?: unknown }> }>;
+    };
+    const declared = Object.values(design.components).flatMap((component) =>
+      Object.entries(component.props ?? {}),
+    );
+    for (const name of ["logoLayers", "logoFills", "logoFillsDark", "logoWithName"]) {
+      const found = declared.filter(([key]) => key === name);
+      expect(found.length, name).toBeGreaterThan(0);
+      for (const [, prop] of found) expect(prop.default).toEqual([]);
+    }
+  });
 });

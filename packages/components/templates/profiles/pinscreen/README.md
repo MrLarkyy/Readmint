@@ -2,16 +2,20 @@
 
 An editor-style profile in Geist and Geist Mono, with IntelliJ Light and Darcula syntax colours. The year is a 3D wall of pins, one a day, with a ripple running out from today; the repositories are Kotlin objects, recent commits a terminal `git log`, and the stack a `build.gradle.kts`. Geist and Geist Mono cover Latin, most of Latin Extended-A, Vietnamese and Cyrillic; Noto Sans and Noto Sans Mono, their fallbacks, draw the rest of Latin Extended-A, Cyrillic and Greek. Emoji and CJK are not drawn.
 
-Every section is a design of the public design format, drawn in a light and a dark variant (`<section>.json` and
-`<section>.dark.json`, which differ only in the root prop `theme`). Nothing in them names a person: the data comes
+Every section is a design of the public design format, one file each (`<section>.json`; the six repository cards share
+`repo.json`). `renders.json`, a render manifest, names the renders, sets the `slot` of each repository card and
+gives every render a dark variant (the root prop `theme` set to `dark`), so the light and the dark look come from the same
+file. Nothing in them names a person: the data comes
 from the `github.*` object of the account the Action runs for, and your own texts go into the root props below.
 
 ## Use it
 
 1. Copy this folder, with its `fonts/`, to `readmint/designs/pinscreen/` in your profile repository.
 2. Fill in your texts once in `settings.json` (below): they apply to every section, light and dark.
-3. Add the workflow below. Only the light designs are listed; the Action finds each `.dark.json` next to its light
-   design and writes both, and `props-file` merges your texts from `settings.json` into each of them.
+3. Add the workflow below. It names `renders.json` with `manifest` (Action v0.4.0 or newer); the Action renders every entry light and dark, and
+   `props-file` merges your texts from `settings.json` into each of them. A workflow copied from an earlier version of
+   this README lists the designs with `designs:` (and `repo-2.json` to `repo-6.json`, `.dark.json` twins that no longer
+   exist): replace that list with `manifest: readmint/designs/pinscreen/renders.json`.
 4. Paste the snippet below into your profile `README.md`, with your own login and repository addresses.
 
 ```yaml
@@ -32,36 +36,25 @@ jobs:
       - uses: actions/checkout@v7
       - uses: MrLarkyy/Readmint@vX.Y.Z
         with:
-          designs: |
-            readmint/designs/pinscreen/header.json
-            readmint/designs/pinscreen/year.json
-            readmint/designs/pinscreen/work.json
-            readmint/designs/pinscreen/repo-1.json
-            readmint/designs/pinscreen/repo-2.json
-            readmint/designs/pinscreen/repo-3.json
-            readmint/designs/pinscreen/repo-4.json
-            readmint/designs/pinscreen/repo-5.json
-            readmint/designs/pinscreen/repo-6.json
-            readmint/designs/pinscreen/log.json
-            readmint/designs/pinscreen/stack.json
-            readmint/designs/pinscreen/footer.json
+          manifest: readmint/designs/pinscreen/renders.json
           props-file: readmint/designs/pinscreen/settings.json
 ```
 
-The repository cards show `github.pinned` in the order the data gives, or `github.repositories` where the data has no pinned list (the loader fills `github.pinned`). Change which repository a card shows by changing the root prop `slot` of its design (0 to 5).
+The repository cards show `github.pinned` in the order the data gives, or `github.repositories` where the data has no pinned list (the loader fills `github.pinned`). Change which repository a card shows by changing its `slot` (0 to 5) in `renders.json`.
 
 The sections `header`, `log`, `repo-1` to `repo-6`, `stack` and `year` bind values with the layer property `let`, which needs the Action v0.4.0 or newer; an older Action refuses them with `unknown-property`. The `stack` section also uses the filters `exclude` and `sum` (the prop `languagesHide`) and needs the Action v0.5.0 or newer; an older Action refuses it even with an empty list.
 
 ## Your texts
 
 The personal texts are set once, in `settings.json` next to the designs: an object with one entry per section (the
-design's file name without `.json` and `.dark`), each holding that section's props. The Action input `props-file`
-(CLI: `--props`) merges a section's props into the root component of its light design **and** its `.dark` twin, so
+render name, which is the section name), each holding that section's props. The Action input `props-file`
+(CLI: `--props`) merges a section's props into the root component of the render of that name, light **and** dark, so
 you write every text once. They are empty in this folder, and an empty text hides its block; the file lists every
 prop of every section that has one, at its component default. Delete what you do not use, a prop left out keeps the
 design's own value. A value in `settings.json` wins over the same prop written in a design, an unknown section
 is ignored by the CLI and warned about by the Action, and a prop a section does not have fails the render. `theme`
-stays in the design (it is what makes the twin dark); `slot` of the repository sections may be set in either.
+stays in the design (the manifest's dark variant sets it to `dark`); `slot` of the repository sections is set by the
+manifest, and a settings section that sets it wins and is warned about by name.
 
 | section  | prop             | type   | what it shows                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | example                                         |
 | -------- | ---------------- | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- |

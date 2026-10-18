@@ -1,8 +1,11 @@
-import { cp, readdir } from "node:fs/promises";
+import { cp, readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import { sampleProfileData } from "../../components/test/sampleProfileData.js";
+import { stripFontData } from "../../components/test/stripFontData.js";
 import { type ActionTree, makeActionTree } from "./actionTree.js";
+
+const components = join(import.meta.dirname, "..", "..", "components");
 
 let tree: ActionTree;
 
@@ -13,7 +16,7 @@ const names = slots.map((slot) => `repo-${String(slot)}`);
 const manifest = {
   renders: slots.map((slot) => ({
     name: `repo-${String(slot)}`,
-    design: "repo-1.json",
+    design: "repo.json",
     props: { slot: slot - 1 },
     variants: ["dark"],
   })),
@@ -43,13 +46,7 @@ const dry = {
 };
 
 describe("the manifest input", () => {
-  test("six renders write the bytes of the designs list of repo-1..6 and their twins, light and dark", async () => {
-    const listed = await tree.run({
-      ...dry,
-      designs: names.map((name) => `${folder}/${name}.json`).join("\n"),
-      "output-dir": "listed",
-    });
-    expect(listed.code).toBe(0);
+  test("six renders write the goldens of repo-1..6, light and dark", async () => {
     const made = await tree.run({
       ...dry,
       manifest: `${folder}/renders.json`,
@@ -63,10 +60,16 @@ describe("the manifest input", () => {
       ),
     );
     const files = (await readdir(join(tree.root, "made"))).sort();
-    expect(files).toEqual((await readdir(join(tree.root, "listed"))).sort());
-    expect(files).toHaveLength(12);
-    for (const file of files) {
-      expect(await tree.read(`made/${file}`), file).toBe(await tree.read(`listed/${file}`));
+    expect(files).toEqual(names.flatMap((name) => [`${name}.dark.svg`, `${name}.svg`]).sort());
+    for (const name of names) {
+      for (const theme of ["light", "dark"] as const) {
+        const file = theme === "dark" ? `${name}.dark.svg` : `${name}.svg`;
+        const golden = await readFile(
+          join(components, "test", "golden", "profiles-horizon-svg", `${name}-${theme}.svg`),
+          "utf8",
+        );
+        expect(stripFontData(await tree.read(`made/${file}`)), file).toBe(golden);
+      }
     }
     expect(made.outputs["files"]?.split("\n")).toHaveLength(12);
   });
@@ -136,9 +139,34 @@ describe("the manifest input", () => {
       '::warning::props-file section "ghost" names no listed design or render',
     );
     expect(run.log).toContain(
-      'repo-1.json (render "repo-2"): settings section "repo-2" sets "slot", which overrides the props of render "repo-2"',
+      'repo.json (render "repo-2"): settings section "repo-2" sets "slot", which overrides the props of render "repo-2"',
     );
     expect(run.log).not.toContain('section "repo-2" names no listed');
+  });
+});
+
+describe.each(["year-ring", "horizon", "pinscreen"])("the shipped %s manifest", (template) => {
+  test("renders every entry light and dark with the template settings, no warning", async () => {
+    await cp(join(components, "templates", "profiles", template), join(tree.root, "shipped"), {
+      recursive: true,
+    });
+    const run = await tree.run({
+      "data-file": "data.json",
+      "props-file": "shipped/settings.json",
+      manifest: "shipped/renders.json",
+      "output-dir": "out",
+      "dry-run": "true",
+    });
+    expect(run.code).toBe(0);
+    expect(run.log.match(/::(warning|error)::.*/g) ?? []).toEqual([]);
+    const listed = JSON.parse(
+      await readFile(join(tree.root, "shipped", "renders.json"), "utf8"),
+    ) as {
+      renders: { name: string }[];
+    };
+    expect((await readdir(join(tree.root, "out"))).sort()).toEqual(
+      listed.renders.flatMap(({ name }) => [`${name}.dark.svg`, `${name}.svg`]).sort(),
+    );
   });
 });
 

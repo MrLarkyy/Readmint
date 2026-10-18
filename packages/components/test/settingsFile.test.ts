@@ -4,7 +4,12 @@ import { applyDesignProps, parseDesignProps } from "@readmint/format";
 import { profileExampleProps } from "@readmint/examples/props";
 import { describe, expect, test } from "vitest";
 import { profileTemplates, type ProfileTemplate } from "../src/index.js";
-import { loadExampleProfile, loadProfile, type ProfileTheme } from "./profileDesigns.js";
+import {
+  loadExampleProfile,
+  loadProfile,
+  profileRenders,
+  type ProfileTheme,
+} from "./profileDesigns.js";
 
 const folders = join(import.meta.dirname, "..", "templates", "profiles");
 const themes: readonly ProfileTheme[] = ["light", "dark"];
@@ -23,9 +28,8 @@ describe.each(Object.keys(profileTemplates) as ProfileTemplate[])(
     const file = settings(template);
 
     test("names only sections of the template", () => {
-      for (const section of Object.keys(file)) {
-        expect(profileTemplates[template], section).toContain(section);
-      }
+      const renders = profileRenders(template).map((render) => render.name);
+      for (const section of Object.keys(file)) expect(renders, section).toContain(section);
     });
 
     test("covers every personal root prop of every section that has any, at its component default", () => {
@@ -47,10 +51,11 @@ describe.each(Object.keys(profileTemplates) as ProfileTemplate[])(
       }
     });
 
-    test.each(themes)("applies to every section's %s design without an issue", (theme) => {
-      for (const [section, props] of Object.entries(file)) {
-        const result = applyDesignProps(loadProfile(template, section as never, theme), props);
-        expect(result.ok, `${section} ${theme}`).toBe(true);
+    test.each(themes)("applies to every render's %s design without an issue", (theme) => {
+      for (const render of profileRenders(template)) {
+        const props = file[render.name] ?? {};
+        const result = applyDesignProps(loadProfile(template, render.name as never, theme), props);
+        expect(result.ok, `${render.name} ${theme}`).toBe(true);
       }
     });
 

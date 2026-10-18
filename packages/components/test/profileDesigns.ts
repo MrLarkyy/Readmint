@@ -1,4 +1,12 @@
-import { applyDesignProps, parseDesign, type Design } from "@readmint/format";
+import {
+  applyDesignProps,
+  applyRenderVariant,
+  parseDesign,
+  parseRenderManifest,
+  renderVariant,
+  type Design,
+  type RenderManifestEntry,
+} from "@readmint/format";
 import { renderSvg, type RenderIssueCode, type RenderLimits } from "@readmint/renderer";
 import type { ProfileSection, ProfileTemplate } from "../src/index.js";
 import { profileExampleProps } from "@readmint/examples/props";
@@ -7,7 +15,7 @@ export type ProfileTheme = "light" | "dark";
 
 /** The design files as published, read as text in Node and in the browser alike, by path below `templates/profiles/`. */
 const designSources = import.meta.glob(
-  ["../templates/profiles/*/*.json", "!../templates/profiles/*/settings.json"],
+  ["../templates/profiles/*/*.json", "!../templates/profiles/*/{settings,renders}.json"],
   {
     eager: true,
     query: "?raw",
@@ -28,35 +36,75 @@ function dataUriBytes(uri: string): Uint8Array {
   return Uint8Array.from(binary, (char) => char.charCodeAt(0));
 }
 
-/** The file name of a design: the dark twin is `<section>.dark.json`. */
-export function profileFile(section: ProfileSection, theme: ProfileTheme): string {
-  return theme === "dark" ? `${section}.dark.json` : `${section}.json`;
+const manifestSources = import.meta.glob("../templates/profiles/*/renders.json", {
+  eager: true,
+  query: "?raw",
+  import: "default",
+});
+
+const manifests = new Map<ProfileTemplate, readonly RenderManifestEntry[]>();
+
+/** The renders of a template as its `renders.json` lists them, in README order. */
+export function profileRenders(template: ProfileTemplate): readonly RenderManifestEntry[] {
+  let renders = manifests.get(template);
+  if (renders === undefined) {
+    const path = `${prefix}${template}/renders.json`;
+    const source = manifestSources[path];
+    if (source === undefined) throw new Error(`no manifest ${path}`);
+    const result = parseRenderManifest(source);
+    if (!result.ok) throw new Error(`${path} does not validate: ${JSON.stringify(result.issues)}`);
+    renders = result.value.renders;
+    manifests.set(template, renders);
+  }
+  return renders;
 }
 
-/** The text of a design file as published. */
-export function profileSource(
+/** The manifest entry of a section: the render named like it. */
+export function profileRender(
   template: ProfileTemplate,
   section: ProfileSection,
-  theme: ProfileTheme = "light",
-): string {
-  const path = `${prefix}${template}/${profileFile(section, theme)}`;
+): RenderManifestEntry {
+  const entry = profileRenders(template).find((render) => render.name === section);
+  if (entry === undefined) throw new Error(`${template}/renders.json has no render ${section}`);
+  return entry;
+}
+
+/** The file name of the design a section renders (`repo.json` for the six repository cards). */
+export function profileFile(template: ProfileTemplate, section: ProfileSection): string {
+  return profileRender(template, section).design;
+}
+
+/** The text of the design file a section renders, as published. */
+export function profileSource(template: ProfileTemplate, section: ProfileSection): string {
+  const path = `${prefix}${template}/${profileFile(template, section)}`;
   const source = designSources[path];
   if (source === undefined) throw new Error(`no design file ${path}`);
   return source;
 }
 
-/** A fresh, validated copy of a section design; one that does not validate fails the test naming its issues. */
+/**
+ * A fresh, validated copy of a section design as the CLI and the Action render it: the design, the entry's props,
+ * then the dark variant; one that does not validate fails the test naming its issues.
+ */
 export function loadProfile(
   template: ProfileTemplate,
   section: ProfileSection,
   theme: ProfileTheme = "light",
 ): Design {
-  const result = parseDesign(profileSource(template, section, theme));
-  if (!result.ok)
-    throw new Error(
-      `${template}/${profileFile(section, theme)} does not validate: ${JSON.stringify(result.issues)}`,
-    );
-  return result.value;
+  const entry = profileRender(template, section);
+  const file = `${template}/${entry.design}`;
+  const parsed = parseDesign(profileSource(template, section));
+  if (!parsed.ok) throw new Error(`${file} does not validate: ${JSON.stringify(parsed.issues)}`);
+  const withProps = applyDesignProps(parsed.value, entry.props);
+  if (!withProps.ok)
+    throw new Error(`${file} takes no props of ${section}: ${JSON.stringify(withProps.issues)}`);
+  if (theme === "light") return withProps.value;
+  const dark = renderVariant("dark");
+  if (dark === undefined) throw new Error("no dark render variant");
+  const variant = applyRenderVariant(withProps.value, dark);
+  if (!variant.ok)
+    throw new Error(`${file} takes no dark variant: ${JSON.stringify(variant.issues)}`);
+  return variant.value;
 }
 
 /**
@@ -76,7 +124,7 @@ export function loadExampleProfile(
   const result = applyDesignProps(design, kept);
   if (!result.ok) {
     throw new Error(
-      `${template}/${profileFile(section, theme)} takes no example props: ${JSON.stringify(result.issues)}`,
+      `${template}/${section} takes no example props: ${JSON.stringify(result.issues)}`,
     );
   }
   return result.value;

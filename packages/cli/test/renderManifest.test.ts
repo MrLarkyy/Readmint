@@ -42,14 +42,14 @@ async function copyTemplate(template: string): Promise<string> {
 const repoManifest = {
   renders: slots.map((slot) => ({
     name: `repo-${String(slot)}`,
-    design: "repo-1.json",
+    design: "repo.json",
     props: { slot: slot - 1 },
     variants: ["dark"],
   })),
 };
 
 describe.each(["horizon", "pinscreen", "year-ring"])("%s repo-1..6 as one design", (template) => {
-  test("six renders on repo-1.json write the bytes of repo-1..6, light and dark, the same twice", async () => {
+  test("six renders on repo.json write the goldens of repo-1..6, light and dark, the same twice", async () => {
     const folder = await copyTemplate(template);
     await writeFile(join(folder, "renders.json"), JSON.stringify(repoManifest));
     const base = ["--data", "data.json", "--props", "settings.json"];
@@ -66,10 +66,17 @@ describe.each(["horizon", "pinscreen", "year-ring"])("%s repo-1..6 as one design
       const name = `repo-${String(slot)}`;
       for (const theme of ["light", "dark"] as const) {
         const file = theme === "dark" ? `${name}.dark` : name;
-        const expected = await run(folder, ["render", `${file}.json`, ...base]);
-        expect(expected.code).toBe(ExitCode.ok);
         const bytes = await readFile(join(folder, "out", `${file}.svg`), "utf8");
-        expect(bytes).toBe(expected.stdout);
+        if (slot === 1) {
+          const single = await run(folder, [
+            "render",
+            "repo.json",
+            ...(theme === "dark" ? ["--variant", "dark"] : []),
+            ...base,
+          ]);
+          expect(single.code).toBe(ExitCode.ok);
+          expect(bytes).toBe(single.stdout);
+        }
         const golden = readFileSync(
           join(components, "test", "golden", `profiles-${template}-svg`, `${name}-${theme}.svg`),
           "utf8",
@@ -96,7 +103,7 @@ test("the snippet on stdout is built from the names", async () => {
     join(folder, "renders.json"),
     JSON.stringify({
       renders: [
-        { name: "repo-1", design: "repo-1.json", props: { slot: 0 }, variants: ["dark"] },
+        { name: "repo-1", design: "repo.json", props: { slot: 0 }, variants: ["dark"] },
         { name: "header", design: "header.json" },
       ],
     }),
@@ -132,8 +139,8 @@ describe("settings", () => {
       join(folder, "renders.json"),
       JSON.stringify({
         renders: [
-          { name: "repo-2", design: "repo-1.json", props: { slot: 1 }, variants: [] },
-          { name: "repo-3", design: "repo-1.json", props: { slot: 2 }, variants: [] },
+          { name: "repo-2", design: "repo.json", props: { slot: 1 }, variants: [] },
+          { name: "repo-3", design: "repo.json", props: { slot: 2 }, variants: [] },
         ],
       }),
     );
@@ -160,7 +167,12 @@ describe("settings", () => {
     expect(await readFile(join(folder, "named", "repo-2.svg"), "utf8")).toBe(
       await readFile(join(folder, "plain", "repo-2.svg"), "utf8"),
     );
-    const dark = await run(folder, ["render", "repo-3.dark.json", "--data", "data.json"]);
+    const twin = JSON.parse(await readFile(join(folder, "repo.json"), "utf8")) as {
+      layers: { props: Record<string, unknown> }[];
+    };
+    Object.assign(twin.layers[0]?.props ?? {}, { slot: 2, theme: "dark" });
+    await writeFile(join(folder, "twin.json"), JSON.stringify(twin));
+    const dark = await run(folder, ["render", "twin.json", "--data", "data.json"]);
     expect(await readFile(join(folder, "named", "repo-3.svg"), "utf8")).toBe(dark.stdout);
   });
 
@@ -184,8 +196,14 @@ describe("settings", () => {
     ]);
     expect(made).toMatchObject({ code: ExitCode.ok, stderr: "" });
     for (const name of sections) {
-      for (const file of [name, `${name}.dark`]) {
-        const single = await run(folder, ["render", `${file}.json`, ...base]);
+      for (const theme of ["light", "dark"] as const) {
+        const single = await run(folder, [
+          "render",
+          `${name}.json`,
+          ...(theme === "dark" ? ["--variant", "dark"] : []),
+          ...base,
+        ]);
+        const file = theme === "dark" ? `${name}.dark` : name;
         expect(await readFile(join(folder, "o", `${file}.svg`), "utf8")).toBe(single.stdout);
       }
     }
@@ -196,7 +214,7 @@ describe("settings", () => {
     await writeFile(
       join(folder, "renders.json"),
       JSON.stringify({
-        renders: [{ name: "repo-2", design: "repo-1.json", props: { slot: 1 }, variants: [] }],
+        renders: [{ name: "repo-2", design: "repo.json", props: { slot: 1 }, variants: [] }],
       }),
     );
     await writeFile(join(folder, "s.json"), JSON.stringify({ "repo-2": { slot: 4 } }));
@@ -213,7 +231,7 @@ describe("settings", () => {
     ]);
     expect(result.code).toBe(ExitCode.ok);
     expect(result.stderr).toBe(
-      'repo-1.json (render "repo-2"): settings section "repo-2" sets "slot", which overrides the props of render "repo-2"\n',
+      'repo.json (render "repo-2"): settings section "repo-2" sets "slot", which overrides the props of render "repo-2"\n',
     );
   });
 });
@@ -262,8 +280,8 @@ describe("failures", () => {
   test("a bad prop value fails at the render and never shows the value", async () => {
     const { result, written } = await failing({
       renders: [
-        { name: "ok", design: "repo-1.json", props: { slot: 1 } },
-        { name: "bad", design: "repo-1.json", props: { slot: "V4LUE-SENTINEL" } },
+        { name: "ok", design: "repo.json", props: { slot: 1 } },
+        { name: "bad", design: "repo.json", props: { slot: "V4LUE-SENTINEL" } },
       ],
     });
     expect(result.code).toBe(ExitCode.invalid);
@@ -276,9 +294,9 @@ describe("failures", () => {
   test("one failing entry writes no file and every problem is listed", async () => {
     const { result, written } = await failing({
       renders: [
-        { name: "a", design: "repo-1.json", props: { slot: 1 } },
-        { name: "b", design: "repo-1.json", props: { nope: 1 } },
-        { name: "c", design: "repo-1.json", props: { alsoNope: 1 } },
+        { name: "a", design: "repo.json", props: { slot: 1 } },
+        { name: "b", design: "repo.json", props: { nope: 1 } },
+        { name: "c", design: "repo.json", props: { alsoNope: 1 } },
       ],
     });
     expect(result.code).toBe(ExitCode.invalid);
@@ -289,8 +307,8 @@ describe("failures", () => {
   test("a duplicate name, letter case ignored, is exit 1", async () => {
     const { result } = await failing({
       renders: [
-        { name: "Repo", design: "repo-1.json" },
-        { name: "repo", design: "repo-1.json" },
+        { name: "Repo", design: "repo.json" },
+        { name: "repo", design: "repo.json" },
       ],
     });
     expect(result.code).toBe(ExitCode.invalid);
@@ -299,7 +317,7 @@ describe("failures", () => {
 
   test("the run variant clashing with a render prop is refused", async () => {
     const { result } = await failing(
-      { renders: [{ name: "a", design: "repo-1.json", props: { theme: "dark" } }] },
+      { renders: [{ name: "a", design: "repo.json", props: { theme: "dark" } }] },
       ["--variant", "dark"],
     );
     expect(result.code).toBe(ExitCode.invalid);
@@ -308,7 +326,7 @@ describe("failures", () => {
 
   test("the run variant applies to a render without variants", async () => {
     const { folder, result } = await failing(
-      { renders: [{ name: "a", design: "repo-1.json", props: { slot: 0 } }] },
+      { renders: [{ name: "a", design: "repo.json", props: { slot: 0 } }] },
       ["--variant", "dark"],
     );
     expect(result.code).toBe(ExitCode.ok);
@@ -376,8 +394,8 @@ describe("labels and repeated failures", () => {
       join(folder, "renders.json"),
       JSON.stringify({
         renders: [
-          { name: "a", design: "repo-1.json", props: { slotz: 1 }, variants: ["dark"] },
-          { name: "b", design: "repo-1.json", props: { slotz: 2 } },
+          { name: "a", design: "repo.json", props: { slotz: 1 }, variants: ["dark"] },
+          { name: "b", design: "repo.json", props: { slotz: 2 } },
         ],
       }),
     );
@@ -394,7 +412,7 @@ describe("labels and repeated failures", () => {
     await writeFile(
       join(folder, "renders.json"),
       JSON.stringify({
-        renders: [{ name: "a", design: "repo-1.json", props: { theme: "light" } }],
+        renders: [{ name: "a", design: "repo.json", props: { theme: "light" } }],
       }),
     );
     const result = await run(folder, [

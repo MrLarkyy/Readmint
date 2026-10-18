@@ -1,92 +1,96 @@
-import { readdirSync, readFileSync } from "node:fs";
+import { mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { readdirSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { renderSvg } from "@readmint/renderer";
-import { describe, expect, test } from "vitest";
+import { afterAll, describe, expect, test } from "vitest";
 import { profileTemplates } from "../../components/src/index.js";
-import { stripFontData } from "../../components/test/stripFontData.js";
 import { sampleProfileData } from "../../components/test/sampleProfileData.js";
-import {
-  loadDesignAssets,
-  loadDesignFile,
-  loadRenderInput,
-  renderInput,
-  renderVariant,
-} from "../src/index.js";
+import { stripFontData } from "../../components/test/stripFontData.js";
+import { ExitCode, runCli } from "../src/index.js";
 
 // The profile templates of @readmint/components are read from disk as a user does, without the package depending on it.
 const components = join(import.meta.dirname, "..", "..", "components");
 const folders = join(components, "templates", "profiles");
+const templates = Object.keys(profileTemplates) as (keyof typeof profileTemplates)[];
 
-const cases = Object.entries(profileTemplates).flatMap(([template, sections]) =>
-  sections.flatMap((section) =>
-    (["light", "dark"] as const).map((theme) => [template, section, theme] as const),
-  ),
-);
+const scratch: string[] = [];
+afterAll(async () => {
+  await Promise.all(scratch.map((folder) => rm(folder, { recursive: true, force: true })));
+});
+
+async function run(argv: readonly string[], cwd = components) {
+  let stdout = "";
+  let stderr = "";
+  const code = await runCli(argv, {
+    cwd,
+    stdout: (text) => {
+      stdout += text;
+    },
+    stderr: (text) => {
+      stderr += text;
+    },
+  });
+  return { code, stdout, stderr };
+}
 
 test("the folders hold the profile templates", () => {
   expect(readdirSync(folders).sort()).toEqual(Object.keys(profileTemplates).sort());
 });
 
-// The golden render passes the font bytes itself; the CLI path resolves the relative `src` and must give the same SVG.
-describe.each(cases)("%s %s %s", (template, section, theme) => {
-  const file = theme === "dark" ? `${section}.dark.json` : `${section}.json`;
-
-  test("renders from disk as its golden, the same bytes twice", async () => {
-    const folder = join(folders, template);
-    const design = await loadDesignFile(file, { cwd: folder });
-    const assets = await loadDesignAssets(design);
-    expect(Object.keys(assets.fonts ?? {}).sort()).toEqual(
-      Object.keys(design.design.assets?.fonts ?? {}).sort(),
-    );
-    const render = () => {
-      const result = renderSvg(design.design, { data: sampleProfileData(), assets });
-      if (!result.ok) throw new Error(`render failed: ${JSON.stringify(result.issues)}`);
-      expect(result.warnings).toEqual([]);
-      return result.svg;
-    };
-    const svg = render();
-    expect(render()).toBe(svg);
-    const golden = readFileSync(
-      join(components, "test", "golden", `profiles-${template}-svg`, `${section}-${theme}.svg`),
+// The golden render passes the font bytes itself; the CLI path reads the manifest, resolves the relative `src` of the
+// fonts and applies the entry's props and the dark variant, and must give the same SVG.
+describe.each(templates)("%s renders.json from disk", (template) => {
+  const manifest = join(folders, template, "renders.json");
+  const golden = (name: string, theme: "light" | "dark") =>
+    readFile(
+      join(components, "test", "golden", `profiles-${template}-svg`, `${name}-${theme}.svg`),
       "utf8",
     );
-    expect(stripFontData(svg)).toBe(golden);
-  });
-});
 
-const dark = renderVariant("dark");
-
-// The variant of the light file is the twin that would exist: same bytes, with and without the template's settings.
-describe.each(
-  Object.entries(profileTemplates).flatMap(([template, sections]) =>
-    sections.map((section) => [template, section] as const),
-  ),
-)("%s %s dark variant", (template, section) => {
-  const cwd = join(folders, template);
-  const render = async (design: string, options: object, props?: string) => {
-    const input = await loadRenderInput(
-      { design, ...(props === undefined ? {} : { props }) },
-      { cwd, data: sampleProfileData(), ...options },
+  async function renderTo(extra: readonly string[] = []) {
+    const out = await mkdtemp(join(tmpdir(), "readmint-profile-"));
+    scratch.push(out);
+    await writeFile(join(out, "data.json"), JSON.stringify(sampleProfileData()));
+    const result = await run(
+      ["render", "--manifest", manifest, "--out-dir", "svg", "--data", "data.json", ...extra],
+      out,
     );
-    const result = renderInput(input, {});
-    if (!result.ok) throw new Error(`render failed: ${JSON.stringify(result.issues)}`);
-    return result.svg;
-  };
+    return { out: join(out, "svg"), result };
+  }
 
-  test("renders its dark golden from the light file", async () => {
-    if (dark === undefined) throw new Error("no dark variant");
-    const svg = await render(`${section}.json`, { variant: dark });
-    const golden = readFileSync(
-      join(components, "test", "golden", `profiles-${template}-svg`, `${section}-dark.svg`),
-      "utf8",
+  test("writes every render as its golden, light and dark, the same bytes twice", async () => {
+    const first = await renderTo();
+    expect(first.result).toMatchObject({ code: ExitCode.ok, stderr: "" });
+    const files = (await readdir(first.out)).sort();
+    expect(files).toEqual(
+      profileTemplates[template].flatMap((name) => [`${name}.dark.svg`, `${name}.svg`]).sort(),
     );
-    expect(stripFontData(svg)).toBe(golden);
+    for (const name of profileTemplates[template]) {
+      expect(stripFontData(await readFile(join(first.out, `${name}.svg`), "utf8")), name).toBe(
+        await golden(name, "light"),
+      );
+      expect(
+        stripFontData(await readFile(join(first.out, `${name}.dark.svg`), "utf8")),
+        `${name} dark`,
+      ).toBe(await golden(name, "dark"));
+    }
+    const second = await renderTo();
+    expect(second.result.stdout).toBe(first.result.stdout);
+    for (const file of files) {
+      expect(await readFile(join(second.out, file), "utf8"), file).toBe(
+        await readFile(join(first.out, file), "utf8"),
+      );
+    }
   });
 
-  test("equals the twin with the template settings", async () => {
-    if (dark === undefined) throw new Error("no dark variant");
-    const variant = await render(`${section}.json`, { variant: dark }, "settings.json");
-    const twin = await render(`${section}.dark.json`, {}, "settings.json");
-    expect(variant).toBe(twin);
+  test("with the template's settings the bytes are those of the defaults", async () => {
+    const plain = await renderTo();
+    const settings = await renderTo(["--props", join(folders, template, "settings.json")]);
+    expect(settings.result).toMatchObject({ code: ExitCode.ok, stderr: "" });
+    for (const file of await readdir(plain.out)) {
+      expect(await readFile(join(settings.out, file), "utf8"), file).toBe(
+        await readFile(join(plain.out, file), "utf8"),
+      );
+    }
   });
 });

@@ -1,21 +1,22 @@
-/** The workflow of the examples repository: one step per template, the light designs of each. */
+/** The render manifest every template folder holds. */
+const manifestFile = "renders.json";
+
+/** The workflow of the examples repository: one step per template, rendering its `renders.json`. */
 export function exampleWorkflow(
   actionRef: string,
   templates: readonly {
     readonly name: string;
-    readonly designs: readonly string[];
     readonly hasSettings: boolean;
   }[],
 ): string {
-  const steps = templates.flatMap(({ name, designs, hasSettings }) => [
+  const steps = templates.flatMap(({ name, hasSettings }) => [
     `      - name: Render ${name}`,
     `        uses: ${actionRef}`,
     "        with:",
     `          output-dir: ${name}/readmint`,
     ...(hasSettings ? [`          props-file: ${name}/designs/settings.json`] : []),
     `          commit-message: "Update ${name} graphics"`,
-    "          designs: |",
-    ...designs.map((design) => `            ${name}/designs/${design}`),
+    `          manifest: ${name}/designs/${manifestFile}`,
   ]);
   return [
     "name: Readmint",

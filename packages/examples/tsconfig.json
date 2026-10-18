@@ -3,7 +3,10 @@
   "compilerOptions": {
     "composite": false,
     "noEmit": true,
-    "types": ["node"]
+    "types": ["node"],
+    "paths": {
+      "@readmint/format": ["../format/src/index.ts"]
+    }
   },
   "include": ["src", "test"]
 }
