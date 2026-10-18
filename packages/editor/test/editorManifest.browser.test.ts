@@ -1,3 +1,4 @@
+import { renderVariants } from "@readmint/format";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { userEvent } from "vitest/browser";
 import {
@@ -212,4 +213,17 @@ test("a reload where the render lists no variants drops Dark and keeps the switc
   );
   expect(editor.state.variant).toBeUndefined();
   expect(variant().value).toBe("");
+});
+
+test("Export PNG refuses a variant the chosen render does not list", async () => {
+  await open();
+  await chooseRender("plain");
+  const dark = renderVariants[0];
+  if (dark === undefined) throw new Error("no variant");
+  editor.dispatch((state) => ({ ...state, variant: dark }));
+  await editor.settled();
+  await userEvent.click(find('[data-action="export-png"]'));
+  await editor.settled();
+  expect(images).toHaveLength(0);
+  expect(find('[aria-label="Issues"]').textContent).toContain("does not list");
 });
