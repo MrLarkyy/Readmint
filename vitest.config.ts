@@ -48,6 +48,7 @@ export default defineConfig(({ mode }) => ({
         "data-feed",
         "data-github",
         "data-json",
+        "data-wakatime",
         "expr",
         "format",
         "fonts",

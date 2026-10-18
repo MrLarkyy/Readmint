@@ -1,0 +1,314 @@
+{
+  "$schema": "https://raw.githubusercontent.com/MrLarkyy/Readmint/main/packages/format/schema/design-v0.schema.json",
+  "version": 0,
+  "title": "Coding time",
+  "description": "WakaTime coding time of a range: the total, the daily average, the top languages as bars and the top editors and operating systems.",
+  "canvas": {
+    "width": 420,
+    "height": 460
+  },
+  "assets": {
+    "fonts": {
+      "body": {
+        "family": "Montserrat",
+        "src": "fonts/Montserrat-Medium.ttf",
+        "weight": 500,
+        "licence": {
+          "embedding": "allowed",
+          "name": "OFL-1.1"
+        }
+      },
+      "bold": {
+        "family": "Montserrat",
+        "src": "fonts/Montserrat-ExtraBold.ttf",
+        "weight": 800,
+        "licence": {
+          "embedding": "allowed",
+          "name": "OFL-1.1"
+        }
+      }
+    }
+  },
+  "components": {
+    "language": {
+      "description": "One language: its name and share of the coding time over a bar.",
+      "props": {
+        "name": {
+          "type": "string",
+          "default": ""
+        },
+        "color": {
+          "type": "color",
+          "default": "#8b949e"
+        },
+        "percent": {
+          "type": "number",
+          "default": 0
+        },
+        "width": {
+          "type": "number",
+          "default": 372
+        },
+        "theme": {
+          "type": "enum",
+          "values": ["light", "dark"],
+          "default": "light"
+        }
+      },
+      "layers": [
+        {
+          "type": "text",
+          "content": "{{ props.name | truncateWidth(props.width - 72, \"body\", 13) }}",
+          "font": "body",
+          "fontSize": 13,
+          "fill": "{{ props.theme == \"dark\" ? \"#e6edf3\" : \"#1f2328\" }}"
+        },
+        {
+          "type": "text",
+          "content": "{{ props.percent / 100 | percent(1) }}",
+          "font": "body",
+          "fontSize": 13,
+          "fill": "{{ props.theme == \"dark\" ? \"#9198a1\" : \"#59636e\" }}",
+          "width": "{{ props.width }}",
+          "align": "end"
+        },
+        {
+          "type": "rect",
+          "y": 21,
+          "width": "{{ props.width }}",
+          "height": 6,
+          "radius": 3,
+          "fill": "{{ props.theme == \"dark\" ? \"#21262d\" : \"#eaeef2\" }}"
+        },
+        {
+          "type": "rect",
+          "y": 21,
+          "width": "{{ props.percent / 100 * props.width | clamp(1, props.width) }}",
+          "height": 6,
+          "radius": 3,
+          "fill": "{{ props.color }}"
+        }
+      ]
+    },
+    "usage": {
+      "description": "A column of up to three entries (editors or operating systems) under a label, each with its share.",
+      "props": {
+        "label": {
+          "type": "string",
+          "default": ""
+        },
+        "entries": {
+          "type": "array",
+          "default": []
+        },
+        "width": {
+          "type": "number",
+          "default": 176
+        },
+        "theme": {
+          "type": "enum",
+          "values": ["light", "dark"],
+          "default": "light"
+        }
+      },
+      "layers": [
+        {
+          "type": "text",
+          "content": "{{ props.label }}",
+          "font": "bold",
+          "fontSize": 13,
+          "fill": "{{ props.theme == \"dark\" ? \"#e6edf3\" : \"#1f2328\" }}"
+        },
+        {
+          "type": "text",
+          "y": 26,
+          "content": "No data yet.",
+          "font": "body",
+          "fontSize": 13,
+          "fill": "{{ props.theme == \"dark\" ? \"#9198a1\" : \"#59636e\" }}",
+          "if": "{{ !props.entries }}"
+        },
+        {
+          "type": "group",
+          "y": 26,
+          "layout": {
+            "type": "stack",
+            "direction": "column",
+            "gap": 8
+          },
+          "children": [
+            {
+              "type": "group",
+              "repeat": {
+                "each": "{{ props.entries }}",
+                "as": "entry",
+                "index": "i"
+              },
+              "if": "{{ i < 3 }}",
+              "children": [
+                {
+                  "type": "text",
+                  "content": "{{ entry.name | truncateWidth(props.width - 52, \"body\", 13) }}",
+                  "font": "body",
+                  "fontSize": 13,
+                  "fill": "{{ props.theme == \"dark\" ? \"#e6edf3\" : \"#1f2328\" }}"
+                },
+                {
+                  "type": "text",
+                  "content": "{{ entry.percent / 100 | percent(0) }}",
+                  "font": "body",
+                  "fontSize": 13,
+                  "fill": "{{ props.theme == \"dark\" ? \"#9198a1\" : \"#59636e\" }}",
+                  "width": "{{ props.width }}",
+                  "align": "end"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "card": {
+      "description": "The card: a rounded panel in the theme's colours holding the content; the theme prop is the only switch between light and dark.",
+      "props": {
+        "theme": {
+          "type": "enum",
+          "values": ["light", "dark"],
+          "default": "light"
+        }
+      },
+      "layers": [
+        {
+          "type": "rect",
+          "x": 0.5,
+          "y": 0.5,
+          "width": 419,
+          "height": 459,
+          "radius": 6,
+          "fill": "{{ props.theme == \"dark\" ? \"#0d1117\" : \"#ffffff\" }}",
+          "stroke": "{{ props.theme == \"dark\" ? \"#30363d\" : \"#d0d7de\" }}",
+          "strokeWidth": 1
+        },
+        {
+          "type": "text",
+          "content": "Coding time",
+          "font": "bold",
+          "fontSize": 16,
+          "fill": "{{ props.theme == \"dark\" ? \"#4493f8\" : \"#0969da\" }}",
+          "x": 24,
+          "y": 22
+        },
+        {
+          "type": "text",
+          "content": "{{ wakatime.range == \"last_30_days\" ? \"Last 30 days\" : wakatime.range == \"last_6_months\" ? \"Last 6 months\" : wakatime.range == \"last_year\" ? \"Last year\" : wakatime.range == \"all_time\" ? \"All time\" : \"Last 7 days\" }}",
+          "font": "body",
+          "fontSize": 13,
+          "fill": "{{ props.theme == \"dark\" ? \"#9198a1\" : \"#59636e\" }}",
+          "x": 24,
+          "y": 24,
+          "width": 372,
+          "align": "end"
+        },
+        {
+          "type": "text",
+          "content": "{{ wakatime.humanReadableTotal || \"0 secs\" | truncateWidth(372, \"bold\", 26) }}",
+          "font": "bold",
+          "fontSize": 26,
+          "fill": "{{ props.theme == \"dark\" ? \"#e6edf3\" : \"#1f2328\" }}",
+          "x": 24,
+          "y": 54
+        },
+        {
+          "type": "text",
+          "content": "{{ wakatime.dailyAverageSeconds / 3600 | number(1) }} hrs a day on average",
+          "font": "body",
+          "fontSize": 13,
+          "fill": "{{ props.theme == \"dark\" ? \"#9198a1\" : \"#59636e\" }}",
+          "x": 24,
+          "y": 94
+        },
+        {
+          "type": "text",
+          "content": "Languages",
+          "font": "bold",
+          "fontSize": 13,
+          "fill": "{{ props.theme == \"dark\" ? \"#e6edf3\" : \"#1f2328\" }}",
+          "x": 24,
+          "y": 130
+        },
+        {
+          "type": "text",
+          "content": "No coding time yet.",
+          "font": "body",
+          "fontSize": 13,
+          "fill": "{{ props.theme == \"dark\" ? \"#9198a1\" : \"#59636e\" }}",
+          "x": 24,
+          "y": 156,
+          "if": "{{ !wakatime.languages }}"
+        },
+        {
+          "type": "group",
+          "x": 24,
+          "y": 156,
+          "layout": {
+            "type": "stack",
+            "direction": "column",
+            "gap": 10
+          },
+          "children": [
+            {
+              "type": "component",
+              "ref": "language",
+              "repeat": {
+                "each": "{{ wakatime.languages }}",
+                "as": "lang",
+                "index": "i"
+              },
+              "if": "{{ i < 5 }}",
+              "props": {
+                "name": "{{ lang.name }}",
+                "color": "{{ [\"#2f81f7\", \"#a371f7\", \"#3fb950\", \"#d29922\", \"#f85149\"][i] }}",
+                "percent": "{{ lang.percent }}",
+                "width": 372,
+                "theme": "{{ props.theme }}"
+              }
+            }
+          ]
+        },
+        {
+          "type": "component",
+          "ref": "usage",
+          "x": 24,
+          "y": 352,
+          "props": {
+            "label": "Editors",
+            "entries": "{{ wakatime.editors }}",
+            "width": 176,
+            "theme": "{{ props.theme }}"
+          }
+        },
+        {
+          "type": "component",
+          "ref": "usage",
+          "x": 220,
+          "y": 352,
+          "props": {
+            "label": "Operating systems",
+            "entries": "{{ wakatime.operatingSystems }}",
+            "width": 176,
+            "theme": "{{ props.theme }}"
+          }
+        }
+      ]
+    }
+  },
+  "layers": [
+    {
+      "type": "component",
+      "ref": "card",
+      "props": {
+        "theme": "light"
+      }
+    }
+  ]
+}

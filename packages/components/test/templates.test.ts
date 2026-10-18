@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { validateDesign } from "@readmint/format";
 import { RenderLimits } from "@readmint/renderer";
 import { describe, expect, test } from "vitest";
-import { profileTemplates, starterTemplates } from "../src/index.js";
+import { codingTimeTemplates, profileTemplates, starterTemplates } from "../src/index.js";
 import { loadTemplate } from "./calendarDesigns.js";
 import { sampleGitHubData, sparseGitHubData, worstCaseGitHubData } from "./sampleGitHubData.js";
 import { loadStarter, renderTemplate, starterSources, withRootProps } from "./templateDesigns.js";
@@ -170,6 +170,7 @@ test("the description of every starter is for a reader of the image, not the aut
 describe("the renderer has no special case for a template", () => {
   const names = [
     ...starterTemplates,
+    ...codingTimeTemplates,
     ...Object.keys(profileTemplates),
     "calendar-",
     "profiles/",

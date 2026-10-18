@@ -414,6 +414,89 @@ describe("data-feed", () => {
   });
 });
 
+describe("data-wakatime", () => {
+  test("one source per line naming a variable, ranges attached by namespace", () => {
+    const config = readInputs(
+      env({
+        ...base,
+        "data-wakatime": " WAKATIME_API_KEY \n\nwork=WORK_KEY\n",
+        "data-wakatime-ranges": "work=last_30_days",
+      }),
+    );
+    expect(config.dataWakaTime).toEqual([
+      { namespace: "wakatime", variable: "WAKATIME_API_KEY" },
+      { namespace: "work", variable: "WORK_KEY", range: "last_30_days" },
+    ]);
+    expect(readInputs(env(base))).not.toHaveProperty("dataWakaTime");
+  });
+
+  test("namespace github clashes with the GitHub data, not with a data-file", () => {
+    expect(problems({ ...base, "data-wakatime": "github=KEY" })).toEqual([
+      "input data-wakatime: namespace github clashes with the GitHub data; name the WakaTime source another namespace",
+    ]);
+    expect(
+      readInputs(env({ ...base, "data-file": "d.json", "data-wakatime": "github=KEY" }))
+        .dataWakaTime,
+    ).toEqual([{ namespace: "github", variable: "KEY" }]);
+  });
+
+  test("a namespace a data-json source or a feed has too is a problem naming it", () => {
+    expect(
+      problems({
+        ...base,
+        "data-json": "a=a.json",
+        "data-feed": "b=https://x.example/f",
+        "data-wakatime": "a=KEY\nb=KEY",
+      }),
+    ).toEqual([
+      "input data-wakatime: namespace a is also a data-json or data-feed namespace; name one of them another namespace",
+      "input data-wakatime: namespace b is also a data-json or data-feed namespace; name one of them another namespace",
+    ]);
+  });
+
+  test("bad lines are listed with the other problems, never quoting a key", () => {
+    const key = ["waka", "00000000-1111-4222-8333-444444444444"].join("_");
+    const listed = problems({
+      ...base,
+      "data-wakatime": `${key}\nw=1BAD\nw=KEY\nx=KEY\ny=KEY\nz=KEY`,
+      "data-wakatime-ranges": "w=last_week\nq=all_time\nnot a range",
+    });
+    expect(listed).toEqual([
+      "input data-wakatime: at most 4 WakaTime sources may be given",
+      "input data-wakatime: the value of WakaTime source wakatime looks like an API key (not printed); give the name of the environment variable that holds it",
+      "input data-wakatime: WakaTime source w must name an environment variable (letters, digits and _, not starting with a digit)",
+      "input data-wakatime: WakaTime namespace w is given twice",
+      "input data-wakatime: the range of WakaTime source w must be one of last_7_days, last_30_days, last_6_months, last_year, all_time",
+      "input data-wakatime: a WakaTime range names namespace q, which has no WakaTime source",
+      "input data-wakatime: a WakaTime range must be <namespace>=<range>",
+    ]);
+    expect(listed.join("\n")).not.toContain(key);
+  });
+
+  test("WAKA_API_KEY and WAKA_TOKEN are variable names, not keys", () => {
+    expect(
+      readInputs(env({ ...base, "data-wakatime": "WAKA_API_KEY\nt=WAKA_TOKEN" })).dataWakaTime,
+    ).toEqual([
+      { namespace: "wakatime", variable: "WAKA_API_KEY" },
+      { namespace: "t", variable: "WAKA_TOKEN" },
+    ]);
+  });
+
+  test("cache-dir goes with data-file when data-wakatime is set", () => {
+    const ws = path.resolve("/w/space");
+    const config = readInputs(
+      env({
+        ...base,
+        "data-file": "d.json",
+        "data-wakatime": "KEY",
+        "cache-dir": "../c",
+      }),
+      ws,
+    );
+    expect(config.cacheDir).toBe(path.resolve("/w/c"));
+  });
+});
+
 describe("readInputs variant", () => {
   test("empty means none, dark is the dark variant", () => {
     expect(readInputs(env({ ...base, variant: "" }))).not.toHaveProperty("variant");
@@ -483,7 +566,7 @@ describe("cache-dir", () => {
       expect.stringContaining("input cache-dir"),
     ]);
     expect(problems({ ...base, "cache-dir": "c", "data-file": "d.json" })).toEqual([
-      "input cache-dir applies to GitHub data only; it cannot go with data-file",
+      "input cache-dir applies to GitHub and WakaTime data only; it cannot go with data-file without data-wakatime",
     ]);
   });
 });

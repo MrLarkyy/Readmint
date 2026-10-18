@@ -7,11 +7,14 @@ import { githubToken } from "./githubToken.js";
 import { loadFeedArgs } from "./loadFeedArgs.js";
 import { loadJsonArgs } from "./loadJsonArgs.js";
 import { loadLiveData } from "./loadLiveData.js";
+import { loadWakaTimeArgs } from "./loadWakaTimeArgs.js";
 import { partialDataWarning } from "./partialDataWarning.js";
+import { wakaTimePartialWarning } from "./wakaTimePartialWarning.js";
 
 /**
- * The `loadRenderInput` `loadData` option of `--github`, `--data-json` and `--data-feed`: loads the GitHub data with
- * the token from `io.env`, then each JSON source, then each feed, when called, so `loadRenderInput` calls it only once
+ * The `loadRenderInput` `loadData` option of `--github`, `--data-json`, `--data-feed` and `--data-wakatime`: loads the
+ * GitHub data with the token from `io.env`, then each JSON source, then each feed, then each WakaTime source with the
+ * key of its variable in `io.env` (a still-calculating answer is one `warning:` line), when called, so `loadRenderInput` calls it only once
  * the design and its assets are valid (a broken design costs no request and is not hidden by a token problem).
  * Without any of them there is no option: no environment variable is read and no request made. Their namespaces
  * never clash (`parseCliArgs` refuses that). `stop` ends the load early (the preview's signal).
@@ -23,7 +26,15 @@ export function liveData(
 ): { readonly loadData?: () => Promise<Record<string, unknown>> } {
   const dataJson = args.dataJson ?? [];
   const dataFeed = args.dataFeed ?? [];
-  if (args.github !== true && dataJson.length === 0 && dataFeed.length === 0) return {};
+  const dataWakaTime = args.dataWakaTime ?? [];
+  if (
+    args.github !== true &&
+    dataJson.length === 0 &&
+    dataFeed.length === 0 &&
+    dataWakaTime.length === 0
+  ) {
+    return {};
+  }
   const signal = stop === undefined ? {} : { signal: stop };
   return {
     loadData: async () => {
@@ -41,7 +52,21 @@ export function liveData(
         dataFeed.length === 0
           ? {}
           : await loadFeedArgs(dataFeed, { fetch: io.fetch ?? globalThis.fetch, ...signal });
-      return { ...github, ...json, ...feed };
+      const wakaTime =
+        dataWakaTime.length === 0
+          ? {}
+          : await loadWakaTimeArgs(dataWakaTime, {
+              fetch: io.fetch ?? globalThis.fetch,
+              env: io.env ?? {},
+              ...(args.cacheDir === undefined
+                ? {}
+                : { cacheDir: path.resolve(io.cwd, args.cacheDir) }),
+              onPartial: (namespace) => {
+                void io.stderr(`warning: ${wakaTimePartialWarning(namespace)}\n`);
+              },
+              ...signal,
+            });
+      return { ...github, ...json, ...feed, ...wakaTime };
     },
   };
 }

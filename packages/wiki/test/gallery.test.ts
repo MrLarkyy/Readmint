@@ -62,6 +62,9 @@ function names(cell: string): string[] {
   });
 }
 
+/** Cards over a data source other than GitHub (docs/components.md): not in the gallery, which shows the GitHub templates. */
+const sourceCards = ["coding-time-card"];
+
 const components = readFileSync(docsDir + "components.md", "utf8").replace(/\r\n/g, "\n");
 const images = readGoldenImages();
 
@@ -114,7 +117,9 @@ describe("the gallery list", () => {
     const designs = readdirSync(templatesDir)
       .filter((file) => file.endsWith(".design.json"))
       .map((file) => file.slice(0, -".design.json".length));
-    const starters = designs.filter((name) => !name.startsWith("calendar-"));
+    const starters = designs.filter(
+      (name) => !name.startsWith("calendar-") && !sourceCards.includes(name),
+    );
     const calendars = designs.filter((name) => name.startsWith("calendar-"));
     const listed = (kind: string): string[] =>
       galleryTemplates.filter((t) => t.kind === kind).map((t) => t.name);
