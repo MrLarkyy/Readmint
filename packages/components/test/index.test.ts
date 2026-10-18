@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { expect, test } from "vitest";
 import {
   calendarTemplates,
+  codingTimeTemplates,
   packageName,
   profileTemplates,
   starterTemplates,
@@ -14,7 +15,7 @@ test("exposes its package name", () => {
   expect(packageName).toBe("@readmint/components");
 });
 
-test("the template files are exactly the calendar and starter templates, plus the fonts and profiles folders", () => {
+test("the template files are exactly the calendar, starter and coding-time templates, plus the fonts and profiles folders", () => {
   const files = readdirSync(templates, { withFileTypes: true });
   expect(files.filter((entry) => entry.isDirectory()).map((entry) => entry.name)).toEqual([
     "fonts",
@@ -26,7 +27,9 @@ test("the template files are exactly the calendar and starter templates, plus th
       .map((entry) => entry.name)
       .sort(),
   ).toEqual(
-    [...calendarTemplates, ...starterTemplates].map((name) => `${name}.design.json`).sort(),
+    [...calendarTemplates, ...starterTemplates, ...codingTimeTemplates]
+      .map((name) => `${name}.design.json`)
+      .sort(),
   );
 });
 
@@ -60,6 +63,7 @@ test("each profile template folder holds one design per distinct section, render
 test("the template lists are frozen and share no name", () => {
   expect(Object.isFrozen(calendarTemplates)).toBe(true);
   expect(Object.isFrozen(starterTemplates)).toBe(true);
+  expect(Object.isFrozen(codingTimeTemplates)).toBe(true);
   expect(Object.isFrozen(profileTemplates)).toBe(true);
   for (const sections of Object.values(profileTemplates))
     expect(Object.isFrozen(sections)).toBe(true);
@@ -71,4 +75,6 @@ test("the template lists are frozen and share no name", () => {
       [...calendarTemplates, ...starterTemplates].some((other) => other === name),
     ),
   ).toEqual([]);
+  const named = [...calendarTemplates, ...starterTemplates, ...Object.keys(profileTemplates)];
+  expect(codingTimeTemplates.filter((name) => named.includes(name))).toEqual([]);
 });
