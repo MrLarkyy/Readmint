@@ -21,6 +21,7 @@
   },
   "devDependencies": {
     "@readmint/data-github": "workspace:*",
+    "@readmint/data-registry": "workspace:*",
     "@readmint/data-wakatime": "workspace:*",
     "@readmint/examples": "workspace:*",
     "@readmint/format": "workspace:*",
