@@ -38,9 +38,32 @@ body {
   gap: 4px;
   margin-bottom: 4px;
 }
-.rm-read-only {
-  background: #f6f8fa;
-  color: #59636e;
+.rm-fieldset {
+  margin: 8px 0;
+  padding: 4px 8px;
+}
+.rm-let-row {
+  display: grid;
+  grid-template-columns: 1fr 2fr auto auto;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+.rm-palette-scroll {
+  overflow-x: auto;
+}
+.rm-palette table {
+  border-collapse: collapse;
+}
+.rm-palette td,
+.rm-palette th {
+  padding: 2px;
+  text-align: left;
+  white-space: nowrap;
+}
+.rm-picker {
+  width: 28px;
+  height: 24px;
+  padding: 0;
 }
 .rm-bound {
   background: #fff8c5;
@@ -93,5 +116,15 @@ body {
     display: grid;
     grid-column: 1 / -1;
     gap: 4px;
+  }
+}
+
+@media (max-width: 700px) {
+  .rm-let-row {
+    grid-template-columns: 1fr;
+  }
+  .rm-picker {
+    width: 32px;
+    height: 32px;
   }
 }

@@ -796,6 +796,8 @@ once however often it is drawn (an image with EXIF data, inline at every use, on
 inlined copy an earlier asset already wrote (the copy, not the asset's own bytes: two assets that differ only by
 their colour profile write one image), so the image bytes add up to what the SVG holds. A design with a timeline also reports `animation: { duration, loop }`, what `frameTimes`
 takes.
+A design with a `palette` also reports `paletteMode`, the mode the render used (the root component's `theme`, else the
+first mode); a design without one has no such key. It does not change the SVG.
 
 With the option `layerBoxes: true` a successful render also returns `layerBoxes`, one per drawn node in paint order
 (later boxes are drawn over earlier ones): `{ layer, x, y, width, height, rotation?, groupTurns? }`. `layer` is the JSON

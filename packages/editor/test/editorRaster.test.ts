@@ -15,7 +15,9 @@ import {
   importDesign,
   loadFixture,
   loadManifest,
+  setPalette,
   setVariant,
+  paletteEdits,
   type EditorState,
 } from "../src/index.js";
 import { profileFontFiles, profileSource } from "./profileFiles.js";
@@ -28,6 +30,7 @@ import {
   pinKey,
 } from "./editorRasterParity.js";
 import { appSession, editorSession } from "./editorSession.js";
+import { editState } from "./formatEdits.js";
 import { manifestDesign, manifestRenders } from "./settingsDesign.js";
 
 let folder: string;
@@ -192,4 +195,22 @@ describe("the export of a manifest render", () => {
     expect(state.issues).toEqual([]);
     expect(Buffer.from(await editorBytes(state, "png")).equals(cli)).toBe(true);
   }, 120_000);
+});
+
+test("a palette colour edit renders the new colour, as the same colour written in the layer", async () => {
+  const state = editState();
+  const entries = paletteEdits.paletteEntries(state.design.palette);
+  const edited = setPalette(state, paletteEdits.setColour(entries, "light", "bg", "#ff0000"));
+  expect(edited.issues).toEqual([]);
+  const render = (design: EditorState["design"]) =>
+    renderRasterExport({ design, data: {}, sessionAssets: {}, format: "png" });
+  const before = await render(state.design);
+  const after = await render(edited.design);
+  expect(Buffer.from(after.bytes).equals(Buffer.from(before.bytes))).toBe(false);
+  const literal = {
+    ...state.design,
+    canvas: { ...state.design.canvas, background: "#ff0000" },
+  } as EditorState["design"];
+  const direct = await render(literal);
+  expect(Buffer.from(after.bytes).equals(Buffer.from(direct.bytes))).toBe(true);
 });

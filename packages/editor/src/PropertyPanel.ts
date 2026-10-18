@@ -3,13 +3,11 @@ import { childPointer, getAt } from "./designPointer.js";
 import { clear, element } from "./dom.js";
 import type { EditorState } from "./EditorState.js";
 import { findLayer, placedByLayout } from "./layerAccess.js";
+import { letFieldset } from "./LetFieldset.js";
+import { orbitFieldset } from "./OrbitFieldset.js";
+import { paletteFieldset } from "./PaletteFieldset.js";
+import type { PropertyActions } from "./PropertyActions.js";
 import { canvasFields, fieldText, layerFields, parseField, type LayerField } from "./LayerField.js";
-
-/** What the property panel asks the editor to do. */
-export interface PropertyActions {
-  set(pointer: string, key: string, value: unknown): void;
-  invalid(message: string, path: string): void;
-}
 
 /**
  * The properties of the selected layer, or of the canvas when none is selected. A number field takes a literal or a
@@ -34,7 +32,13 @@ export class PropertyPanel {
   update(state: EditorState): void {
     const pointer = state.selection ?? "/canvas";
     const target = getAt(state.design, pointer);
-    const key = [pointer, target, state.design.assets, state.design.components];
+    const key = [
+      pointer,
+      target,
+      state.design.assets,
+      state.design.components,
+      state.design.palette,
+    ];
     if (key.every((item, index) => item === this.shown[index])) return;
     this.shown = key;
     clear(this.form);
@@ -49,6 +53,12 @@ export class PropertyPanel {
     }
     const fields = layer === undefined ? canvasFields : layerFields(layer, sources(state.design));
     for (const field of fields) this.field(pointer, target, field);
+    if (layer === undefined) {
+      paletteFieldset(this.form, this.actions, state.design.palette);
+    } else {
+      orbitFieldset(this.form, this.actions, pointer, layer.orbit);
+      letFieldset(this.form, this.actions, pointer, layer.let);
+    }
   }
 
   private field(pointer: string, target: unknown, field: LayerField): void {
@@ -80,11 +90,6 @@ export class PropertyPanel {
       attributes: { name: field.key },
     });
     input.value = fieldText(value);
-    if (field.readOnly === true) {
-      input.readOnly = true;
-      input.classList.add("rm-read-only");
-      return;
-    }
     if (typeof value === "string" && /^\{\{[\s\S]+\}\}$/u.test(value)) {
       input.classList.add("rm-bound");
     }
