@@ -55,7 +55,7 @@ function render(context: RenderContext, options: RenderOptions): RenderResult {
   const budget = createBudget(steps);
   // An unvalidated editor object may carry any value here; only a string reaches the locale lookup.
   const locale = options.locale ?? (typeof design.locale === "string" ? design.locale : undefined);
-  const scope = paletteScope(
+  const { scope, mode: paletteMode } = paletteScope(
     context,
     createScope(context.data, {
       budget,
@@ -113,6 +113,7 @@ function render(context: RenderContext, options: RenderOptions): RenderResult {
       drawnAs: use.embeddedBytes > 0 ? "font" : "paths",
     })),
     images: [...context.imageBytes].map(([asset, total]) => ({ asset, bytes: total })),
+    ...(paletteMode === undefined ? {} : { paletteMode }),
     ...(design.animation === undefined
       ? {}
       : {

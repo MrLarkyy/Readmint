@@ -1,4 +1,5 @@
 import {
+  applyRenderVariant,
   validateDesign,
   type Binding,
   type ComponentDefinition,
@@ -432,5 +433,44 @@ describe("the step budget", () => {
     const without = minimumSteps(repeated({}), data);
     // Each of the 5 items copies one more local, and each item's let copies it once more.
     expect(minimumSteps(repeated({ palette }), data)).toBe(without + 5 + 5);
+  });
+});
+
+describe("the report's palette mode", () => {
+  const modeOf = (design: Design, options: RenderOptions = {}): string | undefined => {
+    const result = renderSvg(design, options);
+    if (!result.ok) throw new Error("render failed");
+    return result.report.paletteMode;
+  };
+  const withTheme = (theme?: string): Design => ({
+    version: 0,
+    canvas: { width: 10, height: 10 },
+    palette,
+    components: {
+      c: {
+        props: { theme: { type: "string", default: "light" } },
+        layers: [{ type: "rect", width: 1, height: 1, fill: "{{ palette.ink }}" }],
+      },
+    },
+    layers: [{ type: "component", ref: "c", ...(theme === undefined ? {} : { props: { theme } }) }],
+  });
+
+  test("is the default mode, a literal theme, a theme from data and the variant's", () => {
+    expect(modeOf(withTheme())).toBe("light");
+    expect(modeOf(withTheme("dark"))).toBe("dark");
+    expect(
+      modeOf(withTheme("{{ settings.theme }}"), { data: { settings: { theme: "dark" } } }),
+    ).toBe("dark");
+    const varied = applyRenderVariant(withTheme(), { name: "dark", props: { theme: "dark" } });
+    if (!varied.ok) throw new Error("variant refused");
+    expect(modeOf(varied.value)).toBe("dark");
+  });
+
+  test("is absent without a palette, and the SVG does not carry it", () => {
+    const plain: Design = { version: 0, canvas: { width: 10, height: 10 }, layers: [] };
+    const result = renderSvg(plain);
+    if (!result.ok) throw new Error("render failed");
+    expect(Object.hasOwn(result.report, "paletteMode")).toBe(false);
+    expect(svgOf(withTheme("dark"))).not.toContain("paletteMode");
   });
 });
