@@ -183,3 +183,20 @@ test("an invalid key fails with the WakaTime line, the key masked and never prin
       .join("\n"),
   );
 });
+
+test("a data-file key equal to a WakaTime namespace fails the run naming it, before any request", async () => {
+  await tree.file("clash.json", { wakatime: {} });
+  const requests: { url: string; init: RequestInit }[] = [];
+  const run = await tree.run(
+    {
+      designs: "coding.json",
+      "data-file": "clash.json",
+      "data-wakatime": "WAKATIME_API_KEY",
+      "dry-run": "true",
+    },
+    { env: { WAKATIME_API_KEY: KEY }, fetch: answering(stats, requests), runGit: noGit },
+  );
+  expect(run.code).not.toBe(0);
+  expect(run.log).toContain("data namespace wakatime");
+  expect(requests).toEqual([]);
+});

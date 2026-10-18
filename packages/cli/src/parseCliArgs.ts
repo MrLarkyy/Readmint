@@ -146,6 +146,8 @@ const allowed: Readonly<Record<DesignCommand, ReadonlySet<ValueOption>>> = {
 };
 /** Prefixes of GitHub tokens (classic, OAuth, user-to-server, server-to-server, refresh, fine-grained). */
 const tokenShaped = /^(?:-{1,2}[^=]*=)?(?:gh[pousr]_|github_pat_)/;
+/** A WakaTime key (`waka_<uuid>`) as an argument, an option value or after `<ns>=`; a bare UUID may be a file name. */
+const wakaTimeKeyShaped = /(?:^|=)waka_[0-9a-f]{8}-/i;
 
 /** Latest frame time the renderer takes (`renderSvg` `time`). */
 const maxTime = 86_400_000;
@@ -304,6 +306,11 @@ function refuseTokens(argv: readonly string[]): void {
         "option --token does not exist: the token is read from GH_TOKEN or GITHUB_TOKEN, never from an argument",
       );
     }
+  }
+  if (argv.some((arg) => wakaTimeKeyShaped.test(arg))) {
+    usage(
+      "an argument looks like a WakaTime API key; not printed: --data-wakatime takes the name of the environment variable that holds it",
+    );
   }
   if (argv.some((arg) => tokenShaped.test(arg))) {
     usage(

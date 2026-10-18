@@ -18,7 +18,7 @@ export { loadFixtureData, maxFixtureBytes } from "./loadFixtureData.js";
 export { loadFeedArgs, type FeedArgsOptions } from "./loadFeedArgs.js";
 export { loadJsonArgs, type JsonArgsOptions } from "./loadJsonArgs.js";
 export { loadWakaTimeArgs, type WakaTimeArgsOptions } from "./loadWakaTimeArgs.js";
-export { mergeDataNamespaces } from "./mergeDataNamespaces.js";
+export { checkFixtureNamespaces, mergeDataNamespaces } from "./mergeDataNamespaces.js";
 export { type DataFeedSpec, maxDataFeedSources, parseDataFeedArgs } from "./parseDataFeedArgs.js";
 export { type DataJsonSpec, maxDataJsonSources, parseDataJsonArgs } from "./parseDataJsonArgs.js";
 export {

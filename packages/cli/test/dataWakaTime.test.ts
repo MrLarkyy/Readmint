@@ -103,12 +103,24 @@ describe("parseDataWakaTimeArgs", () => {
   });
 
   test("a key in place of a variable name is refused without printing it", () => {
-    for (const key of [KEY, "0f1e2d3c-4b5a-4968-8776-aabbccddeeff", `w=${KEY}`]) {
+    const uuid = "0f1e2d3c-4b5a-4968-8776-aabbccddeeff";
+    for (const key of [`waka_${uuid}`, `WAKA_${uuid.toUpperCase()}`, uuid, `w=waka_${uuid}`]) {
       const { problems } = parseDataWakaTimeArgs([key], []);
       expect(problems).toHaveLength(1);
       expect(problems[0]).toContain("looks like an API key (not printed)");
-      expect(problems.join("")).not.toContain(KEY);
+      expect(problems.join("")).not.toContain(uuid);
     }
+  });
+
+  test("variable names that start like a key prefix are variable names", () => {
+    expect(parseDataWakaTimeArgs(["WAKA_API_KEY", "t=WAKA_TOKEN", "k=waka_key"], [])).toEqual({
+      specs: [
+        { namespace: "wakatime", variable: "WAKA_API_KEY" },
+        { namespace: "t", variable: "WAKA_TOKEN" },
+        { namespace: "k", variable: "waka_key" },
+      ],
+      problems: [],
+    });
   });
 
   test("an invalid name, a duplicate, a range without a source and a bad range are problems", () => {
@@ -251,6 +263,26 @@ describe("--data-wakatime", () => {
     expect(run.stderr).toContain("data namespace wakatime");
   });
 
+  test("a fixture key equal to its namespace fails before any request, for every command but preview", async () => {
+    await tree.file("fixture.json", { stats: {} });
+    await tree.file("design.json", textDesign("{{ stats }}"));
+    await tree.file("renders.json", { renders: [{ name: "card", design: "design.json" }] });
+    for (const argv of [
+      ["render", "design.json"],
+      ["validate", "design.json"],
+      ["render", "--manifest", "renders.json", "--out-dir", "out"],
+    ]) {
+      const requests: string[] = [];
+      const run = await tree.run(
+        [...argv, "--data", "fixture.json", "--data-wakatime", "stats=WAKATIME_API_KEY"],
+        { fetch: serving(stats, requests), env },
+      );
+      expect(run.code, argv.join(" ")).toBe(ExitCode.input);
+      expect(run.stderr).toContain("data namespace stats");
+      expect(requests).toEqual([]);
+    }
+  });
+
   test("a let name equal to its namespace is exit code 1 before any request", async () => {
     const requests: string[] = [];
     await tree.file("design.json", textDesign("{{ coding }}", { coding: "{{ 1 }}" }));
@@ -287,6 +319,40 @@ describe("--data-wakatime on the command line", () => {
     [["--cache-dir", "c"], "option --cache-dir needs --github or --data-wakatime"],
   ])("%j is a usage error", (args, message) => {
     expect(() => parseCliArgs(["render", "a.json", ...args])).toThrow(message);
+  });
+
+  test("a WakaTime key in any argument is a usage error that never prints it", async () => {
+    const key = ["waka", "0f1e2d3c-4b5a-4968-8776-aabbccddeeff"].join("_");
+    for (const args of [
+      ["--data-wakatime", "wakatime", key],
+      [`--data-wakatime=${key}`],
+      ["--data-wakatime", `w=${key}`],
+      [`--unknown=${key}`],
+      [key],
+    ]) {
+      const run = await tree.run(["render", "design.json", ...args], { env });
+      expect(run.code, args.join(" ")).toBe(ExitCode.usage);
+      expect(run.stderr).toContain("looks like a WakaTime API key; not printed");
+      expect(run.stderr).not.toContain("0f1e2d3c");
+    }
+  });
+
+  test("WAKA_API_KEY and WAKA_TOKEN are accepted variable names", () => {
+    expect(
+      parseCliArgs([
+        "render",
+        "a.json",
+        "--data-wakatime",
+        "WAKA_API_KEY",
+        "--data-wakatime",
+        "t=WAKA_TOKEN",
+      ]),
+    ).toMatchObject({
+      dataWakaTime: [
+        { namespace: "wakatime", variable: "WAKA_API_KEY" },
+        { namespace: "t", variable: "WAKA_TOKEN" },
+      ],
+    });
   });
 
   test("render, validate and preview take it; --cache-dir goes with it alone", () => {

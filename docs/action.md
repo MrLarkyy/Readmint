@@ -324,7 +324,7 @@ editors, operatingSystems }` under its namespace, each list of `{ name, percent,
 - When WakaTime is still calculating (HTTP 202, or stats not up to date), the data it has, or the empty object, is
   bound, the log gets one `::warning::` line naming the namespace, and the run succeeds; that answer is not cached.
 - The WakaTime namespaces are added to the `data-file` data or to `github`, after the feeds: `github` cannot be a
-  WakaTime namespace unless `data-file` is given, a `data-file` key equal to one fails the run naming it, and a
+  WakaTime namespace unless `data-file` is given, a `data-file` key equal to one (or to a `data-json` or `data-feed` namespace) fails the run naming it before any request, and a
   namespace cannot also be a `data-json` or `data-feed` namespace.
 - With `cache-dir` each complete answer (the normalised data only, never the key; the cache key holds a digest of the
   key) is kept for an hour, so a re-run sends no request; `cache-dir` then also goes with `data-file`.

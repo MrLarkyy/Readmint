@@ -20,8 +20,9 @@ export const maxDataWakaTimeSources = 4;
 const NAMED_SOURCE = /^([a-z][a-z0-9]{0,31})=(.*)$/s;
 const VARIABLE = /^[A-Za-z_][A-Za-z0-9_]{0,127}$/;
 const RANGE = /^([a-z][a-z0-9]{0,31})=(.*)$/s;
-// A key given where its variable's name belongs: `waka_` keys, and the older bare UUIDs.
-const KEY_SHAPED = /^(?:waka_|[0-9a-f]{8}-[0-9a-f]{4}-)/i;
+// A key given where its variable's name belongs: `waka_<uuid>` keys and the older bare UUIDs. The shape, not the
+// prefix: `WAKA_API_KEY` is a variable name.
+const KEY_SHAPED = /^(?:waka_)?[0-9a-f]{8}-[0-9a-f]{4}-/i;
 
 /**
  * Parses `[<namespace>=]<ENV_NAME>` and `<namespace>=<range>` texts into specs in source order, or the problems

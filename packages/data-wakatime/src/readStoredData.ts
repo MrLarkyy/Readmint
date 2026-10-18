@@ -1,6 +1,7 @@
 import { plainText } from "./plainText.js";
 import { WAKATIME_DATA_VERSION, type WakaTimeData } from "./WakaTimeData.js";
-import { amount, own, wakaTimeEntries } from "./wakaTimeEntries.js";
+import { amount, own } from "./answerFields.js";
+import { wakaTimeEntries } from "./wakaTimeEntries.js";
 import { WakaTimeLimits, type WakaTimeRange } from "./WakaTimeSourceOptions.js";
 
 const LISTS = ["languages", "editors", "operatingSystems"] as const;

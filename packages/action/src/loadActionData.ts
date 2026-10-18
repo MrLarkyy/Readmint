@@ -1,4 +1,5 @@
 import {
+  checkFixtureNamespaces,
   CliError,
   loadFeedArgs,
   loadFixtureData,
@@ -51,6 +52,17 @@ export async function loadActionData(
             ...(fetch === undefined ? {} : { fetch }),
             ...(onPartial === undefined ? {} : { onPartial }),
           });
+    if (config.dataFile !== undefined) {
+      // A data-file key equal to a source namespace fails before any of the sources sends a request.
+      checkFixtureNamespaces(
+        base,
+        [
+          ...(config.dataJson ?? []),
+          ...(config.dataFeed ?? []),
+          ...(config.dataWakaTime ?? []),
+        ].map((spec) => spec.namespace),
+      );
+    }
     const json =
       config.dataJson === undefined
         ? {}

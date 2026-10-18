@@ -473,6 +473,15 @@ describe("data-wakatime", () => {
     expect(listed.join("\n")).not.toContain(key);
   });
 
+  test("WAKA_API_KEY and WAKA_TOKEN are variable names, not keys", () => {
+    expect(
+      readInputs(env({ ...base, "data-wakatime": "WAKA_API_KEY\nt=WAKA_TOKEN" })).dataWakaTime,
+    ).toEqual([
+      { namespace: "wakatime", variable: "WAKA_API_KEY" },
+      { namespace: "t", variable: "WAKA_TOKEN" },
+    ]);
+  });
+
   test("cache-dir goes with data-file when data-wakatime is set", () => {
     const ws = path.resolve("/w/space");
     const config = readInputs(

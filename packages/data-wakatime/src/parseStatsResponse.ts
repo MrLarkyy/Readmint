@@ -1,6 +1,7 @@
 import { plainText } from "./plainText.js";
 import { WAKATIME_DATA_VERSION, type WakaTimeData } from "./WakaTimeData.js";
-import { amount, own, wakaTimeEntries } from "./wakaTimeEntries.js";
+import { amount, own } from "./answerFields.js";
+import { wakaTimeEntries } from "./wakaTimeEntries.js";
 import { WakaTimeShapeError } from "./WakaTimeShapeError.js";
 import { WakaTimeLimits, type WakaTimeRange } from "./WakaTimeSourceOptions.js";
 
@@ -61,7 +62,7 @@ export function parseStatsResponse(
 }
 
 /** The data object while WakaTime has nothing yet. */
-export function emptyData(range: WakaTimeRange): WakaTimeData {
+function emptyData(range: WakaTimeRange): WakaTimeData {
   return Object.freeze({
     version: WAKATIME_DATA_VERSION,
     range,

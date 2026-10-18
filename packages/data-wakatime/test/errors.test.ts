@@ -119,6 +119,23 @@ describe("HTTP statuses", () => {
       expect(stub.calls[0]?.init.redirect).toBe("manual");
     },
   );
+
+  test("a browser's opaque redirect (type opaqueredirect, status 0) is refused after one request", async () => {
+    // What a browser's fetch gives for redirect: "manual"; no Response constructor makes one.
+    const opaque = {
+      type: "opaqueredirect",
+      status: 0,
+      headers: new Headers({ "content-type": "application/json" }),
+      body: null,
+    } as unknown as Response;
+    const stub = stubFetch(() => opaque);
+    const error = await failure(load(stub));
+    expect([error.code, error.message]).toEqual([
+      "invalid-response",
+      "The WakaTime API redirected; no redirect is followed.",
+    ]);
+    expect(stub.calls).toHaveLength(1);
+  });
 });
 
 describe("bodies", () => {
