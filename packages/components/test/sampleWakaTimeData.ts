@@ -1,6 +1,6 @@
 import type { WakaTimeData, WakaTimeEntry } from "@readmint/data-wakatime";
 
-/** A typical week, as `loadWakaTimeData` returns it for the source's own fixture answer (synthetic numbers). */
+/** A typical week (synthetic numbers); each list's shares add up to 100 as the card rounds them. */
 export function sampleWakaTimeData(): { wakatime: WakaTimeData } {
   return {
     wakatime: {
@@ -11,14 +11,14 @@ export function sampleWakaTimeData(): { wakatime: WakaTimeData } {
       dailyAverageSeconds: 14109,
       languages: [
         { name: "TypeScript", percent: 53, seconds: 52346 },
-        { name: "Kotlin", percent: 30.59, seconds: 30210 },
+        { name: "Kotlin", percent: 30.5, seconds: 30124 },
         { name: "Markdown", percent: 8.1, seconds: 8000 },
-        { name: "JSON", percent: 5.06, seconds: 5000 },
-        { name: "YAML", percent: 3.25, seconds: 3210 },
+        { name: "JSON", percent: 5.1, seconds: 5037 },
+        { name: "YAML", percent: 3.3, seconds: 3259 },
       ],
       editors: [
-        { name: "VS Code", percent: 59.5, seconds: 58766 },
-        { name: "IntelliJ IDEA", percent: 40.5, seconds: 40000 },
+        { name: "VS Code", percent: 60, seconds: 59260 },
+        { name: "IntelliJ IDEA", percent: 40, seconds: 39506 },
       ],
       operatingSystems: [{ name: "Windows", percent: 100, seconds: 98766 }],
     },
