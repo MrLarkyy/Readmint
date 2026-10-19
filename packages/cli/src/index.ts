@@ -17,16 +17,23 @@ export { type DesignPropsOptions, loadDesignProps } from "./loadDesignProps.js";
 export { loadFixtureData, maxFixtureBytes } from "./loadFixtureData.js";
 export { loadFeedArgs, type FeedArgsOptions } from "./loadFeedArgs.js";
 export { loadJsonArgs, type JsonArgsOptions } from "./loadJsonArgs.js";
+export { loadRegistryArgs, type RegistryArgsOptions } from "./loadRegistryArgs.js";
 export { loadWakaTimeArgs, type WakaTimeArgsOptions } from "./loadWakaTimeArgs.js";
 export { checkFixtureNamespaces, mergeDataNamespaces } from "./mergeDataNamespaces.js";
 export { type DataFeedSpec, maxDataFeedSources, parseDataFeedArgs } from "./parseDataFeedArgs.js";
 export { type DataJsonSpec, maxDataJsonSources, parseDataJsonArgs } from "./parseDataJsonArgs.js";
+export {
+  type DataRegistrySpec,
+  maxDataRegistrySources,
+  parseDataRegistryArgs,
+} from "./parseDataRegistryArgs.js";
 export {
   type DataWakaTimeSpec,
   maxDataWakaTimeSources,
   parseDataWakaTimeArgs,
 } from "./parseDataWakaTimeArgs.js";
 export { partialDataWarning } from "./partialDataWarning.js";
+export { registryMissingWarning } from "./registryMissingWarning.js";
 export { wakaTimePartialWarning } from "./wakaTimePartialWarning.js";
 export {
   loadLiveData,

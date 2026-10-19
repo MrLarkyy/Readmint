@@ -8,6 +8,7 @@ import { localeProblem } from "./localeProblem.js";
 import { type OutputFormat, outputFormats } from "./OutputFormat.js";
 import { type DataFeedSpec, parseDataFeedArgs } from "./parseDataFeedArgs.js";
 import { type DataJsonSpec, parseDataJsonArgs } from "./parseDataJsonArgs.js";
+import { type DataRegistrySpec, parseDataRegistryArgs } from "./parseDataRegistryArgs.js";
 import { type DataWakaTimeSpec, parseDataWakaTimeArgs } from "./parseDataWakaTimeArgs.js";
 import { renderVariant } from "@readmint/format";
 import { quoteForLog } from "./quoteForLog.js";
@@ -37,7 +38,8 @@ type ValueOption =
   | "data-feed"
   | "data-feed-limit"
   | "data-wakatime"
-  | "data-wakatime-range";
+  | "data-wakatime-range"
+  | "data-registry";
 
 const valueOptions: ReadonlySet<string> = new Set<ValueOption>([
   "root",
@@ -64,6 +66,7 @@ const valueOptions: ReadonlySet<string> = new Set<ValueOption>([
   "data-feed-limit",
   "data-wakatime",
   "data-wakatime-range",
+  "data-registry",
 ]);
 /** Value options that may be given more than once; each use adds one value. */
 const repeatableOptions: ReadonlySet<string> = new Set<ValueOption>([
@@ -73,6 +76,7 @@ const repeatableOptions: ReadonlySet<string> = new Set<ValueOption>([
   "data-feed-limit",
   "data-wakatime",
   "data-wakatime-range",
+  "data-registry",
 ]);
 const flagOptions: ReadonlySet<string> = new Set([
   "help",
@@ -108,6 +112,7 @@ const allowed: Readonly<Record<DesignCommand, ReadonlySet<ValueOption>>> = {
     "data-feed-limit",
     "data-wakatime",
     "data-wakatime-range",
+    "data-registry",
   ]),
   validate: new Set([
     "root",
@@ -125,6 +130,7 @@ const allowed: Readonly<Record<DesignCommand, ReadonlySet<ValueOption>>> = {
     "data-feed-limit",
     "data-wakatime",
     "data-wakatime-range",
+    "data-registry",
   ]),
   preview: new Set([
     "root",
@@ -142,6 +148,7 @@ const allowed: Readonly<Record<DesignCommand, ReadonlySet<ValueOption>>> = {
     "data-feed-limit",
     "data-wakatime",
     "data-wakatime-range",
+    "data-registry",
   ]),
 };
 /** Prefixes of GitHub tokens (classic, OAuth, user-to-server, server-to-server, refresh, fine-grained). */
@@ -247,8 +254,14 @@ export function parseCliArgs(argv: readonly string[]): CliCommand {
   const dataJson = dataJsonArgs(repeated, github);
   const dataFeed = dataFeedArgs(repeated, github, dataJson);
   const dataWakaTime = dataWakaTimeArgs(repeated, github, dataJson, dataFeed);
-  if (!github && dataWakaTime.length === 0 && values.has("cache-dir")) {
-    usage("option --cache-dir needs --github or --data-wakatime");
+  const dataRegistry = dataRegistryArgs(repeated, github, dataJson, dataFeed, dataWakaTime);
+  if (
+    !github &&
+    dataWakaTime.length === 0 &&
+    dataRegistry.length === 0 &&
+    values.has("cache-dir")
+  ) {
+    usage("option --cache-dir needs --github, --data-wakatime or --data-registry");
   }
   const shared: Omit<DesignArgs, "design"> = {
     ...optional("root", values.get("root")),
@@ -264,6 +277,7 @@ export function parseCliArgs(argv: readonly string[]): CliCommand {
     ...(dataJson.length === 0 ? {} : { dataJson }),
     ...(dataFeed.length === 0 ? {} : { dataFeed }),
     ...(dataWakaTime.length === 0 ? {} : { dataWakaTime }),
+    ...(dataRegistry.length === 0 ? {} : { dataRegistry }),
   };
   const time = values.get("time");
   const timeArgs = time === undefined ? {} : { time: parseTime(time) };
@@ -386,6 +400,35 @@ function dataWakaTimeArgs(
   if (github && specs.some((spec) => spec.namespace === GITHUB_DATA_NAMESPACE)) {
     usage(
       "--data-wakatime namespace github clashes with --github; name the WakaTime source another namespace",
+    );
+  }
+  return specs;
+}
+
+function dataRegistryArgs(
+  repeated: ReadonlyMap<ValueOption, readonly string[]>,
+  github: boolean,
+  dataJson: readonly DataJsonSpec[],
+  dataFeed: readonly DataFeedSpec[],
+  dataWakaTime: readonly DataWakaTimeSpec[],
+): readonly DataRegistrySpec[] {
+  const { specs, problems } = parseDataRegistryArgs(repeated.get("data-registry") ?? []);
+  const [problem] = problems;
+  if (problem !== undefined) usage(`--data-registry: ${problem}`);
+  const taken = new Map<string, string>([
+    ...dataJson.map((spec) => [spec.namespace, "--data-json"] as const),
+    ...dataFeed.map((spec) => [spec.namespace, "--data-feed"] as const),
+    ...dataWakaTime.map((spec) => [spec.namespace, "--data-wakatime"] as const),
+  ]);
+  const clash = specs.find((spec) => taken.has(spec.namespace));
+  if (clash !== undefined) {
+    usage(
+      `--data-registry namespace ${clash.namespace} is also a ${taken.get(clash.namespace) ?? ""} namespace; name one of them another namespace`,
+    );
+  }
+  if (github && specs.some((spec) => spec.namespace === GITHUB_DATA_NAMESPACE)) {
+    usage(
+      "--data-registry namespace github clashes with --github; name the registry source another namespace",
     );
   }
   return specs;

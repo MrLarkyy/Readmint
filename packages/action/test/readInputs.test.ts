@@ -566,7 +566,73 @@ describe("cache-dir", () => {
       expect.stringContaining("input cache-dir"),
     ]);
     expect(problems({ ...base, "cache-dir": "c", "data-file": "d.json" })).toEqual([
-      "input cache-dir applies to GitHub and WakaTime data only; it cannot go with data-file without data-wakatime",
+      "input cache-dir applies to GitHub, WakaTime and registry data only; it cannot go with data-file without data-wakatime or data-registry",
     ]);
+  });
+});
+
+describe("data-registry", () => {
+  test("one entry per line, grouped by namespace; absent when empty", () => {
+    const config = readInputs(
+      env({
+        ...base,
+        "data-registry": " npm:react \n\nlibs=maven:junit:junit\nnpm:@types/node\n",
+      }),
+    );
+    expect(config.dataRegistry).toEqual([
+      { namespace: "registry", npm: ["react", "@types/node"], maven: [] },
+      { namespace: "libs", npm: [], maven: ["junit:junit"] },
+    ]);
+    expect(readInputs(env(base))).not.toHaveProperty("dataRegistry");
+  });
+
+  test("problems are listed with the others and never print a value", () => {
+    const listed = problems({
+      ...base,
+      "data-registry": "react\nnpm:Bad-SECRETNAME\nmaven:nocolon\nnpm:ok\nnpm:ok",
+    });
+    expect(listed).toEqual([
+      "input data-registry: registry entry 1 must be npm:<name> or maven:<group>:<artifact>",
+      "input data-registry: registry entry 2 is not a valid npm package name",
+      "input data-registry: registry entry 3 is not a Maven coordinate (group:artifact)",
+      "input data-registry: registry entry 5 repeats an earlier entry of namespace registry",
+    ]);
+    expect(listed.join("\n")).not.toContain("SECRETNAME");
+  });
+
+  test("namespace github clashes with the GitHub data, not with a data-file", () => {
+    expect(problems({ ...base, "data-registry": "github=npm:react" })).toEqual([
+      "input data-registry: namespace github clashes with the GitHub data; name the registry source another namespace",
+    ]);
+    expect(
+      readInputs(env({ ...base, "data-file": "d.json", "data-registry": "github=npm:react" }))
+        .dataRegistry,
+    ).toEqual([{ namespace: "github", npm: ["react"], maven: [] }]);
+  });
+
+  test("a namespace another source has is a problem naming it", () => {
+    const clash =
+      "is also a data-json, data-feed or data-wakatime namespace; name one of them another namespace";
+    expect(
+      problems({
+        ...base,
+        "data-json": "a=x.json",
+        "data-feed": "b=https://f.example/x",
+        "data-wakatime": "c=KEY",
+        "data-registry": "a=npm:x\nb=npm:x\nc=npm:x",
+      }),
+    ).toEqual([
+      `input data-registry: namespace a ${clash}`,
+      `input data-registry: namespace b ${clash}`,
+      `input data-registry: namespace c ${clash}`,
+    ]);
+  });
+
+  test("cache-dir goes with data-file when data-registry is set", () => {
+    const config = readInputs(
+      env({ ...base, "data-file": "d.json", "data-registry": "npm:react", "cache-dir": "../c" }),
+      path.resolve("/w/space"),
+    );
+    expect(config.cacheDir).toBe(path.resolve("/w/c"));
   });
 });

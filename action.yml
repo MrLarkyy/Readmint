@@ -45,7 +45,7 @@ inputs:
     description: Own commits (a whole number 0..2000; empty or 0 = off) read, one GitHub request each, to fill github.languagesAuthored with the lines you added per language; the run takes about 0.3-0.6 seconds per commit; with your own token it also counts private repositories (language names and sums only, no repository name); a slow run ends the reading early with a warning; not with data-file.
     required: false
   cache-dir:
-    description: Folder outside the workspace (absolute, or relative to the workspace with ..; ~ is not expanded) where the GitHub load keeps its answers and the commits read between runs, and the data-wakatime loads their stats, so a later run sends no request for them, e.g. restored by actions/cache with a path under runner.temp; it never holds the token or a key; with data-file only together with data-wakatime.
+    description: Folder outside the workspace (absolute, or relative to the workspace with ..; ~ is not expanded) where the GitHub load keeps its answers and the commits read between runs, and the data-wakatime and data-registry loads their stats and entries, so a later run sends no request for them, e.g. restored by actions/cache with a path under runner.temp; it never holds the token or a key; with data-file only together with data-wakatime or data-registry.
     required: false
   data-file:
     description: Fixture data JSON file (the CLI `--data` format) used instead of loading GitHub data; a file inside the workspace.
@@ -67,6 +67,9 @@ inputs:
     required: false
   data-wakatime-ranges:
     description: Range per WakaTime source, one per line as `<namespace>=<range>` with range last_7_days, last_30_days, last_6_months, last_year or all_time (the CLI `--data-wakatime-range`); a source without a line takes last_7_days.
+    required: false
+  data-registry:
+    description: Package registry entries to bind, one per line as `[<namespace>=]npm:<name>` or `[<namespace>=]maven:<group>:<artifact>` (the CLI `--data-registry`; default namespace registry, at most 20 npm and 20 Maven entries per namespace and 4 namespaces); no key is involved. Each namespace is bound as `{ version, npm, maven }` with `npm` entries `{ name, version, weeklyDownloads }` and `maven` entries `{ group, artifact, latestVersion, updated }` in the order given, `null` for an entry the registry does not know (with a warning); only registry.npmjs.org, api.npmjs.org and repo1.maven.org are contacted. Added after the WakaTime sources.
     required: false
   props-file:
     description: Settings JSON file (the CLI `--props` format, root component props by section) merged into every listed design and its dark twin, for texts set once per template; a path relative to the workspace, confined to it like data-file (no .., no absolute path, no link leading outside).

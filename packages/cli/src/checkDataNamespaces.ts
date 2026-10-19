@@ -5,12 +5,13 @@ import { letNamesOf } from "./letNamesOf.js";
 import type { DesignFile } from "./loadDesignFile.js";
 import type { DataFeedSpec } from "./parseDataFeedArgs.js";
 import type { DataJsonSpec } from "./parseDataJsonArgs.js";
+import type { DataRegistrySpec } from "./parseDataRegistryArgs.js";
 import type { DataWakaTimeSpec } from "./parseDataWakaTimeArgs.js";
 
 const maxLines = 10;
 
 /**
- * Fails before any data is loaded when a `--data-json`, `--data-feed` or `--data-wakatime` namespace equals a `let` name of the design:
+ * Fails before any data is loaded when a `--data-json`, `--data-feed`, `--data-wakatime` or `--data-registry` namespace equals a `let` name of the design:
  * a `let` never hides a data name, so the render would fail anyway, after the requests. Names only in the lines.
  */
 export function checkDataNamespaces(
@@ -18,9 +19,11 @@ export function checkDataNamespaces(
   json: readonly DataJsonSpec[],
   feed: readonly DataFeedSpec[],
   wakaTime: readonly DataWakaTimeSpec[] = [],
+  registry: readonly DataRegistrySpec[] = [],
 ): void {
   const options = new Map<string, string>();
   for (const spec of wakaTime) options.set(spec.namespace, "--data-wakatime");
+  for (const spec of registry) options.set(spec.namespace, "--data-registry");
   for (const spec of feed) options.set(spec.namespace, "--data-feed");
   for (const spec of json) options.set(spec.namespace, "--data-json");
   if (options.size === 0) return;

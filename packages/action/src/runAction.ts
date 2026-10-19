@@ -9,6 +9,7 @@ import {
   partialDataWarning,
   propsSection,
   quoteForLog,
+  registryMissingWarning,
   type RenderVariant,
   wakaTimePartialWarning,
 } from "@readmint/cli";
@@ -103,6 +104,9 @@ export async function runAction(env: Env, deps: ActionDeps): Promise<number> {
       env,
       (namespace) => {
         log.warning(wakaTimePartialWarning(namespace));
+      },
+      (namespace, missing) => {
+        log.warning(registryMissingWarning(namespace, missing));
       },
     );
     if (config.formats.some((format) => format !== "svg")) await loadRaster(deps);

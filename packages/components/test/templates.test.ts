@@ -4,7 +4,12 @@ import { join } from "node:path";
 import { validateDesign } from "@readmint/format";
 import { RenderLimits } from "@readmint/renderer";
 import { describe, expect, test } from "vitest";
-import { codingTimeTemplates, profileTemplates, starterTemplates } from "../src/index.js";
+import {
+  codingTimeTemplates,
+  libraryTemplates,
+  profileTemplates,
+  starterTemplates,
+} from "../src/index.js";
 import { loadTemplate } from "./calendarDesigns.js";
 import { sampleGitHubData, sparseGitHubData, worstCaseGitHubData } from "./sampleGitHubData.js";
 import { loadStarter, renderTemplate, starterSources, withRootProps } from "./templateDesigns.js";
@@ -171,6 +176,7 @@ describe("the renderer has no special case for a template", () => {
   const names = [
     ...starterTemplates,
     ...codingTimeTemplates,
+    ...libraryTemplates,
     ...Object.keys(profileTemplates),
     "calendar-",
     "profiles/",

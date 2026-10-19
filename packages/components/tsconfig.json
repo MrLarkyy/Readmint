@@ -9,6 +9,7 @@
       "@readmint/data": ["../data/src/index.ts"],
       "@readmint/data-github": ["../data-github/src/index.ts"],
       "@readmint/data-wakatime": ["../data-wakatime/src/index.ts"],
+      "@readmint/data-registry": ["../data-registry/src/index.ts"],
       "@readmint/examples/logos": ["../examples/src/profileLogos.ts"],
       "@readmint/examples/props": ["../examples/src/profileExampleProps.ts"],
       "@readmint/expr": ["../expr/src/index.ts"],

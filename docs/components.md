@@ -179,6 +179,24 @@ fixture data. `codingTimeTemplates` from `@readmint/components` lists it, apart 
 - **Goldens** pin the light and dark card on a typical week, the longest data the source returns (20 entries of
   100-code-point names, a 64-code-point total) and the empty object; the card stays within the starters' budget below.
 
+## Libraries card
+
+`@readmint/components/templates/libraries-card.design.json` shows the latest versions of a project's libraries: the
+first five npm packages with their latest version and downloads of the last week, and the first three Maven Central
+artifacts with their latest version and the date it was published. It reads `registry.*` of the
+[registry source](data-sources.md#the-registry-source) and nothing else, loaded by the CLI `--data-registry`
+([cli.md](cli.md#registry-data)) or the Action `data-registry` ([action.md](action.md#registry-data)), or given as
+fixture data. `libraryTemplates` from `@readmint/components` lists it.
+
+- **Light and dark** work as for the starters: no canvas `background`, one root instance with the enum prop `theme`.
+- **Fonts**: Montserrat Medium and ExtraBold from `templates/fonts/`, as the starters.
+- **Missing and long data**: a `null` entry (a package the registry does not know) is dropped with
+  `exclude(null, [null])` before the rows are drawn, so the next entry takes its place; a package without a download
+  figure shows a dash; names and versions are cut to their box by drawn width (`truncateWidth`); empty lists show "No
+  npm packages." and "No Maven artifacts." A namespace other than `registry` needs its bindings renamed.
+- **Goldens** pin the light and dark card, the longest data the source returns (20 entries per list with the longest
+  names), the unknown and download-less entries and the empty lists; the card stays within the budget below.
+
 ## Profile templates
 
 Three full README profiles, each a folder of designs under `@readmint/components/templates/profiles/<name>/`, built
@@ -506,7 +524,7 @@ isometric template about 123 KB.
 
 The starter templates render the worst-case GitHub data (1024-character name, login and bio, 600 languages with
 1024-character names, counts of 10^15, a 54-column calendar at 1000000) within **512 KiB** and the same half work
-limits; a test pins it too. The coding-time card renders the longest WakaTime data within the same **512 KiB** and half work limits.
+limits; a test pins it too. The coding-time card renders the longest WakaTime data, and the libraries card the longest registry data, within the same **512 KiB** and half work limits.
 
 The profile templates render every section on the worst-case data of the starters (and 600 pushes, six repositories
 with 1024-character texts) within **512 KiB** and the same half work limits; the year ring is held to **256 KiB** on the

@@ -2,6 +2,7 @@ import type { RenderVariant } from "@readmint/format";
 import type { OutputFormat } from "./OutputFormat.js";
 import type { DataFeedSpec } from "./parseDataFeedArgs.js";
 import type { DataJsonSpec } from "./parseDataJsonArgs.js";
+import type { DataRegistrySpec } from "./parseDataRegistryArgs.js";
 import type { DataWakaTimeSpec } from "./parseDataWakaTimeArgs.js";
 
 /** Arguments every design command takes. */
@@ -25,7 +26,7 @@ export interface DesignArgs {
   readonly excludeRepositories?: readonly string[];
   /** `--language-commit-cap`: own commits `--github` reads for `github.languagesAuthored`, 0 to 2000. */
   readonly languageCommitCap?: number;
-  /** `--cache-dir`: folder where `--github` and `--data-wakatime` keep their answers between runs, relative to the current folder. */
+  /** `--cache-dir`: folder where `--github`, `--data-wakatime` and `--data-registry` keep their answers between runs, relative to the current folder. */
   readonly cacheDir?: string;
   /**
    * `--data-json` with its `--data-json-header` headers: JSON documents loaded live, each under its namespace, added
@@ -42,6 +43,11 @@ export interface DesignArgs {
    * the named environment variable, each under its namespace, added after the feeds to `--data` or `--github` data.
    */
   readonly dataWakaTime?: readonly DataWakaTimeSpec[];
+  /**
+   * `--data-registry`: the latest versions of npm packages and Maven Central artifacts loaded live (no key), each
+   * namespace's entries under it, added after the WakaTime stats to `--data` or `--github` data.
+   */
+  readonly dataRegistry?: readonly DataRegistrySpec[];
 }
 
 /** `readmint render` beyond the design arguments. */

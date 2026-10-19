@@ -63,7 +63,7 @@ function names(cell: string): string[] {
 }
 
 /** Cards over a data source other than GitHub (docs/components.md): not in the gallery, which shows the GitHub templates. */
-const sourceCards = ["coding-time-card"];
+const sourceCards = ["coding-time-card", "libraries-card"];
 
 const components = readFileSync(docsDir + "components.md", "utf8").replace(/\r\n/g, "\n");
 const images = readGoldenImages();

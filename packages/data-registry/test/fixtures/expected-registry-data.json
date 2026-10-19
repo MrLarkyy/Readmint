@@ -1,0 +1,16 @@
+{
+  "version": 0,
+  "npm": [
+    { "name": "react", "version": "19.1.0", "weeklyDownloads": 31500000 },
+    { "name": "@types/node", "version": "22.15.3", "weeklyDownloads": 98000000 }
+  ],
+  "maven": [
+    {
+      "group": "org.jetbrains.kotlin",
+      "artifact": "kotlin-stdlib",
+      "latestVersion": "2.1.20",
+      "updated": "2025-03-26"
+    },
+    { "group": "junit", "artifact": "junit", "latestVersion": "4.13.2", "updated": "2020-12-15" }
+  ]
+}

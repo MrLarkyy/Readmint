@@ -5,8 +5,8 @@ Commands:
   render <design>     Render the design to SVG (standard output or --out) or to a raster image (--out)
   render --manifest <file> --out-dir <dir>
                       Render the named renders of a manifest into a folder and print the <picture> snippet
-  validate <design>   Check the design and load its assets; with data (--data, --github, --data-json, --data-feed
-                      or --data-wakatime) also render it
+  validate <design>   Check the design and load its assets; with data (--data, --github, --data-json, --data-feed,
+                      --data-wakatime or --data-registry) also render it
   preview <design>    Serve a live preview on http://127.0.0.1:<port>/ (this computer only)
   help                Show this help
 
@@ -43,8 +43,8 @@ Options:
                       Own commits (0..2000, default 0 = off) --github reads, one request each,
                       to fill github.languagesAuthored with the lines you added per language
   --cache-dir <dir>   Folder where --github keeps validated GitHub answers and commit sums, and
-                      --data-wakatime its stats, between runs (created when missing; never holds
-                      the token or the key)
+                      --data-wakatime its stats and --data-registry its entries, between runs
+                      (created when missing; never holds the token or the key)
   --data-json [<ns>=]<source>
                       Load a JSON document as { <ns>: { version: 0, document } } (default ns json):
                       a file inside --root (path relative to --root) or an https URL; repeatable, at most 8, added to
@@ -66,6 +66,12 @@ Options:
   --data-wakatime-range <ns>=<range>
                       Range of the WakaTime source <ns>: last_7_days (default), last_30_days,
                       last_6_months, last_year or all_time; repeatable
+  --data-registry [<ns>=]npm:<name> | [<ns>=]maven:<group>:<artifact>
+                      Load the latest version of an npm package (with its weekly downloads) or of a
+                      Maven Central artifact as { <ns>: { version: 0, npm: [{ name, version,
+                      weeklyDownloads }], maven: [{ group, artifact, latestVersion, updated }] } }
+                      (default ns registry), in the order given, null for an unknown entry; no key;
+                      repeatable, at most 20 per list and 4 namespaces, added to --data or --github data
   -h, --help          Show this help
   --version           Show the version
 
@@ -74,7 +80,8 @@ The token is never an argument: only --github uses GH_TOKEN or GITHUB_TOKEN, and
 shows it, nor a --data-json-header value, nor a --data-feed URL, nor a WakaTime key. The CLI
 makes network requests only with --github (GitHub API, with the token), --data-json with an
 https URL (its headers only), --data-feed (no credentials), --data-wakatime (wakatime.com only,
-the key in the Authorization header) and --fetch-images (image requests, never with
+the key in the Authorization header), --data-registry (registry.npmjs.org, api.npmjs.org and
+repo1.maven.org only, no credentials) and --fetch-images (image requests, never with
 credentials). A --data-json file path is relative to --root, not to the current folder.
 
 Exit codes: 0 ok, 1 invalid design or failed render, 2 usage, 3 file or port problem, 4 data source, 70 internal error.
