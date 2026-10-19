@@ -24,12 +24,8 @@ describe("hosts", () => {
     }
   });
 
-  test("the hosts are exactly the npm registry, the npm downloads API and Maven Central search", () => {
-    expect([...REGISTRY_HOSTS]).toEqual([
-      "registry.npmjs.org",
-      "api.npmjs.org",
-      "search.maven.org",
-    ]);
+  test("the hosts are exactly the npm registry, the npm downloads API and Maven Central repository", () => {
+    expect([...REGISTRY_HOSTS]).toEqual(["registry.npmjs.org", "api.npmjs.org", "repo1.maven.org"]);
     expect(Object.isFrozen(REGISTRY_HOSTS)).toBe(true);
   });
 

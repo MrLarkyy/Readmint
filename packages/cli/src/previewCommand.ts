@@ -28,7 +28,7 @@ type PreviewArgs = Extract<CliCommand, { name: "preview" }>;
 /**
  * Serves the render on http://127.0.0.1:<port>/ and re-renders when the design, the fixture data or
  * an asset changes; a failing render keeps the last SVG and shows its issues. Ends with exit code 0
- * when `io.signal` aborts. `--github`, `--data-json`, `--data-feed` and `--data-wakatime` data is loaded once, before the server starts: a design edit
+ * when `io.signal` aborts. `--github`, `--data-json`, `--data-feed`, `--data-wakatime` and `--data-registry` data is loaded once, before the server starts: a design edit
  * never costs a request (the fixture data is read again on each change and merged with it). With that loaded data,
  * which may be scoped to a token or a header, the routes live under a per-session secret path
  * (http://127.0.0.1:<port>/<secret>/), printed once and kept in memory only. With `open` the browser gets, after the

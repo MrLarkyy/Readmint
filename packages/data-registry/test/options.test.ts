@@ -52,19 +52,40 @@ describe("names", () => {
     expect(isNpmPackageName(name)).toBe(false);
   });
 
-  test.each(["org.jetbrains.kotlin:kotlin-stdlib", "junit:junit", "a:b", "a_b.c-d:e"])(
-    "%s is a Maven coordinate",
-    (value) => {
-      expect(isMavenCoordinate(value)).toBe(true);
-    },
-  );
+  test.each([
+    "org.jetbrains.kotlin:kotlin-stdlib",
+    "junit:junit",
+    "a:b",
+    "a_b.c-d:e",
+    "a:b..c",
+    "a:-",
+  ])("%s is a Maven coordinate", (value) => {
+    expect(isMavenCoordinate(value)).toBe(true);
+  });
 
-  test.each(["junit", "a:b:c", "a: b", ":b", "a:", "a b:c", "a:b/c", `${"x".repeat(129)}:b`, 3])(
-    "%j is not",
-    (value) => {
-      expect(isMavenCoordinate(value)).toBe(false);
-    },
-  );
+  test.each([
+    "junit",
+    "a:b:c",
+    "a: b",
+    ":b",
+    "a:",
+    "a b:c",
+    "a:b/c",
+    `${"x".repeat(129)}:b`,
+    3,
+    "a:.",
+    "a:..",
+    "a:...",
+    ".:b",
+    "..:b",
+    "a..b:c",
+    ".a:b",
+    "a.:b",
+    "a.b.:c",
+    "a.b..:c",
+  ])("%j is not", (value) => {
+    expect(isMavenCoordinate(value)).toBe(false);
+  });
 });
 
 describe("options", () => {

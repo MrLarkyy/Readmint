@@ -7,6 +7,16 @@ export interface ApiFailure {
   readonly message: string;
 }
 
+/** The media type a typed answer must have; JSON unless the caller names another. */
+export interface ApiContentType {
+  /** Exact `type/subtype` values accepted (lowercase). */
+  readonly types: ReadonlySet<string>;
+  /** Suffix of `application/*+<suffix>` types also accepted. */
+  readonly suffix: string;
+  /** Named in the message: "has content type ..., not <kind>". */
+  readonly kind: string;
+}
+
 export interface ApiRequestContext {
   /** Names the namespace of every error. */
   readonly namespace: string;
@@ -17,8 +27,10 @@ export interface ApiRequestContext {
   readonly accepted: ReadonlySet<number>;
   /** Accepted statuses whose body is read (capped); the others are discarded and give `""`. */
   readonly bodied: ReadonlySet<number>;
-  /** Bodied statuses whose content type must be JSON; a bodied status outside it may have an empty body. */
+  /** Bodied statuses whose content type must match `content`; a bodied status outside it may have an empty body. */
   readonly typed: ReadonlySet<number>;
+  /** The expected media type; default JSON (`application/json`, `+json`). */
+  readonly content?: ApiContentType;
   readonly maxBytes: number;
   /** Covers every attempt, wait and body; the caller owns the timeout. */
   readonly signal: AbortSignal;
@@ -42,7 +54,11 @@ export interface ApiAnswer {
 }
 
 const SERVER_RETRY = new Set([500, 502, 503, 504]);
-const checkJson = mediaTypeCheck(new Set(["application/json"]), "json", "JSON");
+const JSON_CONTENT: ApiContentType = {
+  types: new Set(["application/json"]),
+  suffix: "json",
+  kind: "JSON",
+};
 
 /**
  * GETs `url` without following a redirect (a redirect is an error after one request, so no header reaches another
@@ -122,7 +138,8 @@ async function readJson(
           `The ${ctx.label} answer is larger than ${String(ctx.maxBytes)} bytes.`,
         )
       : sourceError(ctx, "invalid-response", `The ${ctx.label} answer is not valid UTF-8.`);
-  const problem = checkJson(response.headers.get("content-type"));
+  const { types, suffix, kind } = ctx.content ?? JSON_CONTENT;
+  const problem = mediaTypeCheck(types, suffix, kind)(response.headers.get("content-type"));
   const refused = (why: string) =>
     sourceError(ctx, "invalid-response", `The ${ctx.label} answer ${why}.`);
   if (problem !== undefined && ctx.typed.has(status)) {
@@ -137,7 +154,7 @@ async function readJson(
     if (error instanceof DataSourceError) throw error;
     throw transportFailure(error, ctx);
   }
-  // An untyped bodied status may come without a body (or a typed one); any body it has is held to JSON.
+  // An untyped bodied status may come without a body (or a typed one); any body it has is held to the media type.
   if (problem !== undefined && text.trim() !== "") throw refused(problem);
   return text;
 }

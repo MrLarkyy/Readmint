@@ -457,7 +457,7 @@ readmint render design.json --data-registry deps=npm:vitest --data-registry deps
   `latest` version and the downloads of the last week, `null` when npm has none), `maven` entries
   `{ group, artifact, latestVersion, updated }` (`updated` the UTC date `YYYY-MM-DD` of the newest version). The libraries card
   template renders it ([components.md](components.md#libraries-card)).
-- **Requests** are plain GETs to `registry.npmjs.org`, `api.npmjs.org` and `search.maven.org` only, without
+- **Requests** are plain GETs to `registry.npmjs.org`, `api.npmjs.org` and `repo1.maven.org` only, without
   credentials or cookies; no redirect is followed.
 - **Unknown entries**: a package or artifact the registry does not know is `null` in its list (the order is kept),
   standard error gets one line `warning: Registry data <ns> has 1 unknown entry: npm:<name>; ...`, the exit code stays

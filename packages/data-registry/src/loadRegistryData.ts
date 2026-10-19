@@ -4,7 +4,7 @@ import {
   type DataSourceCache,
   type DataSourceLoadResult,
 } from "@readmint/data";
-import { parseMavenSearch } from "./parseMavenSearch.js";
+import { parseMavenMetadata } from "./parseMavenMetadata.js";
 import { parseNpmDownloads } from "./parseNpmDownloads.js";
 import { parseNpmLatest } from "./parseNpmLatest.js";
 import { readStoredMaven, readStoredNpm } from "./readStoredEntry.js";
@@ -16,7 +16,7 @@ import {
 } from "./RegistryData.js";
 import { RegistryShapeError } from "./RegistryShapeError.js";
 import type { RegistryLoadMeta, RegistrySourceOptions } from "./RegistrySourceOptions.js";
-import { mavenSearchUrl, npmDownloadsUrl, npmLatestUrl } from "./registryUrls.js";
+import { mavenMetadataUrl, npmDownloadsUrl, npmLatestUrl } from "./registryUrls.js";
 import { requestRegistry, type RegistryLabel } from "./requestRegistry.js";
 import { resolveRegistryOptions, type ResolvedRegistryOptions } from "./resolveRegistryOptions.js";
 
@@ -32,7 +32,7 @@ interface Run {
 /**
  * Loads the latest version (and, for npm, the downloads of the last week) of the packages and artifacts named into
  * `{ version: 0, npm, maven }`, in the order given, one request after another. Every option is checked before any
- * I/O. Only registry.npmjs.org, api.npmjs.org and search.maven.org are contacted, over HTTPS, with no secret. An entry
+ * I/O. Only registry.npmjs.org, api.npmjs.org and repo1.maven.org are contacted, over HTTPS, with no secret. An entry
  * a registry does not know is `null` and named in `meta.missing`; every other failure fails the load, so a degraded
  * card is never produced. A found entry is cached per entry, a missing one never. Errors are `DataSourceError`s of
  * fixed text.
@@ -167,14 +167,15 @@ async function fetchMaven(
 ): Promise<MavenArtifact | null> {
   const { resolved, signal } = run;
   const answer = await requestRegistry(
-    mavenSearchUrl(group, artifact),
+    mavenMetadataUrl(group, artifact),
     "Maven Central",
     resolved,
     signal,
-    false,
+    true,
   );
   run.requests += answer.requests;
-  return parsed(resolved, "Maven Central", () => parseMavenSearch(answer.text, group, artifact));
+  if (answer.status === 404) return null;
+  return parsed(resolved, "Maven Central", () => parseMavenMetadata(answer.text, group, artifact));
 }
 
 function parsed<T>(resolved: ResolvedRegistryOptions, label: RegistryLabel, parse: () => T): T {

@@ -81,7 +81,7 @@ shows it, nor a --data-json-header value, nor a --data-feed URL, nor a WakaTime 
 makes network requests only with --github (GitHub API, with the token), --data-json with an
 https URL (its headers only), --data-feed (no credentials), --data-wakatime (wakatime.com only,
 the key in the Authorization header), --data-registry (registry.npmjs.org, api.npmjs.org and
-search.maven.org only, no credentials) and --fetch-images (image requests, never with
+repo1.maven.org only, no credentials) and --fetch-images (image requests, never with
 credentials). A --data-json file path is relative to --root, not to the current folder.
 
 Exit codes: 0 ok, 1 invalid design or failed render, 2 usage, 3 file or port problem, 4 data source, 70 internal error.

@@ -26,16 +26,14 @@ function registries(
       );
     }
     if (target.hostname === "api.npmjs.org") return Promise.resolve(json({ downloads: 7 }));
-    const known = target.searchParams.get("q") === 'g:"junit" AND a:"junit"';
+    const known = target.pathname === "/maven2/junit/junit/maven-metadata.xml";
     return Promise.resolve(
-      json({
-        response: {
-          numFound: known ? 1 : 0,
-          docs: known
-            ? [{ g: "junit", a: "junit", latestVersion: "4.13.2", timestamp: 1_608_000_000_000 }]
-            : [],
-        },
-      }),
+      known
+        ? new Response(
+            "<metadata><groupId>junit</groupId><artifactId>junit</artifactId><versioning><release>4.13.2</release><lastUpdated>20201215190333</lastUpdated></versioning></metadata>",
+            { headers: { "content-type": "application/xml" } },
+          )
+        : new Response("not found", { status: 404, headers: { "content-type": "text/html" } }),
     );
   };
 }

@@ -45,8 +45,8 @@ const NPM_DOWNLOADS: Record<string, number> = { react: 31_500_000, "@types/node"
 
 /**
  * The public APIs as the fixtures model them: `GET registry.npmjs.org/<name>/latest` (the manifest of the latest
- * tag), `GET api.npmjs.org/downloads/point/last-week/<name>` and Maven Central's `solrsearch/select`. A name the
- * fixtures do not know is a 404 (npm) or `numFound: 0` (Maven).
+ * tag), `GET api.npmjs.org/downloads/point/last-week/<name>` and Maven Central's `repo1.maven.org/maven2/<group path>/<artifact>/maven-metadata.xml`. A name the
+ * fixtures do not know is a 404.
  */
 export function registryApis(url: string): Response {
   const target = new URL(url);
@@ -64,40 +64,47 @@ export function registryApis(url: string): Response {
       ? json('{"error":"package not found"}', 404)
       : json(JSON.stringify({ downloads, start: "2026-10-11", end: "2026-10-17", package: name }));
   }
-  const query = target.searchParams.get("q") ?? "";
-  const match = /^g:"([^"]+)" AND a:"([^"]+)"$/.exec(query);
-  const doc = match === null ? undefined : MAVEN[`${match[1] ?? ""}:${match[2] ?? ""}`];
-  return json(
-    JSON.stringify({
-      responseHeader: { status: 0, QTime: 1 },
-      response: {
-        numFound: doc === undefined ? 0 : 1,
-        start: 0,
-        docs: doc === undefined ? [] : [doc],
-      },
-    }),
-  );
+  const match = /^\/maven2\/(.+)\/([^/]+)\/maven-metadata\.xml$/.exec(target.pathname);
+  const group = (match?.[1] ?? "").replaceAll("/", ".");
+  const entry = MAVEN[`${group}:${match?.[2] ?? ""}`];
+  return entry === undefined
+    ? new Response("<html>Not Found</html>", {
+        status: 404,
+        headers: { "content-type": "text/html" },
+      })
+    : xml(metadata(group, match?.[2] ?? "", entry.release, entry.lastUpdated));
 }
 
-const MAVEN: Record<string, Record<string, unknown>> = {
-  "org.jetbrains.kotlin:kotlin-stdlib": {
-    id: "org.jetbrains.kotlin:kotlin-stdlib",
-    g: "org.jetbrains.kotlin",
-    a: "kotlin-stdlib",
-    latestVersion: "2.1.20",
-    repositoryId: "central",
-    p: "jar",
-    timestamp: 1_743_000_000_000,
-    versionCount: 130,
-  },
-  "junit:junit": {
-    id: "junit:junit",
-    g: "junit",
-    a: "junit",
-    latestVersion: "4.13.2",
-    p: "jar",
-    timestamp: 1_608_000_000_000,
-  },
+export function xml(body: BodyInit | null, status = 200): Response {
+  return new Response(body, { status, headers: { "content-type": "application/xml" } });
+}
+
+/** A `maven-metadata.xml` as Maven Central serves it, with the fields the source ignores. */
+export function metadata(
+  group: string,
+  artifact: string,
+  release: string,
+  lastUpdated: string,
+): string {
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<metadata>
+  <groupId>${group}</groupId>
+  <artifactId>${artifact}</artifactId>
+  <versioning>
+    <latest>${release}</latest>
+    <release>${release}</release>
+    <versions>
+      <version>${release}</version>
+    </versions>
+    <lastUpdated>${lastUpdated}</lastUpdated>
+  </versioning>
+</metadata>
+`;
+}
+
+const MAVEN: Record<string, { release: string; lastUpdated: string }> = {
+  "org.jetbrains.kotlin:kotlin-stdlib": { release: "2.1.20", lastUpdated: "20250326101500" },
+  "junit:junit": { release: "4.13.2", lastUpdated: "20201215190333" },
 };
 
 export async function failure(promise: Promise<unknown>): Promise<DataSourceError> {

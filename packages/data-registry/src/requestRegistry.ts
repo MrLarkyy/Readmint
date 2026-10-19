@@ -1,4 +1,9 @@
-import { requestApiText, type ApiAnswer, type ApiFailure } from "@readmint/data";
+import {
+  requestApiText,
+  type ApiAnswer,
+  type ApiContentType,
+  type ApiFailure,
+} from "@readmint/data";
 import type { ResolvedRegistryOptions } from "./resolveRegistryOptions.js";
 import { RegistryLimits } from "./RegistrySourceOptions.js";
 
@@ -6,6 +11,11 @@ import { RegistryLimits } from "./RegistrySourceOptions.js";
 export type RegistryLabel = "npm registry" | "npm downloads" | "Maven Central";
 
 const FOUND = new Set([200]);
+const XML: ApiContentType = {
+  types: new Set(["application/xml", "text/xml"]),
+  suffix: "xml",
+  kind: "XML",
+};
 const FOUND_OR_MISSING = new Set([200, 404]);
 
 /**
@@ -23,12 +33,13 @@ export function requestRegistry(
     namespace: resolved.namespace,
     label,
     headers: [
-      ["accept", "application/json"],
+      ["accept", label === "Maven Central" ? "application/xml, text/xml" : "application/json"],
       ["user-agent", "readmint"],
     ],
     accepted: missingIsAnswer ? FOUND_OR_MISSING : FOUND,
     bodied: FOUND,
     typed: FOUND,
+    ...(label === "Maven Central" ? { content: XML } : {}),
     maxBytes: resolved.maxBytes,
     signal,
     fetch: resolved.fetch,

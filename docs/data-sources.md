@@ -536,7 +536,7 @@ A design shows a package as `{{ registry.npm[0].name }}` and `{{ registry.npm[0]
 
 Every option is checked before any I/O. A name that is not a valid npm package name (`isNpmPackageName`: at most 214
 characters, lowercase, an optional `@scope/` prefix, no `..`, no `?`, `#` or extra `/`) or a coordinate that is not
-`isMavenCoordinate` (exactly one colon, each part 1 to 128 characters of letters, digits, `_`, `.` and `-`), a
+`isMavenCoordinate` (exactly one colon, each part 1 to 128 characters of letters, digits, `_`, `.` and `-`; no empty group part such as `a..b`, and no part that is only dots), a
 duplicate, more than 20 entries in a list, no entry at all, an unknown namespace and an out-of-range number are
 `invalid-option`; the message names the option and the index (`npm[2] is not a valid npm package name`), never the
 value. The limits are `RegistryLimits`.
@@ -544,37 +544,37 @@ value. The limits are `RegistryLimits`.
 ### Registry requests
 
 One load makes its requests one after another, in the order asked for (npm first), all `GET` over HTTPS, built only from
-the validated names, with `accept: application/json` and `user-agent: readmint`, no cookies and no credentials. The
+the validated names, with `accept: application/json` (`application/xml, text/xml` for Maven) and `user-agent: readmint`, no cookies and no credentials. The
 hosts are `REGISTRY_HOSTS`, and no other is ever contacted:
 
 | entry | request                                                                                                                             |
 | ----- | ----------------------------------------------------------------------------------------------------------------------------------- |
 | npm   | `https://registry.npmjs.org/<name>/latest`, the manifest of the `latest` dist-tag (`@scope/name` as it is; both slash forms answer) |
 | npm   | `https://api.npmjs.org/downloads/point/last-week/<name>`                                                                            |
-| Maven | `https://search.maven.org/solrsearch/select?q=g:"<group>" AND a:"<artifact>"&rows=1&wt=json` (the query encoded)                    |
+| Maven | `https://repo1.maven.org/maven2/<group, dots as slashes>/<artifact>/maven-metadata.xml`, Maven Central's own repository             |
 
 No redirect is followed: a 3xx answer is `invalid-response` "The <service> API redirected; no redirect is followed."
-after that one request. A 2xx answer must be `application/json` (or `application/*+json`) with no charset or UTF-8,
-read through [`readBodyCapped`](#response-bodies).
+after that one request. A 2xx answer must be `application/json` (or `application/*+json`; for Maven `application/xml`,
+`text/xml` or `application/*+xml`) with no charset or UTF-8, read through [`readBodyCapped`](#response-bodies).
 
-| answer                                 | result                                                                                           |
-| -------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| 200                                    | the entry                                                                                        |
-| 404 of the npm manifest                | the entry is `null`, named in `meta.missing`                                                     |
-| 404 of the downloads                   | the entry is kept with `weeklyDownloads` `null`                                                  |
-| Maven answer with no matching document | the entry is `null` (a document whose group and artifact are not the ones asked for is no match) |
-| 401, 403                               | `forbidden`                                                                                      |
-| 429                                    | waited out once when `Retry-After` is at most 10 seconds; else, or a second time, `rate-limited` |
-| 500, 502, 503, 504                     | retried once after 1 second, then `invalid-response` naming the status                           |
-| 3xx, any other status                  | `invalid-response`                                                                               |
-| a body over `maxBytes`                 | `too-large`                                                                                      |
-| no answer                              | `network`, or `timeout` once `timeoutMs` passed or the signal aborted                            |
+| answer                    | result                                                                                                                     |
+| ------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| 200                       | the entry                                                                                                                  |
+| 404 of the npm manifest   | the entry is `null`, named in `meta.missing`                                                                               |
+| 404 of the downloads      | the entry is kept with `weeklyDownloads` `null`                                                                            |
+| 404 of the Maven metadata | the entry is `null`, named in `meta.missing`; so is a document whose `groupId` and `artifactId` are not the ones asked for |
+| 401, 403                  | `forbidden`                                                                                                                |
+| 429                       | waited out once when `Retry-After` is at most 10 seconds; else, or a second time, `rate-limited`                           |
+| 500, 502, 503, 504        | retried once after 1 second, then `invalid-response` naming the status                                                     |
+| 3xx, any other status     | `invalid-response`                                                                                                         |
+| a body over `maxBytes`    | `too-large`                                                                                                                |
+| no answer                 | `network`, or `timeout` once `timeoutMs` passed or the signal aborted                                                      |
 
 Only a registry that does not know an entry gives `null`; every other failure fails the whole load, so a card with a
 silently missing section is never committed. Errors are fixed text plus a status or a field name, never the URL or the
 upstream body; an error that does not come from the source itself becomes `invalid-response` "The registry load
-failed.". Maven Central's search sometimes answers only after 30 seconds or more; such a load ends `timeout` after
-`timeoutMs`, and a re-run usually succeeds.
+failed.". The Maven metadata is read from Maven Central's repository, not its search index, because the index lags
+behind the repository and can stall for a minute.
 
 ### Registry data object
 
@@ -582,13 +582,13 @@ failed.". Maven Central's search sometimes answers only after 30 seconds or more
 frozen with their entries; an entry the registry does not know stays in its place as `null`, so `npm[2]` is always the
 third package asked for.
 
-| list    | entry                                                           | from                                                                          |
-| ------- | --------------------------------------------------------------- | ----------------------------------------------------------------------------- |
-| `npm`   | `{ name, version, weeklyDownloads }` (`NpmPackage`)             | the manifest's `version`; the downloads of the last week, `null` without one  |
-| `maven` | `{ group, artifact, latestVersion, updated }` (`MavenArtifact`) | the search document's `latestVersion` and `timestamp` (UTC date `YYYY-MM-DD`) |
+| list    | entry                                                           | from                                                                                        |
+| ------- | --------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| `npm`   | `{ name, version, weeklyDownloads }` (`NpmPackage`)             | the manifest's `version`; the downloads of the last week, `null` without one                |
+| `maven` | `{ group, artifact, latestVersion, updated }` (`MavenArtifact`) | `release` (else `latest`) and `lastUpdated` (UTC date `YYYY-MM-DD`) of `maven-metadata.xml` |
 
 A version is printable ASCII, 1 to 64 characters, and the downloads a non-negative safe integer, else
-`invalid-response` naming the field. Only these fields are read: the rest of an answer never reaches the data or the
+`invalid-response` naming the field. The metadata is not parsed as general XML: one forward pass reads only `groupId`, `artifactId`, `release`, `latest` and `lastUpdated`, and a DOCTYPE or any other markup declaration, an entity reference in a read field, a depth over 16 or a malformed tag is `invalid-response`. Only these fields are read: the rest of an answer never reaches the data or the
 cache. `meta` is `RegistryLoadMeta`: `{ requests, fromCache, missing }`, `missing` the entries asked for and not known
 (`npm:<name>`, `maven:<group>:<artifact>`); `fromCache` is true only when every entry came from the cache. The CLI
 prints one `warning:` line and the Action one `::warning::` line for them, and the run succeeds.

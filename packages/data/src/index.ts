@@ -9,7 +9,7 @@ export type { DataSourceLoadOptions } from "./DataSourceLoadOptions.js";
 export type { DataSourceLoadMeta, DataSourceLoadResult } from "./DataSourceLoadResult.js";
 export type { FetchedText, FetchHttpsContext } from "./fetchHttpsText.js";
 export type { ReadBodyFailure } from "./readBodyCapped.js";
-export type { ApiAnswer, ApiFailure, ApiRequestContext } from "./requestApiText.js";
+export type { ApiAnswer, ApiContentType, ApiFailure, ApiRequestContext } from "./requestApiText.js";
 export { DATA_SOURCE_INTERFACE_VERSION } from "./DataSource.js";
 export { DATA_SOURCE_COMMON_ERROR_CODES, DataSourceError } from "./DataSourceError.js";
 export { HttpsLimits } from "./HttpsLimits.js";

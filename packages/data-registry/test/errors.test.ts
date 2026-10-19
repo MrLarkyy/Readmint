@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 import { loadRegistryData, RegistryLimits } from "../src/index.js";
-import { failure, fakeSleep, json, registryApis, stubFetch } from "./stubFetch.js";
+import { failure, fakeSleep, json, metadata, registryApis, stubFetch, xml } from "./stubFetch.js";
 
 const NPM = { npm: ["react"] };
 const MAVEN = { maven: ["junit:junit"] };
@@ -42,9 +42,10 @@ describe("errors", () => {
     expect(stub.calls).toHaveLength(2);
   });
 
-  test("a Maven 404 is an error, not a missing entry", async () => {
-    const { error } = await fails(MAVEN, () => json("{}", 404));
-    expect(error.code).toBe("not-found");
+  test("a Maven 403 is forbidden, a 404 is a missing entry (see loadRegistryData.test)", async () => {
+    const { error } = await fails(MAVEN, () => json("{}", 403));
+    expect(error.code).toBe("forbidden");
+    expect(error.message).toBe("The Maven Central API refused the request (HTTP 403).");
   });
 
   test("an unexpected status gives fixed text", async () => {
@@ -80,14 +81,20 @@ describe("errors", () => {
     expect(downloads.error.message).toBe(
       "The npm downloads answer downloads is not a non-negative whole number.",
     );
-    const maven = await fails(MAVEN, () =>
-      json(
-        '{"response":{"numFound":1,"docs":[{"g":"junit","a":"junit","latestVersion":"1","timestamp":"x"}]}}',
+    const maven = await fails(MAVEN, () => xml(metadata("junit", "junit", "1", "20251340000000")));
+    expect(maven.error.message).toBe("The Maven Central answer lastUpdated is not a date.");
+    const noVersion = await fails(MAVEN, () =>
+      xml(
+        "<metadata><groupId>junit</groupId><artifactId>junit</artifactId><versioning><lastUpdated>20250101000000</lastUpdated></versioning></metadata>",
       ),
     );
-    expect(maven.error.message).toBe("The Maven Central answer timestamp is not a date.");
-    const noDocs = await fails(MAVEN, () => json('{"response":{"numFound":1,"docs":3}}'));
-    expect(noDocs.error.message).toBe("The Maven Central answer docs is not a list.");
+    expect(noVersion.error.message).toBe("The Maven Central answer release is not a version.");
+    const notXml = await fails(MAVEN, () => xml("<metadata><a></metadata>"));
+    expect(notXml.error.message).toBe("The Maven Central answer is not valid maven-metadata.xml.");
+    const asJson = await fails(MAVEN, () => json("{}"));
+    expect(asJson.error.message).toBe(
+      'The Maven Central answer has content type "application/json", not XML.',
+    );
   });
 
   test("a version with control characters or over 64 characters is refused", async () => {

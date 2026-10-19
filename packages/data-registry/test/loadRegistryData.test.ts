@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 import { loadRegistryData } from "../src/index.js";
-import { fixture, json, registryApis, stubFetch } from "./stubFetch.js";
+import { fixture, json, metadata, registryApis, stubFetch, xml } from "./stubFetch.js";
 
 const EXPECTED: unknown = JSON.parse(fixture("expected-registry-data.json"));
 const ALL = {
@@ -20,8 +20,8 @@ describe("loadRegistryData", () => {
       "api.npmjs.org",
       "registry.npmjs.org",
       "api.npmjs.org",
-      "search.maven.org",
-      "search.maven.org",
+      "repo1.maven.org",
+      "repo1.maven.org",
     ]);
   });
 
@@ -58,14 +58,7 @@ describe("loadRegistryData", () => {
 
   test("a Maven document of another group or artifact is a miss", async () => {
     const stub = stubFetch(() =>
-      json(
-        JSON.stringify({
-          response: {
-            numFound: 1,
-            docs: [{ g: "org.other", a: "kotlin-stdlib", latestVersion: "1", timestamp: 0 }],
-          },
-        }),
-      ),
+      xml(metadata("org.other", "kotlin-stdlib", "1", "20250101000000")),
     );
     const { data } = await loadRegistryData({
       maven: ["org.jetbrains.kotlin:kotlin-stdlib"],
@@ -79,15 +72,32 @@ describe("loadRegistryData", () => {
     expect(JSON.stringify((await run()).data)).toBe(JSON.stringify((await run()).data));
   });
 
-  test("the Maven query is one quoted group and artifact, one row, JSON", async () => {
+  test("the Maven request is the artifact's maven-metadata.xml, the group as a path, XML", async () => {
     const stub = stubFetch(registryApis);
-    await loadRegistryData({ maven: ["junit:junit"], fetch: stub.fetch });
-    const url = new URL(stub.calls[0]?.url ?? "");
-    expect(url.pathname).toBe("/solrsearch/select");
-    expect(Object.fromEntries(url.searchParams)).toEqual({
-      q: 'g:"junit" AND a:"junit"',
-      rows: "1",
-      wt: "json",
+    await loadRegistryData({ maven: ["org.jetbrains.kotlin:kotlin-stdlib"], fetch: stub.fetch });
+    expect(stub.calls.map((call) => call.url)).toEqual([
+      "https://repo1.maven.org/maven2/org/jetbrains/kotlin/kotlin-stdlib/maven-metadata.xml",
+    ]);
+    expect(stub.calls[0]?.init.headers).toContainEqual(["accept", "application/xml, text/xml"]);
+  });
+
+  test("release wins over latest, and latest is the fallback", async () => {
+    const body = (versioning: string) =>
+      `<metadata><groupId>a</groupId><artifactId>b</artifactId><versioning>${versioning}<lastUpdated>20260102030405</lastUpdated></versioning></metadata>`;
+    const both = await loadRegistryData({
+      maven: ["a:b"],
+      fetch: stubFetch(() => xml(body("<latest>2.0-beta</latest><release>1.9</release>"))).fetch,
     });
+    expect(both.data.maven[0]).toEqual({
+      group: "a",
+      artifact: "b",
+      latestVersion: "1.9",
+      updated: "2026-01-02",
+    });
+    const latest = await loadRegistryData({
+      maven: ["a:b"],
+      fetch: stubFetch(() => xml(body("<latest>2.0-beta</latest>"))).fetch,
+    });
+    expect(latest.data.maven[0]?.latestVersion).toBe("2.0-beta");
   });
 });

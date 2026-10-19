@@ -207,3 +207,37 @@ describe("requestApiText", () => {
     );
   });
 });
+
+describe("the accepted media types", () => {
+  const xml = { types: new Set(["application/xml", "text/xml"]), suffix: "xml", kind: "XML" };
+  const answer =
+    (type: string): Answer =>
+    () =>
+      new Response("<a/>", { status: 200, headers: { "content-type": type } });
+
+  test.each(["application/xml", "text/xml; charset=UTF-8", "application/atom+xml"])(
+    "%s is taken when the caller asks for XML",
+    async (type) => {
+      const { ctx } = context([answer(type)], { content: xml });
+      expect((await requestApiText("https://example.org/x", ctx)).text).toBe("<a/>");
+    },
+  );
+
+  test("JSON is refused as XML, and XML as JSON by default", async () => {
+    const asJson = context([answer("application/json")], { content: xml });
+    expect((await failure(requestApiText("https://example.org/x", asJson.ctx))).message).toBe(
+      'The Demo answer has content type "application/json", not XML.',
+    );
+    const asXml = context([answer("application/xml")]);
+    expect((await failure(requestApiText("https://example.org/x", asXml.ctx))).message).toBe(
+      'The Demo answer has content type "application/xml", not JSON.',
+    );
+  });
+
+  test("an XML charset other than UTF-8 is refused", async () => {
+    const { ctx } = context([answer("text/xml; charset=iso-8859-1")], { content: xml });
+    expect((await failure(requestApiText("https://example.org/x", ctx))).message).toContain(
+      "charset",
+    );
+  });
+});

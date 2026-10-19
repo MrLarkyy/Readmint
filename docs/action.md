@@ -353,7 +353,7 @@ involved:
 - Each namespace is bound as `{ version: 0, npm, maven }`: `npm` entries `{ name, version, weeklyDownloads }`, `maven`
   entries `{ group, artifact, latestVersion, updated }`, in the order given. The libraries card template renders it
   ([components.md](components.md#libraries-card)).
-- Only `registry.npmjs.org`, `api.npmjs.org` and `search.maven.org` are contacted, without credentials; no redirect is
+- Only `registry.npmjs.org`, `api.npmjs.org` and `repo1.maven.org` are contacted, without credentials; no redirect is
   followed.
 - A package or artifact the registry does not know is `null` in its list, the log gets one `::warning::` line naming the
   namespace and the first entries, and the run succeeds; that entry is not cached. Any other failure (rate limit,
