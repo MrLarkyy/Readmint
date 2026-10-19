@@ -16,6 +16,10 @@ export const DesignLimits = Object.freeze({
   maxPaletteModes: 16,
   /** Tokens of one palette mode. */
   maxPaletteTokens: 256,
+  /** Keyframes of one animation track, at least. */
+  minTrackKeyframes: 2,
+  /** Keyframes of one animation track, at most. */
+  maxTrackKeyframes: 32,
   /** Characters of one `{{binding}}`, the braces included. */
   maxBindingLength: 2048,
   /** Issues reported before the result is marked truncated. */

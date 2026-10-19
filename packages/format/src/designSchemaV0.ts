@@ -83,7 +83,7 @@ function track(label: string, value: SchemaNode): ObjectNode {
     keyframes: array(
       "a list of keyframes",
       object("a keyframe", { offset: numberIn(ValueRanges.unit), value, "easing?": easing }),
-      { minItems: 2, maxItems: 32 },
+      { minItems: DesignLimits.minTrackKeyframes, maxItems: DesignLimits.maxTrackKeyframes },
     ),
     "duration?": bindable(numberIn(ValueRanges.animationDuration)),
     "delay?": bindable(numberIn(ValueRanges.animationTime)),

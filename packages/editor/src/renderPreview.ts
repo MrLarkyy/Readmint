@@ -6,6 +6,8 @@ export interface PreviewInput {
   readonly design: Design;
   readonly data: Readonly<Record<string, unknown>>;
   readonly sessionAssets: RenderAssets;
+  /** Milliseconds on the timeline: the still frame at that time (what `readmint render --time` gives), else the animated SVG. */
+  readonly time?: number;
 }
 
 /**
@@ -18,5 +20,6 @@ export function renderPreview(input: PreviewInput): RenderResult {
     data: input.data,
     assets: input.sessionAssets,
     layerBoxes: true,
+    ...(input.time === undefined ? {} : { time: input.time }),
   });
 }

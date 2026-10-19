@@ -42,6 +42,7 @@ import { loadSettings } from "./loadSettings.js";
 import { moveLayer } from "./moveLayer.js";
 import { newDesign } from "./newDesign.js";
 import { PreviewClient, type PreviewOutcome, type PreviewWorker } from "./PreviewClient.js";
+import { pause, play, seek, startPlayhead, type Playhead } from "./Playhead.js";
 import { PropertyPanel } from "./PropertyPanel.js";
 import type { EditorRasterFormat } from "./RasterExportInput.js";
 import { RasterClient, type RasterWorker } from "./RasterClient.js";
@@ -54,11 +55,14 @@ import { selectLayer } from "./selectLayer.js";
 import { setFontAsset } from "./setFontAsset.js";
 import { setLayerLet } from "./setLayerLet.js";
 import { setLayerProperty } from "./setLayerProperty.js";
+import { setLayerTrack } from "./setLayerTrack.js";
+import { setTimeline } from "./setTimeline.js";
 import { setPalette } from "./setPalette.js";
 import { setSettingsProp } from "./setSettingsProp.js";
 import { setVariant } from "./setVariant.js";
 import { SettingsPanel } from "./SettingsPanel.js";
 import { withSection } from "./settingsSection.js";
+import { TimelineBar } from "./TimelineBar.js";
 import { Toolbar } from "./Toolbar.js";
 import { variantReason } from "./variantDesign.js";
 
@@ -121,6 +125,11 @@ export function mountEditor(root: HTMLElement, options: MountEditorOptions = {})
   let settingsWarnings: readonly EditorIssue[] = [];
   let designFileName: string | undefined;
   let svg: string | undefined;
+  let playhead: Playhead = startPlayhead;
+  const clock = () => performance.now();
+  /** The frame the preview is paused on, or undefined while it plays or the design has no timeline. */
+  const pausedTime = () =>
+    state.design.animation !== undefined && !playhead.playing ? playhead.time : undefined;
   const pending = new Set<Promise<unknown>>();
   const shell = element(root, "div", { className: "rm-editor" });
 
@@ -129,10 +138,14 @@ export function mountEditor(root: HTMLElement, options: MountEditorOptions = {})
     const effective = effectiveDesign(current);
     settingsIssues = effective.issues;
     settingsWarnings = effective.warnings;
+    const timeline = effective.design.animation;
+    if (timeline === undefined) playhead = startPlayhead;
+    else if (!playhead.playing) playhead = seek(playhead, playhead.time, timeline.duration);
     client.render({
       design: effective.design,
       data: current.data,
       sessionAssets: current.sessionAssets,
+      ...(timeline === undefined || playhead.playing ? {} : { time: playhead.time }),
     });
   };
   /** Applies `command`; its design change becomes an undo entry, or, with `fresh`, the history starts over. */
@@ -248,35 +261,38 @@ export function mountEditor(root: HTMLElement, options: MountEditorOptions = {})
       return;
     }
     const { data, sessionAssets } = state;
+    const time = format === "png" ? pausedTime() : undefined;
     track(
-      raster.export({ design, data, sessionAssets, format }).then((outcome) => {
-        switch (outcome.kind) {
-          case "exported": {
-            const stem = render?.name ?? "design";
-            const image = {
-              name:
-                variant === undefined ? `${stem}.${format}` : `${stem}.${variant.name}.${format}`,
-              mimeType: outcome.file.mimeType,
-              bytes: outcome.file.bytes,
-            };
-            if (options.saveImage === undefined) {
-              download(root, image.name, image.bytes, image.mimeType);
-            } else options.saveImage(image);
-            return;
+      raster
+        .export({ design, data, sessionAssets, format, ...(time === undefined ? {} : { time }) })
+        .then((outcome) => {
+          switch (outcome.kind) {
+            case "exported": {
+              const stem = render?.name ?? "design";
+              const image = {
+                name:
+                  variant === undefined ? `${stem}.${format}` : `${stem}.${variant.name}.${format}`,
+                mimeType: outcome.file.mimeType,
+                bytes: outcome.file.bytes,
+              };
+              if (options.saveImage === undefined) {
+                download(root, image.name, image.bytes, image.mimeType);
+              } else options.saveImage(image);
+              return;
+            }
+            case "failed":
+              report("export", `the ${format} export failed: ${outcome.message}`);
+              return;
+            case "timeout":
+              report(
+                "export",
+                `the ${format} export took longer than ${String(outcome.timeoutMs)} ms and was stopped; simplify the design`,
+              );
+              return;
+            case "busy":
+              report("export", "a raster export is already running; wait for it to finish");
           }
-          case "failed":
-            report("export", `the ${format} export failed: ${outcome.message}`);
-            return;
-          case "timeout":
-            report(
-              "export",
-              `the ${format} export took longer than ${String(outcome.timeoutMs)} ms and was stopped; simplify the design`,
-            );
-            return;
-          case "busy":
-            report("export", "a raster export is already running; wait for it to finish");
-        }
-      }),
+        }),
       "export",
       `the ${format} export failed`,
     );
@@ -291,6 +307,14 @@ export function mountEditor(root: HTMLElement, options: MountEditorOptions = {})
     );
   };
 
+  /** Moves the playhead and renders what it shows; never an undo entry. */
+  const moveHead = (move: (timeline: { duration: number; loop: boolean }) => Playhead) => {
+    const timeline = state.design.animation;
+    if (timeline === undefined) return;
+    playhead = move({ duration: timeline.duration, loop: timeline.loop !== false });
+    render(state);
+    show();
+  };
   const toolbar = new Toolbar(shell, {
     newDesign: () => {
       designFileName = undefined;
@@ -540,13 +564,25 @@ export function mountEditor(root: HTMLElement, options: MountEditorOptions = {})
       );
     },
   });
-  const canvas = new CanvasView(main, {
+  const centre = element(main, "div", { className: "rm-centre" });
+  const canvas = new CanvasView(centre, {
     select,
     move: (pointer, dx, dy) => {
       dispatch((current) => moveLayer(current, pointer, dx, dy));
     },
     resize: (pointer, box) => {
       dispatch((current) => resizeLayer(current, pointer, box));
+    },
+  });
+  const timelineBar = new TimelineBar(centre, {
+    play: () => {
+      moveHead(() => play(clock()));
+    },
+    pause: () => {
+      moveHead(({ duration, loop }) => pause(playhead, clock(), duration, loop));
+    },
+    seek: (time) => {
+      moveHead(({ duration }) => seek(playhead, time, duration));
     },
   });
   const properties = new PropertyPanel(main, {
@@ -561,6 +597,12 @@ export function mountEditor(root: HTMLElement, options: MountEditorOptions = {})
     },
     setPalette: (entries) => {
       dispatch((current) => setPalette(current, entries));
+    },
+    setTrack: (pointer, property, track) => {
+      dispatch((current) => setLayerTrack(current, pointer, property, track));
+    },
+    setTimeline: (animation) => {
+      dispatch((current) => setTimeline(current, animation));
     },
   });
   const settingsPanel = new SettingsPanel(side, {
@@ -589,6 +631,12 @@ export function mountEditor(root: HTMLElement, options: MountEditorOptions = {})
     assets.update(state);
     canvas.update(state);
     properties.update(state);
+    const timeline = state.design.animation;
+    timelineBar.update(
+      timeline === undefined
+        ? undefined
+        : { duration: timeline.duration, loop: timeline.loop !== false, playhead },
+    );
     settingsPanel.update(state);
     issues.update([...state.issues, ...settingsIssues, ...settingsWarnings, ...previewIssues]);
   };
@@ -604,6 +652,7 @@ export function mountEditor(root: HTMLElement, options: MountEditorOptions = {})
           : undefined,
       );
       if (outcome.kind === "rendered" && outcome.result.ok) {
+        if (playhead.playing && outcome.result.svg !== svg) playhead = play(clock());
         svg = outcome.result.svg;
         canvas.showPreview({ svg, boxes: outcome.result.layerBoxes ?? [] });
       } else {
@@ -650,6 +699,7 @@ export function mountEditor(root: HTMLElement, options: MountEditorOptions = {})
       root.ownerDocument.removeEventListener("keydown", keydown);
       raster.dispose();
       client.dispose();
+      timelineBar.dispose();
       canvas.dispose();
       shell.remove();
     },

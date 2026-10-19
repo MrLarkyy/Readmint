@@ -526,7 +526,7 @@ with `missing-property` at `/animation` (reported once).
 
 Animation never changes the layout: a stack or grid places the layer as if it did not move.
 
-**track**: `keyframes` (required, 2 to 32 `{ offset, value, easing? }`), `duration` (`B<integer 1..60000>` ms, default
+**track**: `keyframes` (required, 2 to 32 `{ offset, value, easing? }`; the bounds are `DesignLimits.minTrackKeyframes` and `maxTrackKeyframes`), `duration` (`B<integer 1..60000>` ms, default
 the timeline's), `delay` and `stagger` (`B<integer 0..60000>` ms, default 0), `cycles` (a literal integer 1..1000,
 default 1), `easing` (default `linear`).
 

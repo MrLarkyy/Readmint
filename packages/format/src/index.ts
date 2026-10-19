@@ -1,6 +1,7 @@
 export const packageName = "@readmint/format";
 
 export type * from "./Design.js";
+export type { AnimatedProperty, TrackValueKind } from "./AnimatedProperty.js";
 export type { DesignLocale } from "./designLocales.js";
 export type { DesignIssue, DesignIssueCode } from "./DesignIssue.js";
 export type { DesignMigration } from "./DesignMigration.js";
@@ -13,6 +14,7 @@ export type { ParseDesignOptions } from "./parseDesign.js";
 export type { QuoteOptions } from "./quoteInput.js";
 export type { JsonSchema } from "./schema/toJsonSchema.js";
 export type { ValueRange, ValueRangeName } from "./ValueRanges.js";
+export { animatedProperties } from "./animatedProperties.js";
 export { applyDesignProps } from "./applyDesignProps.js";
 export { applyRenderVariant } from "./applyRenderVariant.js";
 export { renderVariant, renderVariants, type RenderVariant } from "./RenderVariant.js";
