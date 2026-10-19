@@ -298,8 +298,8 @@ draws the same shapes.
 - A `let` name never hides a data name: a name equal to a top-level data key (the namespace of `github`, `--data-json`,
   `--data-feed`, `--data-wakatime`, `--data-registry` or a fixture) is a render `binding` issue at the entry, and data is never shadowed silently. Rename the
   `let` name, or give the data source another namespace (CLI: `--data-json <ns>=<source>`). The CLI `render` and `validate` check the `let`
-  names of the whole design, components included, against its `--data-json`, `--data-feed`, `--data-wakatime` and `--data-registry` namespaces before they load
-  any data (`preview` loads its data first and shows the clash as an issue), so even a `let` in a component no layer instantiates is refused.
+  names of the whole design, components included, against its `--github`, `--data-json`, `--data-feed`, `--data-wakatime` and `--data-registry` namespaces before they load
+  any data (`--github` reserves `github`; `preview` checks them before it loads its data too, and shows a clash a later edit introduces as an issue), so even a `let` in a component no layer instantiates is refused.
 - Order on a layer: `repeat` first (each copy gets its own `let` values and can read `item` and `index`), then `let`,
   then `visible` and `if`, then the layer's own properties (a component instance's props after them), then its
   children, and last its animation. A `let` is evaluated even when `if` then drops the copy, so a guard against missing

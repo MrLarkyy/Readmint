@@ -124,3 +124,39 @@ describe("a data namespace equal to a let name", () => {
     expect(run.stderr).toContain("/components/badge/layers/0/let/total");
   });
 });
+
+describe("the github namespace of --github", () => {
+  const env = { GH_TOKEN: "ghp_CANARYcanary0123456789CANARYcanary01" };
+
+  beforeEach(async () => {
+    await tree.file("gh/design.json", design([withLet("github")]));
+  });
+
+  test.each(["render", "validate"])("%s fails up front without a request", async (command) => {
+    const run = await tree.run([command, "gh/design.json", "--github"], { ...spy(), env });
+    expect(run.code).toBe(ExitCode.invalid);
+    expect(run.stderr).toContain('let name "github" is also the namespace of --github "github"');
+    expect(run.stderr).toContain("rename the let name");
+    expect(run.stderr).not.toContain("<ns>=<source>");
+    expect(requests).toEqual([]);
+  });
+
+  test("a render manifest fails up front without a request", async () => {
+    await tree.file("gh/renders.json", { renders: [{ name: "a", design: "design.json" }] });
+    const run = await tree.run(
+      ["render", "--manifest", "gh/renders.json", "--out-dir", "out", "--github"],
+      {
+        ...spy(),
+        env,
+      },
+    );
+    expect(run.code).toBe(ExitCode.invalid);
+    expect(run.stderr).toContain('namespace of --github "github"');
+    expect(requests).toEqual([]);
+  });
+
+  test("without --github the let name is no clash", async () => {
+    const run = await tree.run(["validate", "gh/design.json"]);
+    expect(run.stderr).not.toContain("namespace of");
+  });
+});

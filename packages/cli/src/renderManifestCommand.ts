@@ -50,6 +50,7 @@ export async function renderManifestCommand(
       args.dataFeed ?? [],
       args.dataWakaTime ?? [],
       args.dataRegistry ?? [],
+      args.github === true,
     );
   }
   const props = args.props === undefined ? undefined : await loadDesignProps(args.props, io.cwd);
