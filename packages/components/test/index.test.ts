@@ -4,6 +4,7 @@ import { expect, test } from "vitest";
 import {
   calendarTemplates,
   codingTimeTemplates,
+  libraryTemplates,
   packageName,
   profileTemplates,
   starterTemplates,
@@ -15,7 +16,7 @@ test("exposes its package name", () => {
   expect(packageName).toBe("@readmint/components");
 });
 
-test("the template files are exactly the calendar, starter and coding-time templates, plus the fonts and profiles folders", () => {
+test("the template files are exactly the calendar, starter, coding-time and library templates, plus the fonts and profiles folders", () => {
   const files = readdirSync(templates, { withFileTypes: true });
   expect(files.filter((entry) => entry.isDirectory()).map((entry) => entry.name)).toEqual([
     "fonts",
@@ -27,7 +28,7 @@ test("the template files are exactly the calendar, starter and coding-time templ
       .map((entry) => entry.name)
       .sort(),
   ).toEqual(
-    [...calendarTemplates, ...starterTemplates, ...codingTimeTemplates]
+    [...calendarTemplates, ...starterTemplates, ...codingTimeTemplates, ...libraryTemplates]
       .map((name) => `${name}.design.json`)
       .sort(),
   );

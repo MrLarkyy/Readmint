@@ -1,0 +1,302 @@
+{
+  "$schema": "https://raw.githubusercontent.com/MrLarkyy/Readmint/main/packages/format/schema/design-v0.schema.json",
+  "version": 0,
+  "title": "Libraries",
+  "description": "The latest versions of a project's libraries: npm packages with their downloads of the last week and Maven Central artifacts with the date of their newest release.",
+  "canvas": {
+    "width": 420,
+    "height": 440
+  },
+  "assets": {
+    "fonts": {
+      "body": {
+        "family": "Montserrat",
+        "src": "fonts/Montserrat-Medium.ttf",
+        "weight": 500,
+        "licence": {
+          "embedding": "allowed",
+          "name": "OFL-1.1"
+        }
+      },
+      "bold": {
+        "family": "Montserrat",
+        "src": "fonts/Montserrat-ExtraBold.ttf",
+        "weight": 800,
+        "licence": {
+          "embedding": "allowed",
+          "name": "OFL-1.1"
+        }
+      }
+    }
+  },
+  "components": {
+    "npmRow": {
+      "description": "One npm package: its name, its latest version and its downloads of the last week.",
+      "props": {
+        "name": {
+          "type": "string",
+          "default": ""
+        },
+        "version": {
+          "type": "string",
+          "default": ""
+        },
+        "downloads": {
+          "type": "number",
+          "default": -1
+        },
+        "width": {
+          "type": "number",
+          "default": 372
+        },
+        "theme": {
+          "type": "enum",
+          "values": ["light", "dark"],
+          "default": "light"
+        }
+      },
+      "layers": [
+        {
+          "type": "text",
+          "content": "{{ props.name | truncateWidth(168, \"body\", 13) }}",
+          "font": "body",
+          "fontSize": 13,
+          "fill": "{{ props.theme == \"dark\" ? \"#e6edf3\" : \"#1f2328\" }}"
+        },
+        {
+          "type": "text",
+          "content": "{{ props.version | truncateWidth(112, \"body\", 13) }}",
+          "font": "body",
+          "fontSize": 13,
+          "fill": "{{ props.theme == \"dark\" ? \"#4493f8\" : \"#0969da\" }}",
+          "x": 176,
+          "width": 112,
+          "align": "end"
+        },
+        {
+          "type": "text",
+          "content": "{{ props.downloads | compact(1) | truncateWidth(76, \"body\", 13) }}",
+          "font": "body",
+          "fontSize": 13,
+          "fill": "{{ props.theme == \"dark\" ? \"#9198a1\" : \"#59636e\" }}",
+          "x": 296,
+          "width": "{{ props.width - 296 }}",
+          "align": "end",
+          "if": "{{ props.downloads >= 0 }}"
+        },
+        {
+          "type": "text",
+          "content": "-",
+          "font": "body",
+          "fontSize": 13,
+          "fill": "{{ props.theme == \"dark\" ? \"#9198a1\" : \"#59636e\" }}",
+          "x": 296,
+          "width": "{{ props.width - 296 }}",
+          "align": "end",
+          "if": "{{ props.downloads < 0 }}"
+        }
+      ]
+    },
+    "mavenRow": {
+      "description": "One Maven Central artifact: group and artifact, its latest version and the date it was published.",
+      "props": {
+        "coordinate": {
+          "type": "string",
+          "default": ""
+        },
+        "version": {
+          "type": "string",
+          "default": ""
+        },
+        "updated": {
+          "type": "string",
+          "default": ""
+        },
+        "width": {
+          "type": "number",
+          "default": 372
+        },
+        "theme": {
+          "type": "enum",
+          "values": ["light", "dark"],
+          "default": "light"
+        }
+      },
+      "layers": [
+        {
+          "type": "text",
+          "content": "{{ props.coordinate | truncateWidth(props.width - 124, \"body\", 13) }}",
+          "font": "body",
+          "fontSize": 13,
+          "fill": "{{ props.theme == \"dark\" ? \"#e6edf3\" : \"#1f2328\" }}"
+        },
+        {
+          "type": "text",
+          "content": "{{ props.version | truncateWidth(116, \"body\", 13) }}",
+          "font": "body",
+          "fontSize": 13,
+          "fill": "{{ props.theme == \"dark\" ? \"#4493f8\" : \"#0969da\" }}",
+          "x": "{{ props.width - 116 }}",
+          "width": 116,
+          "align": "end"
+        },
+        {
+          "type": "text",
+          "content": "Updated {{ props.updated }}",
+          "font": "body",
+          "fontSize": 12,
+          "fill": "{{ props.theme == \"dark\" ? \"#9198a1\" : \"#59636e\" }}",
+          "y": 19
+        }
+      ]
+    },
+    "card": {
+      "description": "The card: a rounded panel in the theme's colours holding the content; the theme prop is the only switch between light and dark.",
+      "props": {
+        "theme": {
+          "type": "enum",
+          "values": ["light", "dark"],
+          "default": "light"
+        }
+      },
+      "layers": [
+        {
+          "type": "rect",
+          "x": 0.5,
+          "y": 0.5,
+          "width": 419,
+          "height": 439,
+          "radius": 6,
+          "fill": "{{ props.theme == \"dark\" ? \"#0d1117\" : \"#ffffff\" }}",
+          "stroke": "{{ props.theme == \"dark\" ? \"#30363d\" : \"#d0d7de\" }}",
+          "strokeWidth": 1
+        },
+        {
+          "type": "text",
+          "content": "Libraries",
+          "font": "bold",
+          "fontSize": 16,
+          "fill": "{{ props.theme == \"dark\" ? \"#4493f8\" : \"#0969da\" }}",
+          "x": 24,
+          "y": 22
+        },
+        {
+          "type": "text",
+          "content": "npm",
+          "font": "bold",
+          "fontSize": 13,
+          "fill": "{{ props.theme == \"dark\" ? \"#e6edf3\" : \"#1f2328\" }}",
+          "x": 24,
+          "y": 62
+        },
+        {
+          "type": "text",
+          "content": "Downloads of the last week",
+          "font": "body",
+          "fontSize": 12,
+          "fill": "{{ props.theme == \"dark\" ? \"#9198a1\" : \"#59636e\" }}",
+          "x": 24,
+          "y": 63,
+          "width": 372,
+          "align": "end"
+        },
+        {
+          "type": "text",
+          "content": "No npm packages.",
+          "font": "body",
+          "fontSize": 13,
+          "fill": "{{ props.theme == \"dark\" ? \"#9198a1\" : \"#59636e\" }}",
+          "x": 24,
+          "y": 90,
+          "if": "{{ !(registry.npm | exclude(null, [null])) }}"
+        },
+        {
+          "type": "group",
+          "x": 24,
+          "y": 90,
+          "layout": {
+            "type": "stack",
+            "direction": "column",
+            "gap": 10
+          },
+          "children": [
+            {
+              "type": "component",
+              "ref": "npmRow",
+              "repeat": {
+                "each": "{{ registry.npm | exclude(null, [null]) }}",
+                "as": "package",
+                "index": "i"
+              },
+              "if": "{{ i < 5 }}",
+              "props": {
+                "name": "{{ package.name }}",
+                "version": "{{ package.version }}",
+                "downloads": "{{ package.weeklyDownloads == null ? -1 : package.weeklyDownloads }}",
+                "width": 372,
+                "theme": "{{ props.theme }}"
+              }
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "content": "Maven Central",
+          "font": "bold",
+          "fontSize": 13,
+          "fill": "{{ props.theme == \"dark\" ? \"#e6edf3\" : \"#1f2328\" }}",
+          "x": 24,
+          "y": 256
+        },
+        {
+          "type": "text",
+          "content": "No Maven artifacts.",
+          "font": "body",
+          "fontSize": 13,
+          "fill": "{{ props.theme == \"dark\" ? \"#9198a1\" : \"#59636e\" }}",
+          "x": 24,
+          "y": 284,
+          "if": "{{ !(registry.maven | exclude(null, [null])) }}"
+        },
+        {
+          "type": "group",
+          "x": 24,
+          "y": 284,
+          "layout": {
+            "type": "stack",
+            "direction": "column",
+            "gap": 14
+          },
+          "children": [
+            {
+              "type": "component",
+              "ref": "mavenRow",
+              "repeat": {
+                "each": "{{ registry.maven | exclude(null, [null]) }}",
+                "as": "artifact",
+                "index": "i"
+              },
+              "if": "{{ i < 3 }}",
+              "props": {
+                "coordinate": "{{ artifact.group }}:{{ artifact.artifact }}",
+                "version": "{{ artifact.latestVersion }}",
+                "updated": "{{ artifact.updated }}",
+                "width": 372,
+                "theme": "{{ props.theme }}"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "layers": [
+    {
+      "type": "component",
+      "ref": "card",
+      "props": {
+        "theme": "light"
+      }
+    }
+  ]
+}
