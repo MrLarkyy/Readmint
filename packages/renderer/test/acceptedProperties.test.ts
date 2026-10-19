@@ -7,15 +7,16 @@ import { accepted } from "../src/resolveAnimation.js";
 const nodeKind = (type: Layer["type"]): RenderNode["kind"] =>
   type === "component" ? "group" : type;
 
-const layerTypes: readonly Layer["type"][] = [
-  "group",
-  "image",
-  "component",
-  "rect",
-  "ellipse",
-  "path",
-  "text",
-];
+/** Keyed by every layer type, so the compiler rejects this list when the format gains a type it does not name. */
+const layerTypes = Object.keys({
+  group: true,
+  image: true,
+  component: true,
+  rect: true,
+  ellipse: true,
+  path: true,
+  text: true,
+} satisfies Record<Layer["type"], true>) as Layer["type"][];
 
 test.each(layerTypes)(
   "the renderer accepts on a %s exactly the tracks the format allows",
