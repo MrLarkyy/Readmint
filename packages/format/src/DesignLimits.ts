@@ -16,6 +16,8 @@ export const DesignLimits = Object.freeze({
   maxPaletteModes: 16,
   /** Tokens of one palette mode. */
   maxPaletteTokens: 256,
+  /** Characters of one `{{binding}}`, the braces included. */
+  maxBindingLength: 2048,
   /** Issues reported before the result is marked truncated. */
   maxIssues: 100,
   /** YAML alias nodes in a source, checked before any alias is resolved. */

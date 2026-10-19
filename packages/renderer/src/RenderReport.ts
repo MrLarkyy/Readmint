@@ -18,6 +18,8 @@ export interface RenderReport {
   /** Fonts that drew at least one glyph. */
   readonly fonts: readonly RenderFontUsage[];
   readonly images: readonly RenderAssetUsage[];
+  /** The palette mode the render used (after `theme`, variant and section); absent when the design has no palette. */
+  readonly paletteMode?: string;
   /** The design's timeline, when it has one: what `frameTimes` takes. */
   readonly animation?: { readonly duration: number; readonly loop: boolean };
 }

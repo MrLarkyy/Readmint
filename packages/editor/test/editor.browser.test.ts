@@ -541,7 +541,7 @@ test("a file that cannot be read is an issue, never an unhandled rejection", asy
   }
 });
 
-test("the properties of a layer on an orbit show the orbit read-only and keep it on edits", async () => {
+test("the properties of a layer on an orbit edit every orbit value, undoably, and keep the rest", async () => {
   const orbit = { center: { x: 200, y: 100 }, radius: 80, radiusY: 30, angle: 30 };
   await remount({
     version: 0,
@@ -549,15 +549,60 @@ test("the properties of a layer on an orbit show the orbit read-only and keep it
     layers: [{ type: "rect", width: 20, height: 10, fill: "#0969da", orbit }],
   });
   await click('[data-pointer="/layers/0"] [data-action="select"]');
-  const field = find('[aria-label="Properties"] [name="orbit"]') as HTMLInputElement;
-  expect(field.readOnly).toBe(true);
-  expect(field.value).toBe(JSON.stringify(orbit));
-  await setField("width", "30");
+  const field = (name: string) =>
+    find(`[aria-label="Properties"] [name="${name}"]`) as HTMLInputElement;
+  expect(field("orbit.center.x").value).toBe("200");
+  expect(field("orbit.radius").value).toBe("80");
+  expect(field("orbit.radiusY").value).toBe("30");
+  expect(field("orbit.angle").value).toBe("30");
+  expect(root.querySelector('[name="orbit"]')).toBeNull();
+  const before = await previewSvg();
+  await setField("orbit.angle", "120");
   expect(editor.state.design.layers[0]).toEqual({
     type: "rect",
-    width: 30,
+    width: 20,
     height: 10,
     fill: "#0969da",
-    orbit,
+    orbit: { ...orbit, angle: 120 },
   });
+  expect(await previewSvg()).not.toBe(before);
+  await setField("orbit.fade.from", "-1");
+  expect(editor.state.issues).toHaveLength(1);
+  await setField("orbit.fade.to", "1");
+  expect(editor.state.design.layers[0]).toMatchObject({ orbit: { fade: { from: -1, to: 1 } } });
+  editor.undo();
+  editor.undo();
+  await editor.settled();
+  expect(editor.state.design.layers[0]).toMatchObject({ orbit });
+  expect(await previewSvg()).toBe(before);
+  await click('[data-action="remove-orbit"]');
+  expect(Object.hasOwn(editor.state.design.layers[0] ?? {}, "orbit")).toBe(false);
+  await click('[data-action="add-orbit"]');
+  expect(editor.state.design.layers[0]).toMatchObject({
+    orbit: { center: { x: 0, y: 0 }, radius: 0, angle: 0 },
+  });
+});
+
+test("a focused but untouched field shows the new value after a drag", async () => {
+  await click('[data-action="add-rect"]');
+  await click('[data-pointer="/layers/0"] [data-action="select"]');
+  const x = find('[aria-label="Properties"] [name="x"]') as HTMLInputElement;
+  x.focus();
+  expect(x.value).toBe("20");
+  await drag(find('[data-testid="overlay"]'), 50, 50, 30, 0);
+  expect(editor.state.design.layers[0]).toMatchObject({ x: 50 });
+  expect((find('[aria-label="Properties"] [name="x"]') as HTMLInputElement).value).toBe("50");
+});
+
+test("a field with text typed since the last commit keeps it when the design changes", async () => {
+  await click('[data-action="add-rect"]');
+  await click('[data-pointer="/layers/0"] [data-action="select"]');
+  const x = find('[aria-label="Properties"] [name="x"]') as HTMLInputElement;
+  await userEvent.fill(x, "77");
+  editor.dispatch((state) => ({
+    ...state,
+    design: { ...state.design, canvas: { ...state.design.canvas, width: 410 } },
+  }));
+  await editor.settled();
+  expect((find('[aria-label="Properties"] [name="x"]') as HTMLInputElement).value).toBe("77");
 });

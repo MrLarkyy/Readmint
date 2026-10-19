@@ -45,6 +45,7 @@ export class Toolbar {
   private readonly sectionSelect: HTMLSelectElement;
   private readonly variantSelect: HTMLSelectElement;
   private readonly variantReason: HTMLElement;
+  private readonly paletteMode: HTMLElement;
   private sectionsKey: string | undefined;
   private rendersKey: string | undefined;
 
@@ -132,6 +133,10 @@ export class Toolbar {
       className: "rm-variant-reason",
       attributes: { "aria-live": "polite" },
     });
+    this.paletteMode = element(this.root, "span", {
+      className: "rm-toolbar-palette-mode",
+      attributes: { "data-role": "palette-mode", "aria-live": "polite" },
+    });
     const label = element(this.root, "label", { text: "Zoom " });
     const zoom = element(label, "select", { attributes: { "data-action": "zoom" } });
     for (const value of zooms) {
@@ -216,6 +221,11 @@ export class Toolbar {
     this.variantSelect.disabled = blocked;
     this.variantSelect.title = blocked ? why : "";
     this.variantReason.textContent = blocked ? why : "";
+  }
+
+  /** Shows the palette mode the last successful render used; nothing without a palette or after a failed render. */
+  setPaletteMode(mode: string | undefined): void {
+    this.paletteMode.textContent = mode === undefined ? "" : `Palette mode: ${mode}`;
   }
 
   private button(text: string, action: string, run: () => void): HTMLButtonElement {

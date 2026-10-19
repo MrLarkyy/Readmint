@@ -52,7 +52,9 @@ import { renderSection } from "./renderSection.js";
 import { resizeLayer } from "./resizeLayer.js";
 import { selectLayer } from "./selectLayer.js";
 import { setFontAsset } from "./setFontAsset.js";
+import { setLayerLet } from "./setLayerLet.js";
 import { setLayerProperty } from "./setLayerProperty.js";
+import { setPalette } from "./setPalette.js";
 import { setSettingsProp } from "./setSettingsProp.js";
 import { setVariant } from "./setVariant.js";
 import { SettingsPanel } from "./SettingsPanel.js";
@@ -554,6 +556,12 @@ export function mountEditor(root: HTMLElement, options: MountEditorOptions = {})
     invalid: (message, path) => {
       dispatch((current) => refuse(current, "design", message, path));
     },
+    setLet: (pointer, entries) => {
+      dispatch((current) => setLayerLet(current, pointer, entries));
+    },
+    setPalette: (entries) => {
+      dispatch((current) => setPalette(current, entries));
+    },
   });
   const settingsPanel = new SettingsPanel(side, {
     set: (prop, value) => {
@@ -590,6 +598,11 @@ export function mountEditor(root: HTMLElement, options: MountEditorOptions = {})
     timeoutMs: options.renderTimeoutMs ?? EditorLimits.renderTimeoutMs,
     onOutcome: (outcome: PreviewOutcome) => {
       previewIssues = outcomeIssues(outcome);
+      toolbar.setPaletteMode(
+        outcome.kind === "rendered" && outcome.result.ok
+          ? outcome.result.report.paletteMode
+          : undefined,
+      );
       if (outcome.kind === "rendered" && outcome.result.ok) {
         svg = outcome.result.svg;
         canvas.showPreview({ svg, boxes: outcome.result.layerBoxes ?? [] });

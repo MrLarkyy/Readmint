@@ -1,4 +1,6 @@
 import { describe, expect, test } from "vitest";
+import type { Orbit } from "@readmint/format";
+import { orbitFadeKeys, orbitFields } from "../src/orbitFields.js";
 import { fieldText, layerFields, parseField, type LayerField } from "../src/LayerField.js";
 
 const number: LayerField = { key: "x", kind: "number" };
@@ -70,13 +72,30 @@ test("every layer type has its own fields, from Design.ts", () => {
   );
 });
 
-test("an orbit is listed read-only, only on a layer that has one", () => {
+test("an orbit is edited in its own fieldset, never as a layer field", () => {
   const sources = { fonts: [], images: [], components: [] };
   const orbit = { center: { x: 1, y: 2 }, radius: 3, angle: 4 };
   const fields = layerFields({ type: "ellipse", width: 1, height: 1, orbit }, sources);
-  expect(fields.at(-1)).toEqual({ key: "orbit", kind: "text", readOnly: true });
+  expect(fields.map((field) => field.key)).not.toContain("orbit");
   expect(fieldText(orbit)).toBe('{"center":{"x":1,"y":2},"radius":3,"angle":4}');
-  expect(
-    layerFields({ type: "ellipse", width: 1, height: 1 }, sources).map((field) => field.key),
-  ).not.toContain("orbit");
+});
+
+test("orbitFields lists every key of an Orbit but fade, which is a pair", () => {
+  const keys = orbitFields.map(({ parent, field }) =>
+    parent === "" ? field.key : `${parent}.${field.key}`,
+  );
+  expect(keys).toEqual(["center.x", "center.y", "radius", "radiusY", "angle", "speed", "upright"]);
+  expect(orbitFadeKeys).toEqual(["from", "to"]);
+  const every: Required<Orbit> = {
+    center: { x: 0, y: 0 },
+    radius: 0,
+    radiusY: 0,
+    angle: 0,
+    speed: 0,
+    upright: true,
+    fade: { from: 0, to: 1 },
+  };
+  expect(new Set([...keys.filter((key) => !key.includes(".")), "center", "fade"])).toEqual(
+    new Set(Object.keys(every)),
+  );
 });
