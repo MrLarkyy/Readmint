@@ -14,10 +14,10 @@ export async function renderRasterExport(input: RasterExportInput): Promise<Rast
       assets: input.sessionAssets,
       ...(time === undefined ? {} : { time }),
     });
-  const first = render();
+  const first = render(input.time);
   if (!first.ok) throw new Error(first.issues.map((issue) => issue.message).join("; "));
   const frame = (time?: number): string => {
-    if (time === undefined) return first.svg;
+    if (time === input.time) return first.svg;
     const rendered = render(time);
     if (!rendered.ok) throw new Error(rendered.issues.map((issue) => issue.message).join("; "));
     return rendered.svg;
@@ -28,7 +28,7 @@ export async function renderRasterExport(input: RasterExportInput): Promise<Rast
         frame,
         ...(first.report.animation === undefined ? {} : { animation: first.report.animation }),
       },
-      { format: input.format },
+      { format: input.format, ...(input.time === undefined ? {} : { time: input.time }) },
     );
   } catch (error) {
     if (error instanceof RasterError)

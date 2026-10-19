@@ -1,15 +1,18 @@
-import type { Design } from "@readmint/format";
+import type { Design, Layer } from "@readmint/format";
 import { childPointer, getAt } from "./designPointer.js";
 import { controlKey, focusControl, type ControlKey } from "./ControlKey.js";
 import { clear, element } from "./dom.js";
 import type { EditorState } from "./EditorState.js";
 import { findLayer, placedByLayout } from "./layerAccess.js";
 import { canvasFields, fieldText, layerFields, parseField, type LayerField } from "./LayerField.js";
+import { animateFieldset, presentTracks } from "./animateFieldset.js";
+import { easingShape } from "./easingField.js";
 import { letFieldset } from "./letFieldset.js";
 import { orbitFieldset } from "./orbitFieldset.js";
 import { paletteFieldset } from "./paletteFieldset.js";
 import type { PanelContext } from "./PanelContext.js";
 import type { PropertyActions } from "./PropertyActions.js";
+import { timelineFieldset } from "./timelineFieldset.js";
 
 /**
  * The properties of the selected layer, or of the canvas when none is selected. A number field takes a literal or a
@@ -80,6 +83,7 @@ export class PropertyPanel {
       state.design.assets,
       state.design.components,
       state.design.palette,
+      state.design.animation,
     ];
     if (key.every((item, index) => item === this.shown[index])) return;
     this.shown = key;
@@ -92,6 +96,8 @@ export class PropertyPanel {
       placedByLayout(state.design, pointer),
       fields.map((field) => [field.key, field.kind, field.options, choiceExtra(field, target)]),
       layer === undefined ? null : [layer.orbit !== undefined, Object.keys(layer.let ?? {}).length],
+      layer === undefined ? null : trackShape(layer),
+      state.design.animation === undefined,
       layer === undefined ? paletteShape(state.design) : null,
       state.design.palette === undefined,
     ]);
@@ -128,10 +134,12 @@ export class PropertyPanel {
     }
     for (const field of fields) this.field(pointer, field);
     if (layer === undefined) {
+      timelineFieldset(this.form, this.context);
       paletteFieldset(this.form, this.context);
     } else {
       orbitFieldset(this.form, this.context, pointer);
       letFieldset(this.form, this.context, pointer);
+      animateFieldset(this.form, this.context, pointer);
     }
     if (kept !== undefined) focusControl(this.form, kept);
   }
@@ -179,6 +187,25 @@ export class PropertyPanel {
       commit(input.value);
     });
   }
+}
+
+/** The tracks a layer has with their keyframe counts and easing shapes: a change of any of them rebuilds the rows. */
+function trackShape(layer: Layer): unknown[] {
+  const animate = layer.animate as Record<string, Track | undefined> | undefined;
+  return presentTracks(layer).map(({ property }) => {
+    const track = animate?.[property];
+    return [
+      property,
+      track?.keyframes.length ?? 0,
+      easingShape(track?.easing),
+      track?.keyframes.map((frame) => easingShape(frame.easing)).join(","),
+    ];
+  });
+}
+
+interface Track {
+  readonly keyframes: readonly { readonly easing?: unknown }[];
+  readonly easing?: unknown;
 }
 
 /** How many modes and tokens the palette has: a rename keeps the shape, so the panel keeps its elements. */

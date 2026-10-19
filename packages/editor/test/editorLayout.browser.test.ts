@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, expect, test } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import type { Binding, Design, Palette } from "@readmint/format";
-import { mountEditor, type EditorHandle } from "../src/index.js";
+import { mountEditor, selectLayer, type EditorHandle } from "../src/index.js";
 import "../src/editor.css";
 
 let root: HTMLElement;
@@ -91,5 +91,66 @@ for (const width of widths) {
     const remove = root.querySelector<HTMLElement>('[data-action="let-remove"]');
     const right = remove?.getBoundingClientRect().right ?? Infinity;
     expect(right).toBeLessThanOrEqual(window.innerWidth);
+  });
+}
+
+const animated = {
+  version: 0,
+  canvas: { width: 100, height: 40 },
+  animation: { duration: 3000 },
+  layers: [
+    {
+      type: "rect",
+      width: 20,
+      height: 10,
+      fill: "#000000",
+      animate: {
+        opacity: {
+          keyframes: [
+            { offset: 0, value: 0 },
+            { offset: 0.5, value: 1, easing: { x1: 0.25, y1: 0.1, x2: 0.25, y2: 1 } },
+            { offset: 1, value: 0.4 },
+          ],
+          easing: { x1: 0.25, y1: 0.1, x2: 0.25, y2: 1 },
+          duration: "{{ a-rather-long-binding-name-for-the-duration + 1 }}",
+          cycles: 2,
+        },
+        fill: {
+          keyframes: [
+            { offset: 0, value: "#112233" },
+            { offset: 1, value: "{{ a-rather-long-binding-name-for-a-colour }}" },
+          ],
+        },
+      },
+    },
+  ],
+} as unknown as Design;
+
+for (const width of widths) {
+  test(`at ${String(width)} px the timeline bar and the keyframe table do not scroll the page sideways`, async () => {
+    await page.viewport(width, 800);
+    editor = mountEditor(root, { initial: animated });
+    await editor.settled();
+    editor.dispatch((state) => selectLayer(state, "/layers/0"));
+    await editor.settled();
+    const bar = root.querySelector<HTMLElement>(".rm-timeline-bar");
+    expect(bar?.hidden).toBe(false);
+    expect(document.documentElement.scrollWidth - window.innerWidth).toBeLessThanOrEqual(0);
+    const edge = Math.min(
+      root.querySelector<HTMLElement>(".rm-properties")?.getBoundingClientRect().right ?? Infinity,
+      window.innerWidth,
+    );
+    for (const control of root.querySelectorAll<HTMLElement>(
+      ".rm-animate input, .rm-animate button",
+    )) {
+      const box = control.getBoundingClientRect();
+      expect(box.width).toBeGreaterThan(0);
+      expect(box.right).toBeLessThanOrEqual(edge + 1);
+    }
+    const barBox = bar?.getBoundingClientRect();
+    expect(barBox?.right ?? Infinity).toBeLessThanOrEqual(window.innerWidth);
+    for (const control of bar?.querySelectorAll<HTMLElement>("input, button") ?? []) {
+      expect(control.getBoundingClientRect().width).toBeGreaterThan(0);
+    }
   });
 }

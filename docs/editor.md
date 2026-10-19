@@ -36,6 +36,27 @@ workspace and no UI framework: the DOM views are small classes that dispatch com
     the last mode removes the palette. Over `maxPaletteModes` / `maxPaletteTokens` the add buttons are disabled and an
     edit is refused. Removing a token a binding still reads is refused by the format.
     Each change is one undoable edit; editing these keeps the layer's `animate` as it is.
+  - **Timeline** (the timeline panel): the canvas shows "Add timeline" (3000 ms, looping) when the design has none, else
+    its duration (1..60000 ms), a loop checkbox and "Remove timeline" (refused by the format while a layer animates).
+    A selected layer shows **Animation**: one group per track it has, in the order of the format's table
+    (`animatedProperties`: `opacity`, `x`, `y`, `scale`, `rotation` for every layer, plus `fill` and `stroke` on a rect or
+    ellipse, `fill` on text, and `fill`, `stroke` and `draw` on a path), with the track's `duration`, `delay`,
+    `stagger` (a number or a `{{binding}}`), `cycles` and `easing`, and a keyframe table: per row the offset, the value
+    (a number, a colour or a `{{binding}}`), an easing (inherit, the five keywords, or `cubic-bezier` with its four numbers),
+    "Add after" (the new keyframe takes the offset midway to the next row and copies the value) and "Remove". A track with
+    `cycles` is listed once with `cycles` as a number, never unrolled. "Add track" lists the properties the layer has no
+    track for, starting from two keyframes at the layer's own value; it is disabled, with a note, while the design has no
+    timeline. Keyframes are 2 to 32 per track (`DesignLimits.minTrackKeyframes` / `maxTrackKeyframes`): the buttons are
+    disabled at the bounds and a longer list is refused before it is read. Each change stores one whole track and is one
+    undoable edit; the other tracks, `orbit` and `let` stay as they are, and a value that changes nothing is no entry. A
+    refused value (an offset outside 0..1, offsets that decrease, a non-finite number, an unknown easing, `cycles` that is
+    not an integer in 1..1000) leaves the design unchanged and lists the format's issue with its path.
+  - **Transport** (under the canvas, shown while the design has a timeline): Play / Pause, a scrubber and the time in
+    milliseconds. Playing, the preview is the animated SVG, exactly what `readmint render` writes; paused at `t` it is
+    the frame `readmint render --time t` writes (the time is a whole number of milliseconds within the timeline).
+    Scrubbing or typing a time pauses at it; Play restarts the animation from its start. The playhead is session state:
+    never an undo entry, never part of an export or the design; an edit, an undo or a redo keeps the paused time (cut to
+    a shorter timeline) and renders at it. While playing, the scrubber follows a clock of its own; nothing is rendered per frame.
   - **Keyboard focus**: renaming a mode, token or binding keeps the focus in its input (Tab moves on as usual) and
     "Move up" keeps it on the moved row. After a Remove the focus goes to the next row's Remove, else to the group's
     Add button ("Add token", "Add mode", "Add binding", "Add orbit"); after "Add orbit" to the first orbit field.
@@ -62,8 +83,8 @@ workspace and no UI framework: the DOM views are small classes that dispatch com
   YAML reader's 1 MiB, then export JSON), or as `design.png` / `design.webp` ([below](#raster-export)). A file export
   re-imports to the same design; an image is what the CLI renders.
 
-Every edit of the design can be undone and redone ([below](#undo-and-redo)). Not in this version: animation editing
-(animated designs import and preview, their timeline, tracks and `cycles` are not edited and stay as they are), APNG or GIF export, and scale, frame rate or
+Every edit of the design can be undone and redone ([below](#undo-and-redo)). Not in this version: motion
+paths, graph editors and dragging keyframes on the canvas, APNG or GIF export, and scale, frame rate or
 quality settings for the raster export.
 
 Dragging writes whole numbers. It never changes a coordinate or size bound to data, nor the place of a layer a stack
@@ -83,7 +104,7 @@ or editable content the keys are the field's own: the editor's undo never takes 
 
 Every command that changes the design is one entry (a drag is one, recorded when the pointer is released; an upload
 adds its asset and layer as one); a refused command, an edit that changes nothing (a drag that rounds to no move, a
-value set to what it is, a let or palette list that stays the same), a selection, loading fixture data, attaching a file for a path-sourced asset and reading
+value set to what it is, a let, palette or track that stays the same), a selection, moving the playhead, loading fixture data, attaching a file for a path-sourced asset and reading
 font licences are not entries. When the design changes during a drag (an undo, a redo, an upload finishing), the drag
 is dropped: releasing the pointer changes nothing. Undo and redo restore the design and the layer selected
 with it, and clear the issue list; fixture data, settings, the manifest and its render, attached files and font checks are inputs of the session and stay as
@@ -94,7 +115,7 @@ they cost little. New and Import start an empty history.
 ## Preview
 
 Every change re-renders with `renderPreview`, which is `renderSvg(design, { data, assets, layerBoxes: true })` and
-nothing more; `design` is `effectiveDesign(state)`: the design with the chosen render's props, the variant and the chosen settings section applied. It runs in a module Web Worker: a hostile design can keep only the worker busy, and a render running
+nothing more (`{ time }` added while the transport is paused, [above](#what-can-be-edited)); `design` is `effectiveDesign(state)`: the design with the chosen render's props, the variant and the chosen settings section applied. It runs in a module Web Worker: a hostile design can keep only the worker busy, and a render running
 longer than `EditorLimits.renderTimeoutMs` (10 s) is stopped (the worker is replaced) and reported. A worker that fails
 (an error, a result it cannot send) is reported at once and replaced for the next render. A newer edit's render always
 wins: an older result arriving later is dropped.
@@ -115,7 +136,8 @@ The toolbar's "Export PNG" and "Export WebP" make the image the CLI makes for th
 `readmint render design.json --data data.json --format png|webp` with its defaults (scale 2, lossless WebP). The export
 is `renderSvg(design, { data, assets, time })` for each frame, as the CLI renders it, passed to `exportRaster` of
 `@readmint/raster/browser` ([raster.md](raster.md#in-the-browser)): a still design gives a still image, a design with a
-timeline an animated WebP (a PNG of its first frame). The files are `design.png` and `design.webp`, and `design.dark.png` and `design.dark.webp` with the dark variant chosen; with a manifest render chosen the stem is the render's name (`repo-3.png`, `repo-3.dark.png`), as the files `readmint render --manifest` writes, and the bytes are those files'. With a render chosen the export also needs the settings section `render --manifest` uses (the render's name when the settings file has that section, else none), and is refused with an `export` issue naming it otherwise.
+timeline an animated WebP (a PNG of its first frame, or, with the transport paused, of the frame at the playhead:
+`--format png --time <t>`; the WebP is always the whole animation). The files are `design.png` and `design.webp`, and `design.dark.png` and `design.dark.webp` with the dark variant chosen; with a manifest render chosen the stem is the render's name (`repo-3.png`, `repo-3.dark.png`), as the files `readmint render --manifest` writes, and the bytes are those files'. With a render chosen the export also needs the settings section `render --manifest` uses (the render's name when the settings file has that section, else none), and is refused with an `export` issue naming it otherwise.
 
 It runs in a module Web Worker started for the export and terminated when it ends: the worker fetches the two
 WebAssembly files from the app's own origin, exports, and answers with the bytes. Nothing of raster export is in the
@@ -204,7 +226,7 @@ for those and the preview would otherwise draw bytes the CLI does not.
 ## Limits
 
 `EditorLimits`: `maxFixtureBytes` 8 MiB (the CLI's), `maxSettingsBytes` (three bytes per character of `DesignLimits.maxSourceLength`, as the CLI's `--props` cap; an edit is refused when the file would pass `maxSourceLength` characters, as the CLI reads it), `maxManifestBytes` (three bytes per character of `RenderManifestLimits.maxSourceLength`, as the CLI's manifest cap), `maxSettingsListItems` 1000 (a prop list; the format's cap), `maxFontBytes` and `maxImageBytes` 4 MiB and
-`maxTotalFontBytes` 16 MiB (the renderer's), `maxHistory` 100 edits, `renderTimeoutMs` 10 000, `rasterTimeoutMs`
+`maxTotalFontBytes` 16 MiB (the renderer's), `maxHistory` 100 edits, a track's 2 to 32 keyframes (`DesignLimits`), each track property once per layer, a timeline of 1..60000 ms and `cycles` 1..1000 (`ValueRanges`), `renderTimeoutMs` 10 000, `rasterTimeoutMs`
 120 000. Every file the user picks is size-checked before it is read. Design files are bounded by `DesignLimits` on import and on every edit: an edit that would make the exported
 file longer than `maxSourceLength` is refused.
 
@@ -257,8 +279,8 @@ editor.undo(); // as Ctrl+Z; editor.redo() as Ctrl+Shift+Z
 
 The state (`EditorState`: design, selection, fixture data, settings, manifest, variant, session assets, font checks, issues) is immutable; every
 command (`addLayer`, `moveLayer`, `resizeLayer`, `setLayerProperty`, `reorderLayer`, `removeLayer`, `selectLayer`,
-`uploadFont`, `uploadImage`, `setFontAsset`, `attachAsset`, `loadFixture`, `loadSettings`, `chooseSection`, `loadManifest`, `chooseRender`, `setSettingsProp`, `setVariant`, `setLayerLet`, `setPalette`) is a pure function returning a new state
+`uploadFont`, `uploadImage`, `setFontAsset`, `attachAsset`, `loadFixture`, `loadSettings`, `chooseSection`, `loadManifest`, `chooseRender`, `setSettingsProp`, `setVariant`, `setLayerLet`, `setLayerTrack`, `setTimeline`, `setPalette`) is a pure function returning a new state
 whose design passes `validateDesign`, or the same design with the issues saying why not. `setVariant(state, name)` chooses the variant `name` (or none with `undefined`) and changes no design; an unknown name, a design without `theme` or a variant the chosen manifest render does not list is refused with a `variant` issue (`EditorIssue` source `variant`). `settingsFields` reports `from: "variant"` for a value the variant gives and `from: "render"` for one the chosen manifest render gives. `loadManifest(state, text, designFile?)` keeps the parsed renders (a refused manifest leaves the state, with `manifest` issues; the chosen render stays only while it names `designFile`, under the rules of choosing it) and `chooseRender(state, name, designFile)` applies a render of that design file, or none with `undefined` (`EditorIssue` source `manifest`). `setSettingsProp(state, prop, value)` sets or (with `undefined`) removes a prop of the chosen settings section and changes no design; `exportSettings(settings)` is the text "Export settings" saves and `settingsFields(state)` the fields of the form. `effectiveDesign(state)` returns, besides the design and its `issues`, `warnings` (an `EditorIssue` with `severity: "warning"`, shown as `warning: ...`) and `unknownProps`. `readImageFile(bytes)` is
 the check an upload runs. The history (`EditorHistory`) is an immutable value of its own, kept by `mountEditor` beside
 the state: `recordEdit(history, before, after)` records a design change, `undo(history, state)` and `redo(...)` return
-the next history and state (undefined when there is nothing to step to), `canUndo` and `canRedo` say whether there is. `paletteEdits` holds the pure operations on a palette's ordered modes and tokens (`addMode`, `addToken`, `renameMode`, `renameToken`, `removeMode`, `removeToken`, `setColour`) that `setPalette` takes.
+the next history and state (undefined when there is nothing to step to), `canUndo` and `canRedo` say whether there is. `paletteEdits` holds the pure operations on a palette's ordered modes and tokens (`addMode`, `addToken`, `renameMode`, `renameToken`, `removeMode`, `removeToken`, `setColour`) that `setPalette` takes. `setLayerTrack(state, pointer, property, track)` sets or (with `undefined`) removes one animation track of a layer and `setTimeline(state, animation)` the design's timeline; `renderPreview` and the raster export take an optional `time` (milliseconds), the frame `readmint render --time` writes.

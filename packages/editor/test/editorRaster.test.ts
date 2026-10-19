@@ -15,6 +15,8 @@ import {
   importDesign,
   loadFixture,
   loadManifest,
+  setLayerProperty,
+  setLayerTrack,
   setPalette,
   setVariant,
   paletteEdits,
@@ -30,7 +32,7 @@ import {
   pinKey,
 } from "./editorRasterParity.js";
 import { appSession, editorSession } from "./editorSession.js";
-import { editState } from "./formatEdits.js";
+import { editState, rectPointer } from "./formatEdits.js";
 import { manifestDesign, manifestRenders } from "./settingsDesign.js";
 
 let folder: string;
@@ -213,4 +215,59 @@ test("a palette colour edit renders the new colour, as the same colour written i
   } as EditorState["design"];
   const direct = await render(literal);
   expect(Buffer.from(after.bytes).equals(Buffer.from(direct.bytes))).toBe(true);
+});
+
+describe("the export at a time", () => {
+  const moving = () =>
+    setLayerTrack(
+      setLayerProperty(editState(), rectPointer, "orbit", undefined),
+      rectPointer,
+      "x",
+      {
+        keyframes: [
+          { offset: 0, value: 0 },
+          { offset: 1, value: 90 },
+        ],
+        duration: 333,
+        cycles: 3,
+      },
+    );
+
+  test.each([0, 333, 500, 1000])(
+    "the PNG paused at %i ms equals readmint render --format png --time",
+    async (time) => {
+      const state = moving();
+      expect(state.issues).toEqual([]);
+      await writeFile(join(folder, "design.json"), exportDesign(state.design));
+      const code = await runCli(
+        ["render", "design.json", "--format", "png", "--time", String(time), "--out", "out.png"],
+        { cwd: folder, stdout: () => undefined, stderr: () => undefined },
+      );
+      expect(code).toBe(ExitCode.ok);
+      const cli = await readFile(join(folder, "out.png"));
+      const output = await renderRasterExport({
+        design: state.design,
+        data: state.data,
+        sessionAssets: state.sessionAssets,
+        format: "png",
+        time,
+      });
+      expect(Buffer.from(output.bytes).equals(cli)).toBe(true);
+    },
+  );
+
+  test("different times give different images and no time gives the first frame", async () => {
+    const state = moving();
+    const png = (time?: number) =>
+      renderRasterExport({
+        design: state.design,
+        data: state.data,
+        sessionAssets: state.sessionAssets,
+        format: "png",
+        ...(time === undefined ? {} : { time }),
+      });
+    const [start, middle, first] = [await png(0), await png(500), await png()];
+    expect(sha(start.bytes)).not.toBe(sha(middle.bytes));
+    expect(sha(first.bytes)).toBe(sha(start.bytes));
+  });
 });

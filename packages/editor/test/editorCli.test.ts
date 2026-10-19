@@ -15,10 +15,13 @@ import {
   loadManifest,
   loadSettings,
   renderPreview,
+  setLayerProperty,
+  setLayerTrack,
   setSettingsProp,
   setVariant,
 } from "../src/index.js";
 import { editorSession, imageSession } from "./editorSession.js";
+import { editState, rectPointer } from "./formatEdits.js";
 import {
   manifestDesign,
   manifestRenders,
@@ -303,5 +306,67 @@ describe("a manifest render", () => {
     const sentence = "the prop theme is also set by the dark variant; set it in one place";
     expect(stderr).toContain(sentence);
     expect(issue?.message).toBe(`manifest ${pointer}: ${sentence}`);
+  });
+});
+
+describe("the preview at a time", () => {
+  const animated = () =>
+    setLayerTrack(
+      setLayerProperty(editState(), rectPointer, "orbit", undefined),
+      rectPointer,
+      "x",
+      {
+        keyframes: [
+          { offset: 0, value: 0 },
+          { offset: 1, value: 90 },
+        ],
+        duration: 333,
+        cycles: 3,
+      },
+    );
+
+  async function cliAt(designText: string, time?: number): Promise<string> {
+    await writeFile(join(folder, "design.json"), designText);
+    let stdout = "";
+    const code = await runCli(
+      ["render", "design.json", ...(time === undefined ? [] : ["--time", String(time)])],
+      {
+        cwd: folder,
+        stdout: (text) => {
+          stdout += text;
+        },
+        stderr: () => undefined,
+      },
+    );
+    expect(code).toBe(ExitCode.ok);
+    return stdout;
+  }
+
+  test.each([0, 1234, 500, 1000])("renderPreview at %i ms equals render --time", async (time) => {
+    const state = animated();
+    expect(state.issues).toEqual([]);
+    const preview = renderPreview({
+      design: state.design,
+      data: state.data,
+      sessionAssets: state.sessionAssets,
+      time,
+    });
+    expect(preview.ok).toBe(true);
+    if (!preview.ok) return;
+    expect(preview.svg).not.toContain("@keyframes");
+    expect(await cliAt(exportDesign(state.design), time)).toBe(preview.svg);
+  });
+
+  test("without a time it is the animated SVG of a plain render", async () => {
+    const state = animated();
+    const preview = renderPreview({
+      design: state.design,
+      data: state.data,
+      sessionAssets: state.sessionAssets,
+    });
+    expect(preview.ok).toBe(true);
+    if (!preview.ok) return;
+    expect(preview.svg).toContain("@keyframes");
+    expect(await cliAt(exportDesign(state.design))).toBe(preview.svg);
   });
 });

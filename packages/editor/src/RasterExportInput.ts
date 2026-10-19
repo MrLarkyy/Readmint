@@ -10,4 +10,6 @@ export interface RasterExportInput {
   readonly data: Readonly<Record<string, unknown>>;
   readonly sessionAssets: RenderAssets;
   readonly format: EditorRasterFormat;
+  /** Milliseconds on the timeline: a still image of that frame, as `--time` gives; absent, the first frame or the whole animation. */
+  readonly time?: number;
 }
