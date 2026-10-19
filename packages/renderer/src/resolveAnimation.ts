@@ -41,7 +41,7 @@ const numberRanges: Readonly<Record<AnimatedProperty, ValueRange | undefined>> =
 };
 
 /** Properties each kind of node takes; a track the format does not allow on the kind is never drawn. */
-const accepted: Readonly<Record<RenderNode["kind"], ReadonlySet<AnimatedProperty>>> = {
+export const accepted: Readonly<Record<RenderNode["kind"], ReadonlySet<AnimatedProperty>>> = {
   group: new Set(transformProperties.concat("opacity")),
   image: new Set(transformProperties.concat("opacity")),
   rect: new Set(transformProperties.concat("opacity", "fill", "stroke")),
