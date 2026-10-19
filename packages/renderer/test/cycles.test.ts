@@ -238,4 +238,96 @@ describe("cycles (RM-143)", () => {
       expect(frame(seam - 1000 / 60).scale).toBeGreaterThan(2.4);
     }
   });
+
+  /** Opacity 0 to 1 over 500 ms, `cycles` times, on a 1000 ms timeline. */
+  const half = (cycles: number): Design =>
+    animated([
+      {
+        type: "rect",
+        width: 10,
+        height: 10,
+        animate: {
+          opacity: {
+            keyframes: [
+              { offset: 0, value: 0 },
+              { offset: 1, value: 1 },
+            ],
+            duration: 500,
+            cycles,
+          },
+        },
+      },
+    ]);
+
+  const cutsOf = (design: Design) => {
+    const result = renderSvg(design);
+    return result.ok ? result.warnings.filter(({ code }) => code === "animation-cut") : [];
+  };
+
+  test("a cycle starting at the timeline end adds nothing: cycles 3 draws the bytes of cycles 2 (RM-164)", () => {
+    expect(svgOf(half(3))).toBe(svgOf(half(2)));
+    for (const time of [0, 250, 750, 999, 1000])
+      expect(svgOf(half(3), { time })).toBe(svgOf(half(2), { time }));
+    expect(opacities(svgOf(half(3), { time: 999 }))).toEqual([0.998]);
+    expect(opacities(svgOf(half(3), { time: 750 }))).toEqual([0.5]);
+    expect(cutsOf(half(3))).toHaveLength(1);
+    expect(cutsOf(half(2))).toHaveLength(0);
+  });
+
+  test("a track whose duration x cycles is a multiple of the timeline is not static (RM-164)", () => {
+    const sweep = (cycles: number): Design => ({
+      ...half(1),
+      animation: { duration: 3000, loop: true },
+      layers: [
+        {
+          type: "rect",
+          width: 10,
+          height: 10,
+          animate: {
+            x: {
+              keyframes: [
+                { offset: 0, value: 0 },
+                { offset: 1, value: 90 },
+              ],
+              duration: 3000,
+              cycles,
+            },
+          },
+        },
+      ],
+    });
+    expect(svgOf(sweep(3))).toBe(svgOf(sweep(1)));
+    for (const time of [1500, 2999])
+      expect(svgOf(sweep(3), { time })).toBe(svgOf(sweep(1), { time }));
+    expect(svgOf(sweep(3), { time: 1500 })).not.toBe(svgOf(sweep(3), { time: 0 }));
+    expect(cutsOf(sweep(3))).toHaveLength(1);
+  });
+
+  test("every copy drops its own late cycles, the one running past is cut (RM-164)", () => {
+    const design = animated([
+      {
+        type: "rect",
+        width: 1,
+        height: 1,
+        repeat: { each: "{{ [0, 1] }}" },
+        animate: {
+          opacity: {
+            keyframes: [
+              { offset: 0, value: 0 },
+              { offset: 1, value: 1 },
+            ],
+            delay: 400,
+            stagger: 100,
+            duration: 300,
+            cycles: 3,
+          },
+        },
+      },
+    ]);
+    const [first, second] = opacities(svgOf(design, { time: 999 }));
+    expect(first).toBeCloseTo(0.997, 2);
+    expect(second).toBeCloseTo(0.663, 2);
+    const cuts = cutsOf(design);
+    expect(cuts).toHaveLength(1);
+  });
 });

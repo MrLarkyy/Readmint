@@ -6,13 +6,17 @@ import type { ResolvedKeyframe } from "./NodeAnimation.js";
  * cycle lasting `duration`. A cycle whose keyframes do not reach its end holds the last value until it ends, one
  * that starts late holds its first value from its start (except the first cycle: the timeline holds that one).
  * Where the keyframe ending a cycle and the one starting the next fall on the same moment with equal values, only the
- * later one stays, so a cycle ending where it starts joins the next without a duplicate.
+ * later one stays, so a cycle ending where it starts joins the next without a duplicate. A cycle other than the first
+ * that starts at or after `end` (the timeline end) adds nothing, so the last whole cycle ends on its own last value;
+ * `onCut` is called when the run would still have passed `end`.
  */
 export function cycleKeyframes(
   cycle: readonly ResolvedKeyframe[],
   start: number,
   duration: number,
   cycles: number,
+  end: number,
+  onCut: () => void,
 ): ResolvedKeyframe[] {
   const first = cycle[0];
   const last = cycle.at(-1);
@@ -21,6 +25,10 @@ export function cycleKeyframes(
   for (let index = 0; index < cycles; index++) {
     // Integers while delay, stagger and duration are, so every cycle starts exactly where the previous one ends.
     const base = start + index * duration;
+    if (index > 0 && base >= end) {
+      if (start + (cycles - 1) * duration + last.time > end) onCut();
+      break;
+    }
     const seam = out.length;
     if (index > 0 && first.time > 0) {
       out.push({ time: base, value: first.value, easing: linearEasing });

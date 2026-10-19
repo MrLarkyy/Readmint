@@ -101,6 +101,9 @@ export function resolveAnimation(
       dash = dashLength(context, layer, node.d, path, pointer(animatePath, property));
     }
     const trackPath = pointer(animatePath, property);
+    const onCut = () => {
+      warnCut(context, trackPath, duration);
+    };
     const keyframes = resolveTrack(
       context,
       track,
@@ -110,12 +113,9 @@ export function resolveAnimation(
       copy,
       duration,
       dash,
+      onCut,
     );
-    tracks.push(
-      buildTimeline(property, keyframes, duration, () => {
-        warnCut(context, trackPath, duration);
-      }),
-    );
+    tracks.push(buildTimeline(property, keyframes, duration, onCut));
     context.writer.reserve(minimumTrackBytes[property]);
   }
   if (tracks.length === 0) return undefined;
@@ -131,6 +131,7 @@ function resolveTrack(
   copy: number,
   timeline: number,
   dash: number | undefined,
+  onCut: () => void,
 ): ResolvedKeyframe[] {
   const keyframesPath = pointer(path, "keyframes");
   const list: unknown = track.keyframes;
@@ -177,7 +178,7 @@ function resolveTrack(
       easing: resolveEasing(context, keyframe.easing, pointer(at, "easing")) ?? trackEasing,
     };
   });
-  return cycleKeyframes(cycle, start, duration, cycles);
+  return cycleKeyframes(cycle, start, duration, cycles, timeline, onCut);
 }
 
 /** A literal integer, never a binding; checked here too, as a design the renderer gets may be unvalidated. */
