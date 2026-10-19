@@ -20,6 +20,7 @@ test("exposes its package name and the pinned API", () => {
     "mediaTypeCheck",
     "packageName",
     "readBodyCapped",
+    "requestApiText",
     "sha256Hex",
   ]);
   expect(main.DATA_SOURCE_INTERFACE_VERSION).toBe(0);

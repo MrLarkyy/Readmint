@@ -13,7 +13,7 @@ export interface CliIo {
   /** How often `preview` checks its input files for changes, in milliseconds; default 300. */
   readonly pollIntervalMs?: number;
   /**
-   * `fetch` for `--fetch-images`, `--github`, `--data-json`, `--data-feed` and `--data-wakatime` requests, the only
+   * `fetch` for `--fetch-images`, `--github`, `--data-json`, `--data-feed`, `--data-wakatime` and `--data-registry` requests, the only
    * network use of the CLI;
    * the global one when absent.
    */

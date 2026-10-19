@@ -7,13 +7,15 @@ import { githubToken } from "./githubToken.js";
 import { loadFeedArgs } from "./loadFeedArgs.js";
 import { loadJsonArgs } from "./loadJsonArgs.js";
 import { loadLiveData } from "./loadLiveData.js";
+import { loadRegistryArgs } from "./loadRegistryArgs.js";
 import { loadWakaTimeArgs } from "./loadWakaTimeArgs.js";
 import { partialDataWarning } from "./partialDataWarning.js";
+import { registryMissingWarning } from "./registryMissingWarning.js";
 import { wakaTimePartialWarning } from "./wakaTimePartialWarning.js";
 
 /**
- * The `loadRenderInput` `loadData` option of `--github`, `--data-json`, `--data-feed` and `--data-wakatime`: loads the
- * GitHub data with the token from `io.env`, then each JSON source, then each feed, then each WakaTime source with the
+ * The `loadRenderInput` `loadData` option of `--github`, `--data-json`, `--data-feed`, `--data-wakatime` and `--data-registry`: loads the
+ * GitHub data with the token from `io.env`, then each JSON source, then each feed, then each WakaTime source and then each registry source (no key; entries a registry does not know are one `warning:` line) with the
  * key of its variable in `io.env` (a still-calculating answer is one `warning:` line), when called, so `loadRenderInput` calls it only once
  * the design and its assets are valid (a broken design costs no request and is not hidden by a token problem).
  * Without any of them there is no option: no environment variable is read and no request made. Their namespaces
@@ -27,11 +29,13 @@ export function liveData(
   const dataJson = args.dataJson ?? [];
   const dataFeed = args.dataFeed ?? [];
   const dataWakaTime = args.dataWakaTime ?? [];
+  const dataRegistry = args.dataRegistry ?? [];
   if (
     args.github !== true &&
     dataJson.length === 0 &&
     dataFeed.length === 0 &&
-    dataWakaTime.length === 0
+    dataWakaTime.length === 0 &&
+    dataRegistry.length === 0
   ) {
     return {};
   }
@@ -66,7 +70,20 @@ export function liveData(
               },
               ...signal,
             });
-      return { ...github, ...json, ...feed, ...wakaTime };
+      const registry =
+        dataRegistry.length === 0
+          ? {}
+          : await loadRegistryArgs(dataRegistry, {
+              fetch: io.fetch ?? globalThis.fetch,
+              ...(args.cacheDir === undefined
+                ? {}
+                : { cacheDir: path.resolve(io.cwd, args.cacheDir) }),
+              onMissing: (namespace, missing) => {
+                void io.stderr(`warning: ${registryMissingWarning(namespace, missing)}\n`);
+              },
+              ...signal,
+            });
+      return { ...github, ...json, ...feed, ...wakaTime, ...registry };
     },
   };
 }

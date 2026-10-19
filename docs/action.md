@@ -51,7 +51,7 @@ templates as working workflows ([components.md](components.md#the-examples-repos
 | `login`                | `${{ github.repository_owner }}` | the GitHub user whose data is loaded; needed with `GITHUB_TOKEN`, which belongs to no user                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | `exclude-repositories` | none                             | repositories (`name` or `owner/name`, separated by commas or lines) left out of the GitHub repository list, stars, forks, languages and pinned fallback (not the repository total, pushes or the calendar), as the CLI `--exclude-repositories`; not with `data-file`                                                                                                                                                                                                                                                                          |
 | `language-commit-cap`  | none                             | own commits (whole number 0-2000, empty or 0 = off) read, one GitHub request each (about 0.3-0.6 s; with your own token private repositories add to the sums, language names and sums only), to fill `github.languagesAuthored` for the templates' `languageShare: authored`, as the CLI `--language-commit-cap`; not with `data-file`. See [Languages from your own commits](data-github.md#languages-from-your-own-commits)                                                                                                                  |
-| `cache-dir`            | none                             | folder outside the workspace (absolute, or `..` relative to it) where the GitHub load keeps its validated answers and the commits read between runs, and the `data-wakatime` loads their stats, so a later run sends no request for them; see [GitHub cache](#github-cache) and [WakaTime data](#wakatime-data); with `data-file` only together with `data-wakatime`; not the workspace or inside it                                                                                                                                           |
+| `cache-dir`            | none                             | folder outside the workspace (absolute, or `..` relative to it) where the GitHub load keeps its validated answers and the commits read between runs, and the `data-wakatime` and `data-registry` loads their stats and entries, so a later run sends no request for them; see [GitHub cache](#github-cache), [WakaTime data](#wakatime-data) and [Registry data](#registry-data); with `data-file` only together with `data-wakatime` or `data-registry`; not the workspace or inside it                                                       |
 | `data-file`            | none                             | fixture data JSON (the CLI `--data` format) used instead of loading GitHub data: no token, no GitHub API (only images bound to data are fetched); a path relative to the workspace, checked like `designs` and `data-json` files (no `..`, no absolute or drive path, a link or junction leading outside refused), at most 8 MiB                                                                                                                                                                                                               |
 | `data-json`            | none                             | JSON documents to bind, one per line as `[<namespace>=]<source>` (the CLI [`--data-json`](cli.md#json-data)): a file inside the workspace or an https URL, each bound as `{ version: 0, document }` under its namespace (default `json`), at most 8, added to the `data-file` or GitHub data ([JSON data](#json-data))                                                                                                                                                                                                                         |
 | `data-json-headers`    | none                             | headers for the `data-json` URLs, one per line as `<namespace>:<Header-Name>=<ENV_NAME>`: the value is read from the step's environment variable `ENV_NAME`, masked, never printed and sent only to that URL's origin                                                                                                                                                                                                                                                                                                                          |
@@ -59,6 +59,7 @@ templates as working workflows ([components.md](components.md#the-examples-repos
 | `data-feed-limits`     | none                             | entries kept per feed, one per line as `<namespace>=<n>` with n from 1 to 50 (the CLI `--data-feed-limit`); a feed without a line keeps 5                                                                                                                                                                                                                                                                                                                                                                                                      |
 | `data-wakatime`        | none                             | WakaTime coding stats to bind, one per line as `[<namespace>=]<ENV_NAME>` (the CLI [`--data-wakatime`](cli.md#wakatime-data)): `ENV_NAME` names the step's environment variable that holds the API key, set from a secret with `env:`; masked, never printed and sent only to wakatime.com; each is bound as `{ version: 0, range, totalSeconds, humanReadableTotal, dailyAverageSeconds, languages, editors, operatingSystems }` under its namespace (default `wakatime`), at most 4, added after the feeds ([WakaTime data](#wakatime-data)) |
 | `data-wakatime-ranges` | none                             | range per WakaTime source, one per line as `<namespace>=<range>` with `last_7_days`, `last_30_days`, `last_6_months`, `last_year` or `all_time` (the CLI `--data-wakatime-range`); a source without a line takes `last_7_days`                                                                                                                                                                                                                                                                                                                 |
+| `data-registry`        | none                             | package registry entries to bind, one per line as `[<namespace>=]npm:<name>` or `[<namespace>=]maven:<group>:<artifact>` (the CLI [`--data-registry`](cli.md#registry-data)): no key; each namespace (default `registry`, at most 4, at most 20 npm and 20 Maven entries each) is bound as `{ version: 0, npm, maven }` in the order given, `null` for an unknown entry, with a warning                                                                                                                                                        |
 | `props-file`           | none                             | settings JSON file (the CLI [`--props`](cli.md#settings-file) format: root component props by section) merged into every listed design and its dark twin or variant, so personal texts are set once per template; a path relative to the workspace, checked like `data-file` (no `..`, no absolute or drive path, a link or junction leading outside refused), at most 4 Mi characters of text, as `--props`; a section no listed design or render has is warned about, without its values                                                     |
 | `variant`              | none                             | renders each listed design (and each manifest render without `variants`) also as this named variant from the same file: `dark` sets its root prop `theme` to `dark` and writes `<stem>.dark.<ext>` (the CLI [`--variant`](cli.md#variants)); empty renders none. A `<stem>.dark.<ext>` design next to it wins ([Outputs on disk and the dark variant](#outputs-on-disk-and-the-dark-variant))                                                                                                                                                  |
 | `locale`               | none                             | BCP 47 tag for the `number`, `compact`, `percent` and `date` filters, checked as the CLI `--locale` (`en`, `de`, `fr`, `es`, `cs` or a region tag of one); none: the design's `locale`, else `en`                                                                                                                                                                                                                                                                                                                                              |
@@ -159,7 +160,7 @@ designs lie in.
 3. Loads the data once: the `data-file`, else the GitHub data of `login`, bound as `github` (see
    [data-github.md](data-github.md)). The load is given 5 minutes. Then each `data-json` source in the listed order,
    added under its namespace ([JSON data](#json-data)), then each `data-feed` feed ([Feed data](#feed-data)), then each
-   `data-wakatime` source ([WakaTime data](#wakatime-data)).
+   `data-wakatime` source ([WakaTime data](#wakatime-data)), then each `data-registry` namespace ([Registry data](#registry-data)).
 4. Loads and renders every design and dark variant (a twin file, or the `variant` input's render of the design), in every listed format (a raster export samples an animated design
    at `frame-rate` and stays within the limits of [raster.md](raster.md)). Design files and their assets are read only inside the workspace,
    also through links ([asset-loading.md](asset-loading.md)). If any design fails, nothing is written and the run
@@ -330,6 +331,42 @@ editors, operatingSystems }` under its namespace, each list of `{ name, percent,
   key) is kept for an hour, so a re-run sends no request; `cache-dir` then also goes with `data-file`.
 - A dry run with `data-file` and `data-wakatime` needs no GitHub token; it still needs the key.
 
+## Registry data
+
+`data-registry` binds the latest versions of npm packages and Maven Central artifacts with the registry source of
+[data-sources.md](data-sources.md#the-registry-source), the load `readmint --data-registry` uses. No key or token is
+involved:
+
+```yaml
+- uses: MrLarkyy/Readmint@vX.Y.Z
+  with:
+    designs: readmint/libraries-card.design.json
+    data-registry: |
+      npm:react
+      npm:@types/node
+      maven:org.jetbrains.kotlin:kotlin-stdlib
+```
+
+- Each line is `[<namespace>=]npm:<name>` or `[<namespace>=]maven:<group>:<artifact>`; without `<namespace>=` the
+  namespace is `registry`. Entries of one namespace form one source, at most 20 npm and 20 Maven entries each and 4
+  namespaces. An invalid name is an input error listed with the others, naming the entry by position, never its value.
+- Each namespace is bound as `{ version: 0, npm, maven }`: `npm` entries `{ name, version, weeklyDownloads }`, `maven`
+  entries `{ group, artifact, latestVersion, updated }`, in the order given. The libraries card template renders it
+  ([components.md](components.md#libraries-card)).
+- Only `registry.npmjs.org`, `api.npmjs.org` and `repo1.maven.org` are contacted, without credentials; no redirect is
+  followed.
+- A package or artifact the registry does not know is `null` in its list, the log gets one `::warning::` line naming the
+  namespace and the first entries, and the run succeeds; that entry is not cached. Any other failure (rate limit,
+  server error, bad answer, 30 s timeout) fails the run as `Registry data <namespace> (<code>): <message>`, so a
+  half-loaded card is never committed.
+- The registry namespaces are added to the `data-file` data or to `github`, after the WakaTime sources: `github` cannot
+  be a registry namespace unless `data-file` is given, a `data-file` key equal to one (or to a `data-json`,
+  `data-feed` or `data-wakatime` namespace) fails the run naming it before any request, and a namespace cannot also be
+  a `data-json`, `data-feed` or `data-wakatime` namespace.
+- With `cache-dir` each found entry is kept for an hour, so a re-run sends no request for it; `cache-dir` then also goes
+  with `data-file`.
+- A dry run with `data-file` and `data-registry` needs no GitHub token and no key.
+
 ## Pushing
 
 The push uses the credentials `actions/checkout` stores in the repository, so:
@@ -372,7 +409,7 @@ With `dry-run: true` the Action renders and writes the changed files into the wo
 `dry run: would commit <n> file(s)` and sets the outputs (`commit` empty), but runs no git command at all: nothing is
 staged, committed or pushed, and the workspace need not be a git repository. Use it to inspect the result, for
 example with `actions/upload-artifact`. With `data-file` it needs no token either, also with `data-wakatime` (whose key
-it still reads and masks).
+it still reads and masks) and `data-registry` (which needs none).
 
 ## Errors
 
@@ -381,7 +418,7 @@ A failed run exits with 1 and prints one `::error::` line per problem, each nami
 - inputs: a missing or invalid input (all at once; a manifest that is not valid or lists a design that does not exist, as `manifest "<file>": error <code> at <pointer>: <message>` lines, never a prop value; a `variant` other than empty or `dark` is refused without being echoed);
 - data: the fixture file's problem, `cache directory "<path>" is not a folder`, or `GitHub data (<code>): <message>` with the code of
   [data-github.md](data-github.md#errors), or `JSON data <namespace> (<code>): <message>` with a common code of
-  [data-sources.md](data-sources.md#the-json-source), `Feed data <namespace> (<code>): <message>` with a common code of [data-sources.md](data-sources.md#the-feed-source), `WakaTime data <namespace> (<code>): <message>` with a code of [data-sources.md](data-sources.md#wakatime-request), a WakaTime source whose environment variable is not set (naming the variable, never a key), or a namespace both the `data-file` and `data-json`, `data-feed` or `data-wakatime` give, or a `data-file` key equal to a `data-json`, `data-feed` or `data-wakatime` namespace;
+  [data-sources.md](data-sources.md#the-json-source), `Feed data <namespace> (<code>): <message>` with a common code of [data-sources.md](data-sources.md#the-feed-source), `WakaTime data <namespace> (<code>): <message>` with a code of [data-sources.md](data-sources.md#wakatime-request), `Registry data <namespace> (<code>): <message>` with a common code of [data-sources.md](data-sources.md#registry-requests), a WakaTime source whose environment variable is not set (naming the variable, never a key), or a namespace both the `data-file` and `data-json`, `data-feed` or `data-wakatime` give, or a `data-file` key equal to a `data-json`, `data-feed` or `data-wakatime` namespace;
 - render: the design's issues (a render of the `variant` input is named `<design> (dark variant)`, a manifest render `<design> (render "<name>")`, with `, dark variant` inside the brackets for its variant), as `readmint render` prints them (an image bound to data that cannot be fetched as
   `<design>: error image-<reason> at /assets/images/<id>/src: <message>`), or a raster export over a limit (the
   measured value, the limit and a fix);

@@ -9,7 +9,9 @@ holds `FileCache` for Node only. Four sources exist: the GitHub source,
 ([The JSON source](#the-json-source)), which binds any JSON document, a repository file or an https URL; the feed
 source, `@readmint/data-feed` ([The feed source](#the-feed-source)), which binds the latest entries of an RSS or Atom
 feed; and the WakaTime source, `@readmint/data-wakatime` ([The WakaTime source](#the-wakatime-source)), which binds
-the coding time, languages, editors and operating systems of a WakaTime account.
+the coding time, languages, editors and operating systems of a WakaTime account; and the registry source,
+`@readmint/data-registry` ([The registry source](#the-registry-source)), which binds the latest versions of npm
+packages and Maven Central artifacts.
 
 ## The interface
 
@@ -245,7 +247,7 @@ A URL load without headers uses `cache` when one is given: the key is `dataSourc
 version, the URL and `maxBytes` (no header name or value), the value the response text, parsed and checked again on
 read (a bad entry is a miss). A URL load with headers never reads or writes the cache, since its answer depends on a
 credential and a cache may be shared. The key and the entry name never hold the URL or its query; the cached body is as sensitive as
-the URL. The CLI and the Action pass no cache to JSON and feed loads (their cache folder serves GitHub and WakaTime data only): each run loads the documents again.
+the URL. The CLI and the Action pass no cache to JSON and feed loads (their cache folder serves GitHub, WakaTime and registry data only): each run loads the documents again.
 
 ### Editor
 
@@ -359,7 +361,7 @@ from the source itself becomes `invalid-response` "The feed load failed.".
 With a `cache` the raw document is stored under `dataSourceCacheKey` of the namespace, the data version, the URL and
 `maxBytes`, never `limit`, and only once it parsed: a cached feed is parsed again on every read, under the same rules
 and with the limit of that load (a bad entry is a miss). The key and the entry name never hold the URL or its query; the
-cached feed is as sensitive as the URL. The CLI and the Action pass no cache to JSON and feed loads (their cache folder serves GitHub and WakaTime data only): each run loads the feeds again.
+cached feed is as sensitive as the URL. The CLI and the Action pass no cache to JSON and feed loads (their cache folder serves GitHub, WakaTime and registry data only): each run loads the feeds again.
 
 ### Feeds in the editor
 
@@ -488,4 +490,118 @@ miss). A partial answer is never stored. The CLI `--cache-dir` and the Action `c
 
 The editor never fetches and never takes a key: WakaTime stats are given to it as fixture data under the namespace, as
 `{ "wakatime": { "version": 0, "range": "last_7_days", "totalSeconds": ..., "humanReadableTotal": ..., ... } }`
+([editor.md](editor.md)).
+
+## The registry source
+
+`@readmint/data-registry` binds the latest version of npm packages (with their downloads of the last week) and of Maven
+Central artifacts, under a namespace the host chooses. It is what the CLI `--data-registry`
+([cli.md](cli.md#registry-data)) and the Action `data-registry` input ([action.md](action.md#registry-data)) load. It
+needs no key. Its only entry is browser-safe (global `fetch`, no `node:` module, no `process`), and it has no
+dependency but `@readmint/data`.
+
+```ts
+import { loadRegistryData, registryDataSource } from "@readmint/data-registry";
+
+const { data, meta } = await loadRegistryData({
+  namespace: "registry",
+  npm: ["react", "@types/node"],
+  maven: ["org.jetbrains.kotlin:kotlin-stdlib"],
+});
+// data = { version: 0,
+//   npm: [{ name: "react", version: "19.3.1", weeklyDownloads: 115400000 }, ...],
+//   maven: [{ group: "org.jetbrains.kotlin", artifact: "kotlin-stdlib", latestVersion: "2.2.0", updated: "2025-06-23" }] },
+//   bound as { registry: data }
+// meta = { requests: 5, fromCache: false, missing: [] }
+```
+
+`registryDataSource` is the frozen descriptor (`namespace` `registry`, `dataVersion` 0, `load` = `loadRegistryData`).
+A design shows a package as `{{ registry.npm[0].name }}` and `{{ registry.npm[0].version }}`, and the lists with
+`repeat`; the libraries card template ([components.md](components.md#libraries-card)) does this.
+
+### Registry options
+
+| option            | default        | meaning                                                                                    |
+| ----------------- | -------------- | ------------------------------------------------------------------------------------------ |
+| `npm`             | none           | npm package names (`react`, `@types/node`), at most 20, no duplicate                       |
+| `maven`           | none           | Maven coordinates as `group:artifact`, at most 20, no duplicate; at least one entry in all |
+| `namespace`       | `registry`     | the namespace errors name and the host binds the data under; must pass `isDataNamespace`   |
+| `fetch`           | global `fetch` | injectable for tests                                                                       |
+| `sleep`           | a timer        | the wait before a retry; injectable for tests                                              |
+| `maxBytes`        | 1 MiB          | size of one answer, 1 byte to 4 MiB                                                        |
+| `timeoutMs`       | 30000          | the whole load, every request, retry, wait and body included, 1000 to 120000               |
+| `cache`           | none           | a `DataSourceCache`                                                                        |
+| `cacheTtlSeconds` | 3600           | 1 to 604800                                                                                |
+| `signal`          | none           | ends the load early (`timeout`)                                                            |
+
+Every option is checked before any I/O. A name that is not a valid npm package name (`isNpmPackageName`: at most 214
+characters, lowercase, an optional `@scope/` prefix, no `..`, no `?`, `#` or extra `/`) or a coordinate that is not
+`isMavenCoordinate` (exactly one colon, each part 1 to 128 characters of letters, digits, `_`, `.` and `-`; no empty group part such as `a..b`, and no part that is only dots), a
+duplicate, more than 20 entries in a list, no entry at all, an unknown namespace and an out-of-range number are
+`invalid-option`; the message names the option and the index (`npm[2] is not a valid npm package name`), never the
+value. The limits are `RegistryLimits`.
+
+### Registry requests
+
+One load makes its requests one after another, in the order asked for (npm first), all `GET` over HTTPS, built only from
+the validated names, with `accept: application/json` (`application/xml, text/xml` for Maven) and `user-agent: readmint`, no cookies and no credentials. The
+hosts are `REGISTRY_HOSTS`, and no other is ever contacted:
+
+| entry | request                                                                                                                             |
+| ----- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| npm   | `https://registry.npmjs.org/<name>/latest`, the manifest of the `latest` dist-tag (`@scope/name` as it is; both slash forms answer) |
+| npm   | `https://api.npmjs.org/downloads/point/last-week/<name>`                                                                            |
+| Maven | `https://repo1.maven.org/maven2/<group, dots as slashes>/<artifact>/maven-metadata.xml`, Maven Central's own repository             |
+
+No redirect is followed: a 3xx answer is `invalid-response` "The <service> API redirected; no redirect is followed."
+after that one request. A 2xx answer must be `application/json` (or `application/*+json`; for Maven `application/xml`,
+`text/xml` or `application/*+xml`) with no charset or UTF-8, read through [`readBodyCapped`](#response-bodies).
+
+| answer                    | result                                                                                                                     |
+| ------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| 200                       | the entry                                                                                                                  |
+| 404 of the npm manifest   | the entry is `null`, named in `meta.missing`                                                                               |
+| 404 of the downloads      | the entry is kept with `weeklyDownloads` `null`                                                                            |
+| 404 of the Maven metadata | the entry is `null`, named in `meta.missing`; so is a document whose `groupId` and `artifactId` are not the ones asked for |
+| 401, 403                  | `forbidden`                                                                                                                |
+| 429                       | waited out once when `Retry-After` is at most 10 seconds; else, or a second time, `rate-limited`                           |
+| 500, 502, 503, 504        | retried once after 1 second, then `invalid-response` naming the status                                                     |
+| 3xx, any other status     | `invalid-response`                                                                                                         |
+| a body over `maxBytes`    | `too-large`                                                                                                                |
+| no answer                 | `network`, or `timeout` once `timeoutMs` passed or the signal aborted                                                      |
+
+Only a registry that does not know an entry gives `null`; every other failure fails the whole load, so a card with a
+silently missing section is never committed. Errors are fixed text plus a status or a field name, never the URL or the
+upstream body; an error that does not come from the source itself becomes `invalid-response` "The registry load
+failed.". The Maven metadata is read from Maven Central's repository, not its search index, because the index lags
+behind the repository and can stall for a minute.
+
+### Registry data object
+
+`{ version: 0, npm, maven }` (`RegistryData`, `REGISTRY_DATA_VERSION`). Both lists keep the order asked for and are
+frozen with their entries; an entry the registry does not know stays in its place as `null`, so `npm[2]` is always the
+third package asked for.
+
+| list    | entry                                                           | from                                                                                        |
+| ------- | --------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| `npm`   | `{ name, version, weeklyDownloads }` (`NpmPackage`)             | the manifest's `version`; the downloads of the last week, `null` without one                |
+| `maven` | `{ group, artifact, latestVersion, updated }` (`MavenArtifact`) | `release` (else `latest`) and `lastUpdated` (UTC date `YYYY-MM-DD`) of `maven-metadata.xml` |
+
+A version is printable ASCII, 1 to 64 characters, and the downloads a non-negative safe integer, else
+`invalid-response` naming the field. The metadata is not parsed as general XML: one forward pass reads only `groupId`, `artifactId`, `release`, `latest` and `lastUpdated`, and a DOCTYPE or any other markup declaration, an entity reference, comment or processing instruction in a read field, a depth over 16, an element name over 128 characters or a malformed tag (a `<` before its `>`) is `invalid-response`, found in time linear in the answer. Only these fields are read: the rest of an answer never reaches the data or the
+cache. `meta` is `RegistryLoadMeta`: `{ requests, fromCache, missing }`, `missing` the entries asked for and not known
+(`npm:<name>`, `maven:<group>:<artifact>`); `fromCache` is true only when every entry came from the cache. The CLI
+prints one `warning:` line and the Action one `::warning::` line for them, and the run succeeds.
+
+### Registry cache
+
+With a `cache`, each found entry is stored (validated again on read; a bad one is a miss) under `dataSourceCacheKey` of
+the namespace, the data version, the registry, the name and `maxBytes`. An entry the registry does not know is never
+stored, and a failing cache neither fails the load nor leaks its error. The CLI `--cache-dir` and the Action `cache-dir`
+give registry loads a `FileCache` in that folder.
+
+### The registry in the editor
+
+The editor never fetches: registry entries are given to it as fixture data under the namespace, as
+`{ "registry": { "version": 0, "npm": [{ "name": "react", "version": "19.3.1", "weeklyDownloads": 115400000 }], "maven": [] } }`
 ([editor.md](editor.md)).

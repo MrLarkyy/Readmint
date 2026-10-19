@@ -25,6 +25,7 @@
     "@readmint/data-feed": "workspace:*",
     "@readmint/data-github": "workspace:*",
     "@readmint/data-json": "workspace:*",
+    "@readmint/data-registry": "workspace:*",
     "@readmint/data-wakatime": "workspace:*",
     "@readmint/expr": "workspace:*",
     "@readmint/format": "workspace:*",

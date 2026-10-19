@@ -1,6 +1,7 @@
 import type {
   DataFeedSpec,
   DataJsonSpec,
+  DataRegistrySpec,
   DataWakaTimeSpec,
   OutputFormat,
   RenderVariant,
@@ -30,7 +31,7 @@ export interface ActionConfig {
   readonly excludeRepositories?: readonly string[];
   /** Own commits read for `github.languagesAuthored`, 1..2000; absent: not loaded. */
   readonly languageCommitCap?: number;
-  /** Folder for the GitHub and WakaTime loads' cache, absolute, outside the workspace; absent: no cache. */
+  /** Folder for the GitHub, WakaTime and registry loads' cache, absolute, outside the workspace; absent: no cache. */
   readonly cacheDir?: string;
   /** Fixture data file instead of a GitHub load. */
   readonly dataFile?: string;
@@ -40,6 +41,8 @@ export interface ActionConfig {
   readonly dataFeed?: readonly DataFeedSpec[];
   /** WakaTime sources of `data-wakatime` with the ranges of `data-wakatime-ranges`, added after the feeds. */
   readonly dataWakaTime?: readonly DataWakaTimeSpec[];
+  /** Registry entries of `data-registry` (npm packages and Maven artifacts, no key), added after the WakaTime sources. */
+  readonly dataRegistry?: readonly DataRegistrySpec[];
   /** Settings file merged into every design (the CLI `--props`); with a manifest, a section per render name. */
   readonly propsFile?: string;
   /** Also render every design without a dark twin, and every manifest render without `variants`, as this variant. */
