@@ -62,9 +62,6 @@ function names(cell: string): string[] {
   });
 }
 
-/** Cards over a data source other than GitHub (docs/components.md): not in the gallery, which shows the GitHub templates. */
-const sourceCards = ["coding-time-card", "libraries-card"];
-
 const components = readFileSync(docsDir + "components.md", "utf8").replace(/\r\n/g, "\n");
 const images = readGoldenImages();
 
@@ -96,11 +93,14 @@ describe("the gallery list", () => {
     const profileSection = section(components, "Profile templates");
     const tables = rows(profileSection);
     const profiles = tables.filter((row) => row.length === 4).map((row) => names(row[0] ?? "")[0]);
-    expect(galleryTemplates.map((t) => t.name)).toEqual([
+    expect(galleryTemplates.filter((t) => t.kind !== "source").map((t) => t.name)).toEqual([
       ...profiles,
       ...starters.map((cell) => names(cell)[0]),
       ...calendars.map((cell) => names(cell)[0]),
     ]);
+    expect(galleryTemplates.map((t) => t.kind).lastIndexOf("calendar")).toBeLessThan(
+      galleryTemplates.map((t) => t.kind).indexOf("source"),
+    );
     expect(galleryTemplates.filter((t) => t.kind === "profile").map((t) => t.name)).toEqual(
       profiles,
     );
@@ -117,8 +117,12 @@ describe("the gallery list", () => {
     const designs = readdirSync(templatesDir)
       .filter((file) => file.endsWith(".design.json"))
       .map((file) => file.slice(0, -".design.json".length));
-    const starters = designs.filter(
-      (name) => !name.startsWith("calendar-") && !sourceCards.includes(name),
+    const documented = rows(section(components, "Starter templates")).map(
+      (row) => names(row[0] ?? "")[0],
+    );
+    const starters = designs.filter((name) => documented.includes(name));
+    const sources = designs.filter(
+      (name) => !documented.includes(name) && !name.startsWith("calendar-"),
     );
     const calendars = designs.filter((name) => name.startsWith("calendar-"));
     const listed = (kind: string): string[] =>
@@ -126,6 +130,7 @@ describe("the gallery list", () => {
     expect(listed("profile").sort()).toEqual(profiles.sort());
     expect(listed("starter").sort()).toEqual(starters.sort());
     expect(listed("calendar").sort()).toEqual(calendars.sort());
+    expect(listed("source").sort()).toEqual(sources.sort());
   });
 
   it("equals the sections in the template folders", () => {
@@ -187,14 +192,51 @@ describe("the Gallery page", () => {
     expect(page.page).toContain("](Components-and-templates#contribution-calendar)");
   });
 
-  it("shows the three calendars in light and dark, opaque on the page colour of the theme", () => {
+  it("shows each source card with its design file, docs anchor and fixture-data note", () => {
+    const sources = galleryTemplates.filter((t) => t.kind === "source");
+    expect(sources.map((t) => t.name)).toEqual(["coding-time-card", "libraries-card"]);
+    for (const { name } of sources) {
+      expect(page.page).toContain(
+        `[Design file](https://example.test/o/r/blob/main/packages/components/templates/${name}.design.json) · [Components docs](Components-and-templates#${name})`,
+      );
+      for (const theme of ["light", "dark"]) {
+        expect(page.page).toContain(`, ${name}, ${theme}](gallery/`);
+      }
+    }
+    expect(page.page).toContain("fixture data");
+  });
+
+  it("links every source card to a heading of docs/components.md", () => {
+    for (const { title } of galleryTemplates.filter((t) => t.kind === "source")) {
+      expect(components).toContain(`
+## ${title}
+`);
+    }
+  });
+
+  it("refuses a source card without a golden folder, naming it", () => {
+    const bare: GalleryTemplate = {
+      name: "x-card",
+      title: "X",
+      kind: "source",
+      description: "x",
+      items: ["x-card"],
+    };
+    expect(() => galleryImagePath(bare, "x-card", "light")).toThrow("source card x-card");
+    expect(galleryImagePath({ ...bare, folder: "x" }, "x-card", "dark")).toBe("x/x-card-dark.png");
+  });
+
+  it("shows the calendars and source cards in light and dark, opaque on the page colour of the theme", () => {
     const calendars = galleryTemplates.filter((t) => t.kind === "calendar");
     expect(calendars.map((t) => t.name)).toEqual([
       "calendar-heatmap",
       "calendar-isometric",
       "calendar-dots",
     ]);
-    for (const { name, title } of calendars) {
+    for (const { name, title } of [
+      ...calendars,
+      ...galleryTemplates.filter((t) => t.kind === "source"),
+    ]) {
       for (const [theme, colour] of [
         ["light", [255, 255, 255, 255]],
         ["dark", [13, 17, 23, 255]],
