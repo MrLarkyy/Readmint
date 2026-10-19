@@ -1,10 +1,11 @@
 import resvgUrl from "@resvg/resvg-wasm/index_bg.wasm?url";
 import webpUrl from "wasm-webp/dist/esm/webp-wasm.wasm?url";
-import { DesignLimits } from "@readmint/format";
+import { DesignLimits, type Design } from "@readmint/format";
 import { initRaster } from "@readmint/raster/browser";
 import { afterEach, beforeEach, expect, test } from "vitest";
 import { userEvent } from "vitest/browser";
 import {
+  createEditorState,
   importDesign,
   mountEditor,
   uploadFont,
@@ -144,3 +145,63 @@ test("a second raster click while one runs is reported and the first still saves
   await editor.settled();
   expect(images.map((image) => image.name)).toEqual(["design.png"]);
 });
+
+test(
+  "Export PNG with the transport paused at 400 ms saves that frame; playing it saves the first",
+  async () => {
+    await initRaster({ resvg: await wasm(resvgUrl), webp: await wasm(webpUrl) });
+    const moving = {
+      version: 0,
+      canvas: { width: 100, height: 40 },
+      animation: { duration: 1000 },
+      layers: [
+        {
+          type: "rect",
+          width: 20,
+          height: 10,
+          fill: "#000000",
+          animate: {
+            x: {
+              keyframes: [
+                { offset: 0, value: 0 },
+                { offset: 1, value: 60 },
+              ],
+            },
+          },
+        },
+      ],
+    } as unknown as Design;
+    editor.dispatch(() => createEditorState(moving));
+    await editor.settled();
+    const input = (name: string) => find(`[name="${name}"]`) as HTMLInputElement;
+    const exportPng = async () => {
+      await userEvent.click(find('[data-action="export-png"]'));
+      await editor.settled();
+      expect(editor.state.issues).toEqual([]);
+    };
+    const expected = async (time?: number) => {
+      const { design, data, sessionAssets } = editor.state;
+      const output = await renderRasterExport({
+        design,
+        data,
+        sessionAssets,
+        format: "png",
+        ...(time === undefined ? {} : { time }),
+      });
+      return sha256(output.bytes);
+    };
+    await userEvent.click(find('[data-action="toggle-play"]'));
+    await editor.settled();
+    await userEvent.fill(input("time"), "400");
+    await userEvent.tab();
+    await editor.settled();
+    await exportPng();
+    expect(await sha256(images[0]?.bytes ?? new Uint8Array())).toBe(await expected(400));
+    expect(await expected(400)).not.toBe(await expected(0));
+    await userEvent.click(find('[data-action="toggle-play"]'));
+    await editor.settled();
+    await exportPng();
+    expect(await sha256(images[1]?.bytes ?? new Uint8Array())).toBe(await expected());
+  },
+  slow,
+);

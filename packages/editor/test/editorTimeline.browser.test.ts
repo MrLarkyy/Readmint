@@ -292,3 +292,20 @@ test("after destroy no animation frame callback of the transport runs", async ()
     window.requestAnimationFrame = original;
   }
 });
+
+test("with two tracks a keyframe Remove keeps the focus in its own track", async () => {
+  const handle = await mount();
+  await userEvent.selectOptions(find(named("add-track")), "opacity");
+  await handle.settled();
+  await userEvent.selectOptions(find(named("add-track")), "x");
+  await handle.settled();
+  const tracks = () => [...root.querySelectorAll<HTMLElement>(".rm-track")];
+  expect(tracks()).toHaveLength(2);
+  await click('[aria-label="Add keyframe to opacity"]');
+  expect(tracks()[0]?.contains(document.activeElement)).toBe(true);
+  // Remove the last row of the first track: the next control of that kind is in the second track.
+  await click('[aria-label="Remove opacity keyframe 3"]');
+  expect(tracks()[0]?.contains(document.activeElement)).toBe(true);
+  expect(tracks()[1]?.contains(document.activeElement)).toBe(false);
+  expect(tracks()).toHaveLength(2);
+});

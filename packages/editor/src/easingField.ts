@@ -7,6 +7,8 @@ import type { PanelContext } from "./PanelContext.js";
 
 /** Where an easing control sits and how it reads and writes. */
 export interface EasingFieldProps {
+  /** The label the controls are named by for assistive technology, e.g. "opacity keyframe 2". */
+  readonly label: string;
   /** The input name; the bezier numbers add `.x1` .. `.y2`. */
   readonly name: string;
   /** What the select is for `ControlKey`; the bezier inputs add `-x1` .. `-y2`. */
@@ -47,6 +49,7 @@ export function easingField(
   const select = element(row, "select", {
     attributes: {
       name: props.name,
+      "aria-label": `${props.label} easing`,
       ...keyAttributes(props.kind, props.at, props.home),
     },
   });
@@ -73,7 +76,7 @@ export function easingField(
     const input = element(cell, "input", {
       attributes: {
         name: `${props.name}.${key}`,
-        "aria-label": `${props.name} ${key}`,
+        "aria-label": `${props.label} easing ${key}`,
         ...keyAttributes(`${props.kind}-${key}`, props.at, props.home),
       },
     });

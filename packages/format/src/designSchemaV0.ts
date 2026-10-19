@@ -149,10 +149,7 @@ function gradient(type: string, properties: Record<string, SchemaNode>): ObjectN
   return object(`a ${type} gradient`, {
     type: literal(type),
     ...properties,
-    stops: array("a list of gradient stops", ref("GradientStop"), {
-      minItems: DesignLimits.minTrackKeyframes,
-      maxItems: DesignLimits.maxTrackKeyframes,
-    }),
+    stops: array("a list of gradient stops", ref("GradientStop"), { minItems: 2, maxItems: 32 }),
   });
 }
 

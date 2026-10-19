@@ -18,7 +18,7 @@ type Frame = Record<string, unknown>;
 type Draft = Record<string, unknown> & { keyframes: Frame[] };
 
 const binding = /^\{\{[\s\S]+\}\}$/u;
-const home = ["track-add", "add-track"];
+const homeOf = (t: number) => [`track-add-${String(t)}`, "add-track"];
 const trackNumbers = ["duration", "delay", "stagger", "cycles"] as const;
 
 /** The tracks of `layer` that exist, in the format's table order. */
@@ -72,7 +72,7 @@ export function animateFieldset(form: HTMLElement, context: PanelContext, pointe
     const base = childPointer(childPointer(trackPath, "keyframes"), r);
     const item = element(parent, "div", { className: "rm-keyframe" });
     const row = element(item, "div", { className: "rm-keyframe-row" });
-    const key = (kind: string) => keyAttributes(kind, [t, r], home);
+    const key = (kind: string) => keyAttributes(`${kind}-${String(t)}`, [r], homeOf(t));
     const frame = () => trackNow(property)?.keyframes[r];
     const modifyFrame = (change: (target: Frame) => void) => {
       modifyFrames(property, (frames) => {
@@ -130,7 +130,7 @@ export function animateFieldset(form: HTMLElement, context: PanelContext, pointe
     });
     insert.disabled = count >= DesignLimits.maxTrackKeyframes;
     insert.addEventListener("click", () => {
-      context.focusAfter("kf-offset", [t, r + 1]);
+      context.focusAfter(`kf-offset-${String(t)}`, [r + 1]);
       modifyFrames(property, (frames) => {
         const from = frames[r];
         const to = frames[r + 1];
@@ -153,10 +153,11 @@ export function animateFieldset(form: HTMLElement, context: PanelContext, pointe
       });
     });
     easingField(item, context, {
+      label,
       name: `animate.${property}.keyframes.${String(r)}.easing`,
-      kind: "kf-easing",
-      at: [t, r],
-      home,
+      kind: `kf-easing-${String(t)}`,
+      at: [r],
+      home: homeOf(t),
       path: childPointer(base, "easing"),
       read: () => frame()?.["easing"],
       commit: (easing: Easing | undefined) => {
@@ -173,7 +174,7 @@ export function animateFieldset(form: HTMLElement, context: PanelContext, pointe
     const trackPath = childPointer(childPointer(pointer, "animate"), property);
     const track = element(box, "fieldset", { className: "rm-fieldset rm-track" });
     element(track, "legend", { text: property });
-    const key = (kind: string) => keyAttributes(kind, [t], home);
+    const key = (kind: string) => keyAttributes(`${kind}-${String(t)}`, [], homeOf(t));
     for (const field of trackNumbers) {
       const label = element(track, "label", { className: "rm-field" });
       element(label, "span", { text: field });
@@ -198,10 +199,11 @@ export function animateFieldset(form: HTMLElement, context: PanelContext, pointe
       });
     }
     easingField(track, context, {
+      label: `${property} track`,
       name: `animate.${property}.easing`,
-      kind: "track-easing",
-      at: [t],
-      home,
+      kind: `track-easing-${String(t)}`,
+      at: [],
+      home: homeOf(t),
       path: childPointer(trackPath, "easing"),
       read: () => trackNow(property)?.["easing"],
       commit: (easing: Easing | undefined) => {
@@ -223,7 +225,7 @@ export function animateFieldset(form: HTMLElement, context: PanelContext, pointe
     });
     add.disabled = count >= DesignLimits.maxTrackKeyframes;
     add.addEventListener("click", () => {
-      context.focusAfter("kf-offset", [t, count]);
+      context.focusAfter(`kf-offset-${String(t)}`, [count]);
       modifyFrames(property, (frames) => {
         const last = frames[frames.length - 1];
         frames.push({ offset: last?.["offset"] ?? 1, value: last?.["value"] });
@@ -272,7 +274,15 @@ export function animateFieldset(form: HTMLElement, context: PanelContext, pointe
     const index = animatedProperties(now.type)
       .filter((entry) => entry === chosen || presentTracks(now).includes(entry))
       .indexOf(chosen);
-    context.focusAfter("kf-offset", [index, 0]);
-    actions.setTrack(pointer, chosen.property, newTrack(now, chosen));
+    const track = newTrack(now, chosen);
+    if (track === undefined) {
+      actions.invalid(
+        `set a colour for ${chosen.property} on the layer first; a track starts from it`,
+        childPointer(pointer, chosen.property),
+      );
+      return;
+    }
+    context.focusAfter(`kf-offset-${String(index)}`, [0]);
+    actions.setTrack(pointer, chosen.property, track);
   });
 }

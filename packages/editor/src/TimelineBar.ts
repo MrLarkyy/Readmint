@@ -40,6 +40,7 @@ export class TimelineBar {
     });
     this.root.hidden = true;
     this.toggle = element(this.root, "button", {
+      text: "Play",
       attributes: { type: "button", "data-action": "toggle-play", "aria-pressed": "true" },
     });
     this.scrubber = element(this.root, "input", {
@@ -67,7 +68,6 @@ export class TimelineBar {
     this.stop();
     if (view === undefined) return;
     const { playing } = view.playhead;
-    this.toggle.textContent = playing ? "Pause" : "Play";
     this.toggle.setAttribute("aria-pressed", String(playing));
     this.scrubber.max = String(view.duration);
     this.time.max = String(view.duration);

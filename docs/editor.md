@@ -45,7 +45,10 @@ workspace and no UI framework: the DOM views are small classes that dispatch com
     (a number, a colour or a `{{binding}}`), an easing (inherit, the five keywords, or `cubic-bezier` with its four numbers),
     "Add after" (the new keyframe takes the offset midway to the next row and copies the value) and "Remove". A track with
     `cycles` is listed once with `cycles` as a number, never unrolled. "Add track" lists the properties the layer has no
-    track for, starting from two keyframes at the layer's own value; it is disabled, with a note, while the design has no
+    track for, with two keyframes that keep the frame as it is: `opacity`, `fill` and `stroke` start from the layer's own
+    value (a literal or a `{{binding}}`; a `fill` or `stroke` track is refused with a note when the layer has no colour
+    to start from), `x`, `y` and `rotation` (offsets on top of the layer) from 0, `scale` from 1 and `draw` from the full
+    stroke. It is disabled, with a note, while the design has no
     timeline. Keyframes are 2 to 32 per track (`DesignLimits.minTrackKeyframes` / `maxTrackKeyframes`): the buttons are
     disabled at the bounds and a longer list is refused before it is read. Each change stores one whole track and is one
     undoable edit; the other tracks, `orbit` and `let` stay as they are, and a value that changes nothing is no entry. A
@@ -59,7 +62,7 @@ workspace and no UI framework: the DOM views are small classes that dispatch com
     a shorter timeline) and renders at it. While playing, the scrubber follows a clock of its own; nothing is rendered per frame.
   - **Keyboard focus**: renaming a mode, token or binding keeps the focus in its input (Tab moves on as usual) and
     "Move up" keeps it on the moved row. After a Remove the focus goes to the next row's Remove, else to the group's
-    Add button ("Add token", "Add mode", "Add binding", "Add orbit"); after "Add orbit" to the first orbit field.
+    Add button ("Add token", "Add mode", "Add binding", "Add orbit"); after "Add orbit" to the first orbit field. In an animation track the focus stays in that track: after a keyframe Remove it goes to the next row's Remove, else to the track's "Add keyframe"; "Add after" and "Add keyframe" focus the new row's offset.
     Long mode names wrap, and each mode label shows the full name as a tooltip.
 - **Fonts**: upload a TTF, OTF, WOFF or WOFF2 file (see below).
 - **Images**: upload a PNG, JPEG, GIF or WebP file; it is embedded in the design with an image layer showing it
