@@ -18,6 +18,8 @@ export interface TimelineView {
 
 /**
  * Play / Pause, a scrubber and the time in milliseconds, under the canvas; hidden when the design has no timeline.
+ * The button is named after what it does next ("Pause" while playing), with no `aria-pressed`: a name that changes
+ * and a pressed state would contradict each other.
  * While playing, a frame loop moves the scrubber along the playhead clock and nothing else: the preview is the
  * animated SVG itself. Scrubbing or typing a time pauses at that time.
  */
@@ -40,8 +42,7 @@ export class TimelineBar {
     });
     this.root.hidden = true;
     this.toggle = element(this.root, "button", {
-      text: "Play",
-      attributes: { type: "button", "data-action": "toggle-play", "aria-pressed": "true" },
+      attributes: { type: "button", "data-action": "toggle-play" },
     });
     this.scrubber = element(this.root, "input", {
       attributes: { type: "range", min: "0", step: "1", name: "scrub", "aria-label": "Time" },
@@ -68,7 +69,7 @@ export class TimelineBar {
     this.stop();
     if (view === undefined) return;
     const { playing } = view.playhead;
-    this.toggle.setAttribute("aria-pressed", String(playing));
+    this.toggle.textContent = playing ? "Pause" : "Play";
     this.scrubber.max = String(view.duration);
     this.time.max = String(view.duration);
     this.show(view.playhead.time);

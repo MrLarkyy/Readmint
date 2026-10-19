@@ -143,12 +143,16 @@ test("pausing shows the CLI frame, scrubbing another, playing the animated SVG a
   await handle.settled();
   await fill("animate.opacity.keyframes.0.value", "0");
   const toggle = find('[data-action="toggle-play"]');
-  expect(toggle.getAttribute("aria-pressed")).toBe("true");
+  const reads = (name: string) => {
+    expect(toggle.textContent).toBe(name);
+    expect(toggle.hasAttribute("aria-pressed")).toBe(false);
+  };
+  reads("Pause");
   expect(shown()).toContain("@keyframes");
   expect(shown()).toBe(frame());
   await userEvent.click(toggle);
   await handle.settled();
-  expect(toggle.getAttribute("aria-pressed")).toBe("false");
+  reads("Play");
   const pausedAt = Number((find(named("time")) as HTMLInputElement).value);
   expect(shown()).not.toContain("@keyframes");
   expect(shown()).toBe(frame(pausedAt));
@@ -160,7 +164,7 @@ test("pausing shows the CLI frame, scrubbing another, playing the animated SVG a
   expect(shown()).not.toBe(frame(400));
   await userEvent.click(toggle);
   await handle.settled();
-  expect(toggle.getAttribute("aria-pressed")).toBe("true");
+  reads("Pause");
   expect(shown()).toContain("@keyframes");
   expect(shown()).toBe(frame());
 });
@@ -301,11 +305,20 @@ test("with two tracks a keyframe Remove keeps the focus in its own track", async
   await handle.settled();
   const tracks = () => [...root.querySelectorAll<HTMLElement>(".rm-track")];
   expect(tracks()).toHaveLength(2);
+  // Three keyframes on x enable its Remove buttons, so a Remove in x is a candidate for the focus.
+  await click('[aria-label="Add keyframe to x"]');
   await click('[aria-label="Add keyframe to opacity"]');
   expect(tracks()[0]?.contains(document.activeElement)).toBe(true);
-  // Remove the last row of the first track: the next control of that kind is in the second track.
+  const removeEnabled = (label: string) =>
+    !(find(`[aria-label="${label}"]`) as HTMLButtonElement).disabled;
+  expect(removeEnabled("Remove x keyframe 1")).toBe(true);
+  // The last row of opacity: no enabled Remove is left after it in opacity, the next one in the panel is x's.
   await click('[aria-label="Remove opacity keyframe 3"]');
-  expect(tracks()[0]?.contains(document.activeElement)).toBe(true);
+  expect(removeEnabled("Remove opacity keyframe 1")).toBe(false);
+  expect(removeEnabled("Remove x keyframe 1")).toBe(true);
+  expect(document.activeElement?.getAttribute("aria-label")).toBe("Add keyframe to opacity");
   expect(tracks()[1]?.contains(document.activeElement)).toBe(false);
+  await click('[aria-label="Remove x keyframe 1"]');
+  expect(document.activeElement?.getAttribute("aria-label")).toBe("Add keyframe to x");
   expect(tracks()).toHaveLength(2);
 });

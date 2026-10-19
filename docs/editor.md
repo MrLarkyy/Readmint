@@ -54,8 +54,9 @@ workspace and no UI framework: the DOM views are small classes that dispatch com
     undoable edit; the other tracks, `orbit` and `let` stay as they are, and a value that changes nothing is no entry. A
     refused value (an offset outside 0..1, offsets that decrease, a non-finite number, an unknown easing, `cycles` that is
     not an integer in 1..1000) leaves the design unchanged and lists the format's issue with its path.
-  - **Transport** (under the canvas, shown while the design has a timeline): Play / Pause, a scrubber and the time in
-    milliseconds. Playing, the preview is the animated SVG, exactly what `readmint render` writes; paused at `t` it is
+  - **Transport** (under the canvas, shown while the design has a timeline): a Play / Pause button, a scrubber and the time in
+    milliseconds. The button is named after what it does: it reads "Pause" while playing and "Play" while paused (its
+    accessible name is that text; no pressed state). Playing, the preview is the animated SVG, exactly what `readmint render` writes; paused at `t` it is
     the frame `readmint render --time t` writes (the time is a whole number of milliseconds within the timeline).
     Scrubbing or typing a time pauses at it; Play restarts the animation from its start. The playhead is session state:
     never an undo entry, never part of an export or the design; an edit, an undo or a redo keeps the paused time (cut to
