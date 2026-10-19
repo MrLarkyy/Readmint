@@ -316,8 +316,8 @@ as `render --data` with that object.
   (exit code 1 or 3) costs no request and is reported before a missing or refused token (exit code 4). `preview` reads
   the design and the `--data` fixture only to check them for a namespace clash (below; a file it cannot read is skipped), then loads
   the data before it starts serving: a missing token or a failed load exits with 4 at once,
-  and a design error is then shown on the page like any later one. A `let` named `github` with `--github`, or a fixture key `github`, is the same
-  clash as for the other sources: exit code 1 or 3 before any request.
+  and a design error is then shown on the page like any later one. A `let` named `github` with `--github` is the same
+  clash as for the other sources: exit code 1 before any request.
 - **Requests**: a load sends the requests of [data-github.md](data-github.md#rate-limits) (at most 6 with `--login`
   and 7 without it, 7 either way on a `--cache-dir` miss, plus retries; fewer for a user with fewer repositories), only to `https://api.github.com/graphql` (with `--language-commit-cap` also `https://api.github.com/repos/...`), and takes at most 300 s in all (plus 600 ms per commit read; the commit reading ends 60 s earlier with a warning instead of failing), retries and
   rate-limit waits included. Without `--cache-dir` there is no cache and nothing is written to disk.

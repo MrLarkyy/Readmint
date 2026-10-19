@@ -1,9 +1,9 @@
-import { GITHUB_DATA_NAMESPACE } from "@readmint/data-github";
 import type { DesignArgs } from "./CliCommand.js";
 import { checkDataNamespaces } from "./checkDataNamespaces.js";
 import { loadDesignFile } from "./loadDesignFile.js";
 import { loadFixtureData } from "./loadFixtureData.js";
 import { checkFixtureNamespaces } from "./mergeDataNamespaces.js";
+import { sourceNamespaces } from "./sourceNamespaces.js";
 
 /**
  * The checks `render` makes before its first request, made by `preview` before the data is loaded: a `let` name of the
@@ -45,15 +45,7 @@ export async function checkPreviewNamespaces(
   const data = args.data;
   const fixture = await quietly(() => loadFixtureData(data, cwd));
   if (fixture === undefined) return;
-  checkFixtureNamespaces(fixture, [
-    ...(args.github === true ? [GITHUB_DATA_NAMESPACE] : []),
-    ...[
-      ...(args.dataJson ?? []),
-      ...(args.dataFeed ?? []),
-      ...(args.dataWakaTime ?? []),
-      ...(args.dataRegistry ?? []),
-    ].map((spec) => spec.namespace),
-  ]);
+  checkFixtureNamespaces(fixture, sourceNamespaces(args));
 }
 
 async function quietly<T>(read: () => Promise<T>): Promise<T | undefined> {

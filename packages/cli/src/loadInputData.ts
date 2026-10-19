@@ -1,7 +1,7 @@
-import { GITHUB_DATA_NAMESPACE } from "@readmint/data-github";
 import type { DesignArgs } from "./CliCommand.js";
 import { loadFixtureData } from "./loadFixtureData.js";
 import { checkFixtureNamespaces, mergeDataNamespaces } from "./mergeDataNamespaces.js";
+import { sourceNamespaces } from "./sourceNamespaces.js";
 
 /**
  * The data of a run: the fixture file `args.data` and, when `loadData` is given, the namespaces it loads added to the
@@ -24,18 +24,4 @@ export async function loadInputData(
   if (fixture !== undefined) checkFixtureNamespaces(fixture, sourceNamespaces(args));
   const loaded = await options.loadData();
   return fixture === undefined ? loaded : mergeDataNamespaces(fixture, loaded);
-}
-
-function sourceNamespaces(
-  args: Pick<DesignArgs, "github" | "dataJson" | "dataFeed" | "dataWakaTime" | "dataRegistry">,
-): string[] {
-  return [
-    ...(args.github === true ? [GITHUB_DATA_NAMESPACE] : []),
-    ...[
-      ...(args.dataJson ?? []),
-      ...(args.dataFeed ?? []),
-      ...(args.dataWakaTime ?? []),
-      ...(args.dataRegistry ?? []),
-    ].map((spec) => spec.namespace),
-  ];
 }
