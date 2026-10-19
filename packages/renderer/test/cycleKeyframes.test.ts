@@ -1,4 +1,4 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 import { cycleKeyframes } from "../src/cycleKeyframes.js";
 import { keywordEasing, linearEasing, type EasingCurve } from "../src/easing.js";
 import type { ResolvedKeyframe } from "../src/NodeAnimation.js";
@@ -18,6 +18,9 @@ function cycle(
   }));
 }
 
+const farEnd = 1_000_000;
+const noop = () => undefined;
+
 const times = (keyframes: readonly ResolvedKeyframe[]) => keyframes.map(({ time }) => time);
 const values = (keyframes: readonly ResolvedKeyframe[]) => keyframes.map(({ value }) => value);
 
@@ -32,6 +35,8 @@ describe("cycleKeyframes", () => {
       85,
       700,
       1,
+      farEnd,
+      noop,
     );
     expect(times(once)).toEqual(offsets.map((offset) => 85 + offset * 700));
     expect(values(once)).toEqual(offsets.map((offset) => [offset]));
@@ -43,7 +48,7 @@ describe("cycleKeyframes", () => {
       [0.5, [1], easeIn],
       [1, [0]],
     ]);
-    const out = cycleKeyframes(bounce, 0, 400, 3);
+    const out = cycleKeyframes(bounce, 0, 400, 3, farEnd, noop);
     expect(times(out)).toEqual([0, 200, 400, 600, 800, 1000, 1200]);
     expect(values(out)).toEqual([[0], [1], [0], [1], [0], [1], [0]]);
     expect(out.map(({ easing }) => easing.css)).toEqual([
@@ -68,6 +73,8 @@ describe("cycleKeyframes", () => {
       0,
       200,
       2,
+      farEnd,
+      noop,
     );
     expect(times(out)).toEqual([0, 100, 200, 300, 400]);
   });
@@ -77,7 +84,7 @@ describe("cycleKeyframes", () => {
       [0, [1]],
       [1, [0.2]],
     ]);
-    const out = cycleKeyframes(pulse, 0, 300, 3);
+    const out = cycleKeyframes(pulse, 0, 300, 3, farEnd, noop);
     expect(times(out)).toEqual([0, 300, 300, 600, 600, 900]);
     expect(values(out)).toEqual([[1], [0.2], [1], [0.2], [1], [0.2]]);
   });
@@ -87,7 +94,7 @@ describe("cycleKeyframes", () => {
       [0.25, [1], easeIn],
       [0.75, [1.5]],
     ]);
-    const out = cycleKeyframes(inner, 0, 400, 3);
+    const out = cycleKeyframes(inner, 0, 400, 3, farEnd, noop);
     // the first cycle's lead and the last cycle's tail are the timeline's holds, not this one's
     expect(times(out)).toEqual([100, 300, 400, 400, 500, 700, 800, 800, 900, 1100]);
     expect(values(out)).toEqual([[1], [1.5], [1.5], [1], [1], [1.5], [1.5], [1], [1], [1.5]]);
@@ -110,7 +117,7 @@ describe("cycleKeyframes", () => {
       [0.25, [1]],
       [0.75, [1]],
     ]);
-    expect(times(cycleKeyframes(flat, 0, 400, 2))).toEqual([100, 300, 400, 500, 700]);
+    expect(times(cycleKeyframes(flat, 0, 400, 2, farEnd, noop))).toEqual([100, 300, 400, 500, 700]);
   });
 
   test("times are exact per cycle: base start + index x duration, then the cycle's own time", () => {
@@ -119,7 +126,7 @@ describe("cycleKeyframes", () => {
       9000,
       offsets.map((offset, index) => [offset, [index === 1 ? -7 : 0]] as const),
     );
-    const out = cycleKeyframes(bounce, 85, 9000, 5);
+    const out = cycleKeyframes(bounce, 85, 9000, 5, farEnd, noop);
     const expected = [0, 1, 2, 3, 4].flatMap((index) =>
       offsets
         .filter((_, at) => index === 0 || at > 0)
@@ -128,5 +135,91 @@ describe("cycleKeyframes", () => {
     expect(times(out)).toEqual(expected);
     expect(out).toHaveLength(16);
     expect(out.at(-1)?.time).toBe(85 + 45_000);
+  });
+
+  test("a cycle starting at the end adds nothing: the last whole cycle ends on its last value", () => {
+    const onCut = vi.fn();
+    const out = cycleKeyframes(
+      cycle(500, [
+        [0, [0]],
+        [1, [1]],
+      ]),
+      0,
+      500,
+      3,
+      1000,
+      onCut,
+    );
+    expect(times(out)).toEqual([0, 500, 500, 1000]);
+    expect(values(out)).toEqual([[0], [1], [0], [1]]);
+    expect(onCut).toHaveBeenCalledTimes(1);
+  });
+
+  test("a run that fills the timeline with one whole cycle keeps its ramp", () => {
+    const onCut = vi.fn();
+    const out = cycleKeyframes(
+      cycle(3000, [
+        [0, [0]],
+        [1, [90]],
+      ]),
+      0,
+      3000,
+      3,
+      3000,
+      onCut,
+    );
+    expect(times(out)).toEqual([0, 3000]);
+    expect(values(out)).toEqual([[0], [90]]);
+    expect(onCut).toHaveBeenCalledTimes(1);
+  });
+
+  test("a cycle holding its last value past the end is dropped with its hold", () => {
+    const inner = cycle(400, [
+      [0.25, [1]],
+      [0.75, [1.5]],
+    ]);
+    const out = cycleKeyframes(inner, 0, 400, 3, 800, noop);
+    expect(times(out)).toEqual([100, 300, 400, 400, 500, 700, 800]);
+    expect(values(out).at(-1)).toEqual([1.5]);
+  });
+
+  test("a partial last cycle is kept for the timeline to cut, an early end drops nothing", () => {
+    const onCut = vi.fn();
+    const ramp = cycle(300, [
+      [0, [0]],
+      [1, [1]],
+    ]);
+    expect(cycleKeyframes(ramp, 0, 300, 4, 1000, onCut)).toHaveLength(8);
+    expect(onCut).not.toHaveBeenCalled();
+    const whole = cycleKeyframes(
+      cycle(500, [
+        [0, [0]],
+        [1, [1]],
+      ]),
+      0,
+      500,
+      2,
+      1000,
+      onCut,
+    );
+    expect(times(whole)).toEqual([0, 500, 500, 1000]);
+    expect(onCut).not.toHaveBeenCalled();
+  });
+
+  test("a first cycle starting at the end is still written, later ones are dropped and cut", () => {
+    const onCut = vi.fn();
+    const out = cycleKeyframes(
+      cycle(500, [
+        [0, [0]],
+        [1, [1]],
+      ]),
+      1000,
+      500,
+      2,
+      1000,
+      onCut,
+    );
+    expect(times(out)).toEqual([1000, 1500]);
+    expect(onCut).toHaveBeenCalledTimes(1);
   });
 });

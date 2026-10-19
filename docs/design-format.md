@@ -546,7 +546,8 @@ default 1), `easing` (default `linear`).
   later one is kept (its easing leads on), so a cycle that ends where it starts joins the next seamlessly; different
   values jump, like two equal offsets. A binding, a fraction or a value outside 1..1000 fails (`type` for a binding
   or a fraction, `range` outside the bounds, at `.../cycles`). At 100 % of the timeline only the later of two keyframes
-  stays, so a run that ends at the timeline end should not end with a jump. Every cycle counts against the renderer's keyframe limit:
+  stays, so a run that ends at the timeline end should not end with a jump. A cycle other than the first that starts at or after the timeline end adds no keyframe, not even its first, so the last whole cycle ends on its own last value (a run that still passes the end warns `animation-cut`).
+  Every cycle counts against the renderer's keyframe limit:
   the track charges `keyframes x cycles` before any keyframe is resolved ([renderer.md](renderer.md#limits)).
 - A track that runs past the end of the timeline is cut there: its last keyframe becomes the value it has at that
   moment, and the render warns `animation-cut` once per track. Copy counts come from data, so this is a warning, not a
