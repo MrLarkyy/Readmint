@@ -89,7 +89,8 @@ export const galleryTemplates: readonly GalleryTemplate[] = [
     title: "Coding-time card",
     kind: "source",
     folder: "coding-time",
-    description: "Coding time over a range with its daily average, languages as bars, editors and operating systems.",
+    description:
+      "Coding time over a range with its daily average, languages as bars, editors and operating systems.",
     items: ["coding-time-card"],
   },
   {
@@ -97,7 +98,8 @@ export const galleryTemplates: readonly GalleryTemplate[] = [
     title: "Libraries card",
     kind: "source",
     folder: "libraries",
-    description: "Latest versions of a project's npm packages and Maven artifacts, with weekly downloads and release dates.",
+    description:
+      "Latest versions of a project's npm packages and Maven artifacts, with weekly downloads and release dates.",
     items: ["libraries-card"],
   },
 ];
