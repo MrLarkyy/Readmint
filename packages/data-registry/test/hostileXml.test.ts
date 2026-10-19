@@ -54,6 +54,12 @@ describe("a hostile maven-metadata.xml", () => {
       `<metadata><groupId>${"a".repeat(300)}</groupId></metadata>`,
     ],
     ["nesting beyond 16 levels", `${"<x>".repeat(40)}${"</x>".repeat(40)}`],
+    ["a comment in a read field", GOOD.replace("<release>1.0", "<release>1.0<!--x-->")],
+    ["a processing instruction in a read field", GOOD.replace("<release>1.0", "<release>1.0<?x?>")],
+    ["an element name longer than 128 characters", `<metadata><${"a".repeat(129)}/></metadata>`],
+    ["a stray character after a tag name", "<metadata$x></metadata>"],
+    ["an end tag with attributes", '<metadata></metadata a="b">'],
+    ["a self-closing end tag", "<metadata></metadata/>"],
   ])("%s is invalid-response with fixed text", async (_name, body) => {
     const { error } = await refused(body);
     expect(error.code).toBe("invalid-response");
@@ -63,6 +69,43 @@ describe("a hostile maven-metadata.xml", () => {
   test("a huge body is too-large before it is parsed", async () => {
     const { error } = await refused(`<metadata>${"<x/>".repeat(400_000)}</metadata>`);
     expect(error.code).toBe("too-large");
+  });
+
+  test.each([
+    ["one long tag with a stray <", `<metadata><${"a".repeat(900_000)}<b></metadata>`],
+    ["one long attribute run with a stray <", `<metadata><a ${"x".repeat(900_000)}<b></metadata>`],
+    ["a megabyte of <", "<".repeat(1_000_000)],
+    ["a megabyte of <a", "<a".repeat(500_000)],
+    ["a megabyte of unclosed tags", `<metadata>${"<a ".repeat(330_000)}`],
+    ["a megabyte of unterminated comments", "<!--".repeat(250_000)],
+    ["a megabyte of unterminated processing instructions", "<?".repeat(500_000)],
+  ])("%s inside the size cap is invalid-response in linear time", async (_name, body) => {
+    const { error, elapsed } = await refused(body);
+    expect(error.code).toBe("invalid-response");
+    expect(elapsed).toBeLessThan(2000);
+  });
+
+  test("many tags under a long element name are parsed in linear time", async () => {
+    const body = `<metadata><${"n".repeat(128)}>${"<x/>".repeat(190_000)}</${"n".repeat(128)}></metadata>`;
+    const started = performance.now();
+    const { data } = await loadRegistryData({
+      maven: ["a:b"],
+      fetch: stubFetch(() => xml(body)).fetch,
+    });
+    expect(data.maven).toEqual([null]);
+    expect(performance.now() - started).toBeLessThan(2000);
+  });
+
+  test("a prefixed element and attributes on the root are read past", async () => {
+    const body = GOOD.replace(
+      "<metadata>",
+      '<metadata xmlns="http://maven.apache.org/METADATA/1.1.0" modelVersion="1.1.0">',
+    ).replace("<latest>", "<x:extra a='/'>1</x:extra><latest>");
+    const { data } = await loadRegistryData({
+      maven: ["a:b"],
+      fetch: stubFetch(() => xml(body)).fetch,
+    });
+    expect(data.maven[0]?.latestVersion).toBe("1.0");
   });
 
   test("a long run of tags inside the cap is parsed in linear time", async () => {

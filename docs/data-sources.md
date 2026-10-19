@@ -588,7 +588,7 @@ third package asked for.
 | `maven` | `{ group, artifact, latestVersion, updated }` (`MavenArtifact`) | `release` (else `latest`) and `lastUpdated` (UTC date `YYYY-MM-DD`) of `maven-metadata.xml` |
 
 A version is printable ASCII, 1 to 64 characters, and the downloads a non-negative safe integer, else
-`invalid-response` naming the field. The metadata is not parsed as general XML: one forward pass reads only `groupId`, `artifactId`, `release`, `latest` and `lastUpdated`, and a DOCTYPE or any other markup declaration, an entity reference in a read field, a depth over 16 or a malformed tag is `invalid-response`. Only these fields are read: the rest of an answer never reaches the data or the
+`invalid-response` naming the field. The metadata is not parsed as general XML: one forward pass reads only `groupId`, `artifactId`, `release`, `latest` and `lastUpdated`, and a DOCTYPE or any other markup declaration, an entity reference, comment or processing instruction in a read field, a depth over 16, an element name over 128 characters or a malformed tag (a `<` before its `>`) is `invalid-response`, found in time linear in the answer. Only these fields are read: the rest of an answer never reaches the data or the
 cache. `meta` is `RegistryLoadMeta`: `{ requests, fromCache, missing }`, `missing` the entries asked for and not known
 (`npm:<name>`, `maven:<group>:<artifact>`); `fromCache` is true only when every entry came from the cache. The CLI
 prints one `warning:` line and the Action one `::warning::` line for them, and the run succeeds.
