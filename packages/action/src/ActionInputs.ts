@@ -28,6 +28,7 @@ export const ActionInputs = Object.freeze({
   "data-feed-limits": { required: false, default: "", runnerDefault: false },
   "data-wakatime": { required: false, default: "", runnerDefault: false },
   "data-wakatime-ranges": { required: false, default: "", runnerDefault: false },
+  "data-registry": { required: false, default: "", runnerDefault: false },
   "props-file": { required: false, default: "", runnerDefault: false },
   variant: { required: false, default: "", runnerDefault: false },
   locale: { required: false, default: "", runnerDefault: false },

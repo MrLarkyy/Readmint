@@ -2,12 +2,14 @@ import path from "node:path";
 import {
   type DataFeedSpec,
   type DataJsonSpec,
+  type DataRegistrySpec,
   type DataWakaTimeSpec,
   localeProblem,
   type OutputFormat,
   outputFormats,
   parseDataFeedArgs,
   parseDataJsonArgs,
+  parseDataRegistryArgs,
   parseDataWakaTimeArgs,
   quoteForLog,
   renderVariant,
@@ -176,6 +178,17 @@ export function readInputs(
     );
   }
 
+  const dataRegistry = readDataRegistry(
+    lines(value("data-registry")),
+    [...dataJson, ...dataFeed, ...dataWakaTime],
+    problems,
+  );
+  if (dataFile === "" && dataRegistry.some((spec) => spec.namespace === "github")) {
+    problems.push(
+      "input data-registry: namespace github clashes with the GitHub data; name the registry source another namespace",
+    );
+  }
+
   const propsFile = value("props-file");
   if (propsFile !== "") {
     const reason = checkRelativePath(propsFile);
@@ -232,9 +245,14 @@ export function readInputs(
   // eslint-disable-next-line no-control-regex -- control characters are what is refused here
   if (/[\u0000-\u001f\u007f]/.test(cacheDir)) {
     problems.push(`input cache-dir ${quoteForLog(cacheDir)} contains a control character`);
-  } else if (cacheDir !== "" && dataFile !== "" && dataWakaTime.length === 0) {
+  } else if (
+    cacheDir !== "" &&
+    dataFile !== "" &&
+    dataWakaTime.length === 0 &&
+    dataRegistry.length === 0
+  ) {
     problems.push(
-      "input cache-dir applies to GitHub and WakaTime data only; it cannot go with data-file without data-wakatime",
+      "input cache-dir applies to GitHub, WakaTime and registry data only; it cannot go with data-file without data-wakatime or data-registry",
     );
   } else if (cacheDir !== "") {
     const why = cacheDirProblem(cacheDir, workspace);
@@ -258,6 +276,7 @@ export function readInputs(
     ...(dataJson.length === 0 ? {} : { dataJson }),
     ...(dataFeed.length === 0 ? {} : { dataFeed }),
     ...(dataWakaTime.length === 0 ? {} : { dataWakaTime }),
+    ...(dataRegistry.length === 0 ? {} : { dataRegistry }),
     ...(propsFile === "" ? {} : { propsFile }),
     ...(variant === undefined ? {} : { variant }),
     ...(locale === "" ? {} : { locale }),
@@ -319,6 +338,25 @@ function readDataWakaTime(
     if (names.has(spec.namespace)) {
       problems.push(
         `input data-wakatime: namespace ${spec.namespace} is also a data-json or data-feed namespace; name one of them another namespace`,
+      );
+    }
+  }
+  return parsed.specs;
+}
+
+/** The `data-registry` lines as specs; a namespace another source has too is a problem. */
+function readDataRegistry(
+  sources: readonly string[],
+  taken: readonly (DataJsonSpec | DataFeedSpec | DataWakaTimeSpec)[],
+  problems: string[],
+): readonly DataRegistrySpec[] {
+  const parsed = parseDataRegistryArgs(sources);
+  for (const problem of parsed.problems) problems.push(`input data-registry: ${problem}`);
+  const names = new Set(taken.map((spec) => spec.namespace));
+  for (const spec of parsed.specs) {
+    if (names.has(spec.namespace)) {
+      problems.push(
+        `input data-registry: namespace ${spec.namespace} is also a data-json, data-feed or data-wakatime namespace; name one of them another namespace`,
       );
     }
   }

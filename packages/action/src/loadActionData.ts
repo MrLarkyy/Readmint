@@ -5,6 +5,7 @@ import {
   loadFixtureData,
   loadJsonArgs,
   loadLiveData,
+  loadRegistryArgs,
   loadWakaTimeArgs,
   mergeDataNamespaces,
 } from "@readmint/cli";
@@ -20,11 +21,12 @@ type Env = Readonly<Record<string, string | undefined>>;
  * load `readmint --github` uses; then each `data-json` source in order (`loadJsonArgs`, files
  * confined to the workspace, header values from `env`), then each `data-feed` feed in order
  * (`loadFeedArgs`), then each `data-wakatime` source in order (`loadWakaTimeArgs`, the key read from the variable of
- * `env` the line names; a still-calculating answer goes to `onWakaTimePartial`), added to it. `config.cacheDir`
- * (absolute) lets the GitHub and WakaTime loads keep their answers. A failure becomes `ActionError` (data) carrying the loader's
+ * `env` the line names; a still-calculating answer goes to `onWakaTimePartial`), then each `data-registry` namespace
+ * (`loadRegistryArgs`, no key; unknown entries go to `onRegistryMissing`), added to it. `config.cacheDir`
+ * (absolute) lets the GitHub, WakaTime and registry loads keep their answers. A failure becomes `ActionError` (data) carrying the loader's
  * lines only: `CliError` holds `GitHub data (<code>): <redacted message>`, `JSON data <ns>
  * (<code>): <message>`, `Feed data <ns> (<code>): <message>` (never the URL), `WakaTime data <ns> (<code>):
- * <message>` or the variable a WakaTime source lacks (never a key), or names the file
+ * <message>`, `Registry data <ns> (<code>): <message>` or the variable a WakaTime source lacks (never a key), or names the file
  * and the reason.
  */
 export async function loadActionData(
@@ -34,6 +36,7 @@ export async function loadActionData(
   onPartial?: (parts: readonly GitHubPartialPart[]) => void,
   env: Env = {},
   onWakaTimePartial?: (namespace: string) => void,
+  onRegistryMissing?: (namespace: string, missing: readonly string[]) => void,
 ): Promise<Record<string, unknown>> {
   try {
     const base =
@@ -60,6 +63,7 @@ export async function loadActionData(
           ...(config.dataJson ?? []),
           ...(config.dataFeed ?? []),
           ...(config.dataWakaTime ?? []),
+          ...(config.dataRegistry ?? []),
         ].map((spec) => spec.namespace),
       );
     }
@@ -84,8 +88,16 @@ export async function loadActionData(
             ...(config.cacheDir === undefined ? {} : { cacheDir: config.cacheDir }),
             ...(onWakaTimePartial === undefined ? {} : { onPartial: onWakaTimePartial }),
           });
+    const registry =
+      config.dataRegistry === undefined
+        ? {}
+        : await loadRegistryArgs(config.dataRegistry, {
+            fetch: fetch ?? globalThis.fetch,
+            ...(config.cacheDir === undefined ? {} : { cacheDir: config.cacheDir }),
+            ...(onRegistryMissing === undefined ? {} : { onMissing: onRegistryMissing }),
+          });
     // readInputs refuses a namespace two of these sources take: they never clash.
-    return mergeDataNamespaces(base, { ...json, ...feed, ...wakaTime });
+    return mergeDataNamespaces(base, { ...json, ...feed, ...wakaTime, ...registry });
   } catch (error) {
     if (error instanceof CliError) throw new ActionError("data", error.lines);
     throw error;

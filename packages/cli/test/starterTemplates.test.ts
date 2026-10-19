@@ -4,6 +4,7 @@ import { normalizeSvg } from "@readmint/golden/node";
 import { renderSvg } from "@readmint/renderer";
 import { expect, test } from "vitest";
 import { sampleGitHubData } from "../../components/test/sampleGitHubData.js";
+import { sampleRegistryData } from "../../components/test/sampleRegistryData.js";
 import { sampleWakaTimeData } from "../../components/test/sampleWakaTimeData.js";
 import { loadDesignAssets, loadDesignFile } from "../src/index.js";
 
@@ -12,8 +13,11 @@ const components = join(import.meta.dirname, "..", "..", "components");
 const templates = join(components, "templates");
 
 // Cards over another data source than GitHub, rendered below with their own sample.
-const sourceCards: Readonly<Record<string, () => Record<string, unknown>>> = {
-  "coding-time-card.design.json": sampleWakaTimeData,
+const sourceCards: Readonly<
+  Record<string, { readonly suite: string; readonly data: () => Record<string, unknown> }>
+> = {
+  "coding-time-card.design.json": { suite: "coding-time", data: sampleWakaTimeData },
+  "libraries-card.design.json": { suite: "libraries", data: sampleRegistryData },
 };
 
 const starters = readdirSync(templates).filter(
@@ -30,7 +34,7 @@ test("the folder holds the starter templates", () => {
 // The golden render passes the font bytes itself; the CLI path resolves the relative `src` and must give the same SVG.
 test.each([
   ...starters.map((file) => [file, "templates", sampleGitHubData] as const),
-  ...Object.entries(sourceCards).map(([file, data]) => [file, "coding-time", data] as const),
+  ...Object.entries(sourceCards).map(([file, card]) => [file, card.suite, card.data] as const),
 ])("%s renders from disk as its light golden", async (file, suite, data) => {
   const design = await loadDesignFile(file, { cwd: templates });
   const assets = await loadDesignAssets(design);

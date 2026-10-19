@@ -6,10 +6,13 @@ import { checkFixtureNamespaces, mergeDataNamespaces } from "./mergeDataNamespac
 /**
  * The data of a run: the fixture file `args.data` and, when `loadData` is given, the namespaces it loads added to the
  * fixture; `undefined` when there is neither. A fixture key equal to a namespace of `args` (`--github`, `--data-json`,
- * `--data-feed`, `--data-wakatime`) fails before `loadData` sends any request.
+ * `--data-feed`, `--data-wakatime`, `--data-registry`) fails before `loadData` sends any request.
  */
 export async function loadInputData(
-  args: Pick<DesignArgs, "data" | "github" | "dataJson" | "dataFeed" | "dataWakaTime">,
+  args: Pick<
+    DesignArgs,
+    "data" | "github" | "dataJson" | "dataFeed" | "dataWakaTime" | "dataRegistry"
+  >,
   options: {
     readonly cwd: string;
     readonly loadData?: () => Promise<Record<string, unknown>>;
@@ -24,12 +27,15 @@ export async function loadInputData(
 }
 
 function sourceNamespaces(
-  args: Pick<DesignArgs, "github" | "dataJson" | "dataFeed" | "dataWakaTime">,
+  args: Pick<DesignArgs, "github" | "dataJson" | "dataFeed" | "dataWakaTime" | "dataRegistry">,
 ): string[] {
   return [
     ...(args.github === true ? [GITHUB_DATA_NAMESPACE] : []),
-    ...[...(args.dataJson ?? []), ...(args.dataFeed ?? []), ...(args.dataWakaTime ?? [])].map(
-      (spec) => spec.namespace,
-    ),
+    ...[
+      ...(args.dataJson ?? []),
+      ...(args.dataFeed ?? []),
+      ...(args.dataWakaTime ?? []),
+      ...(args.dataRegistry ?? []),
+    ].map((spec) => spec.namespace),
   ];
 }

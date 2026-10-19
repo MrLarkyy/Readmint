@@ -316,7 +316,7 @@ describe("--data-wakatime on the command line", () => {
     ],
     [["--data-wakatime-range", "wakatime=all_time"], "which has no WakaTime source"],
     [["--data-wakatime", "K", "--data-wakatime-range", "wakatime=week"], "must be one of"],
-    [["--cache-dir", "c"], "option --cache-dir needs --github or --data-wakatime"],
+    [["--cache-dir", "c"], "option --cache-dir needs --github, --data-wakatime or --data-registry"],
   ])("%j is a usage error", (args, message) => {
     expect(() => parseCliArgs(["render", "a.json", ...args])).toThrow(message);
   });

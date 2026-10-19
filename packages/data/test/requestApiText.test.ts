@@ -179,7 +179,7 @@ describe("requestApiText", () => {
       signal: AbortSignal.abort(),
     });
     expect((await failure(requestApiText("https://example.org/x", hang.ctx))).code).toBe("timeout");
-    const never = context([() => new Promise<Response>(() => undefined) as unknown as Response], {
+    const never = context([() => new Promise<Response>(() => undefined)], {
       signal: AbortSignal.timeout(20),
     });
     const error = await failure(requestApiText("https://example.org/x", never.ctx));

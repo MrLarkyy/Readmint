@@ -10,7 +10,7 @@ export const ExitCode = Object.freeze({
   input: 3,
   /**
    * `--github` without a token, `--data-wakatime` without its key, or the GitHub data, a `--data-json` source, a
-   * `--data-feed` feed or a `--data-wakatime` source could not be loaded.
+   * `--data-feed` feed, a `--data-wakatime` source or a `--data-registry` source could not be loaded.
    */
   data: 4,
   /** A bug in Readmint (sysexits EX_SOFTWARE). */
