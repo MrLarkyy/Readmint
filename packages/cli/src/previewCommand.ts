@@ -8,6 +8,7 @@ import { errnoCode } from "./errnoCode.js";
 import { escapeForLog } from "./escapeForLog.js";
 import { ExitCode } from "./ExitCode.js";
 import { formatIssue } from "./formatIssue.js";
+import { checkPreviewNamespaces } from "./checkPreviewNamespaces.js";
 import { cliSecrets } from "./cliSecrets.js";
 import { imageFetching } from "./imageFetching.js";
 import { liveData } from "./liveData.js";
@@ -28,7 +29,7 @@ type PreviewArgs = Extract<CliCommand, { name: "preview" }>;
 /**
  * Serves the render on http://127.0.0.1:<port>/ and re-renders when the design, the fixture data or
  * an asset changes; a failing render keeps the last SVG and shows its issues. Ends with exit code 0
- * when `io.signal` aborts. `--github`, `--data-json`, `--data-feed`, `--data-wakatime` and `--data-registry` data is loaded once, before the server starts: a design edit
+ * when `io.signal` aborts. `--github`, `--data-json`, `--data-feed`, `--data-wakatime` and `--data-registry` data is loaded once, before the server starts, and after the `let` names of the design and the keys of the `--data` fixture are checked against their namespaces (a clash fails before any request, as in `render`): a design edit
  * never costs a request (the fixture data is read again on each change and merged with it). With that loaded data,
  * which may be scoped to a token or a header, the routes live under a per-session secret path
  * (http://127.0.0.1:<port>/<secret>/), printed once and kept in memory only. With `open` the browser gets, after the
@@ -38,6 +39,7 @@ type PreviewArgs = Extract<CliCommand, { name: "preview" }>;
  */
 export async function previewCommand(args: PreviewArgs, io: CliIo): Promise<ExitCode> {
   const { loadData } = liveData(args, io, io.signal);
+  if (loadData !== undefined) await checkPreviewNamespaces(args, io.cwd);
   let live: { readonly loadData?: () => Promise<Record<string, unknown>> };
   try {
     const loaded = loadData === undefined ? undefined : await loadData();

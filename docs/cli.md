@@ -313,9 +313,11 @@ as `render --data` with that object.
   private repository name, pin, headline or organisation-only status), never the token. Keep the folder out of anything
   published. A path that exists and is not a folder is exit code 3.
 - **Order**: `render` and `validate` load the data after the design file and its assets: a design that fails to load
-  (exit code 1 or 3) costs no request and is reported before a missing or refused token (exit code 4). `preview` loads
-  the data first, before it reads the design or starts serving: a missing token or a failed load exits with 4 at once,
-  and a design error is then shown on the page like any later one.
+  (exit code 1 or 3) costs no request and is reported before a missing or refused token (exit code 4). `preview` reads
+  the design and the `--data` fixture only to check them for a namespace clash (below; a file it cannot read is skipped), then loads
+  the data before it starts serving: a missing token or a failed load exits with 4 at once,
+  and a design error is then shown on the page like any later one. A `let` named `github` with `--github`, or a fixture key `github`, is the same
+  clash as for the other sources: exit code 1 or 3 before any request.
 - **Requests**: a load sends the requests of [data-github.md](data-github.md#rate-limits) (at most 6 with `--login`
   and 7 without it, 7 either way on a `--cache-dir` miss, plus retries; fewer for a user with fewer repositories), only to `https://api.github.com/graphql` (with `--language-commit-cap` also `https://api.github.com/repos/...`), and takes at most 300 s in all (plus 600 ms per commit read; the commit reading ends 60 s earlier with a warning instead of failing), retries and
   rate-limit waits included. Without `--cache-dir` there is no cache and nothing is written to disk.
@@ -354,7 +356,7 @@ API_KEY=<key> readmint render design.json --data-json api=https://api.example.co
 - **The data object** is `{ version: 0, document: <the parsed JSON> }`, whatever the document is (object, array or
   value): bind `stats.document.stars`. A `version` of the document stays at `document.version`.
 - **The namespace** must not equal a `let` name of the design (its layers and its components' layers): `render` and `validate` check
-  that before any file is read or request made (`preview` loads its data first and shows the clash as an issue), exit code 1, one line per clash naming the `let` entry and the option; rename
+  that before any request is made, and `preview` does too before it loads its data (a later edit of the design that introduces a clash is shown as an issue, with no new request), exit code 1, one line per clash naming the `let` entry and the option; rename
   the `let` name or give the source another namespace (`--data-json <ns>=<source>`).
 - **A file** is a relative path inside `--root` (default the current folder), at most 1 MiB. Unlike the design, `--data` and `--props` paths, which are relative to the current folder, it is resolved against `--root`, as in the Action: with `--root card`, write `--data-json s=s.json` for `card/s.json`, not `card/s.json` (that looks for `card/card/s.json`). Rules: no `..`, no absolute,
   drive-letter, UNC or device path, and a link or junction that leads outside the root is refused.
@@ -422,7 +424,7 @@ editors, operatingSystems }`, each list of `{ name, percent, seconds }`, most ti
   `wakatime.humanReadableTotal` or `wakatime.languages[0].name`. The coding-time card template renders it
   ([components.md](components.md#coding-time-card)).
 - **The namespace** must not equal a `let` name of the design, checked like `--data-json`: by `render` and
-  `validate` before any request (`preview` loads its data first).
+  `validate` before any request, and `preview` before it loads its data.
 - **Still calculating**: when WakaTime answers HTTP 202 or says the stats are not up to date, the data it has (or the
   empty object: zeros and empty lists) is bound, standard error gets one line
   `warning: WakaTime data <ns> is incomplete: ...`, and the exit code stays 0; such an answer is never cached.
@@ -431,7 +433,7 @@ editors, operatingSystems }`, each list of `{ name, percent, seconds }`, most ti
   `forbidden` for a range the plan does not cover, `rate-limited` (a `Retry-After` of up to 10 s is waited out once),
   `too-large`, `timeout`, `invalid-response`, ...
 - **Merging**: the WakaTime namespaces are added to `--data` or `--github` data; a fixture key equal to one is exit code
-  3, before any request (`preview` loads its data first); with `--github` the namespace `github` is reserved, and a namespace cannot also be a `--data-json` or `--data-feed`
+  3, before any request (`preview` checks the fixture before it loads its data); with `--github` the namespace `github` is reserved, and a namespace cannot also be a `--data-json` or `--data-feed`
   namespace (exit code 2).
 - **`--cache-dir`** keeps each complete answer, the normalised data only, for an hour under a key that holds a digest of
   the API key but never the key; a second run within it sends no request. Without it every run asks WakaTime.
@@ -530,7 +532,7 @@ from, `bin` passes `process.env`), `ExitCode`, `CliError`, `CliIo`,
 problems; at most `maxDataJsonSources`), `loadJsonArgs(specs, options)` (the `--data-json` load, `JsonArgsOptions` with
 `root`, `fetch`, `env` and `signal`; a failure is a `CliError` with exit code 4), `parseDataFeedArgs(sources, limits)` (the `--data-feed` and `--data-feed-limit` texts as `DataFeedSpec`s, or the
 problems; at most `maxDataFeedSources`), `loadFeedArgs(specs, options)` (the `--data-feed` load, `FeedArgsOptions` with
-`fetch` and `signal`; a failure is a `CliError` with exit code 4), `parseDataWakaTimeArgs(sources, ranges)` (the `--data-wakatime` and `--data-wakatime-range` texts as `DataWakaTimeSpec`s `{ namespace, variable, range? }`, or the problems; at most `maxDataWakaTimeSources`), `loadWakaTimeArgs(specs, options)` (the `--data-wakatime` load, `WakaTimeArgsOptions` with `fetch`, `env`, `cacheDir`, `signal` and `onPartial`; an unset variable or a failure is a `CliError` with exit code 4), `parseDataRegistryArgs(sources)` (the `--data-registry` texts as `DataRegistrySpec`s `{ namespace, npm, maven }`, or the problems; at most `maxDataRegistrySources`), `loadRegistryArgs(specs, options)` (the `--data-registry` load, `RegistryArgsOptions` with `fetch`, `cacheDir`, `signal` and `onMissing`; a failure is a `CliError` with exit code 4), `registryMissingWarning(namespace, missing)` (the one warning line for unknown entries, also the Action's), `wakaTimePartialWarning(namespace)` (the one warning line for a still-calculating WakaTime answer, also the Action's), `mergeDataNamespaces(fixture, loaded)` and `checkFixtureNamespaces(fixture, namespaces)` (the same clash checked before a load)
+`fetch` and `signal`; a failure is a `CliError` with exit code 4), `parseDataWakaTimeArgs(sources, ranges)` (the `--data-wakatime` and `--data-wakatime-range` texts as `DataWakaTimeSpec`s `{ namespace, variable, range? }`, or the problems; at most `maxDataWakaTimeSources`), `loadWakaTimeArgs(specs, options)` (the `--data-wakatime` load, `WakaTimeArgsOptions` with `fetch`, `env`, `cacheDir`, `signal` and `onPartial`; an unset variable or a failure is a `CliError` with exit code 4), `parseDataRegistryArgs(sources)` (the `--data-registry` texts as `DataRegistrySpec`s `{ namespace, npm, maven }`, or the problems; at most `maxDataRegistrySources`), `loadRegistryArgs(specs, options)` (the `--data-registry` load, `RegistryArgsOptions` with `fetch`, `cacheDir`, `signal` and `onMissing`; a failure is a `CliError` with exit code 4), `registryMissingWarning(namespace, missing)` (the one warning line for unknown entries, also the Action's), `wakaTimePartialWarning(namespace)` (the one warning line for a still-calculating WakaTime answer, also the Action's), `mergeDataNamespaces(fixture, loaded)` and `checkFixtureNamespaces(fixture, namespaces)` (the same clash checked before a load), `checkDataNamespaces(file, json, feed, wakaTime, registry, github)` (a `let` name of a loaded `DesignFile` equal to a namespace of the sources, `github` included when the last argument is true: a `CliError` with exit code 1, also the Action's)
 (adds loaded namespaces to fixture data; a clash is a `CliError` with exit code 3),
 `loadRenderManifest(file, cwd, options?)` (with `{ variant }` the run's variant becomes that of every render that lists none, and a clash with its props is refused; the `--manifest` file as a `LoadedRenderManifest` of `LoadedRenderEntry`s, designs checked inside its folder; with `{ confinedTo }` a relative path inside that folder, as the Action's `manifest`; whose `RenderEntry` in `RenderInputOptions.entry` sets an entry's props and names the settings section), `pictureHtml(entries)` (the `<picture>` HTML of `PictureEntry`s, also the Action's snippet) `designNameIn(root, design)` and `renderLabel(design, name, variant?)` (how a message names a render of a manifest, also the Action's) and `relabelLine(line, design, label)` (a message line with a render label in place of the design name), `partialDataWarning(parts)` (the one warning line for `meta.partial`, also the Action's),
 `redactSecrets(text, secrets)` (the redaction of standard error, also the Action's log), `loadRenderInput` (design file, assets, fixture data and the images bound to data in one call; `RenderInput`,

@@ -94,6 +94,7 @@ export async function loadRenderInput(
       args.dataFeed ?? [],
       args.dataWakaTime ?? [],
       args.dataRegistry ?? [],
+      args.github === true,
     );
   }
   const data = options.data ?? (await loadInputData(args, options));

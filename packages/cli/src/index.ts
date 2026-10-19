@@ -19,6 +19,7 @@ export { loadFeedArgs, type FeedArgsOptions } from "./loadFeedArgs.js";
 export { loadJsonArgs, type JsonArgsOptions } from "./loadJsonArgs.js";
 export { loadRegistryArgs, type RegistryArgsOptions } from "./loadRegistryArgs.js";
 export { loadWakaTimeArgs, type WakaTimeArgsOptions } from "./loadWakaTimeArgs.js";
+export { checkDataNamespaces } from "./checkDataNamespaces.js";
 export { checkFixtureNamespaces, mergeDataNamespaces } from "./mergeDataNamespaces.js";
 export { type DataFeedSpec, maxDataFeedSources, parseDataFeedArgs } from "./parseDataFeedArgs.js";
 export { type DataJsonSpec, maxDataJsonSources, parseDataJsonArgs } from "./parseDataJsonArgs.js";

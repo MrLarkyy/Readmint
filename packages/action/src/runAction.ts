@@ -18,6 +18,7 @@ import type { ActionConfig } from "./ActionConfig.js";
 import type { ActionDeps } from "./ActionDeps.js";
 import { ActionError } from "./ActionError.js";
 import { ActionLog } from "./ActionLog.js";
+import { checkActionNamespaces } from "./checkActionNamespaces.js";
 import { errnoCode } from "./errnoCode.js";
 import { gitEnv } from "./gitEnv.js";
 import { GitRepo } from "./GitRepo.js";
@@ -34,7 +35,7 @@ import { writeOutputs } from "./writeOutputs.js";
 type Env = Readonly<Record<string, string | undefined>>;
 
 /**
- * One run of the Action: inputs, outputs plan, git checks, data, render (all or nothing), write
+ * One run of the Action: inputs, outputs plan, the `let` names against the data namespaces, git checks, data, render (all or nothing), write
  * the changed files, the README snippet, then, unless it is a dry run, stage the outputs and
  * commit and push them when any differs from HEAD; last the step outputs. Resolves to the exit
  * code and never throws: a known failure prints its `::error::` lines, anything else only
@@ -81,6 +82,8 @@ export async function runAction(env: Env, deps: ActionDeps): Promise<number> {
 
     const props = await loadActionProps(config, workspace);
     if (props !== undefined) warnUnusedSections(props, plan, log);
+
+    await checkActionNamespaces(config, plan, workspace);
 
     let push: { repo: GitRepo; branch: string } | undefined;
     if (!config.dryRun) {

@@ -154,7 +154,7 @@ designs lie in.
 ## What a run does
 
 1. Reads and checks the inputs, then pairs the designs (or, with `manifest`, the renders of the loaded manifest) with their outputs and loads the `props-file`, so a bad
-   settings file or a section no design has is reported before any git check or GitHub request.
+   settings file or a section no design has is reported before any git check or GitHub request. Then it reads every listed design (and dark twin) and checks its `let` names, components included, against the data namespaces of the run (`github` unless `data-file` is set, and every `data-json`, `data-feed`, `data-wakatime` and `data-registry` namespace): a clash fails the run as a data error, one line per clash naming the `let` entry, before any git check and before any request. A design that cannot be read is skipped here and reported by the render step.
 2. Unless it is a dry run: finds the branch to push to, checks its name and that the checkout is that branch's latest
    commit on `origin`, before anything is written.
 3. Loads the data once: the `data-file`, else the GitHub data of `login`, bound as `github` (see
