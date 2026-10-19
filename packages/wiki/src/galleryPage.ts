@@ -5,5 +5,5 @@ export const galleryPage: WikiEntry = {
   name: "Gallery",
   title: "Gallery",
   group: "gallery",
-  summary: "the profile, starter and calendar templates rendered in light and dark",
+  summary: "the profile, starter, calendar and source card templates rendered in light and dark",
 };

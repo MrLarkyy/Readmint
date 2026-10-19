@@ -59,6 +59,8 @@ export function buildGallery(
     "",
     "Every profile, starter and calendar template rendered from the sample data, in light and dark, each on the page colour of its theme.",
     "",
+    "Cards over a data source other than GitHub are rendered from their fixture data.",
+    "",
   ];
   for (const template of templates) {
     lines.push(
@@ -105,6 +107,9 @@ function templateLinks(template: GalleryTemplate, links: GalleryLinks): string {
     return `[Template folder](${examplesRepository}/tree/HEAD/${template.name}) · [Components docs](Components-and-templates#profile-templates)`;
   }
   const design = `${links.repository}/blob/${links.branch}/packages/components/templates/${template.name}.design.json`;
+  if (template.kind === "source") {
+    return `[Design file](${design}) · [Components docs](Components-and-templates#${template.title.toLowerCase().replaceAll(" ", "-")})`;
+  }
   const anchor = template.kind === "calendar" ? "contribution-calendar" : "starter-templates";
   return `[Design file](${design}) · [Examples repository](${examplesRepository}) · [Components docs](Components-and-templates#${anchor})`;
 }

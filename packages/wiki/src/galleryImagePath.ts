@@ -7,6 +7,12 @@ export function galleryImagePath(
   theme: "light" | "dark",
 ): string {
   if (template.kind === "profile") return `profiles-${template.name}/${item}-${theme}.png`;
+  if (template.kind === "source") {
+    if (template.folder === undefined) {
+      throw new Error(`source card ${template.name} has no golden folder`);
+    }
+    return `${template.folder}/${item}-${theme}.png`;
+  }
   if (template.kind === "calendar") {
     return theme === "light" ? `calendar/${item}.png` : `calendar/${item}-dark.png`;
   }

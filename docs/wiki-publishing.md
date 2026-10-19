@@ -32,14 +32,19 @@ _Golden-tests_ and _Wiki-publishing_ are new in the wiki (they were repository-o
 ## Gallery
 
 The _Gallery_ page shows every profile template (Year Ring, Horizon, Pinscreen: every section), every starter
-template and the three contribution calendars (heatmap, isometric, dots) in light and dark, with a one-line description and links to the template folder in the examples repository
-(the starters and calendars, which have no folder there, link to their design file) and to
+template, the three contribution calendars (heatmap, isometric, dots) and the cards over a data source other than GitHub
+(the coding-time and libraries cards, rendered from their fixture data) in light and dark, with a one-line description and links to the template folder in the examples repository
+(the starters, calendars and source cards, which have no folder there, link to their design file) and to
 [Components and templates](components.md).
 
 - **The list** is `packages/wiki/src/galleryTemplates.ts`. A test compares it with the profile, starter and contribution calendar tables of
   [components.md](components.md) and with the section files in `packages/components/templates/`, so a template or
   section added without a gallery entry (or the reverse) fails `pnpm test`. Another test fails when a golden image of the
   list does not exist.
+- **A new source card is one entry**: a design file in `packages/components/templates/` that is neither a documented starter nor
+  a calendar must be listed in `galleryTemplates.ts` with `kind: "source"`, its `folder` (the golden folder, so the images are
+  `FOLDER/ITEM-light.png` and `FOLDER/ITEM-dark.png`) and a `## Title` section in components.md, whose slug is the docs link;
+  the on-disk test fails otherwise. Source cards come after the calendars.
 - **The images** are the golden PNGs the [golden tests](golden-tests.md) pin (`packages/components/test/golden/`,
   `ITEM-light.png` and `ITEM-dark.png`; the calendars are `calendar/NAME.png` for light and `calendar/NAME-dark.png` for dark); nothing is drawn by hand and nothing is fetched. The profile sections have a
   transparent canvas, so each image is flattened on the GitHub page colour of its theme (light `#ffffff`, dark

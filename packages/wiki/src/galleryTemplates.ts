@@ -2,7 +2,7 @@ import type { GalleryTemplate } from "./GalleryTemplate.js";
 
 const repos = ["repo-1", "repo-2", "repo-3", "repo-4", "repo-5", "repo-6"];
 
-/** Every profile, starter and calendar template shown on the Gallery page, in page order. Tested against docs/components.md. */
+/** Every profile, starter, calendar and source card template shown on the Gallery page, in page order. Tested against docs/components.md. */
 export const galleryTemplates: readonly GalleryTemplate[] = [
   {
     name: "year-ring",
@@ -83,5 +83,21 @@ export const galleryTemplates: readonly GalleryTemplate[] = [
     kind: "calendar",
     description: "Dots that grow with the level.",
     items: ["calendar-dots"],
+  },
+  {
+    name: "coding-time-card",
+    title: "Coding-time card",
+    kind: "source",
+    folder: "coding-time",
+    description: "Time spent coding per language, from the coding-time sample data.",
+    items: ["coding-time-card"],
+  },
+  {
+    name: "libraries-card",
+    title: "Libraries card",
+    kind: "source",
+    folder: "libraries",
+    description: "The most used libraries of a project, from the libraries sample data.",
+    items: ["libraries-card"],
   },
 ];
