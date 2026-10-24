@@ -28,7 +28,7 @@ jobs:
           path: wiki-checkout
       - uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version: 24
       - run: corepack enable
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec vitest run --project node packages/wiki
