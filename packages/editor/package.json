@@ -27,6 +27,6 @@
   },
   "devDependencies": {
     "@readmint/golden": "workspace:*",
-    "vite": "8.3.4"
+    "vite": "8.3.5"
   }
 }
